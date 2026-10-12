@@ -1,0 +1,61 @@
+---
+schema: yeah/0.0.0-alpha
+id: acp-wire-v1
+revision: 0
+state: active
+intent: |
+  Speak **Agent Client Protocol v1** (ACP — JSON-RPC 2.0 over stdio
+  by default) on the upstream side. ACP is the only stable, open
+  standard for editor↔agent communication today (Zed, JetBrains,
+  sst/opencode, Gemini CLI all implement it; the TS SDK is at
+  1.0.0). Speaking ACP is the single biggest lever for Yeah
+  adoption: any ACP client (Zed, JetBrains IDE, future editors)
+  can host Yeah without bespoke integration.
+commitment: |
+  Yeah implements an ACP **agent** (not a client). The wire surface
+  is `agentclientprotocol.com` schema `2025-…` (v1). The minimal
+  implemented methods are: `initialize`, `session/new`,
+  `session/prompt`, `session/cancel`. Tool calls use ACP's
+  `tools/call`. The full surface grows as fixtures are added.
+axiom_link:
+  - A1
+scope:
+  capabilities:
+    - acp-agent-v1
+  paths:
+    - "lib/yeah-acp.el"
+    - "schemas/acp-v1.json"
+    - "tests/fixtures/positive/acp-*.json"
+    - "tests/fixtures/negative/acp-*.json"
+  exclusions:
+    - "lib/yeah-loop.el"
+outcomes:
+  - id: initialize-handshake
+    statement: |
+      `lib/yeah-acp.el` responds to `initialize` with `protocolVersion`
+      from the schema, an `agentInfo` block, and capability flags
+      `loadSession`, `prompt`, `cancel`.
+  - id: session-lifecycle
+    statement: |
+      `session/new` returns a `sessionId`; `session/prompt` returns
+      a `messageId`; `session/cancel` accepts a `sessionId` and
+      terminates the run cleanly (status: `cancelled`).
+  - id: acp-v1-stability
+    statement: |
+      The wire contract is tagged `wire-v1`. Any change that breaks
+      compatibility with the v1 surface is a protected-policy
+      transition.
+counterexample: |
+  An implementation that exposes Yeah as an HTTP-only agent (no
+  stdio), or that uses a custom JSON-RPC shape instead of ACP. Both
+  defeat the purpose of speaking a stable standard.
+reversal: |
+  Possible when ACP v2 stabilises and Yeah adopts it. The reversal
+  is a protected-policy transition: the v1 surface must remain
+  reachable (at least as a legacy mode) for ≥ one minor release
+  after v2 is wired.
+migration: |
+  Add `lib/yeah-acp-v2.el`; v1 keeps working unchanged.
+supersedes: []
+superseded_by: null
+---

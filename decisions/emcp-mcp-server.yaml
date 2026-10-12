@@ -1,0 +1,62 @@
+---
+schema: yeah/0.0.0-alpha
+id: emcp-mcp-server
+revision: 0
+state: active
+intent: |
+  Expose Emacs as a tool to external agents via the **Model Context
+  Protocol (MCP)**. The MCP server we publish uses the `emacs__*`
+  tool-id namespace to disambiguate from other servers. The same
+  `lib/` source powers the ACP agent side; the MCP server is a
+  thin shim over the same tool implementations.
+commitment: |
+  Yeah publishes an MCP server with a stable `emcp` tool surface.
+  The first wave of tools is: `emacs__eval`, `emacs__buffer_list`,
+  `emacs__buffer_read`, `emacs__buffer_write`, `emacs__magit_status`,
+  `emacs__magit_diff`, `emacs__describe_function`,
+  `emacs__describe_variable`, `emacs__dired_list`,
+  `emacs__project_find_file`. Adding a tool requires updating this
+  decision's `outcomes` list (so `mathc` will later catch the
+  drift).
+axiom_link:
+  - A1
+scope:
+  capabilities:
+    - emcp-mcp-server
+  paths:
+    - "lib/yeah-emcp.el"
+    - "tests/fixtures/positive/emcp-*.json"
+    - "tests/fixtures/negative/emcp-*.json"
+  exclusions:
+    - "lib/yeah-acp.el"
+outcomes:
+  - id: mcp-stdio-transport
+    statement: |
+      `lib/yeah-emcp.el` registers an MCP server on stdio via
+      `mcp-server-lib` (MELPA), the standard pattern for Emacs
+      MCP servers.
+  - id: stable-tool-ids
+    statement: |
+      All `emcp` tools use the `emacs__*` prefix. Removing or
+      renaming a tool id is a protected-policy transition.
+  - id: per-tool-docstring
+    statement: |
+      Each tool's input/output schema is generated from the
+      handler's `MCP Parameters:` docstring block (the
+      `mcp-server-lib` convention). Schemas never drift from the
+      implementation: if a parameter name changes in the docstring,
+      the schema changes with it.
+counterexample: |
+  An implementation that publishes Yeah as an MCP server but with
+  a `buf` or `eval_code` tool id (no `emacs__` prefix). External
+  MCP clients that know the `emcp` vocabulary by namespace would
+  not find the tools; the commitment is violated.
+reversal: |
+  Possible if the MCP protocol is replaced by a successor; reversal
+  is a protected-policy transition.
+migration: |
+  Re-export the `emcp` tools under the new protocol's namespace;
+  keep the `emcp` ids as legacy shims for ≥ one minor release.
+supersedes: []
+superseded_by: null
+---

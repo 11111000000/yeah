@@ -1,0 +1,11 @@
+*.elc
+*.tar
+*.tar.gz
+.git/
+.idea/
+.vscode/
+*~
+.DS_Store
+build/
+dist/
+_target/

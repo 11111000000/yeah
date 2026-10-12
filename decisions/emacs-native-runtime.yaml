@@ -1,0 +1,58 @@
+---
+schema: yeah/0.0.0-alpha
+id: emacs-native-runtime
+revision: 0
+state: active
+intent: |
+  Make Emacs itself the run-time of the agent loop, not a thin
+  client over a separate process. Modern agentic harnesses (sst/opencode,
+  badlogic/pi-mono) are built on a TypeScript / Bun process that
+  shells out to external tools. The point of Yeah is to reject that
+  pattern: when the user already has an Emacs session, that session
+  is the run-time; tools are Elisp functions; the wire boundary is
+  ACP (Agent Client Protocol) over stdio or `emacsclient`-style
+  bridge.
+commitment: |
+  The agent loop lives in `lib/yeah-loop.el` and is an Elisp
+  function. The LLM transport is `gptel` (no other LLM client
+  library is allowed at this layer). Subprocesses are spawned only
+  via `make-process` with `:`-keyword filter plumbing; never via
+  direct `shell-command`/`async-shell-command` from inside a tool
+  body.
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - emacs-native-runtime
+  paths:
+    - "lib/yeah-loop.el"
+    - "lib/yeah-gptel.el"
+    - "scripts/dev"
+  exclusions:
+    - "tests/fixtures/**"
+outcomes:
+  - id: agent-loop-is-elisp
+    statement: |
+      `lib/yeah-loop.el` exists and is the only entry point for the
+      tick state machine. Direct HTTP calls to LLM providers are
+      forbidden from any other module.
+  - id: gptel-is-the-only-transport
+    statement: |
+      All LLM traffic is routed through `gptel-request-...` advice
+      hooks. No module imports `url-retrieve` for LLM traffic.
+counterexample: |
+  An implementation that ships a Node.js / Bun sidecar process for
+  the agent loop and a thin Emacs client over ACP. That is a fork
+  of sst/opencode in disguise; the commitment is violated even if
+  the surface looks similar.
+reversal: |
+  Possible if a `dual-runtime-yeah@1` policy is adopted; the
+  reversal is a protected-policy transition.
+migration: |
+  The kernel modules under `lib/yeah-*.el` retain their public API;
+  the only change is the implementation of those modules, which
+  would be allowed to shell out to a sidecar in the dual-runtime
+  case. All tool-author code is unchanged.
+supersedes: []
+superseded_by: null
+---

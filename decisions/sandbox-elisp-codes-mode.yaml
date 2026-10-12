@@ -1,0 +1,54 @@
+---
+schema: yeah/0.0.0-alpha
+id: sandbox-elisp-codes-mode
+revision: 0
+state: active
+intent: |
+  Provide **Programmatic Tool Calling (PTC)** — a way for the
+  model to issue several tool calls in a single turn, expressed
+  as a single Elisp form, executed in a sandboxed environment.
+  PTC is the answer to "save round-trips" in opencode/pi; we
+  re-implement it natively instead of importing a JS engine.
+commitment: |
+  PTC lives in `lib/yeah-codes.el`. The sandbox is `sandbox.el`
+  (Emacs 29+), plus a static whitelist of allowed bindings. The
+  whitelist is: `read`, `edit`, `grep`, `glob`, `bash`, `webfetch`,
+  `text`, `image`, `console`, `exit`. No other function is callable
+  inside the sandbox. All values cross the sandbox boundary as
+  JSON-clean `read`/`prin1` pairs.
+axiom_link:
+  - A2
+scope:
+  capabilities:
+    - codes-mode
+  paths:
+    - "lib/yeah-codes.el"
+    - "tests/fixtures/positive/codes-allowed.el"
+    - "tests/fixtures/negative/codes-forbidden.el"
+outcomes:
+  - id: sandbox-whitelist
+    statement: |
+      The whitelist is the only source of truth for which
+      primitives the sandbox exposes. Adding a primitive is a
+      decision under the active policy.
+  - id: json-clean-boundary
+    statement: |
+      Every value entering the sandbox is read with `read` (not
+      `eval`); every value leaving the sandbox is `prin1`-serialised.
+      The boundary is a `let`-binding, not a function call: there is
+      no `funcall` from sandboxed code to host Elisp.
+counterexample: |
+  An implementation that uses `eval-buffer` to execute the
+  model-supplied code. This gives the model access to the entire
+  Elisp runtime, including `make-process` and `delete-file` —
+  exactly the A2 violation the commitment forbids.
+reversal: |
+  Possible only by adopting `no-codes-yeah@1`; reversal is a
+  protected-policy transition.
+migration: |
+  Remove the tool from the model surface; any existing PTC
+  callers fall back to native multi-tool-per-turn (the gptel
+  default).
+supersedes: []
+superseded_by: null
+---

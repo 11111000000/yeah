@@ -1,0 +1,14 @@
+---
+schema: yeah/0.0.0-alpha
+id: bootstrap-policy-active
+state: active
+result: pass
+subject: decisions/decision.yaml
+producer_identity: human:maintainer
+evidence: |
+  Manual confirmation: `decisions/decision.yaml` exists, names
+  `bootstrap-yeah@0`, and `AGENTS.md` references
+  `bootstrap-yeah@0` as the active policy.
+environment: |
+  Repository HEAD at the time the bootstrap check ran.
+---

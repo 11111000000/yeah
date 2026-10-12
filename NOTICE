@@ -1,0 +1,15 @@
+Yeah — Y(eah) Emacs Agent Harness
+Copyright 2026 Petr Kosov
+
+This product includes software developed at
+Petr Kosov <p.b.kosov@yandex.ru>.
+
+This product is licensed under the Apache License, Version 2.0
+(see `LICENSE`).
+
+The development workflow — the math-coding-style decision-driven,
+axiom-derived, attestation-bound process — is ported from the
+sibling project `math-coding 3.0-alpha` by the same author, with
+the explicit intention of sharing the process language even though
+the implementation domain (OCaml kernel vs. Elisp harness) is
+different. No code is shared.

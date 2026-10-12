@@ -1,0 +1,47 @@
+---
+schema: yeah/0.0.0-alpha
+id: bootstrap-yeah
+revision: 0
+state: active
+intent: |
+  Establish the active policy under which Yeah v0.0.0-alpha is built.
+  This is the first decision on `main`; every later decision's
+  `authorizes_under` or active-policy reference resolves to this
+  record.
+commitment: |
+  While `bootstrap-yeah@0` is active, all changes are subject to the
+  eight manual bootstrap checks recorded in `AGENTS.md §"Bootstrap gate"`.
+  Once `yeah gate` and `yeah self-check` are wired (Tier 1 of
+  `ROADMAP.md`), the bootstrap checks become *additive* to the
+  automated guarantees; they never go away.
+axiom_link:
+  - A3
+scope:
+  capabilities:
+    - bootstrap-policy-active
+  paths:
+    - "AGENTS.md"
+    - "ROADMAP.md"
+    - "PACKAGES.md"
+    - "decisions/decision.yaml"
+  exclusions:
+    - "lib/**"
+    - "tests/**"
+    - "scripts/**"
+    - "schemas/**"
+outcomes: []
+counterexample: |
+  A pull request that adds a kernel module without a paired decision
+  file. The bootstrap-v3 manual checks were not honored. This is
+  exactly the kind of drift the active policy exists to prevent.
+reversal: |
+  Possible if a successor policy (e.g. `bootstrap-yeah@1`) supersedes
+  this one; reversal is itself a protected-policy transition under A3.
+migration: |
+  Read `AGENTS.md §"Self-application"`. The successor policy must
+  include positive + negative fixtures that demonstrate the new
+  policy still applies, plus a migration path that preserves the
+  spirit of this one.
+supersedes: []
+superseded_by: null
+---

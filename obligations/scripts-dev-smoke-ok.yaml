@@ -1,0 +1,21 @@
+---
+schema: yeah/0.0.0-alpha
+id: scripts-dev-smoke-ok
+state: active
+statement: |
+  `scripts/dev smoke` exits 0; `scripts/dev validate` exits 1
+  (not-yet-implemented); `scripts/dev <unknown>` exits 2.
+owner: petr-kosov
+consequence_if_false: |
+  The wrapper does not provide even the bootstrap-level CLI
+  surface promised in `decisions/elisp-toolchain-only@0`;
+  the dev experience has no anchor.
+remedy: |
+  Re-author `scripts/dev`; ensure the `smoke`, `validate`,
+  and default-error branches all behave as documented.
+acceptance: |
+  Running the test under `tests/unit/test-scripts-dev.sh`
+  exits 0.
+review_on: []
+evidence: declared
+---

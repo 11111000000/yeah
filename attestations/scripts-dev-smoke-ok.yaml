@@ -1,0 +1,14 @@
+---
+schema: yeah/0.0.0-alpha
+id: scripts-dev-smoke-ok
+state: active
+result: pass
+subject: scripts/dev
+producer_identity: tests/unit/test-scripts-dev.sh
+evidence: |
+  `bash tests/unit/test-scripts-dev.sh` exits 0; both
+  the `validate` and `nonexistent` branches return non-zero
+  as expected.
+environment: |
+  bash 5.x; `scripts/dev` invoked from the repo root.
+---

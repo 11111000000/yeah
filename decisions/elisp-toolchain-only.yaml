@@ -1,0 +1,52 @@
+---
+schema: yeah/0.0.0-alpha
+id: elisp-toolchain-only
+revision: 0
+state: active
+intent: |
+  Use **only the Elisp toolchain** for kernel modules. The
+  outside-process toolchain (POSIX `make`, GNU autotools, the
+  Rust daemon in `pi/env`, etc.) is allowed only for non-kernel
+  work (e.g. shipping a Guix/bwrap wrapper, a Makefile for
+  developer convenience, a Nix flake for the development shell).
+  This is the A0 separation between the kernel proper and its
+  environment.
+commitment: |
+  No POSIX tool, no `awk`/`sed`/`perl` script, no compiled language
+  (C, Rust, Go) is allowed in `lib/`. Every file under `lib/`
+  must be `*.el` and must be byte-compile-clean
+  (`byte-compile-file` returns `nil` errors).
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - elisp-toolchain-only
+  paths:
+    - "lib/**"
+  exclusions:
+    - "scripts/dev"
+    - "scripts/*.sh"
+    - "Makefile"
+    - "flake.nix"
+outcomes:
+  - id: byte-compile-clean
+    statement: |
+      Every file in `lib/` byte-compiles without warnings or
+      errors under `emacs -Q --batch -l scripts/dev
+      byte-compile-all`. (The `scripts/dev` command is wired in
+      Tier 1.)
+counterexample: |
+  A reviewer adds a `lib/yeah-perf-fast.el` written in C with a
+  module loader. This is exactly the A0 conflation the
+  commitment forbids; the kernel is supposed to be Elisp, and
+  performance work that requires C goes in a separate
+  `lib/native/` (not yet created and not yet authorised).
+reversal: |
+  Possible only by adopting `mixed-runtime-yeah@1`; reversal is
+  a protected-policy transition.
+migration: |
+  Add `lib/native/` with a separate decision authorising each
+  module; keep `lib/` Elisp-only.
+supersedes: []
+superseded_by: null
+---

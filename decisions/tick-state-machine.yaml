@@ -1,0 +1,59 @@
+---
+schema: yeah/0.0.0-alpha
+id: tick-state-machine
+revision: 0
+state: active
+intent: |
+  Define the agent loop as a **deterministic finite state machine**
+  with a fixed alphabet of 12 states and 18 transitions (see
+  `specs/yeah-model.org §"Tick state machine"`). This is the
+  kernel's normative contract: every implementation of
+  `lib/yeah-loop.el` must be observationally equivalent to it.
+commitment: |
+  The tick FSM is normative. Allowed states:
+  `idle`, `deciding`, `awaiting_tool`, `awaiting_user_permission`,
+  `awaiting_user_input`, `compacting`, `blocked_on_rate`,
+  `interrupted`, `completed`, `failed`. Allowed transitions are
+  exactly the 18 listed in `specs/yeah-model.org`. Adding a state
+  is a protected-policy transition; merging two states is a
+  protected-policy transition.
+axiom_link:
+  - A2
+scope:
+  capabilities:
+    - tick-fsm-contract
+  paths:
+    - "lib/yeah-loop.el"
+    - "lib/yeah-state.el"
+    - "specs/yeah-model.org"
+outcomes:
+  - id: fsm-states-defined
+    statement: |
+      The set of states is exactly the ten listed above; any
+      additional state is rejected by `yeah validate` and recorded
+      as a deficit.
+  - id: fsm-transitions-defined
+    statement: |
+      The set of transitions is exactly the eighteen listed in
+      `specs/yeah-model.org`. Any new transition is recorded as a
+      decision under the active policy.
+  - id: fsm-coverage-fixture
+    statement: |
+      `tests/fixtures/positive/loop-all-paths.el` exercises every
+      transition at least once. The corresponding negative fixture
+      `tests/fixtures/negative/loop-undefined-transition.el`
+      asserts that an attempt to transition on a label not in the
+      contract is rejected with `user-error`.
+counterexample: |
+  An implementation that, after `awaiting_user_permission`, jumps
+  directly to `completed` without going through `awaiting_tool`
+  even though a tool call was queued. This bypasses the
+  `accumulate` step and breaks the durable log invariant.
+reversal: |
+  Possible only by adopting `tick-fsm-v2` policy; the v1 surface
+  must remain reachable for ≥ one minor release.
+migration: |
+  Add `lib/yeah-loop-v2.el`; route to it via a feature flag.
+supersedes: []
+superseded_by: null
+---
