@@ -72,8 +72,11 @@ exits 0 and the first ERT pair is green.
 |---|---|---|---|
 | 17 | `lib/yeah-loop.el` full FSM (18 transitions) | `tick-state-machine@0` | the agent loop |
 | 18 | `lib/yeah-tools.el` (registry + first `read`) | (TBD) | first tool |
+|   |  ↑ closed in commit (this Tier) |  |  |  |
 | 19 | `lib/yeah-perm.el` (rules + transient UI) | (TBD) | permission system |
+|   |  ↑ closed in commit (this Tier) |  |  |
 | 20 | `lib/yeah-session.el` (append-only JSONL log) | `append-only-session-log@0` | durable persistence |
+|    |  ↑ closed in commit (this Tier) |  |  |
 | 21 | `lib/yeah-shell.el` (REPL in `*yeah-shell*`) | (TBD) | user REPL |
 
 ### Tier 4 — code-mode + sub-agent + compaction

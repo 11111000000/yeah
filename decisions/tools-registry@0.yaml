@@ -1,0 +1,103 @@
+---
+schema: yeah/0.0.0-alpha
+id: tools-registry
+revision: 0
+state: active
+intent: |
+  Provide the Yeah kernel with an **internal** tool registry — the
+  in-process equivalent of the `emcp` MCP-server registry — that the
+  agent loop dispatches against. Where the `emcp` registry is
+  consulted by external MCP clients, the tools registry is consulted
+  by the loop itself: when the LLM emits a tool-call, the loop looks
+  the tool up here, validates the arguments, and calls the handler.
+  This is `decisions/emacs-native-runtime@0`'s companion rule:
+  because Emacs is the run-time, the tools the loop calls are Elisp
+  functions registered in-process; no JSON-RPC round-trip is needed
+  to invoke them.
+commitment: |
+  The kernel exposes a registry keyed by tool name (a string). The
+  public API is exactly:
+
+    * `yeah-tools-register SPEC`        — add a tool, return SPEC
+    * `yeah-tools-unregister NAME`      — drop a tool by name
+    * `yeah-tools-get NAME`             — return the spec or nil
+    * `yeah-tools-names`                — list all names, in registration order
+    * `yeah-tools-call NAME ARGS`       — dispatch and call
+    * `yeah-tools-reset-for-test`       — drop everything (tests only)
+
+  Each SPEC is a plist of shape
+
+    (:name STRING
+     :description STRING
+     :input ((:name STRING :type SYMBOL [:optional t]) ...)
+     :handler FUNCTION)
+
+  where `:type` is one of `string`, `integer`, `symbol`, `boolean`.
+  Required input parameters come first; optional parameters come
+  last. On unknown name, wrong arg count, or wrong arg type,
+  `yeah-tools-call` signals `user-error` — never a bare `error`.
+
+  The first tool registered at load is `read`, a real handler that
+  reads the file at `path` and returns its contents as a string.
+  Its `:input` advertises `offset` and `limit` for forward
+  compatibility; the current handler ignores them (Tier 4 work).
+
+  Names are stable once registered: renaming a built-in tool is a
+  protected-policy transition (revision bump of this decision).
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - tools-registry-v0
+  paths:
+    - "lib/yeah-tools.el"
+    - "tests/unit/test-yeah-tools.el"
+    - "tests/fixtures/positive/yeah-tools-read-file.el"
+    - "tests/fixtures/negative/yeah-tools-unknown.el"
+  exclusions:
+    - "lib/yeah-emcp.el"
+    - "lib/yeah-loop.el"
+    - "lib/yeah-perm.el"
+outcomes:
+  - id: registry-public-api
+    statement: |
+      The five public functions listed in `commitment` exist in
+      `lib/yeah-tools.el` with the documented signatures and
+      semantics. `yeah-tools-reset-for-test` is prefixed with the
+      private-function convention (`yeah-tools--`) but exposed at top
+      level so test code can call it.
+  - id: registry-validation
+    statement: |
+      `yeah-tools-call` validates the count and the types of the
+      arguments against the spec's `:input` list, in order. A
+      missing required argument (wrong count) or an argument whose
+      value does not match the declared `:type` raises `user-error`
+      with a message that names the tool, the offending argument,
+      and the expected type.
+  - id: registry-duplicate-rejection
+    statement: |
+      `yeah-tools-register` raises `user-error` if a tool with the
+      same `:name` is already registered. The original registration
+      is preserved.
+  - id: registry-built-in-read
+    statement: |
+      At load time, the `read` tool is registered with a real
+      handler that returns the file at `path` as a string. The
+      handler's `:input` advertises `offset` and `limit` as
+      `:optional t`; the current implementation ignores them.
+counterexample: |
+  An implementation that silently drops an arg if the count is
+  short of the required number, or that accepts an integer where a
+  string was declared. Both leak decisions past the validator and
+  make the registry indistinguishable from a `(funcall …)` in
+  the caller's namespace — which would defeat the point of having
+  a registry at all.
+migration: |
+  Adding a tool requires no migration (use `yeah-tools-register`
+  at load time of the module that owns it). Removing a tool
+  requires a revision of this decision and a one-release deprecation
+  notice; tools registered by users of the public API are dropped
+  silently.
+supersedes: []
+superseded_by: null
+---

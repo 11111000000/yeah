@@ -1,0 +1,102 @@
+---
+schema: yeah/0.0.0-alpha
+id: session-impl
+revision: 0
+state: active
+intent: |
+  Implement the Tier 3 #20 append-only session log as `lib/yeah-session.el'.
+  This decision is the **implementation** record for
+  `decisions/append-only-session-log@0'; that decision commits
+  to the *contract* (append-only, compaction-as-projection),
+  this one commits to the *shape* (a JSONL file at
+  `ROOT/sessions/<SESSION-ID>.jsonl', a plist-backed in-memory
+  session object, a monotonic record-id counter, and seven
+  public functions: `open', `close', `append', `records',
+  `project', `record-compaction', `idle-p').
+axiom_link:
+  - A0
+commitment: |
+  `lib/yeah-session.el' exposes exactly the seven public
+  functions named in `outcomes[]' below. It does **not** expose
+  `delete' or `rewrite'; the negative fixture asserts the
+  absence. The on-disk format is one JSONL record per line,
+  the first line is always a `header' record, and the log is
+  treated as a sequence: append, read, project — nothing else.
+  A compaction is recorded as a new JSONL record of type
+  `compaction' with fields `cut_point' (a record id) and
+  `summary' (a string). Source records are never removed.
+scope:
+  capabilities:
+    - session-log-durable
+  paths:
+    - "lib/yeah-session.el"
+    - "tests/unit/test-yeah-session.el"
+    - "tests/fixtures/positive/yeah-session-append.el"
+    - "tests/fixtures/negative/yeah-session-no-rewrite.el"
+  exclusions:
+    - "lib/yeah-loop.el"
+    - "lib/yeah-emcp.el"
+outcomes:
+  - id: open-close
+    statement: |
+      `yeah-session-open SESSION-ID &optional ROOT' returns a
+      session plist `(:id ID :path PATH :records LIST :next-id N
+      :buffer BUFFER)'. On first open it writes a header record;
+      on subsequent opens it reads the existing log into
+      `:records'. `yeah-session-close SESSION' is a no-op on the
+      record list; it only releases the buffer handle.
+  - id: append
+    statement: |
+      `yeah-session-append SESSION RECORD' writes RECORD
+      (a plist with `:type :timestamp :payload') as one JSONL
+      line, appends a parsed plist (with `:id' added) to
+      `:records', and returns the new monotonic record id
+      (an integer). Returns the id, not the record.
+  - id: records-projection
+    statement: |
+      `yeah-session-records SESSION' returns the in-memory list
+      of records in append order. It does not mutate state.
+  - id: project
+    statement: |
+      `yeah-session-project SESSION' returns the compacted
+      projection: if no `compaction' record exists, it returns
+      the full `:records' list. If one or more compaction
+      records exist, it returns the most recent compaction
+      record's `summary' followed by the records whose id is
+      strictly greater than the most recent compaction record's
+      `cut_point'.
+  - id: record-compaction
+    statement: |
+      `yeah-session-record-compaction SESSION COMPACTION-RECORD'
+      writes a `compaction' record to disk and appends it to
+      `:records'. COMPACTION-RECORD is a plist
+      `:cut-point ID :summary STRING'. The source records are
+      never modified.
+  - id: idle-p
+    statement: |
+      `yeah-session-idle-p SESSION' returns non-nil when the
+      session has no records, or when it contains only a
+      header record. It returns nil when any non-header record
+      is present.
+  - id: no-delete-no-rewrite
+    statement: |
+      The functions `yeah-session-delete' and
+      `yeah-session-rewrite' do **not** exist. The ERT case
+      `yeah-session-no-delete-or-rewrite-api' asserts that
+      `(fboundp 'yeah-session-delete)' and
+      `(fboundp 'yeah-session-rewrite)' are both nil. The
+      negative fixture documents the absence.
+counterexample: |
+  An implementation that exposes `yeah-session-delete' or
+  `yeah-session-rewrite' even as stubs. Even a stub makes the
+  forbidden operation syntactically available; the bootstrap
+  contract requires the symbols to not be defined.
+reversal: |
+  Possible only by adopting `session-impl@1'; reversal is a
+  protected-policy transition under A0 (separation between
+  `change' and `revision').
+migration: |
+  Not applicable — the commitment is the first landed shape.
+supersedes: []
+superseded_by: null
+---
