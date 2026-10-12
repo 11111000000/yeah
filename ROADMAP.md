@@ -33,6 +33,7 @@ runs under ERT.
 | 3 | `lib/yeah-state.el` (10 states, no transitions yet) | `tick-state-machine@0` | the kernel's first module | small |
 |   |  ↑ closed in commit (this Tier) |  |  |  |
 | 4 | `lib/yeah-loop.el` skeleton (no tool calls yet) | `tick-state-machine@0` | the loop entry | small |
+|   |  ↑ closed in commit (this Tier) |  |  |  |
 | 5 | ERT fixture pair (positive + negative) for `yeah-state-init` | `tick-state-machine@0` | first obligation closure | small |
 
 Once Tier 0 closes, the bootstrap gate will be reconsidered:

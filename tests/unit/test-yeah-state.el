@@ -15,14 +15,14 @@
 
 (yeah-state--init-table)
 
-(ert-deftest yeah-state-list-has-exactly-10-states ()
-  "The state list must contain exactly the 10 contract states."
-  (let ((expected '(idle deciding awaiting-tool
+(ert-deftest yeah-state-list-has-exactly-12-states ()
+  "The state list must contain exactly the 12 contract states."
+  (let ((expected '(idle deciding post-decide awaiting-tool
                     awaiting-user-permission awaiting-user-input
-                    compacting blocked-on-rate
+                    accumulating compacting blocked-on-rate
                     interrupted completed failed))
         (got yeah-state-list))
-    (should (= (length got) 10))
+    (should (= (length got) 12))
     (should (equal got expected))))
 
 (ert-deftest yeah-state-p-recognises-all-states ()
@@ -43,11 +43,11 @@ plausible names that are not in the contract."
   (should (yeah-state-terminal-p 'completed))
   (should (yeah-state-terminal-p 'failed)))
 
-(ert-deftest yeah-state-terminal-p-returns-nil-for-seven-states ()
-  "The seven non-terminal states are not terminal."
-  (dolist (state '(idle deciding awaiting-tool
+(ert-deftest yeah-state-terminal-p-returns-nil-for-nine-states ()
+  "The nine non-terminal states are not terminal."
+  (dolist (state '(idle deciding post-decide awaiting-tool
                    awaiting-user-permission awaiting-user-input
-                   compacting blocked-on-rate))
+                   accumulating compacting blocked-on-rate))
     (should-not (yeah-state-terminal-p state))))
 
 (ert-deftest yeah-state-terminal-p-rejects-non-states ()

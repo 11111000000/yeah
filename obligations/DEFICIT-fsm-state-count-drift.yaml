@@ -1,0 +1,28 @@
+---
+schema: yeah/0.0.0-alpha
+id: fsm-state-count-drift
+state: closed
+rule: decisions/tick-state-machine@0 outcome[0]
+subject: lib/yeah-state.el
+reason: |
+  Revision 0 of `tick-state-machine.yaml' promised a 10-state FSM.
+  While implementing the 18 transitions, it became clear that
+  `post-decide' and `accumulating' are distinct states (the
+  moments between stream-end and the fanning-out, and after
+  `tool-end' before the next tick decision, respectively).
+  Merging them into `deciding' would lose information about
+  "the model has finished, we are now about to dispatch" and
+  "we have just accumulated a tool result, we are about to
+  decide what to do next".
+remedy: |
+  Bump the decision to revision 2; add `post-decide' and
+  `accumulating' to `yeah-state-list'; rename `accumulate'
+  in the transition table to `accumulating'; update tests;
+  record this deficit.
+remedy_applied_in: |
+  decisions/tick-state-machine.yaml (revision 2)
+  lib/yeah-state.el
+  lib/yeah-loop.el
+  tests/unit/test-yeah-state.el
+  tests/unit/test-yeah-loop.el
+---
