@@ -2,6 +2,7 @@
 schema: yeah/0.0.0-alpha
 id: bootstrap-policy-active
 state: active
+owner: petr-kosov
 statement: |
   The decision `decisions/decision.yaml` exists, names
   `bootstrap-yeah@0` as the active policy, and is reachable

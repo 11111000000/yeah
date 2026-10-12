@@ -46,6 +46,8 @@ under the policy; superseded only by a protected-policy transition
 |---|---|---|
 | `lib/yeah-state.el` | The 12 FSM states | landed (Tier 0 #3) |
 | `lib/yeah-loop.el` | The agent loop (12 states, 18 transitions) | landed (Tier 0 #4) |
+| `lib/yeah-validate.el` | The decision-driven validator | landed (Tier 1 #6) |
+| `lib/yeah-loop.el` | The agent loop (12 states, 18 transitions) | landed (Tier 0 #4) |
 | `lib/yeah-tools.el` | Tool registry | planned (Tier 3) |
 | `lib/yeah-perm.el` | Permission system | planned (Tier 3) |
 | `lib/yeah-session.el` | Append-only JSONL log | planned (Tier 3) |

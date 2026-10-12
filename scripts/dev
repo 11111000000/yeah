@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
 # scripts/dev — Yeah v0.0.0-alpha development wrapper.
 #
-# This is a stub. The real wrapper will be wired in Tier 1
-# (per ROADMAP.md): `validate`, `gate`, `self-check`,
-# `time-estimate`, `edit-loop-detect`, `byte-compile-all`,
-# `dep-check`. For now, every subcommand returns
-# "not yet implemented" and exits 0 so the bootstrap checks
-# can be exercised without the wrapper doing real work.
+# This is the bootstrap CLI. Subcommands:
+#   smoke                 — print "yeah-dev stub ok" and exit 0
+#   validate              — run `lib/yeah-validate.el' over the current tree
+#   byte-compile-all      — byte-compile lib/*.el
 #
-# The wrapper is intentionally a Bash script (not Elisp) so it
-# can be invoked without spinning up Emacs; the Elisp commands
-# are themselves invoked by `emacs -Q --batch -l ...` from this
-# wrapper.
+# Exit codes (per AGENTS.md):
+#   0 — pass
+#   1 — fail
+#   2 — blocked
+#   3 — infrastructure error
 #
-# Conventions:
-#   - `scripts/dev <subcommand> [args...]`
-#   - exit 0 = ok, 1 = failed, 2 = blocked, 3 = infrastructure error.
-#   - stdout: human-readable output. stderr: structured.
-#   - never block silently; every block names rule + subject + reason + remedy.
+# Every subcommand prints what it did and either exits 0 or names
+# the blocker.
 
 set -eu
 
@@ -29,22 +25,18 @@ case "$cmd" in
     cat <<'EOF'
 scripts/dev — Yeah v0.0.0-alpha development wrapper
 
-Subcommands (Tier 1+):
-  validate              — check the current tree against the active policy
-  gate BASE HEAD        — compliance verdict between two refs
-  self-check            — CI-blocking verdict
-  time-estimate         — forward-looking duration estimate
-  edit-loop-detect      — flag edit-loop pattern in recent commits
-  byte-compile-all      — byte-compile lib/*.el
-  dep-check             — verify the require graph has no cycles
-
-Subcommands (Tier 0 stub):
+Subcommands:
   smoke                 — print "yeah-dev stub ok" and exit 0
+  validate              — run the Elisp validator over the current tree
+  byte-compile-all      — byte-compile every file under lib/
+  edit-loop-detect      — flag edit-loop pattern in recent commits
+                          (not yet implemented)
 
-Notes:
-  Until Tier 1 lands, only `smoke` is implemented.
-  The wrapper refuses to silently swallow failures; every command
-  prints what it did and either exits 0 or names the blocker.
+Exit codes:
+  0 — pass
+  1 — fail
+  2 — blocked
+  3 — infrastructure error
 EOF
     ;;
 
@@ -53,17 +45,29 @@ EOF
     exit 0
     ;;
 
-  validate|gate|self-check|time-estimate|edit-loop-detect|byte-compile-all|dep-check)
-    cat <<EOF
-scripts/dev $cmd: not yet implemented (Tier 1 of ROADMAP.md)
+  validate)
+    if ! command -v emacs >/dev/null 2>&1; then
+      echo "scripts/dev validate: emacs is not on PATH" >&2
+      exit 3
+    fi
+    emacs -Q --batch -L lib -l lib/yeah-validate.el \
+          --eval "(yeah-validate)"
+    ;;
 
-This subcommand is part of the math-coding-style process
-hardening tier. Until it lands, the eight manual bootstrap
-checks in AGENTS.md §"Bootstrap gate" are the only enforcement
-mechanism for protected-policy transitions.
+  byte-compile-all)
+    if ! command -v emacs >/dev/null 2>&1; then
+      echo "scripts/dev byte-compile-all: emacs is not on PATH" >&2
+      exit 3
+    fi
+    if [ ! -d lib ]; then
+      echo "scripts/dev byte-compile-all: lib/ does not exist" >&2
+      exit 3
+    fi
+    emacs -Q --batch -L lib -f batch-byte-compile lib/*.el
+    ;;
 
-Remedy: do not invoke this command yet. Use the manual checks.
-EOF
+  edit-loop-detect)
+    echo "scripts/dev edit-loop-detect: not yet implemented (Tier 1 of ROADMAP.md)" >&2
     exit 1
     ;;
 

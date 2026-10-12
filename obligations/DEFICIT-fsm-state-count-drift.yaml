@@ -2,6 +2,12 @@
 schema: yeah/0.0.0-alpha
 id: fsm-state-count-drift
 state: closed
+owner: petr-kosov
+statement: |
+  A `state:' field of `closed' on an obligation file does
+  not exempt it from the validator's required-field check.
+  The DEFICIT file must still carry the four obligation
+  fields (id, state, statement, owner).
 rule: decisions/tick-state-machine@0 outcome[0]
 subject: lib/yeah-state.el
 reason: |

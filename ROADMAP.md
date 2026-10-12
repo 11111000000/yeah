@@ -45,6 +45,7 @@ exits 0 and the first ERT pair is green.
 | # | Task | Decision | Closes |
 |---|---|---|---|
 | 6 | `yeah validate` (smoke: read-first, fixture-pair, axiom-link) | `process-principles@0` | the seven P1–P7 obligations |
+|   |  ↑ closed in commit (this Tier) |  |  |  |
 | 7 | `yeah gate BASE HEAD` (compliance verdict) | (TBD) | cross-decision conformance |
 | 8 | `yeah self-check` (CI blocking) | (TBD) | admin-gate automation |
 | 9 | Pre-commit hook (decision-required) | `process-principles@0` | drift detection |
