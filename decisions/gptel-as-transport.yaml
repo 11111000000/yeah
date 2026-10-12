@@ -1,0 +1,47 @@
+---
+schema: yeah/0.0.0-alpha
+id: gptel-as-transport
+revision: 0
+state: active
+intent: |
+  Choose `gptel` as the LLM transport. The alternative is to write
+  our own transport on top of `url-retrieve` or `make-process` +
+  HTTP, but gptel already provides multi-provider support, streaming,
+  tool-use schema, MCP integration, and a body of battle-tested
+  community advice. Re-implementing it would duplicate work that
+  has no positive yield.
+commitment: |
+  All LLM I/O in Yeah is mediated by `gptel`. The integration
+  point is `gptel-prompt-transform-functions` for prompt composition
+  and `gptel-pre-tool-call-functions` + `gptel-fsm-handlers` for
+  tool dispatch. The hook surface is the *only* place where Yeah
+  customises the transport.
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - gptel-transport-binding
+  paths:
+    - "lib/yeah-gptel.el"
+outcomes:
+  - id: gptel-hooks-are-the-integration-point
+    statement: |
+      `lib/yeah-gptel.el` registers exactly the gptel hooks it needs
+      and no others. Other modules must not call `gptel-request-...`
+      directly; they go through `lib/yeah-gptel.el` for prompt
+      transformation.
+counterexample: |
+  A reviewer adds a `cl-defun` in `lib/yeah-loop.el` that calls
+  `gptel-request` directly with a hand-built prompt. This bypasses
+  the prompt transform pipeline (which injects skills, AGENTS.md
+  discovery, permission pre-checks) and is exactly the drift the
+  commitment forbids.
+reversal: |
+  Possible if gptel becomes unmaintained or its API breaks in an
+  unrecoverable way; reversal is a protected-policy transition.
+migration: |
+  Replace `lib/yeah-gptel.el` with an alternative transport module
+  exposing the same internal API; the rest of Yeah is unchanged.
+supersedes: []
+superseded_by: null
+---

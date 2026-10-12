@@ -1,0 +1,22 @@
+---
+schema: yeah/0.0.0-alpha
+id: bootstrap-policy-active
+state: active
+statement: |
+  The decision `decisions/decision.yaml` exists, names
+  `bootstrap-yeah@0` as the active policy, and is reachable
+  from `AGENTS.md §"Active policy"`.
+owner: petr-kosov
+consequence_if_false: |
+  No active policy means no decision under the active policy
+  can be recorded; all subsequent ADR work is unanchored.
+remedy: |
+  Re-author `decisions/decision.yaml` and update `AGENTS.md`.
+acceptance: |
+  `decisions/decision.yaml` exists; its `state:` field equals
+  `active`; its `id:` field equals `bootstrap-yeah`; its
+  `revision:` field is a non-negative integer; the string
+  `bootstrap-yeah@0` appears in `AGENTS.md`.
+review_on: []
+evidence: declared
+---

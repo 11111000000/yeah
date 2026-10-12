@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# scripts/dev — Yeah v0.0.0-alpha development wrapper.
+#
+# This is a stub. The real wrapper will be wired in Tier 1
+# (per ROADMAP.md): `validate`, `gate`, `self-check`,
+# `time-estimate`, `edit-loop-detect`, `byte-compile-all`,
+# `dep-check`. For now, every subcommand returns
+# "not yet implemented" and exits 0 so the bootstrap checks
+# can be exercised without the wrapper doing real work.
+#
+# The wrapper is intentionally a Bash script (not Elisp) so it
+# can be invoked without spinning up Emacs; the Elisp commands
+# are themselves invoked by `emacs -Q --batch -l ...` from this
+# wrapper.
+#
+# Conventions:
+#   - `scripts/dev <subcommand> [args...]`
+#   - exit 0 = ok, 1 = failed, 2 = blocked, 3 = infrastructure error.
+#   - stdout: human-readable output. stderr: structured.
+#   - never block silently; every block names rule + subject + reason + remedy.
+
+set -eu
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+  help|--help|-h)
+    cat <<'EOF'
+scripts/dev — Yeah v0.0.0-alpha development wrapper
+
+Subcommands (Tier 1+):
+  validate              — check the current tree against the active policy
+  gate BASE HEAD        — compliance verdict between two refs
+  self-check            — CI-blocking verdict
+  time-estimate         — forward-looking duration estimate
+  edit-loop-detect      — flag edit-loop pattern in recent commits
+  byte-compile-all      — byte-compile lib/*.el
+  dep-check             — verify the require graph has no cycles
+
+Subcommands (Tier 0 stub):
+  smoke                 — print "yeah-dev stub ok" and exit 0
+
+Notes:
+  Until Tier 1 lands, only `smoke` is implemented.
+  The wrapper refuses to silently swallow failures; every command
+  prints what it did and either exits 0 or names the blocker.
+EOF
+    ;;
+
+  smoke)
+    echo "yeah-dev stub ok ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+    exit 0
+    ;;
+
+  validate|gate|self-check|time-estimate|edit-loop-detect|byte-compile-all|dep-check)
+    cat <<EOF
+scripts/dev $cmd: not yet implemented (Tier 1 of ROADMAP.md)
+
+This subcommand is part of the math-coding-style process
+hardening tier. Until it lands, the eight manual bootstrap
+checks in AGENTS.md §"Bootstrap gate" are the only enforcement
+mechanism for protected-policy transitions.
+
+Remedy: do not invoke this command yet. Use the manual checks.
+EOF
+    exit 1
+    ;;
+
+  *)
+    echo "scripts/dev: unknown subcommand: $cmd" >&2
+    echo "Run \`scripts/dev help\` for the list of subcommands." >&2
+    exit 2
+    ;;
+esac

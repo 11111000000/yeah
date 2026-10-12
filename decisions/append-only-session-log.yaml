@@ -1,0 +1,54 @@
+---
+schema: yeah/0.0.0-alpha
+id: append-only-session-log
+revision: 0
+state: active
+intent: |
+  Persist session state as an **append-only** JSONL stream of
+  typed events. Compaction, undo, sub-agent creation, and
+  permission decisions are all entries on this stream; the
+  source-of-truth is the stream, not any projection of it.
+commitment: |
+  The session log is append-only. The following operations are
+  forbidden on a written record: delete, rewrite, reorder. The
+  following operations are allowed: append a new record, read
+  records by id, read records by time range, project a
+  conversation view. Compaction is a *projection* (a new
+  `compaction` record that references prior records and
+  supersedes their projection), not a *deletion*.
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - append-only-log
+  paths:
+    - "lib/yeah-session.el"
+    - "tests/fixtures/positive/session-append.el"
+    - "tests/fixtures/negative/session-mutate.el"
+outcomes:
+  - id: append-only-enforced
+    statement: |
+      `lib/yeah-session.el` exposes `append`, `read`,
+      `project`. It does not expose `delete` or `rewrite`. The
+      negative fixture asserts that calling a hypothetical
+      `session-delete` raises `user-error` at compile time
+      (the symbol does not exist).
+  - id: compaction-is-projection
+    statement: |
+      `lib/yeah-compact.el` writes a `compaction` record that
+      references a list of source record ids and a projection
+      summary. The source records are still on disk; only the
+      *projection* changes.
+counterexample: |
+  An implementation that compacts by truncating the JSONL file
+  to the first N records. This destroys the source of truth and
+  breaks the A0 separation between `change` and `revision` —
+  revision is supposed to *add*, not delete.
+reversal: |
+  Possible only by adopting `mutable-log-yeah@1`; reversal is a
+  protected-policy transition.
+migration: |
+  Not applicable — the commitment is structural.
+supersedes: []
+superseded_by: null
+---

@@ -1,0 +1,79 @@
+---
+schema: yeah/0.0.0-alpha
+id: process-principles
+revision: 0
+state: active
+intent: |
+  Lock down the seven process principles P1–P7 as formal
+  obligations under the active policy. Today they are
+  documentation-only; this decision makes them visible to the
+  `mathc` validator (when wired) and to a future `yeah validate`
+  check. The principles are taken verbatim from
+  `math-coding 3.0-alpha/AGENTS.md`, adapted only to the
+  Elisp/Yeah context (OCaml-specific traps → Elisp-specific traps;
+  `scripts/dev` replaces `mathc`).
+commitment: |
+  Each of P1–P7 is a discrete obligation. P1, P2, P5, P6, P7 are
+  recorded as `tests/unit/test-process-principles-*.el` (ERT
+  cases). P3, P4 are recorded as manual-acceptance obligations
+  with `evidence: manual-acceptance` and the human maintainer
+  named as the reviewer.
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - process-principles-binding
+  paths:
+    - "AGENTS.md"
+    - "tests/unit/test-process-principles-*.el"
+    - "ELISP_BEST_PRACTICES.md"
+    - "decisions/process-principles.yaml"
+outcomes:
+  - id: p1-read-first-ordering
+    statement: |
+      `tests/unit/test-process-principles-p1.el` asserts that
+      the section "Read first" in `AGENTS.md` references the
+      same nine documents in the same order, and that those
+      documents all exist on `main`.
+  - id: p2-decision-fixture-pair
+    statement: |
+      `tests/unit/test-process-principles-p2.el` asserts that
+      every `decisions/*.yaml` either (a) is editorial, or
+      (b) cites at least one axiom and a counterexample.
+  - id: p3-time-box
+    statement: |
+      Recorded as a manual-acceptance obligation on the human
+      maintainer. The agent must respect the honest-time-reporting
+      norm from `AGENTS.md` even if no machine check fires.
+  - id: p4-no-silent-resolve
+    statement: |
+      Recorded as a manual-acceptance obligation. The agent must
+      log every contradiction between two documents as an
+      `obligations/DEFICIT-*.yaml` record with a remedy.
+  - id: p5-edit-loop-stop
+    statement: |
+      `tests/unit/test-process-principles-p5.el` asserts that
+      `scripts/dev edit-loop-detect` exists and exits 0 on
+      healthy history.
+  - id: p6-byte-compile-clean
+    statement: |
+      `tests/unit/test-process-principles-p6.el` asserts that
+      `scripts/dev byte-compile-all` is wired and exits 0.
+  - id: p7-source-distinction
+    statement: |
+      Recorded as a manual-acceptance obligation: every
+      attestation record distinguishes declared/derived/attested/
+      reviewed/observed.
+counterexample: |
+  A reviewer adds a kernel module without a paired decision file.
+  P2 is violated, the diff is rejected, and the reviewer is
+  asked to either create the decision or argue that the change
+  is editorial.
+reversal: |
+  Possible only by adopting `process-principles-v2@1`; reversal
+  is a protected-policy transition.
+migration: |
+  Re-author the principles; bump the decision id.
+supersedes: []
+superseded_by: null
+---
