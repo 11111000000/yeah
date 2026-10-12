@@ -31,6 +31,7 @@ runs under ERT.
 | 1 | All 9 decisions on `main` | (this Tier) | the policy skeleton | done |
 | 2 | `scripts/dev` stub | `elisp-toolchain-only@0` | the canonical CLI surface | small |
 | 3 | `lib/yeah-state.el` (10 states, no transitions yet) | `tick-state-machine@0` | the kernel's first module | small |
+|   |  ↑ closed in commit (this Tier) |  |  |  |
 | 4 | `lib/yeah-loop.el` skeleton (no tool calls yet) | `tick-state-machine@0` | the loop entry | small |
 | 5 | ERT fixture pair (positive + negative) for `yeah-state-init` | `tick-state-machine@0` | first obligation closure | small |
 
