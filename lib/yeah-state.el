@@ -32,19 +32,24 @@
 (defconst yeah-state-list
   '(idle
     deciding
+    post-decide
     awaiting-tool
     awaiting-user-permission
     awaiting-user-input
+    accumulating
     compacting
     blocked-on-rate
     interrupted
     completed
     failed)
-  "The 10 states of the Yeah tick FSM.
+  "The 12 states of the Yeah tick FSM.
 
-See `decisions/tick-state-machine.yaml' for the normative
-contract. Adding or removing a state is a protected-policy
-transition.")
+See `decisions/tick-state-machine.yaml' (revision 2) for the
+normative contract. Adding or removing a state is a
+protected-policy transition. Revision 0 of the decision said
+10 states; revision 1 added `post-decide'; revision 2 added
+`accumulating' to match the transition table in
+`lib/yeah-loop.el'.")
 
 (defsubst yeah-state-p (object)
   "Non-nil if OBJECT is one of the 10 FSM states."
@@ -64,9 +69,11 @@ Idempotent."
     (setq yeah-state--table (make-hash-table :test 'eq :size 16)))
   (puthash 'idle                    '(:category :happy  :terminal nil) yeah-state--table)
   (puthash 'deciding                '(:category :happy  :terminal nil) yeah-state--table)
+  (puthash 'post-decide             '(:category :happy  :terminal nil) yeah-state--table)
   (puthash 'awaiting-tool           '(:category :happy  :terminal nil) yeah-state--table)
   (puthash 'awaiting-user-permission '(:category :wait   :terminal nil) yeah-state--table)
   (puthash 'awaiting-user-input     '(:category :wait   :terminal nil) yeah-state--table)
+  (puthash 'accumulating            '(:category :happy  :terminal nil) yeah-state--table)
   (puthash 'compacting              '(:category :wait   :terminal nil) yeah-state--table)
   (puthash 'blocked-on-rate         '(:category :wait   :terminal nil) yeah-state--table)
   (puthash 'interrupted             '(:category :term   :terminal t)   yeah-state--table)
