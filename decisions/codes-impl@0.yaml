@@ -1,0 +1,165 @@
+---
+schema: yeah/0.0.0-alpha
+id: codes-impl
+revision: 0
+state: active
+intent: |
+  Implement Tier 4 #22 from `ROADMAP.md': the Programmatic Tool
+  Calling (PTC) sandbox. PTC lets the model issue several tool
+  calls in a single turn, expressed as one Elisp form, executed
+  inside a sandboxed environment, so that the round-trip cost
+  per tool call collapses from "one model turn" to "one form
+  in the same turn". The contract is fixed by
+  `decisions/sandbox-elisp-codes-mode@0': the sandbox is
+  `sandbox.el' (Emacs 29+) plus a static whitelist of allowed
+  bindings; values cross the boundary as JSON-clean
+  `read'/`prin1' pairs; the boundary is a `let'-binding, not a
+  function call.
+
+  This is the **implementation** decision for
+  `sandbox-elisp-codes-mode@0' and for ROADMAP Tier 4 #22. It
+  records that the first landed shape is a **stub**: the public
+  API is wired, the whitelist check and JSON-clean boundary
+  are real, but the underlying `sandbox.el' integration is
+  deferred until an Emacs 29+ CI target exists. The stub is
+  the documented "Tier 4 stub" for code-mode.
+commitment: |
+  `lib/yeah-codes.el' exposes exactly the five public functions
+  named in `outcomes[]' below. The implementation is a stub:
+  each form is evaluated by `eval' inside a `let' that exposes
+  the whitelisted names plus INPUTS as lexical bindings. The
+  boundary is JSON-clean: every result is `prin1'-serialised
+  and `read'-back before being returned. The whitelist is the
+  source of truth for which `:name's may appear in FORM-ALIST;
+  any name outside the whitelist raises `user-error' before
+  `eval' runs. A syntactically malformed form also raises
+  `user-error'.
+
+  Public surface:
+
+    * `yeah-codes-whitelist'
+       return the list of currently-allowed binding names, in
+       the canonical order.
+    * `yeah-codes-allow NAME'
+       add NAME to the whitelist (no duplicate); return the
+       new whitelist. NAME must be a non-empty string.
+    * `yeah-codes-disallow NAME'
+       remove NAME from the whitelist (no-op if absent);
+       return the new whitelist. NAME must be a string.
+    * `yeah-codes-eval FORM-ALIST &optional INPUTS'
+       run every (`:name' NAME `:code' BODY) entry in
+       FORM-ALIST inside the sandbox. INPUTS is an alist of
+       ((SYMBOL . VALUE) ...) pre-bound in the `let'. Every
+       result is wrapped as
+       `(:name NAME :result VALUE :ok t)' after a `prin1'/
+       `read' round-trip. NAME outside the whitelist raises
+       `user-error'. A read-time syntax error raises
+       `user-error'. The returned list is in the same order
+       as FORM-ALIST.
+    * `yeah-codes-sandbox-available-p'
+       return non-nil if the `sandbox' feature is loaded or
+       loadable; for now it is `(featurep \='sandbox)'. The
+       real `sandbox.el' integration lands in revision 1.
+
+  The whitelist defaults to the ten names fixed by
+  `sandbox-elisp-codes-mode@0': `read', `edit', `grep',
+  `glob', `bash', `webfetch', `text', `image', `console',
+  `exit'. The whitelist is held in a `defvar' so tests can
+  rebind it with `setq' (per `ELISP_BEST_PRACTICES.md §11.1').
+
+  The stub deliberately does **not** use `sandbox.el'; the
+  user's Emacs may be 28.x or lower, and the future CI target
+  that requires Emacs 29+ is not yet wired. `sandbox.el'
+  support lands in `codes-impl@1'.
+axiom_link:
+  - A2
+scope:
+  capabilities:
+    - codes-mode-stub-v0
+  paths:
+    - "lib/yeah-codes.el"
+    - "tests/unit/test-yeah-codes.el"
+    - "tests/fixtures/positive/yeah-codes-eval.el"
+    - "tests/fixtures/negative/yeah-codes-eval-forbidden.el"
+    - "decisions/codes-impl@0.yaml"
+  exclusions:
+    - "lib/yeah-tools.el"
+    - "lib/yeah-loop.el"
+    - "lib/yeah-state.el"
+outcomes:
+  - id: whitelist-defaults
+    statement: |
+      `yeah-codes-whitelist' returns the ten names fixed by
+      `decisions/sandbox-elisp-codes-mode@0' in the canonical
+      order: `read', `edit', `grep', `glob', `bash',
+      `webfetch', `text', `image', `console', `exit'.
+  - id: whitelist-mutation
+    statement: |
+      `yeah-codes-allow NAME' and `yeah-codes-disallow NAME'
+      mutate the whitelist deterministically and return the
+      new list (not the mutated entry). Both validate that
+      NAME is a string and signal `user-error' otherwise.
+      `allow' rejects duplicate insertion as a no-op; it does
+      not signal.
+  - id: eval-whitelist-gate
+    statement: |
+      `yeah-codes-eval' rejects every FORM-ALIST entry whose
+      `:name' is not in the whitelist, **before** evaluation
+      starts. The reject is `user-error' (not silent skip);
+      the whole call fails atomically.
+  - id: eval-inputs-binding
+    statement: |
+      `yeah-codes-eval' binds every INPUTS entry as a lexical
+      variable in the `let' that wraps the form body. The key
+      is the alist car (`string' or `symbol'); the value is the
+      alist cdr (`prin1' / `read'-round-tripped before being
+      bound, so JSON-clean strings cross the boundary intact).
+  - id: eval-json-clean-result
+    statement: |
+      Every `:result' in the returned list is the result of
+      `(read (prin1-to-string value))'. This is the documented
+      `sandbox-elisp-codes-mode@0' boundary: nothing crosses
+      `eval' that hasn't been prin1/read round-tripped.
+  - id: eval-malformed-form
+    statement: |
+      A form whose `:code' fails `read' (parse error) raises
+      `user-error'. The catch is broad enough to cover
+      `scan-error', `end-of-file', `invalid-read-syntax', and
+      any `wrong-type-argument' from `read'; nothing leaks
+      past the boundary as a raw `error'.
+  - id: sandbox-feature-check
+    statement: |
+      `yeah-codes-sandbox-available-p' returns `(featurep
+      \='sandbox)'. Real `sandbox.el' integration is
+      deferred to `codes-impl@1'; this stub does not require
+      the feature to be loaded.
+  - id: fixture-pair
+    statement: |
+      A positive fixture
+      `tests/fixtures/positive/yeah-codes-eval.el' and a
+      negative fixture
+      `tests/fixtures/negative/yeah-codes-eval-forbidden.el'
+      exist; both are placeholder files that document the
+      whitelist gate and the sandbox boundary.
+counterexample: |
+  An implementation that calls `eval-buffer' on the model's
+  text. That gives the model access to the entire Elisp
+  runtime, including `make-process' and `delete-file' — the
+  A2 violation `sandbox-elisp-codes-mode@0' forbids. Or an
+  implementation that forgets the JSON-clean boundary and
+  returns Emacs-only objects (hashtables, buffers,
+  markers): ACP and MCP cannot serialise those, and the
+  `read'/`prin1' round-trip is what makes the sandbox
+  boundary transport-agnostic.
+reversal: |
+  Possible only by adopting `codes-impl@1' (real
+  `sandbox.el' integration behind the same five-function
+  API). Reversal is a protected-policy transition under A2.
+migration: |
+  Replace the stub `eval' body with a `with-temp-buffer'
+  wrapper that calls `sandbox' on the model-supplied code;
+  keep the public API stable; add an obligation record
+  closing the migration.
+supersedes: []
+superseded_by: null
+---

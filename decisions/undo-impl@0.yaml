@@ -1,0 +1,145 @@
+---
+schema: yeah/0.0.0-alpha
+id: undo-impl
+revision: 0
+state: active
+intent: |
+  Implement the Tier 4 #25 per-tick undo boundary as
+  `lib/yeah-undo.el'. This is the implementation record for the
+  strong invariant A3 ("undo-boundary around every side-effect").
+  Every tool the agent loop invokes must be wrapped so that Emacs
+  `M-x undo' (or programmatic `undo') reverts the change cleanly.
+
+  Where `lib/yeah-session.el' is the durable record of what the
+  loop did, `lib/yeah-undo.el' is the **buffer-local** record of
+  the most recent change the loop made to a file. The two are
+  A0-separated: the session log lives in `sessions/*.jsonl' and
+  records intent; the undo list lives in the file's buffer and
+  records reversibility.
+commitment: |
+  `lib/yeah-undo.el' exposes exactly the five public functions
+  listed in `outcomes[]' below:
+
+    * `yeah-undo-around-buffer BUFFER THUNK'
+       execute THUNK with `(with-current-buffer BUFFER ...)',
+       placing `(undo-boundary)' before and after the body. If
+       BUFFER is `nil', run THUNK in the current buffer.
+       Returns the result of THUNK.
+
+    * `yeah-undo-around-file PATH THUNK'
+       find the buffer visiting PATH via `find-buffer-visiting';
+       if none, open the file via `find-file-noselect'. Call
+       `yeah-undo-around-buffer' on that buffer. Buffers opened
+       by this function are pushed onto an internal stack so a
+       subsequent `yeah-undo-cleanup' can kill them.
+
+    * `yeah-undo-cleanup'
+       kill every buffer opened by `yeah-undo-around-file'
+       since the last call to `yeah-undo-cleanup' (or since the
+       module was loaded). Returns the count of buffers killed.
+
+    * `yeah-undo-list-size BUFFER'
+       convenience: return `(length (buffer-undo-list BUFFER))'.
+       Used by tests to assert the boundary grew.
+
+    * `yeah-undo-reset-for-test'
+       drop every opened buffer from the internal stack. Tests
+       only; matches the `yeah-tools-reset-for-test' /
+       `yeah-perm-rules-reset-for-test' convention.
+
+  The `(undo-boundary)' marker is a no-arg function in Emacs;
+  calling it inserts a boundary marker into the buffer's
+  `buffer-undo-list'. The wrapper places two such markers
+  around the thunk so a single `undo' step reverts everything
+  the thunk did to the buffer.
+
+  `yeah-undo-around-buffer' is wrapped in `unwind-protect' so
+  that if THUNK signals an error, the `(undo-boundary)' after
+  still runs and the error re-propagates to the caller. This
+  preserves A3: every side-effect leaves a recoverable record,
+  even when the side-effect was partial.
+
+  Buffers opened by `yeah-undo-around-file' are tracked in a
+  single dynamic variable `yeah-undo--opened-buffers'. The
+  stack discipline is LIFO: the most-recently-opened buffer is
+  the first to be killed by `yeah-undo-cleanup'.
+
+  Names, the buffer-opening policy, and the LIFO cleanup
+  discipline are stable once registered; changing any of them
+  is a protected-policy transition (revision bump of this
+  decision).
+axiom_link:
+  - A2
+  - A3
+scope:
+  capabilities:
+    - per-tick-undo-boundary
+  paths:
+    - "lib/yeah-undo.el"
+    - "tests/unit/test-yeah-undo.el"
+    - "tests/fixtures/positive/yeah-undo-around.el"
+    - "tests/fixtures/negative/yeah-undo-error.el"
+    - "decisions/undo-impl@0.yaml"
+  exclusions:
+    - "lib/yeah-loop.el"
+    - "lib/yeah-tools.el"
+    - "lib/yeah-session.el"
+outcomes:
+  - id: around-buffer
+    statement: |
+      `yeah-undo-around-buffer BUFFER THUNK' calls `(undo-boundary)'
+      inside BUFFER, then runs THUNK with `(with-current-buffer
+      BUFFER ...)', then calls `(undo-boundary)' again. Returns
+      the result of THUNK. If BUFFER is `nil', uses the current
+      buffer.
+  - id: around-file
+    statement: |
+      `yeah-undo-around-file PATH THUNK' locates the buffer
+      visiting PATH; if none exists, opens it via
+      `find-file-noselect'. Tracks opened buffers in
+      `yeah-undo--opened-buffers' and delegates to
+      `yeah-undo-around-buffer'.
+  - id: cleanup
+    statement: |
+      `yeah-undo-cleanup' kills every buffer that
+      `yeah-undo-around-file' opened since the last cleanup call
+      (or since module load), in LIFO order. Returns the count
+      of buffers killed.
+  - id: list-size
+    statement: |
+      `yeah-undo-list-size BUFFER' returns
+      `(length (buffer-undo-list BUFFER))'. Used by tests to
+      assert the `(undo-boundary)' markers were recorded.
+  - id: error-still-records
+    statement: |
+      When THUNK signals an error, the after-`(undo-boundary)'
+      still runs (the `unwind-protect' body wraps the inner
+      thunk only). The error re-propagates to the caller.
+  - id: fixture-pair
+    statement: |
+      `tests/fixtures/positive/yeah-undo-around.el' and
+      `tests/fixtures/negative/yeah-undo-error.el' exist as
+      placeholder files; both document the boundary
+      contract and the error-still-records invariant.
+counterexample: |
+  An implementation that runs `(undo-boundary)' only on the
+  happy path: when THUNK errors, the buffer is left in a
+  state where a single `undo' cannot fully revert the partial
+  change. This is the exact A3 violation the warm-up invariant
+  exists to prevent.
+
+  Or, an implementation that opens a buffer via
+  `find-file-noselect' but never kills it: the loop ends with
+  dozens of orphan buffers, each holding their own undo list,
+  and `M-x undo' in another buffer pulls the wrong state.
+reversal: |
+  Possible only by adopting `undo-impl@1'; reversal is a
+  protected-policy transition under A3 (self-application).
+migration: |
+  No callers exist yet; the wrapper is unused at land time.
+  Future modules that mutate buffers inside the loop must
+  call `yeah-undo-around-file' or `yeah-undo-around-buffer'
+  before applying their change.
+supersedes: []
+superseded_by: null
+---

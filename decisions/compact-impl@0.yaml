@@ -1,0 +1,129 @@
+---
+schema: yeah/0.0.0-alpha
+id: compact-impl
+revision: 0
+state: active
+intent: |
+  Implement Tier 4 #24 from `ROADMAP.md' — the compactor. The
+  compactor is a **pure** function over a session log: given a
+  session and a target character count, it walks the records
+  from oldest to newest, accumulates a `prin1'-length budget,
+  and returns the record id of the first record that crosses
+  the target. Records before the cut-point are summarised;
+  records from the cut-point onwards are preserved verbatim.
+  This decision is the **implementation** record for
+  `decisions/append-only-session-log@0' (compaction-as-projection)
+  and for ROADMAP Tier 4 #24. The compactor does not own the
+  on-disk format; it is A0-separated from `lib/yeah-session.el'
+  and writes only by calling `yeah-session-record-compaction'.
+commitment: |
+  `lib/yeah-compact.el' exposes exactly the four public
+  functions named in `outcomes[]' below. The compactor is
+  pure with respect to the session log: it never mutates a
+  record, never deletes a record, never reorders records.
+  Its only write goes through `yeah-session-record-compaction',
+  which appends a single `compaction' record. Source records
+  are untouched.
+
+  Public surface:
+
+    * `yeah-compact-cut-point SESSION TARGET-CHARS'
+       walk records oldest-to-newest, accumulate
+       `(length (prin1-to-string record))', return the `:id'
+       of the first record whose running total **strictly
+       exceeds** TARGET-CHARS. Returns `nil' when no record
+       crosses the budget (compaction is unnecessary).
+    * `yeah-compact-summarize SESSION CUT-POINT &optional SUMMARIZER'
+       gather the records before CUT-POINT and call SUMMARIZER
+       on them (a `(lambda (records) -> string)'). The default
+       summarizer is a deterministic placeholder that prints
+       count + first + last; real summarisation is a `gptel'
+       call (Tier 5 work, deferred).
+    * `yeah-compact-run SESSION TARGET-CHARS &optional SUMMARIZER'
+       one-shot driver: cut-point, summarise, write. Returns
+       `(:cut-point ID :summary STRING :projection-count N)'.
+       When the cut-point is `nil' the function is a no-op
+       (the source log is unchanged).
+    * `yeah-compact-projection-length SESSION'
+       `(length (yeah-session-project SESSION))' — the record
+       count seen by the loop after the most recent compaction.
+
+  The summarizer stub is documented in the source as the
+  replacement point for the real `gptel' summarisation path
+  (Tier 4 / Tier 5).
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - compactor-pure
+  paths:
+    - "lib/yeah-compact.el"
+    - "tests/unit/test-yeah-compact.el"
+    - "tests/fixtures/positive/yeah-compact-cut.el"
+    - "tests/fixtures/negative/yeah-compact-cut-noop.el"
+    - "decisions/compact-impl@0.yaml"
+  exclusions:
+    - "lib/yeah-session.el"
+    - "lib/yeah-gptel.el"
+outcomes:
+  - id: cut-point-public-api
+    statement: |
+      `yeah-compact-cut-point' exists with the documented
+      signature and semantics: oldest-to-newest walk,
+      `prin1'-length accumulation, strict-greater-than
+      comparison, `nil' on no-crossing. The decision boundary
+      is "records *before* the cut-point are summarised;
+      records *from* the cut-point onwards are preserved
+      verbatim."
+  - id: summarize-public-api
+    statement: |
+      `yeah-compact-summarize' takes an optional SUMMARIZER
+      (a function from a list of records to a string). The
+      default summarizer produces a deterministic, hand-readable
+      string of the shape
+      `"summary of N records, first=..., last=..."'. The
+      replacement hook for the real `gptel' summarisation
+      is documented inline.
+  - id: run-public-api
+    statement: |
+      `yeah-compact-run' is the one-shot entry point. When
+      the cut-point is nil it returns a no-op plist and does
+      not call `yeah-session-record-compaction'. Otherwise
+      it records the compaction and returns
+      `(:cut-point ID :summary STRING :projection-count N)'.
+  - id: projection-length-wrapper
+    statement: |
+      `yeah-compact-projection-length' is a thin wrapper over
+      `yeah-session-project'.
+  - id: purity
+    statement: |
+      The compactor does not mutate the session log directly.
+      The only write it performs is through
+      `yeah-session-record-compaction'; no other state is changed
+      (no defvar, no global side effect).
+  - id: fixture-pair
+    statement: |
+      A positive fixture
+      `tests/fixtures/positive/yeah-compact-cut.el' and a
+      negative fixture
+      `tests/fixtures/negative/yeah-compact-cut-noop.el' exist;
+      both are placeholder files that document the cut-point
+      algorithm and the no-op path respectively.
+counterexample: |
+  An implementation that summarises by *deleting* source
+  records, or by *re-writing* the JSONL file in place. Either
+  would destroy the A0 separation between `change' and
+  `revision'; `revision' is supposed to *add*, not delete.
+  Or an implementation that uses `(<= ...)' instead of `(>'
+  when comparing the running total against the target — that
+  off-by-one loses the first over-budget record and breaks
+  the projection contract.
+reversal: |
+  Possible by adopting `compact-impl@1' (e.g. real `gptel'
+  summarisation, or a streaming compaction). Reversal is a
+  protected-policy transition under A0.
+migration: |
+  Not applicable — this is the first landed shape.
+supersedes: []
+superseded_by: null
+---

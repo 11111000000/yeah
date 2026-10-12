@@ -1,0 +1,133 @@
+---
+schema: yeah/0.0.0-alpha
+id: subagent-impl
+revision: 0
+state: active
+intent: |
+  Implement Tier 4 #23 from `ROADMAP.md' — the sub-agent
+  delegation API. A sub-agent is a child gptel session that
+  runs in its own buffer and returns a summary to the parent
+  when it finishes. This decision is the **implementation**
+  record for the A2-3 derivation cited in `ROADMAP.md'. The
+  A0 separation requires that the sub-agent does not share
+  state with the parent beyond (a) the inherited
+  `yeah-session' root and (b) the inherited `yeah-tools'
+  registry; everything else (the message log, the buffer, the
+  child id) is private to the child.
+commitment: |
+  `lib/yeah-subagent.el' exposes exactly the five public
+  functions named in `outcomes[]' below:
+
+    * `yeah-subagent-spawn PARENT-SESSION ROLE PROMPT &optional DEPTH'
+       spawn a child sub-agent. ROLE is a string (e.g.
+       `"explore"', `"review"', `"worker"'). PROMPT is the
+       user message. DEPTH is 0 for the top-level; the
+       default is `(1+ DEPTH)' for the child. Returns a
+       plist `(:id ID :child-session SESSION :status STATUS
+       :result STRING)'`. The child session is a new
+       `yeah-session-open' under the inherited root.
+    * `yeah-subagent-wait CHILD-ID'
+       block until the sub-agent finishes, return its result
+       plist. The stub returns immediately with
+       `:status 'completed' and a placeholder `:result' string.
+    * `yeah-subagent-fork-summary PARENT-SESSION CHILD-SESSION'
+       produce a one-line summary of the child's run for the
+       parent's session log. The format is
+       `"[sub-agent %s] %s"' where the first `%s' is the
+       child id and the second is the result string. Returns
+       the summary string.
+    * `yeah-subagent-depth-limit'
+       return the maximum sub-agent depth (default 3), read
+       from the dynamic `yeah-subagent--max-depth' (a `defvar')
+       so tests can override the value with `setq'.
+    * `yeah-subagent-reset-for-test'
+       drop all active sub-agents. Private; for tests only.
+
+  The child session is created with a buffer named
+  `*yeah-subagent-<ROLE>-<id>*'. The child inherits the
+  parent's `yeah-session--root' and the parent's
+  `yeah-tools--registry' reference. The child has its own
+  message log (the JSONL file under the same `sessions/'
+  directory as the parent). Depth is bounded by
+  `yeah-subagent--max-depth'; spawning at depth equal to or
+  greater than the limit raises `user-error'.
+
+  This is a **stub**: the child does not actually run gptel
+  asynchronously. The replacement hook is documented inline;
+  the next revision of this decision will replace it with the
+  real `make-process' / `gptel-request' integration.
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - subagent-delegation-stub
+  paths:
+    - "lib/yeah-subagent.el"
+    - "tests/unit/test-yeah-subagent.el"
+    - "tests/fixtures/positive/yeah-subagent-spawn.el"
+    - "tests/fixtures/negative/yeah-subagent-spawn-blocked.el"
+    - "decisions/subagent-impl@0.yaml"
+  exclusions:
+    - "lib/yeah-gptel.el"
+    - "lib/yeah-session.el"
+    - "lib/yeah-tools.el"
+    - "lib/yeah-loop.el"
+outcomes:
+  - id: spawn-public-api
+    statement: |
+      `yeah-subagent-spawn' exists with the documented
+      signature and semantics: a new `yeah-session-open' is
+      created under the parent's root, the child id is a
+      monotonic integer, and a result plist is returned. The
+      stub returns `(:status completed :result "stub: <prompt>")'.
+  - id: wait-public-api
+    statement: |
+      `yeah-subagent-wait CHILD-ID' returns the result plist
+      recorded at spawn time. The stub is synchronous: it
+      does not block on a real subprocess.
+  - id: fork-summary-public-api
+    statement: |
+      `yeah-subagent-fork-summary PARENT-SESSION CHILD-SESSION'
+      returns a string of the shape `"[sub-agent N] <result>"'.
+      It does not write to the session log itself; that
+      responsibility lives with the loop (future revision).
+  - id: depth-limit-public-api
+    statement: |
+      `yeah-subagent-depth-limit' returns the dynamic value
+      of `yeah-subagent--max-depth' (default 3). Tests can
+      override the value with `setq', not `let'.
+  - id: reset-for-test
+    statement: |
+      `yeah-subagent-reset-for-test' clears the active-
+      sub-agents hash. It is the only way to drop the
+      stub's in-memory state between tests.
+  - id: depth-exceeded-error
+    statement: |
+      Spawning a child at depth equal to or greater than the
+      limit raises `user-error' with a message that names the
+      requested depth and the configured limit.
+  - id: no-real-gptel-call
+    statement: |
+      The stub must not call `gptel-request' or any
+      asynchronous subprocess primitive. A grep for
+      `gptel-request' against `lib/yeah-subagent.el' must
+      return zero matches.
+counterexample: |
+  An implementation that starts a real gptel call inside
+  `yeah-subagent-spawn'. That would block the calling loop,
+  violate the A2-3 oracle ("the loop drives, the model
+  replies"), and create a fork-bomb risk for unbounded depth.
+  Or an implementation that uses `(let ((depth-limit N))
+  …)' to rebind the depth for tests — under
+  `lexical-binding: t' that creates a lexical binding that
+  the function body does not see (ELISP_BEST_PRACTICES.md
+  §11.1).
+reversal: |
+  Possible by adopting `subagent-impl@1' (the real gptel
+  integration). Reversal is a protected-policy transition
+  under A0.
+migration: |
+  Not applicable — this is the first landed shape.
+supersedes: []
+superseded_by: null
+---
