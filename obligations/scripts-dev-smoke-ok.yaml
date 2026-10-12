@@ -2,6 +2,7 @@
 schema: yeah/0.0.0-alpha
 id: scripts-dev-smoke-ok
 state: active
+owner: petr-kosov
 statement: |
   `scripts/dev smoke` exits 0; `scripts/dev validate` exits 1
   (not-yet-implemented); `scripts/dev <unknown>` exits 2.

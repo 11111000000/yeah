@@ -1,21 +1,33 @@
 #!/usr/bin/env bash
-# scripts/dev self-check — verify that scripts/dev is a Bash script
-# that returns 0 on `smoke` and 1+ on a not-yet-implemented
-# subcommand. This is the script-level smoke test that the
-# bootstrap gate relies on.
+# tests/unit/test-scripts-dev.sh — smoke test for scripts/dev.
+#
+# Asserts:
+#   * `scripts/dev smoke` exits 0;
+#   * `scripts/dev validate` exits 0 (when the tree is valid);
+#   * `scripts/dev byte-compile-all` exits 0;
+#   * `scripts/dev <unknown>` exits 2.
+
 set -eu
 
 cd "$(dirname "$0")/../.."
 
 ./scripts/dev smoke >/dev/null
-
-if ./scripts/dev validate >/dev/null 2>&1; then
-  echo "scripts/dev validate unexpectedly returned 0" >&2
-  exit 1
-fi
-if ./scripts/dev nonexistent 2>/dev/null; then
-  echo "scripts/dev did not reject an unknown subcommand" >&2
-  exit 1
-fi
-
 echo "scripts/dev: smoke ok"
+
+./scripts/dev validate >/dev/null
+echo "scripts/dev: validate ok"
+
+./scripts/dev byte-compile-all >/dev/null
+echo "scripts/dev: byte-compile-all ok"
+
+if ./scripts/dev definitely-not-a-subcommand 2>/dev/null; then
+  echo "scripts/dev: did not reject an unknown subcommand" >&2
+  exit 1
+fi
+echo "scripts/dev: rejects unknown subcommands ok"
+
+if ./scripts/dev edit-loop-detect 2>/dev/null; then
+  echo "scripts/dev: edit-loop-detect unexpectedly succeeded" >&2
+  exit 1
+fi
+echo "scripts/dev: edit-loop-detect is correctly blocked"
