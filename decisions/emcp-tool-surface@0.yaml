@@ -1,0 +1,92 @@
+---
+schema: yeah/0.0.0-alpha
+id: emcp-tool-surface
+revision: 0
+state: active
+intent: |
+  Pin the first-wave `emcp` tool surface for Yeah v0.0.0-alpha. This
+  decision is the **specification** complement to
+  `decisions/emcp-mcp-server@0`: that decision records that Yeah
+  publishes an MCP server under the `emacs__*` namespace; this one
+  records *which* `emacs__*` tool ids are in the first wave. The
+  tool ids named here are stable: renaming or removing one is a
+  protected-policy transition.
+commitment: |
+  The first wave of `emcp` tools is exactly nine tool ids, in this
+  order:
+
+    1. `emacs__eval`
+    2. `emacs__buffer_list`
+    3. `emacs__buffer_read`
+    4. `emacs__buffer_write`
+    5. `emacs__magit_status`
+    6. `emacs__describe_function`
+    7. `emacs__describe_variable`
+    8. `emacs__dired_list`
+    9. `emacs__project_find_file`
+
+  Adding a tenth tool requires a revision of this decision
+  (revision 1). Renaming or removing any of the nine is a
+  protected-policy transition under `emcp-mcp-server@0`. The
+  registry lives in `lib/yeah-emcp.el`; the schema describing
+  the surface lives in `schemas/emcp-v1.json`.
+
+  In this first wave, the handler for each id is a **stub** that
+  returns a placeholder string documenting which tier will wire
+  the real implementation. Real wiring lands in Tier 3 (read-side
+  tools) and Tier 4 (eval / write-side tools).
+axiom_link:
+  - A1
+scope:
+  capabilities:
+    - emcp-tool-surface-v0
+  paths:
+    - "lib/yeah-emcp.el"
+    - "schemas/emcp-v1.json"
+    - "tests/unit/test-yeah-emcp.el"
+    - "tests/fixtures/positive/emcp-tool-list.json"
+    - "tests/fixtures/negative/emcp-tool-unknown.json"
+  exclusions:
+    - "lib/yeah-acp.el"
+    - "lib/yeah-loop.el"
+outcomes:
+  - id: nine-tool-ids-registered
+    statement: |
+      `lib/yeah-emcp.el` registers exactly the nine tool ids
+      listed above, in the listed order. `yeah-emcp-tool-ids`
+      returns the list in that order.
+  - id: stub-handlers-documented
+    statement: |
+      Each first-wave handler returns a string of the form
+      `"<id>: <reason>"`, where `<reason>` names the tier that
+      will wire the real implementation. No handler signals an
+      error in the stub phase.
+  - id: registry-stable-ids
+    statement: |
+      Tool ids are stored in a hash table keyed by the string id.
+      Lookups by an unknown id return `nil` from
+      `yeah-emcp-tool-spec` and signal `user-error` from
+      `yeah-emcp-handle-call`.
+  - id: schema-and-implementation-aligned
+    statement: |
+      `schemas/emcp-v1.json` lists the same nine ids, in the same
+      order, with input and output shapes derived from the
+      per-tool `MCP Parameters:` docstring blocks.
+counterexample: |
+  An implementation that registers ten tools where the spec says
+  nine (e.g. silently adds `emacs__magit_diff` without recording a
+  revision of this decision). Or, an implementation that allows
+  client callers to mutate the registry directly. Both leak
+  decisions past the ADR boundary.
+reversal: |
+  Possible if Yeah drops MCP support entirely or replaces the
+  `emacs__*` namespace with a successor. Both reversals are
+  protected-policy transitions and require this decision to be
+  superseded by `emcp-tool-surface@1` (or a named successor).
+migration: |
+  On namespace change: keep the nine `emacs__*` ids as legacy
+  shims for ≥ one minor release. On tool removal: ship a deprecation
+  notice and route to the successor id; never silently drop.
+supersedes: []
+superseded_by: null
+---

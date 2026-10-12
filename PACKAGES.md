@@ -18,6 +18,7 @@ under the policy; superseded only by a protected-policy transition
 | `decisions/decision.yaml` | Active policy (`bootstrap-yeah@0`) | active |
 | `decisions/emacs-native-runtime.yaml` | Emacs is the run-time, not a client over a sidecar | active |
 | `decisions/gptel-as-transport.yaml` | `gptel` is the only LLM transport | active |
+| `decisions/gptel-hook-surface.yaml` | The three gptel hooks `lib/yeah-gptel.el` registers | active |
 | `decisions/acp-wire-v1.yaml` | Speak ACP v1 (agent side) | active |
 | `decisions/emcp-mcp-server.yaml` | Expose Emacs as MCP server (`emacs__*` tools) | active |
 | `decisions/tick-state-machine.yaml` | The agent loop is a 10-state FSM with 18 transitions | active |
@@ -54,17 +55,17 @@ under the policy; superseded only by a protected-policy transition
 | `lib/yeah-compact.el` | Compaction (projection) | planned (Tier 4) |
 | `lib/yeah-codes.el` | Sandbox.el-PTC | planned (Tier 4) |
 | `lib/yeah-undo.el` | Per-tick undo-boundary | planned (Tier 4) |
-| `lib/yeah-gptel.el` | gptel hook integration | planned (Tier 2) |
-| `lib/yeah-acp.el` | ACP agent side | planned (Tier 2) |
-| `lib/yeah-emcp.el` | MCP server side (`emcp` tools) | planned (Tier 2) |
+| `lib/yeah-gptel.el` | gptel hook integration | landed (Tier 2 #14) |
+| `lib/yeah-acp.el` | ACP agent side | landed (Tier 2 #12) |
+| `lib/yeah-emcp.el` | MCP server side (`emcp` tools) | landed (Tier 2 #13) |
 | `lib/yeah-shell.el` | REPL in `*yeah-shell*` | planned (Tier 3) |
 
 ## Schemas (by file)
 
 | File | What it is | Status |
 |---|---|---|
-| `schemas/acp-v1.json` | ACP v1 wire surface (subset we use) | planned |
-| `schemas/emcp-v1.json` | `emcp` tool registry | planned |
+| `schemas/acp-v1.json` | ACP v1 wire surface (subset we use) | landed (Tier 2 #12) |
+| `schemas/emcp-v1.json` | `emcp` tool registry | landed (Tier 2 #13) |
 | `schemas/session-event.json` | JSONL event shape for the append-only log | planned |
 
 ## Fixtures
@@ -77,6 +78,8 @@ pair obligation.
 |---|---|
 | `tests/fixtures/positive/loop-*.el` | FSM transitions that must work |
 | `tests/fixtures/negative/loop-*.el` | FSM transitions that must be rejected |
+| `tests/fixtures/positive/yeah-gptel-prompt-with-prelude.el` | A transformed prompt carries the prelude |
+| `tests/fixtures/negative/yeah-gptel-prompt-without-prelude.el` | A raw prompt (no prelude) is a drift |
 | `tests/fixtures/positive/acp-*.json` | ACP messages that must round-trip |
 | `tests/fixtures/negative/acp-*.json` | ACP messages that must be rejected |
 | `tests/fixtures/positive/emcp-*.json` | `emcp` tool calls that must work |
@@ -91,6 +94,7 @@ pair obligation.
 | File | What it asserts |
 |---|---|
 | `tests/unit/test-yeah-state.el` | The 10 states exist; transitions are well-formed |
+| `tests/unit/test-yeah-gptel.el` | The three gptel hooks are installed, the prelude is prepended, the FSM handler accepts valid shapes, missing-gptel is a no-op |
 | `tests/unit/test-yeah-loop.el` | The 18 transitions trigger in isolation |
 | `tests/unit/test-process-principles-p1.el` | Read-first order in `AGENTS.md` |
 | `tests/unit/test-process-principles-p2.el` | Decision ↔ fixture pairing |

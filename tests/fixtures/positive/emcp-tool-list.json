@@ -1,0 +1,16 @@
+{
+  "$schema": "yeah/schemas/emcp-v1.json",
+  "source": "decisions/emcp-tool-surface@0.yaml",
+  "description": "The first-wave emcp tool surface: nine stable tool ids under the `emacs__*` namespace, in registration order. The id list is normative; renaming any entry is a protected-policy transition.",
+  "tools": [
+    { "id": "emacs__eval",              "description": "Evaluate an Emacs Lisp expression and return its value as a string.", "input": ["expr"],                          "output": "string" },
+    { "id": "emacs__buffer_list",       "description": "List live buffers, optionally filtered by a name prefix.",          "input": ["prefix"],                        "output": "string" },
+    { "id": "emacs__buffer_read",       "description": "Return the contents of a buffer, optionally restricted to a range.", "input": ["name", "start", "end"],          "output": "buffer-string" },
+    { "id": "emacs__buffer_write",      "description": "Replace or insert text in a buffer at a given position.",            "input": ["name", "start", "end", "text"],  "output": "string" },
+    { "id": "emacs__magit_status",      "description": "Return the current Magit status buffer as a string.",                "input": [],                                "output": "buffer-string" },
+    { "id": "emacs__describe_function", "description": "Return the help string of a function symbol.",                        "input": ["symbol"],                        "output": "string" },
+    { "id": "emacs__describe_variable", "description": "Return the help string of a variable symbol.",                        "input": ["symbol"],                        "output": "string" },
+    { "id": "emacs__dired_list",        "description": "List files in a directory (default: project root).",                  "input": ["directory"],                     "output": "string" },
+    { "id": "emacs__project_find_file", "description": "Find a file by name within the current project.",                    "input": ["name"],                          "output": "string" }
+  ]
+}

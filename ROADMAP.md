@@ -57,8 +57,11 @@ exits 0 and the first ERT pair is green.
 | # | Task | Decision | Closes |
 |---|---|---|---|
 | 12 | `lib/yeah-acp.el` (ACP JSON-RPC server) | `acp-wire-v1@0` | the wire-stable protocol |
+|   |  ↑ closed in commit (this Tier) |  |  |
 | 13 | `lib/yeah-emcp.el` (MCP-server, `emacs__*` tools) | `emcp-mcp-server@0` | emcp surface |
+|   |  ↑ closed in commit (this Tier) |  |  |  |
 | 14 | `lib/yeah-gptel.el` (the transport bridge) | `gptel-as-transport@0` | §A6 enforcement |
+|   |  ↑ closed in commit (this Tier) |  |  |
 | 15 | ACP fixture pair (positive + negative) | `acp-wire-v1@0` | obligation closure |
 | 16 | emcp fixture pair (positive + negative) | `emcp-mcp-server@0` | obligation closure |
 

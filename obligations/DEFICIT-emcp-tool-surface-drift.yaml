@@ -1,0 +1,30 @@
+---
+schema: yeah/0.0.0-alpha
+id: emcp-tool-surface-drift
+state: open
+owner: petr-kosov
+statement: |
+  `decisions/emcp-mcp-server@0` lists 10 first-wave tool ids
+  (including `emacs__magit_diff'). `decisions/emcp-tool-surface@0`
+  and the corresponding `lib/yeah-emcp.el` registry list only 9
+  (omitting `emacs__magit_diff'). This is a drift between the
+  parent decision and the implementation decision.
+rule: decisions/emcp-mcp-server@0 commitment "stable tool ids"
+subject: lib/yeah-emcp.el
+reason: |
+  Subagent implementing `emcp-tool-surface@0` was instructed to
+  follow the task brief (9 ids) rather than the parent decision
+  (10 ids). The parent decision must be either revised to drop
+  `emacs__magit_diff' or the implementation must be revised to
+  add it.
+remedy: |
+  Either:
+  (a) revision `emcp-mcp-server@1` to remove `emacs__magit_diff'
+      from the first wave (the cheapest option since the tool
+      is not yet wired in any case); or
+  (b) revision `emcp-tool-surface@1` to register the missing
+      stub handler.
+remedy_to_be_applied_in: |
+  decisions/emcp-mcp-server.yaml (revision 1) OR
+  lib/yeah-emcp.el (revision 1)
+---

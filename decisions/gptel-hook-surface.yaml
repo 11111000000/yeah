@@ -1,0 +1,90 @@
+---
+schema: yeah/0.0.0-alpha
+id: gptel-hook-surface
+revision: 0
+state: active
+intent: |
+  Record the exact gptel hook surface that `lib/yeah-gptel.el`
+  exposes. The parent decision `gptel-as-transport@0` declares
+  that gptel is the only LLM transport and that the hook surface
+  is the only place where Yeah customises it; this decision is
+  the concrete commitment: which three hooks, in which order,
+  with which signatures.
+commitment: |
+  `lib/yeah-gptel.el` registers exactly the three gptel hooks
+  required by the parent decision and no others:
+
+    1. `gptel-prompt-transform-functions` — augmented with
+       `yeah-gptel-prompt-transform`, which prepends the Yeah
+       system-prompt prelude (tools, FSM states, manifesto) to
+       the model prompt before each turn.
+
+    2. `gptel-pre-tool-call-functions` — augmented with
+       `yeah-gptel-pre-tool-call`, which currently passes the
+       call through unchanged (the real wiring lands in Tier 3,
+       alongside `lib/yeah-tools.el` and `lib/yeah-perm.el`).
+
+    3. `gptel-fsm-handlers` — augmented with
+       `yeah-gptel-fsm-handler`, which records state transitions
+       for the current session. In revision 0 the recording is
+       a `message` echo; the future hook into
+       `lib/yeah-session.el` is documented in the function's
+       doc-string.
+
+  No other module registers gptel hooks and no other module calls
+  `gptel-request-...` directly. The public surface is exactly
+  `yeah-gptel-hooks-install` and `yeah-gptel-hooks-uninstall`.
+
+  When gptel is not loaded, both install and uninstall are
+  no-ops: they catch `void-function` and `void-variable` so that
+  Yeah can boot in environments without gptel (CI, tests).
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - gptel-transport-binding
+  paths:
+    - "lib/yeah-gptel.el"
+    - "tests/unit/test-yeah-gptel.el"
+    - "tests/fixtures/positive/yeah-gptel-prompt-with-prelude.el"
+    - "tests/fixtures/negative/yeah-gptel-prompt-without-prelude.el"
+  exclusions:
+    - "tests/fixtures/**"
+outcomes:
+  - id: three-hooks-only
+    statement: |
+      `lib/yeah-gptel.el` registers exactly
+      `gptel-prompt-transform-functions`,
+      `gptel-pre-tool-call-functions`, and
+      `gptel-fsm-handlers`. Adding a fourth hook is a
+      protected-policy transition.
+  - id: install-and-uninstall-are-symmetric
+    statement: |
+      `yeah-gptel-hooks-uninstall` removes every hook added by
+      `yeah-gptel-hooks-install`. A second call to either
+      function is a no-op.
+  - id: missing-gptel-is-no-error
+    statement: |
+      When `gptel` is not loaded, both `yeah-gptel-hooks-install`
+      and `yeah-gptel-hooks-uninstall` return without signalling.
+      The module does not depend on gptel at load time.
+counterexample: |
+  A future contributor adds `yeah-gptel-hooks-install` that also
+  touches `gptel-curl-extra-headers` or `gptel-response-filter-functions`.
+  Both are additional customisation points beyond the three the
+  parent decision commits to. The drift is silent because the
+  three required hooks are still registered; the test surface
+  does not catch it. This is the exact failure mode the
+  outcome `three-hooks-only` exists to prevent.
+reversal: |
+  Possible if the parent decision `gptel-as-transport@0` is
+  itself reversed; reversal is a protected-policy transition
+  under A3.
+migration: |
+  Replace `lib/yeah-gptel.el` with an alternative transport
+  module exposing the same internal API
+  (`yeah-gptel-hooks-install` / `-uninstall`); the rest of Yeah
+  is unchanged.
+supersedes: []
+superseded_by: null
+---

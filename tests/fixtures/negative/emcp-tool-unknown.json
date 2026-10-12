@@ -1,0 +1,13 @@
+{
+  "$schema": "yeah/schemas/emcp-v1.json",
+  "source": "decisions/emcp-tool-surface@0.yaml",
+  "description": "A call to a tool id that is NOT in the first-wave surface. The registry must reject this with `user-error` (see yeah-emcp-handle-call). This fixture pins the closest plausible failure mode for the registry.",
+  "call": {
+    "id": "emacs__magit_diff",
+    "args": {}
+  },
+  "expected_outcome": {
+    "signals": "user-error",
+    "message_contains": "unknown tool id"
+  }
+}
