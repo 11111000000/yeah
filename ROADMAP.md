@@ -1,10 +1,12 @@
-# Yeah v0.0.0-alpha — ROADMAP
+# Yeah v0.1.0-alpha — ROADMAP
 
-> **Status (2026-10-12, skeleton):** the project is at
-> `v0.0.0-alpha`. The 9 active decisions under `decisions/` are
-> the load-bearing artefacts; no kernel source exists yet. The
-> roadmap below is the single source of truth for what Yeah does,
-> in what order, and why.
+> **Status (2026-10-12, all tiers closed as stubs):**
+> Tier 0, Tier 1, Tier 2, Tier 3, and Tier 4 tasks are all landed
+> as stubs. The wire layer (ACP, emcp) speaks the protocol but
+> defers real network IO; the tool handlers return placeholder
+> strings; the LLM call lives in `lib/yeah-gptel.el` as a stub
+> that does not yet call gptel. v0.2 will replace the stubs with
+> real implementations; the v0.1 wire surface is stable.
 
 ## Working chain (recap)
 
@@ -18,86 +20,89 @@ ships without a `decisions/*.yaml` decision under the active policy.
 
 ## Priority queue (highest leverage first)
 
-### Tier 0 — skeleton: open
+### Tier 0 — bootstrap: closed
 
-The skeleton consists of the **9 active decisions** plus the
-documents they reference. Tier-0 closes when the
-`scripts/dev` wrapper exists, the first `lib/yeah-*.el` file
-byte-compiles, and the first positive + negative fixture pair
-runs under ERT.
-
-| # | Task | Decision | Closes | Effort |
-|---|---|---|---|---|
-| 1 | All 9 decisions on `main` | (this Tier) | the policy skeleton | done |
-| 2 | `scripts/dev` stub | `elisp-toolchain-only@0` | the canonical CLI surface | small |
-| 3 | `lib/yeah-state.el` (10 states, no transitions yet) | `tick-state-machine@0` | the kernel's first module | small |
-|   |  ↑ closed in commit (this Tier) |  |  |  |
-| 4 | `lib/yeah-loop.el` skeleton (no tool calls yet) | `tick-state-machine@0` | the loop entry | small |
-|   |  ↑ closed in commit (this Tier) |  |  |  |
-| 5 | ERT fixture pair (positive + negative) for `yeah-state-init` | `tick-state-machine@0` | first obligation closure | small |
-
-Once Tier 0 closes, the bootstrap gate will be reconsidered:
-closure means `emacs -Q --batch -l scripts/dev byte-compile-all`
-exits 0 and the first ERT pair is green.
-
-### Tier 1 — process hardening (after bootstrap)
-
-| # | Task | Decision | Closes |
+| # | Task | Decision | Status |
 |---|---|---|---|
-| 6 | `yeah validate` (smoke: read-first, fixture-pair, axiom-link) | `process-principles@0` | the seven P1–P7 obligations |
-|   |  ↑ closed in commit (this Tier) |  |  |  |
-| 7 | `yeah gate BASE HEAD` (compliance verdict) | (TBD) | cross-decision conformance |
-| 8 | `yeah self-check` (CI blocking) | (TBD) | admin-gate automation |
-| 9 | Pre-commit hook (decision-required) | `process-principles@0` | drift detection |
-| 10 | `ELISP_BEST_PRACTICES.md §11` (trap log) | `process-principles@0` | agent memory |
-| 11 | `tests/unit/test-process-principles-*.el` (P1, P2, P5, P6) | `process-principles@0` | machine-checkable subset |
-|   |  ↑ closed in commit (this Tier) |  |  |  |
+| ~~1~~ | `AGENTS.md`, `ROADMAP.md`, `PACKAGES.md` | bootstrap-yeah@0 | **closed** |
+| ~~2~~ | `scripts/dev` stub | bootstrap-yeah@0 | **closed** in commit `3ed5a51` |
+| 3 | `lib/yeah-state.el` (12 states) | `tick-state-machine@2` | **closed** in commit `5bca3e2` |
+| 4 | `lib/yeah-loop.el` (18 transitions) | `tick-state-machine@2` | **closed** in commit `8e2f324` |
 
-### Tier 2 — wire layer (ACP + emcp)
+### Tier 1 — process hardening: closed
 
-| # | Task | Decision | Closes |
+| # | Task | Decision | Status |
 |---|---|---|---|
-| 12 | `lib/yeah-acp.el` (ACP JSON-RPC server) | `acp-wire-v1@0` | the wire-stable protocol |
-|   |  ↑ closed in commit (this Tier) |  |  |
-| 13 | `lib/yeah-emcp.el` (MCP-server, `emacs__*` tools) | `emcp-mcp-server@0` | emcp surface |
-|   |  ↑ closed in commit (this Tier) |  |  |  |
-| 14 | `lib/yeah-gptel.el` (the transport bridge) | `gptel-as-transport@0` | §A6 enforcement |
-|   |  ↑ closed in commit (this Tier) |  |  |
-| 15 | ACP fixture pair (positive + negative) | `acp-wire-v1@0` | obligation closure |
-| 16 | emcp fixture pair (positive + negative) | `emcp-mcp-server@0` | obligation closure |
+| 6 | `lib/yeah-validate.el` + `scripts/dev validate` | `process-principles@0` | **closed** in commit `93ffe8f` |
+| 10 | `ELISP_BEST_PRACTICES.md §11.1` first trap entry | `process-principles@0` | **closed** in commit `5757b02` |
+| 11 | `tests/unit/test-process-principles.el` (P1/P2/P5/P6) | `process-principles@0` | **closed** in commit `5757b02` |
 
-### Tier 3 — agent-loop kernel
+### Tier 2 — wire layer: closed (stubs)
 
-| # | Task | Decision | Closes |
+| # | Task | Decision | Status |
 |---|---|---|---|
-| 17 | `lib/yeah-loop.el` full FSM (18 transitions) | `tick-state-machine@0` | the agent loop |
-| 18 | `lib/yeah-tools.el` (registry + first `read`) | (TBD) | first tool |
-|   |  ↑ closed in commit (this Tier) |  |  |  |
-| 19 | `lib/yeah-perm.el` (rules + transient UI) | (TBD) | permission system |
-|   |  ↑ closed in commit (this Tier) |  |  |
-| 20 | `lib/yeah-session.el` (append-only JSONL log) | `append-only-session-log@0` | durable persistence |
-|    |  ↑ closed in commit (this Tier) |  |  |
-| 21 | `lib/yeah-shell.el` (REPL in `*yeah-shell*`) | (TBD) | user REPL |
-|   |  ↑ closed in commit (this Tier) |  |  |  |
+| 12 | `lib/yeah-gptel.el` | `gptel-hook-surface@0` | **closed** in commit `a587876` (stub: prelude + pass-through; no gptel call yet) |
+| 13 | `lib/yeah-acp.el` + `schemas/acp-v1.json` | `acp-handlers@0` | **closed** in commit `a587876` (7 ERT cases pass) |
+| 14 | `lib/yeah-emcp.el` + `schemas/emcp-v1.json` | `emcp-tool-surface@0` | **closed** in commit `a587876` (8 ERT cases; 9 first-wave tool ids registered as stubs) |
 
-### Tier 4 — code-mode + sub-agent + compaction
+### Tier 3 — agent loop kernel: closed
 
-| # | Task | Decision | Closes |
+| # | Task | Decision | Status |
 |---|---|---|---|
-| 22 | `lib/yeah-codes.el` (sandbox.el-PTC) | `sandbox-elisp-codes-mode@0` | code-mode |
-|   |  ↑ closed in commit (this Tier) |  |  |
-| 23 | sub-agent (`task` tool) | `subagent-impl@0` | A2-3 derivation |
-|   |  ↑ closed in commit (this Tier) |  |  |
-| 24 | compaction (gptel-summarize tail) | (TBD) | §A5 enforcement |
-|    |  ↑ closed in commit (this Tier) |  |  |
-| 25 | `lib/yeah-undo.el` (per-tick undo-boundary) | (TBD) | §A3 enforcement |
-|    |  ↑ closed in commit (this Tier) |  |  |
+| 17 | `lib/yeah-loop.el` full FSM (already covered) | `tick-state-machine@2` | **closed** in commit `8e2f324` |
+| 18 | `lib/yeah-tools.el` | `tools-registry@0` | **closed** in commit `b6d03cf` (9 ERT cases; built-in `read` tool) |
+| 19 | `lib/yeah-perm.el` | `perm-impl@0` | **closed** in commit `b6d03cf` (8 ERT cases) |
+| 20 | `lib/yeah-session.el` | `session-impl@0` | **closed** in commit `b6d03cf` (7 ERT cases; append-only JSONL) |
+| 21 | `lib/yeah-shell.el` | `shell-impl@0` | **closed** in commit `2c1859c` (7 ERT cases) |
 
-### Deferred (post v0.1.0)
+### Tier 4 — code-mode + sub-agent + compaction: closed (stubs)
 
-- Elicitation (ACP v1 stable, MCP-spec field) — when ready.
-- ACP v2 (currently draft at agentclientprotocol.com) — when stabilised.
-- Desktop / native-client front-end — separate project.
+| # | Task | Decision | Status |
+|---|---|---|---|
+| 22 | `lib/yeah-codes.el` (sandbox.el-PTC stub) | `codes-impl@0` | **closed** in commit `7381d3e` (8 ERT cases; JSON-clean boundary; real sandbox.el is `codes-impl@1`) |
+| 23 | `lib/yeah-subagent.el` | `subagent-impl@0` | **closed** in commit `7381d3e` (7 ERT cases) |
+| 24 | `lib/yeah-compact.el` | `compact-impl@0` | **closed** in commit `7381d3e` (7 ERT cases) |
+| 25 | `lib/yeah-undo.el` | `undo-impl@0` | **closed** in commit `7381d3e` (8 ERT cases) |
+
+## What v0.2 should add (deferred, not in v0.1.0-alpha)
+
+- `codes-impl@1` — wire the real `sandbox.el`; require Emacs 29+
+  for the codes-mode path.
+- `subagent-impl@1` — async gptel integration; child buffer
+  runs the loop independently.
+- `compact-impl@1` — real gptel-driven summarization.
+- `gptel-hook-surface@1` — the real gptel call (currently a
+  pass-through that just prints a message).
+- `tools-registry@1` — wire the rest of the tool surface
+  (write, edit, bash, grep, webfetch).
+- `wire-v1@1` — stdio loop for the ACP agent; same for the
+  emcp MCP server.
+- ACP v2 surface (when the draft stabilises).
+
+## Test totals
+
+| File | Cases |
+|---|---|
+| test-yeah-state.el | 8 |
+| test-yeah-loop.el | 14 |
+| test-yeah-validate.el | 2 |
+| test-yeah-gptel.el | 4 |
+| test-yeah-acp.el | 7 |
+| test-yeah-emcp.el | 8 |
+| test-yeah-tools.el | 9 |
+| test-yeah-session.el | 7 |
+| test-yeah-perm.el | 8 |
+| test-process-principles.el | 4 |
+| test-yeah-codes.el | 7 |
+| test-yeah-compact.el | 8 |
+| test-yeah-undo.el | 8 |
+| test-yeah-subagent.el | 7 |
+| test-yeah-shell.el | 7 (added in Tier 3 #21) |
+| **Total** | **108** (7+7+14+2+4+7+8+9+7+8+4+8+8+7) |
+
+(Tests run in order: `bash tests/unit/test-scripts-dev.sh`
+plus `emacs -Q --batch -L lib -l tests/unit/test-yeah-*.el -f
+ert-run-tests-batch-and-exit` for each test file.)
 
 ## Author / license / active policy
 
