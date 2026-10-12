@@ -44,7 +44,7 @@ under the policy; superseded only by a protected-policy transition
 
 | File | What it is | Status |
 |---|---|---|
-| `lib/yeah-state.el` | The 10 FSM states | planned (Tier 0) |
+| `lib/yeah-state.el` | The 10 FSM states | landed (Tier 0 #3) |
 | `lib/yeah-loop.el` | The agent loop | planned (Tier 0 skeleton) |
 | `lib/yeah-tools.el` | Tool registry | planned (Tier 3) |
 | `lib/yeah-perm.el` | Permission system | planned (Tier 3) |
