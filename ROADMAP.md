@@ -78,6 +78,7 @@ exits 0 and the first ERT pair is green.
 | 20 | `lib/yeah-session.el` (append-only JSONL log) | `append-only-session-log@0` | durable persistence |
 |    |  ↑ closed in commit (this Tier) |  |  |
 | 21 | `lib/yeah-shell.el` (REPL in `*yeah-shell*`) | (TBD) | user REPL |
+|   |  ↑ closed in commit (this Tier) |  |  |  |
 
 ### Tier 4 — code-mode + sub-agent + compaction
 

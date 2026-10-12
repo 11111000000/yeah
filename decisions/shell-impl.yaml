@@ -1,0 +1,50 @@
+---
+schema: yeah/0.0.0-alpha
+id: shell-impl
+revision: 0
+state: active
+intent: |
+  Provide the `*yeah-shell*' REPL buffer: a `shell-mode'-like
+  prompt, history, and a `yeah-shell-send-input' command that
+  hands the user's input to the agent loop.
+commitment: |
+  The REPL is a normal Emacs buffer with a `yeah> ' prompt, a
+  bounded history ring (200 entries; oldest drop), and a
+  `yeah-shell-send-input' command that (in this revision)
+  echoes the input back as a stub. The real gptel call lands
+  in `shell-impl@1'.
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - shell-repl
+  paths:
+    - "lib/yeah-shell.el"
+    - "tests/unit/test-yeah-shell.el"
+outcomes:
+  - id: buffer-creation
+    statement: |
+      `yeah-shell--ensure-buffer' creates `*yeah-shell*' on
+      demand and returns the same buffer on every call.
+  - id: history-ring
+    statement: |
+      `yeah-shell-history' is a bounded ring; the size is 200
+      and oldest entries are dropped as new ones come in.
+  - id: stub-echo
+    statement: |
+      `yeah-shell-send-input' adds the input to the history
+      and echoes a `[yeah-stub] received: <input>' line into
+      the buffer.
+counterexample: |
+  An implementation that actually calls gptel from
+  `yeah-shell-send-input' before the underlying transport is
+  wired. That bypasses the gptel-hooks contract and would
+  duplicate the LLM transport.
+reversal: |
+  Possible only by adopting `shell-impl@1' or later; the
+  v0 surface must remain reachable for >= one minor release.
+migration: |
+  Replace the stub echo with a call into `lib/yeah-gptel.el'.
+supersedes: []
+superseded_by: null
+---

@@ -60,7 +60,7 @@ under the policy; superseded only by a protected-policy transition
 | `lib/yeah-gptel.el` | gptel hook integration | landed (Tier 2 #14) |
 | `lib/yeah-acp.el` | ACP agent side | landed (Tier 2 #12) |
 | `lib/yeah-emcp.el` | MCP server side (`emcp` tools) | landed (Tier 2 #13) |
-| `lib/yeah-shell.el` | REPL in `*yeah-shell*` | planned (Tier 3) |
+| `lib/yeah-shell.el` | REPL in `*yeah-shell*` | landed (Tier 3 #21) |
 
 ## Schemas (by file)
 
