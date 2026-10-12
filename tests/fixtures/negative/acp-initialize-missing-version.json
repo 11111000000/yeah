@@ -1,0 +1,16 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "initialize",
+  "params": {
+    "clientInfo": {
+      "name": "zed",
+      "version": "0.100.0"
+    },
+    "clientCapabilities": {
+      "loadSession": true,
+      "prompt": true,
+      "cancel": true
+    }
+  }
+}

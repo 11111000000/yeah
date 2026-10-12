@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "yeah/acp-v1.json",
+  "title": "ACP v1 — Yeah subset",
+  "description": "The subset of the Agent Client Protocol v1 wire surface that Yeah v0.0.0-alpha implements on the agent side. This schema is documentation; we do not validate against it at runtime.",
+  "definitions": {
+    "InitializeRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion"],
+      "properties": {
+        "protocolVersion": { "type": "string", "description": "ACP wire version the client speaks." },
+        "clientInfo": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "name":    { "type": "string" },
+            "version": { "type": "string" }
+          }
+        },
+        "clientCapabilities": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "loadSession": { "type": "boolean" },
+            "prompt":      { "type": "boolean" },
+            "cancel":      { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "InitializeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protocolVersion", "agentInfo"],
+      "properties": {
+        "protocolVersion": { "type": "string" },
+        "agentInfo": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["name"],
+          "properties": {
+            "name":    { "type": "string" },
+            "version": { "type": "string" }
+          }
+        },
+        "agentCapabilities": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "loadSession": { "type": "boolean" },
+            "prompt":      { "type": "boolean" },
+            "cancel":      { "type": "boolean" }
+          }
+        }
+      }
+    },
+    "SessionNewRequest": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "clientInfo": { "$ref": "#/definitions/InitializeRequest/properties/clientInfo" }
+      }
+    },
+    "SessionNewResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId"],
+      "properties": {
+        "sessionId": { "type": "string", "description": "Opaque session identifier." }
+      }
+    },
+    "SessionPromptRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "text"],
+      "properties": {
+        "sessionId": { "type": "string" },
+        "text":      { "type": "string" }
+      }
+    },
+    "SessionPromptResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["messageId"],
+      "properties": {
+        "messageId": { "type": "string" }
+      }
+    },
+    "SessionCancelRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId"],
+      "properties": {
+        "sessionId": { "type": "string" }
+      }
+    },
+    "ToolCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name":    { "type": "string" },
+        "input":   { "type": "object", "additionalProperties": true },
+        "callId":  { "type": "string" }
+      }
+    },
+    "ToolResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content"],
+      "properties": {
+        "callId":  { "type": "string" },
+        "isError": { "type": "boolean" },
+        "content": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ContentBlock" }
+        }
+      }
+    },
+    "ContentBlock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["text", "code", "image", "json"] },
+        "text": { "type": "string" },
+        "language": { "type": "string" },
+        "data": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "value": {}
+      }
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-01-01",
+    "clientInfo": {
+      "name": "zed",
+      "version": "0.100.0"
+    },
+    "clientCapabilities": {
+      "loadSession": true,
+      "prompt": true,
+      "cancel": true
+    }
+  }
+}

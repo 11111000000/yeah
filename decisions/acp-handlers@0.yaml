@@ -1,0 +1,99 @@
+---
+schema: yeah/0.0.0-alpha
+id: acp-handlers
+revision: 0
+state: active
+intent: |
+  Record the four ACP v1 handler functions that `lib/yeah-acp.el`
+  commits to expose: `yeah-acp-initialize`,
+  `yeah-acp-session-new`, `yeah-acp-session-prompt`,
+  `yeah-acp-session-cancel`. Together with
+  `yeah-acp-handle-message` (the JSON-RPC dispatcher) and
+  `yeah-acp-version` (the wire-version probe), these are the
+  entire public surface of the agent side. A1 feedback (cited
+  in `decisions/acp-wire-v1@0`) requires that any ACP handler
+  the kernel exposes is named and tracked here so the wire
+  contract cannot drift silently.
+commitment: |
+  `lib/yeah-acp.el` exposes exactly the six functions listed in
+  `outcomes[]` and no others. Each handler is pure data
+  transformation (plist in, plist out); no process is opened,
+  no IO happens, no global state mutates. The stdio loop that
+  glues these handlers to the wire is wired later by
+  `scripts/dev acp-server` and lives outside this decision's
+  scope.
+axiom_link:
+  - A1
+scope:
+  capabilities:
+    - acp-agent-handlers-v1
+  paths:
+    - "lib/yeah-acp.el"
+    - "schemas/acp-v1.json"
+    - "tests/fixtures/positive/acp-initialize.json"
+    - "tests/fixtures/negative/acp-initialize-missing-version.json"
+    - "tests/unit/test-yeah-acp.el"
+  exclusions:
+    - "lib/yeah-loop.el"
+    - "lib/yeah-emcp.el"
+outcomes:
+  - id: initialize-handshake
+    statement: |
+      `yeah-acp-initialize` accepts a handshake plist carrying
+      `protocolVersion`, `clientInfo`, and `clientCapabilities`,
+      and returns an `InitializeResponse` plist carrying the
+      agent's `protocolVersion`, `agentInfo`, and
+      `agentCapabilities` (`loadSession`, `prompt`, `cancel`).
+  - id: session-new
+    statement: |
+      `yeah-acp-session-new` accepts a `SessionNewRequest` plist
+      and returns a plist of the shape `(:sessionId ID)` where
+      ID is a non-empty string (UUID-shaped). The session table
+      lives in module-private state; future tiers will replace
+      this with `lib/yeah-session.el`.
+  - id: session-prompt
+    statement: |
+      `yeah-acp-session-prompt` accepts a `SessionPromptRequest`
+      plist (`sessionId`, `text`) and returns a plist of the
+      shape `(:messageId ID)` where ID is a non-empty string.
+      The real prompt execution lives in `lib/yeah-loop.el`
+      (Tier 3 of `ROADMAP.md`); this handler is a stub that
+      acknowledges the request.
+  - id: session-cancel
+    statement: |
+      `yeah-acp-session-cancel` accepts a `SessionCancelRequest`
+      plist (`sessionId`) and returns a plist of the shape
+      `(:status "cancelled" :sessionId ID)`. Cancellation has no
+      effect on the agent loop today; the acknowledgement is
+      the contract.
+  - id: dispatcher
+    statement: |
+      `yeah-acp-handle-message` parses a JSON-RPC 2.0 message
+      string, routes to the matching handler by `method`,
+      and returns a JSON-RPC 2.0 response string. A malformed
+      JSON body returns a JSON-RPC parse error
+      (`code -32700`); an unknown `method` returns a
+      method-not-found error (`code -32601`).
+  - id: version-probe
+    statement: |
+      `yeah-acp-version` returns the Yeah version string
+      (`"0.1.0-alpha"`) so callers can read the wire version
+      without parsing `InitializeResponse`.
+counterexample: |
+  An implementation that opens a subprocess from
+  `yeah-acp-session-prompt` (e.g. spawns an `emacsclient` to
+  evaluate the prompt inline). The handler is pure data
+  transformation by commitment; subprocess ownership belongs to
+  the stdio loop, which is wired separately.
+reversal: |
+  Possible if the handler set changes (e.g. ACP v2 adds
+  `session/load`). Reversal is a new revision of this decision
+  under the same active policy.
+migration: |
+  Add new handlers to `outcomes[]` of this decision and to the
+  `outcomes[]` of `decisions/acp-wire-v1@0`; ship the
+  implementation in `lib/yeah-acp.el` once the schema in
+  `schemas/acp-v1.json` covers the new shape.
+supersedes: []
+superseded_by: null
+---
