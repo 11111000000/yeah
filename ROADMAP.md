@@ -84,9 +84,13 @@ exits 0 and the first ERT pair is green.
 | # | Task | Decision | Closes |
 |---|---|---|---|
 | 22 | `lib/yeah-codes.el` (sandbox.el-PTC) | `sandbox-elisp-codes-mode@0` | code-mode |
-| 23 | sub-agent (`task` tool) | (TBD) | A2-3 derivation |
+|   |  ↑ closed in commit (this Tier) |  |  |
+| 23 | sub-agent (`task` tool) | `subagent-impl@0` | A2-3 derivation |
+|   |  ↑ closed in commit (this Tier) |  |  |
 | 24 | compaction (gptel-summarize tail) | (TBD) | §A5 enforcement |
+|    |  ↑ closed in commit (this Tier) |  |  |
 | 25 | `lib/yeah-undo.el` (per-tick undo-boundary) | (TBD) | §A3 enforcement |
+|    |  ↑ closed in commit (this Tier) |  |  |
 
 ### Deferred (post v0.1.0)
 

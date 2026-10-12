@@ -26,6 +26,7 @@ under the policy; superseded only by a protected-policy transition
 | `decisions/sandbox-elisp-codes-mode.yaml` | Code-mode is sandbox.el + JSON-clean boundary + whitelist | active |
 | `decisions/elisp-toolchain-only.yaml` | `lib/` is Elisp-only (no compiled languages) | active |
 | `decisions/process-principles.yaml` | P1–P7 binding obligations; P3/P4 are manual-acceptance | active |
+| `decisions/compact-impl@0.yaml` | The compactor (Tier 4 #24); pure projection over the append-only log | landed (Tier 4 #24) |
 
 ## Modules (by file)
 
@@ -53,8 +54,9 @@ under the policy; superseded only by a protected-policy transition
 | `lib/yeah-perm.el` | Permission system | landed (Tier 3 #19) |
 | `lib/yeah-session.el` | Append-only JSONL log | landed (Tier 3 #20) |
 | `lib/yeah-compact.el` | Compaction (projection) | planned (Tier 4) |
-| `lib/yeah-codes.el` | Sandbox.el-PTC | planned (Tier 4) |
-| `lib/yeah-undo.el` | Per-tick undo-boundary | planned (Tier 4) |
+| `lib/yeah-subagent.el` | Sub-agent delegation API (stub) | landed (Tier 4 #23) |
+| `lib/yeah-codes.el` | Sandbox.el-PTC (stub; `sandbox.el` integration in `codes-impl@1') | landed (Tier 4 #22) |
+| `lib/yeah-undo.el` | Per-tick undo-boundary | landed (Tier 4 #25) |
 | `lib/yeah-gptel.el` | gptel hook integration | landed (Tier 2 #14) |
 | `lib/yeah-acp.el` | ACP agent side | landed (Tier 2 #12) |
 | `lib/yeah-emcp.el` | MCP server side (`emcp` tools) | landed (Tier 2 #13) |
@@ -88,16 +90,20 @@ pair obligation.
 | `tests/fixtures/negative/session-*.el` | Forbidden log mutations |
 | `tests/fixtures/positive/codes-*.el` | Sandbox.el-PTC scenarios that work |
 | `tests/fixtures/negative/codes-*.el` | Sandbox.el-PTC scenarios that fail safely |
+| `tests/fixtures/positive/yeah-compact-cut.el` | Compactor finds the cut-point and writes a projection | landed (Tier 4 #24) |
+| `tests/fixtures/negative/yeah-compact-cut-noop.el` | Compactor is a no-op when the budget exceeds every record | landed (Tier 4 #24) |
 
 ## Tests (by file)
 
 | File | What it asserts |
 |---|---|
 | `tests/unit/test-yeah-state.el` | The 10 states exist; transitions are well-formed |
+| `tests/unit/test-yeah-compact.el` | The compactor finds the cut-point, returns nil when over-budget, summarises (default + custom), runs no-op or records, projection length shrinks | landed (Tier 4 #24) |
 | `tests/unit/test-yeah-gptel.el` | The three gptel hooks are installed, the prelude is prepended, the FSM handler accepts valid shapes, missing-gptel is a no-op |
 | `tests/unit/test-yeah-loop.el` | The 18 transitions trigger in isolation |
 | `tests/unit/test-yeah-perm.el` | Permission rule registry, matching algorithm, last-matching-wins | landed (Tier 3 #19) |
 | `tests/unit/test-process-principles.el` | P1, P2, P5, P6 conformance | landed (Tier 1 #11) |
+| `tests/unit/test-yeah-subagent.el` | Sub-agent delegation API: spawn returns completed, creates a child session, wait returns the same plist, fork-summary includes the id, depth limit default = 3 and overridable, depth-0 allowed | landed (Tier 4 #23) |
 
 ## Deficits
 
