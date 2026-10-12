@@ -1,0 +1,144 @@
+---
+schema: yeah/0.0.0-alpha
+id: perm-system
+revision: 0
+state: active
+intent: |
+  Provide the Yeah kernel with a permission system that the agent loop
+  consults before invoking any tool. The model is the opencode v2
+  `(action resource) -> effect` rule set: a rule triples an action
+  string, a resource string, and an effect (`allow`, `deny`, or
+  `ask`); the last-matching rule wins; if no rule matches, the
+  default is `ask`. Runtime decisions taken by the user can be
+  persisted back into the rule set via `save: 'always'`, or kept
+  only in the session log (Tier 3 #20, forthcoming).
+
+  This decision is the kernel-side counterpart to the opencode v2
+  permission model. It is **A0-separated** from the loop itself:
+  the loop asks `yeah-perm-evaluate' and signals `user-error' on
+  deny or ask; the loop does not embed any policy. The eventual
+  transient UI (the prompt the user sees) lives in a separate
+  module (Tier 3 #21, `lib/yeah-shell.el').
+
+  This is the first kernel module whose public API is keyed by a
+  *string pair* (action, resource) rather than a single string id;
+  it is also the first module that signals `user-error' from a
+  *query* (rather than from a mutation) — `yeah-perm-evaluate' is a
+  query that raises on deny or ask, so callers can wrap it in
+  `condition-case' if they need a tri-state answer.
+commitment: |
+  The kernel exposes a permission rule registry scoped to the
+  current agent. The public API is exactly:
+
+    * `yeah-perm-rule-make ACTION RESOURCE EFFECT'
+       build a rule plist `(:action ACT :resource RES :effect EFF)'
+    * `yeah-perm-rules-add RULE'
+       append RULE to the current agent's ruleset; return RULE
+    * `yeah-perm-rules-list'
+       return all current rules in registration order
+    * `yeah-perm-rules-reset-for-test'
+       drop every rule (tests only)
+    * `yeah-perm-evaluate ACTION RESOURCE'
+       central check; returns `:allow', raises `user-error' on
+       `:deny', raises `user-error' on `:ask'
+    * `yeah-perm-record-decision ACTION RESOURCE REPLY'
+       record a runtime decision; if REPLY is `allow' and the
+       runtime passed `save: \\='always\\='', persist the rule
+
+  EFFECT is one of the symbols `allow', `deny', `ask'.
+  ACTION and RESOURCE are strings; `"*"' is a wildcard resource.
+  Rule matching scans the rule list in **registration order** and
+  applies the **last** matching rule; "matches" means
+  `(string= ACTION rule-action)' (exact) **or**
+  `(string= "*" rule-resource)' (wildcard resource) combined with
+  an exact action match. Wildcard action is not allowed. When no
+  rule matches, the default effect is `ask'.
+
+  `yeah-perm-evaluate' on `:deny' raises
+  `(user-error "deny: <action> on <resource>")'; on `:ask' it
+  raises `(user-error "ask: <action> on <resource>")'. This is
+  the §3.1 rule: domain errors are `user-error'.
+
+  `yeah-perm-record-decision' accepts a REPLY of `allow', `deny',
+  or `ask'. When REPLY is `allow' and SAVE is the symbol
+  `always', the rule `(ACTION RESOURCE , `allow)' is persisted
+  into the ruleset (via `yeah-perm-rules-add'). Otherwise the
+  decision is recorded in the session log only (Tier 3 #20
+  forthcoming); this module does not yet own the session log,
+  so the log path is a stub that returns the plist it would have
+  written.
+
+  Names, the effect set, the default, and the last-matching-wins
+  semantics are stable once registered; changing any of them is a
+  protected-policy transition (revision bump of this decision).
+axiom_link:
+  - A0
+scope:
+  capabilities:
+    - perm-system-v0
+  paths:
+    - "lib/yeah-perm.el"
+    - "tests/unit/test-yeah-perm.el"
+    - "tests/fixtures/positive/yeah-perm-allow.el"
+    - "tests/fixtures/negative/yeah-perm-deny.el"
+    - "decisions/perm-impl@0.yaml"
+  exclusions:
+    - "lib/yeah-loop.el"
+    - "lib/yeah-tools.el"
+    - "lib/yeah-emcp.el"
+outcomes:
+  - id: rule-set-public-api
+    statement: |
+      The six public functions listed in `commitment' exist in
+      `lib/yeah-perm.el' with the documented signatures and
+      semantics. `yeah-perm-rules-reset-for-test' is exposed at
+      top level (matching the `yeah-tools-reset-for-test' and
+      `yeah-emcp--reset-for-test' convention) so test code can
+      call it.
+  - id: rule-matching-algorithm
+    statement: |
+      `yeah-perm-evaluate' scans the rule list in registration
+      order, applies the **last** matching rule, and signals
+      `user-error' on `:deny' or `:ask'. A rule matches when
+      `(string= ACTION rule-action)' **and**
+      (`(string= RESOURCE rule-resource)' or
+       `(string= "*" rule-resource)'). When no rule matches, the
+      default effect is `ask'.
+  - id: rule-builder-validation
+    statement: |
+      `yeah-perm-rule-make' validates that ACTION and RESOURCE are
+      strings, and that EFFECT is one of `allow', `deny', `ask'.
+      Any other shape raises `user-error' at construction time;
+      malformed rules never enter the registry.
+  - id: persist-on-save-always
+    statement: |
+      `yeah-perm-record-decision' with REPLY `allow' and SAVE
+      `always' persists a rule of the shape
+      `(ACTION RESOURCE , `allow)' into the ruleset. Any other
+      shape records the decision in the session log only; the
+      session-log path is currently a stub that returns the
+      decision plist.
+  - id: fixture-pair
+    statement: |
+      A positive fixture `tests/fixtures/positive/yeah-perm-allow.el'
+      and a negative fixture
+      `tests/fixtures/negative/yeah-perm-deny.el' exist; both are
+      placeholder files that document the rule shape and the
+      matching algorithm.
+counterexample: |
+  An implementation that silently coerces a wildcard action (`"*`')
+  into any action, defeating the explicit "wildcard action is not
+  allowed" commitment. Or an implementation that evaluates the
+  *first* matching rule instead of the *last* — opencode v2
+  semantics are last-wins, and flipping it would let a permissive
+  default rule silently mask a stricter rule the user added later.
+reversal: |
+  Possible by adopting `perm-impl@1' (e.g. opencode v3, or a
+  capability-based model). Reversal is a protected-policy transition.
+migration: |
+  Existing rules at the time of the upgrade are read back through
+  `yeah-perm-rules-list' and translated to the new shape; no rule
+  is silently dropped.
+supersedes: []
+superseded_by: null
+---

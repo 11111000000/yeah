@@ -49,9 +49,9 @@ under the policy; superseded only by a protected-policy transition
 | `lib/yeah-loop.el` | The agent loop (12 states, 18 transitions) | landed (Tier 0 #4) |
 | `lib/yeah-validate.el` | The decision-driven validator | landed (Tier 1 #6) |
 | `lib/yeah-loop.el` | The agent loop (12 states, 18 transitions) | landed (Tier 0 #4) |
-| `lib/yeah-tools.el` | Tool registry | planned (Tier 3) |
-| `lib/yeah-perm.el` | Permission system | planned (Tier 3) |
-| `lib/yeah-session.el` | Append-only JSONL log | planned (Tier 3) |
+| `lib/yeah-tools.el` | Tool registry | landed (Tier 3 #18) |
+| `lib/yeah-perm.el` | Permission system | landed (Tier 3 #19) |
+| `lib/yeah-session.el` | Append-only JSONL log | landed (Tier 3 #20) |
 | `lib/yeah-compact.el` | Compaction (projection) | planned (Tier 4) |
 | `lib/yeah-codes.el` | Sandbox.el-PTC | planned (Tier 4) |
 | `lib/yeah-undo.el` | Per-tick undo-boundary | planned (Tier 4) |
@@ -96,6 +96,7 @@ pair obligation.
 | `tests/unit/test-yeah-state.el` | The 10 states exist; transitions are well-formed |
 | `tests/unit/test-yeah-gptel.el` | The three gptel hooks are installed, the prelude is prepended, the FSM handler accepts valid shapes, missing-gptel is a no-op |
 | `tests/unit/test-yeah-loop.el` | The 18 transitions trigger in isolation |
+| `tests/unit/test-yeah-perm.el` | Permission rule registry, matching algorithm, last-matching-wins | landed (Tier 3 #19) |
 | `tests/unit/test-process-principles.el` | P1, P2, P5, P6 conformance | landed (Tier 1 #11) |
 
 ## Deficits
