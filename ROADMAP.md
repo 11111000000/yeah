@@ -51,6 +51,7 @@ exits 0 and the first ERT pair is green.
 | 9 | Pre-commit hook (decision-required) | `process-principles@0` | drift detection |
 | 10 | `ELISP_BEST_PRACTICES.md §11` (trap log) | `process-principles@0` | agent memory |
 | 11 | `tests/unit/test-process-principles-*.el` (P1, P2, P5, P6) | `process-principles@0` | machine-checkable subset |
+|   |  ↑ closed in commit (this Tier) |  |  |  |
 
 ### Tier 2 — wire layer (ACP + emcp)
 

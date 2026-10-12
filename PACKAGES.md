@@ -96,10 +96,7 @@ pair obligation.
 | `tests/unit/test-yeah-state.el` | The 10 states exist; transitions are well-formed |
 | `tests/unit/test-yeah-gptel.el` | The three gptel hooks are installed, the prelude is prepended, the FSM handler accepts valid shapes, missing-gptel is a no-op |
 | `tests/unit/test-yeah-loop.el` | The 18 transitions trigger in isolation |
-| `tests/unit/test-process-principles-p1.el` | Read-first order in `AGENTS.md` |
-| `tests/unit/test-process-principles-p2.el` | Decision ↔ fixture pairing |
-| `tests/unit/test-process-principles-p5.el` | `scripts/dev edit-loop-detect` exists |
-| `tests/unit/test-process-principles-p6.el` | `scripts/dev byte-compile-all` exists and is clean |
+| `tests/unit/test-process-principles.el` | P1, P2, P5, P6 conformance | landed (Tier 1 #11) |
 
 ## Deficits
 

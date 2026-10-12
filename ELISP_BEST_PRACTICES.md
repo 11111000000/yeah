@@ -147,9 +147,40 @@ file's `outcomes` list.
 
 ## §11. Trap log (Elisp)
 
-This section will record recurring Elisp and package errors with
+This section records recurring Elisp and package errors with
 minimal reproducers, the same way `OCAML_BEST_PRACTICES.md §11`
 records OCaml/dune errors.
 
-> No entries yet. The first entry will be added as the first
-> real kernel module is built.
+> Each entry is added in the same commit that surfaces the
+> trap; the date is the commit date and the PR / commit hash
+> is recorded for back-reference.
+
+### §11.1 — `(let ((defvar-var X)) …)` does not rebind `defvar` under `lexical-binding: t`
+
+- **Date:** 2026-10-12 (commits `8e2f324` and `93ffe8f`)
+- **Module:** `lib/yeah-validate.el`, `tests/unit/test-yeah-validate.el`
+- **Symptom:** a test that does
+  ```
+  (let ((yeah-validate--decisions-dir "decisions"))
+    …)
+  ```
+  fails to see the rebound value; `default-directory` is correct
+  but `directory-files` reads the global dynamic value of
+  `yeah-validate--decisions-dir`.
+- **Cause:** under `lexical-binding: t`, `let` creates a lexical
+  binding that shadows the variable **for the lexical scope of
+  the let body**. The `defvar`-declared variable is also
+  `special` (i.e. dynamic), and inside a function that was
+  compiled with `lexical-binding: t`, the function body reads
+  the *global dynamic* binding, not the lexical one. The two
+  bindings are independent.
+- **Fix:** use `setq` to mutate the dynamic binding:
+  ```
+  (let ((default-directory root))
+    (setq yeah-validate--decisions-dir    "decisions"
+          yeah-validate--obligations-dir  "obligations"
+          …)
+    (funcall thunk))
+  ```
+- **Convention:** when documenting a new `defvar` in `lib/`,
+  add a docstring note: "Rebind with `setq`, not `let'."
