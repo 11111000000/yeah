@@ -110,7 +110,7 @@ mathc --root . next
 
 ### What is declared
 
-28 claim(s): 16 holds, 11 not established.
+28 claim(s): 17 holds, 10 not established.
 
 The full list, and what is not covered: `mathc --root . map`.
 

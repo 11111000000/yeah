@@ -367,7 +367,7 @@
       "falsifier": "a tool call the model asked for is not dispatched, or is dispatched without the rules deciding, or the results do not reach the log",
       "register": "fact",
       "accepted": null,
-      "control": "sed -i 's/(yeah-tools-call name args)/(list :refused)/' lib/yeah-turn.el",
+      "control": "sed -i 's/(apply (plist-get spec :handler) args)/(list :refused)/' lib/yeah-tools.el",
       "attestations": []
     },
     {
