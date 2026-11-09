@@ -19,7 +19,7 @@
 session; that session **is** the run-time of the agent. There is no
 sidecar process and no client/server split:
 
-- the kernel is **Elisp** (`lib/`, sixteen modules, one feature per file);
+- the kernel is **Elisp** (`lib/`, eighteen modules, one feature per file);
 - the model is reached through **gptel**, and only through gptel;
 - the tools are **Elisp functions**, registered in a registry and gated by
   a permission system;
@@ -49,16 +49,16 @@ sidecar process and no client/server split:
 | `yeah-turn.el` | one turn of the model: the call, the tool calls, the dispatch | holds |
 | `yeah-scheduler.el` | the batch of tool calls: shared, exclusive, and a barrier | holds |
 | `yeah-events.el` | the vocabulary of the log: every record is a declared event | holds |
-| `yeah-codes.el` | the PTC sandbox | **refuted** |
+| `yeah-approval.el` | the answers to a request for permission, and the policy of a run with nobody | holds |
+| `yeah-ui.el` | what the person sees, read from the event stream | holds |
+| `yeah-codes.el` | the PTC sandbox: the body of a form is confined | holds |
 
 ## What does not run yet, and is said so
 
-One claim is **refuted** in the map, and the wave says what will turn it
-green:
-
-- `ptc-sandbox-restricts-model-code` — the PTC sandbox gates the *name* of
-  a binding and then evaluates the body the model supplied. The check is
-  `tests/checks/check-ptc-sandbox-restricts.el`; it fails today.
+No claim is **refuted** any more. The PTC sandbox confines the body of a
+form: it may call the tools of the registry and a small core, and a call
+outside them is refused before a single form is evaluated. The check is
+`tests/checks/check-ptc-sandbox-restricts.el`.
 
 The loop itself is wired: `the-agent-loop-is-wired` holds, and the turn
 that carries it — `lib/yeah-turn.el` — asks the model through gptel,
