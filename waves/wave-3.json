@@ -1,0 +1,17 @@
+{
+  "id": "wave-3",
+  "title": "the sandbox that is a sandbox",
+  "intent": "The PTC sandbox checks the name of the binding the model asked for and then evaluates the body the model supplied, in a plain let. The whitelist is a list of names, so a form named read can delete a file. The claim ptc-sandbox-restricts-model-code is refuted, and it stays refuted until the body of the form is constrained, not only its name. The real answer is sandbox.el, which needs Emacs 29 and a CI target; until that exists, the boundary is a static analysis of the form: the free symbols of the body must be inside the whitelist, and anything else is refused before a single form is evaluated.",
+  "touches": [
+    "lib/yeah-codes.el", "tests/checks/check-ptc-sandbox-restricts.el"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-ptc-sandbox-restricts.el"
+  ],
+  "claims": [ "ptc-sandbox-restricts-model-code" ],
+  "commitment": [
+    { "claim": "ptc-sandbox-restricts-model-code", "state": "holds" }
+  ],
+  "objection": "A static analysis of the free symbols of a form is a parser, and parsers have edges: a macro expands, a backquote evaluates, a funcall reaches anything. The check that the body is confined to the whitelist can pass while the body still reaches the host.",
+  "refuted_by": "A form whose body reaches the host through a path the analysis does not see, run against the boundary. If such a form runs, the boundary is a description and not a boundary, and the wave has not closed."
+}
