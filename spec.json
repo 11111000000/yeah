@@ -2,21 +2,34 @@
   "goal": {
     "text": "Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only.",
     "scope": [
-      "lib/", "tests/", "scripts/", "schemas/", "AGENTS.md", "README.md",
+      "lib/",
+      "tests/",
+      "scripts/",
+      "schemas/",
+      "AGENTS.md",
+      "README.md",
       "ELISP_BEST_PRACTICES.md"
     ],
     "by": "p.b.kosov@yandex.ru",
     "at": "1794240763"
   },
   "uncertainty_budget": 3,
-  "closed_waves": [ "wave-1" ],
+  "closed_waves": [
+    "wave-1"
+  ],
   "claims": [
     {
       "id": "lib-byte-compiles-clean",
       "subject": "every file under lib/ byte-compiles without errors and without warnings",
-      "scope": [ "lib/" ],
+      "scope": [
+        "lib/",
+        "scripts/dev"
+      ],
       "requirements": [
-        { "kind": "verifier", "spec": "./scripts/dev byte-compile-all" }
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev byte-compile-all"
+        }
       ],
       "falsifier": "the byte-compilation of lib/ fails, or reports a warning",
       "register": "fact",
@@ -27,7 +40,12 @@
     {
       "id": "fsm-has-twelve-states-and-eighteen-transitions",
       "subject": "the agent loop is a finite state machine with exactly twelve states and eighteen transitions, and both numbers are fixed by the code",
-      "scope": [ "lib/yeah-state.el", "lib/yeah-loop.el" ],
+      "scope": [
+        "lib/yeah-state.el",
+        "lib/yeah-loop.el",
+        "tests/unit/test-yeah-state.el",
+        "tests/unit/test-yeah-loop.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -43,7 +61,11 @@
     {
       "id": "session-log-is-append-only",
       "subject": "the session log is append-only: a record that has been written is never rewritten and never removed",
-      "scope": [ "lib/yeah-session.el" ],
+      "scope": [
+        "lib/yeah-session.el",
+        "tests/checks/check-session-log-append-only.el",
+        "tests/unit/test-yeah-session.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -59,7 +81,12 @@
     {
       "id": "compaction-is-a-projection-not-a-deletion",
       "subject": "compaction is a projection: the source records stay on disk and the compaction record joins them",
-      "scope": [ "lib/yeah-compact.el", "lib/yeah-session.el" ],
+      "scope": [
+        "lib/yeah-compact.el",
+        "lib/yeah-session.el",
+        "tests/checks/check-compaction-keeps-sources.el",
+        "tests/unit/test-yeah-compact.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -75,7 +102,10 @@
     {
       "id": "tool-call-validates-its-arguments",
       "subject": "a tool call is refused when the number of arguments, or the type of one of them, does not match the tool's declared input",
-      "scope": [ "lib/yeah-tools.el" ],
+      "scope": [
+        "lib/yeah-tools.el",
+        "tests/unit/test-yeah-tools.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -91,7 +121,10 @@
     {
       "id": "permission-decides-by-the-last-matching-rule",
       "subject": "the permission system decides by the last matching rule, and asks when nothing matches",
-      "scope": [ "lib/yeah-perm.el" ],
+      "scope": [
+        "lib/yeah-perm.el",
+        "tests/unit/test-yeah-perm.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -107,7 +140,12 @@
     {
       "id": "acp-dispatcher-handles-the-four-methods",
       "subject": "the ACP dispatcher answers initialize, session/new, session/prompt and session/cancel, and refuses a method it does not know",
-      "scope": [ "lib/yeah-acp.el", "schemas/acp-v1.json" ],
+      "scope": [
+        "lib/yeah-acp.el",
+        "schemas/acp-v1.json",
+        "tests/unit/test-yeah-acp.el",
+        "tests/checks/check-acp-dispatcher-routes-every-method.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -127,7 +165,12 @@
     {
       "id": "emcp-tool-surface-matches-the-schema",
       "subject": "the emcp registry and schemas/emcp-v1.json name the same tools, and a duplicate id is refused",
-      "scope": [ "lib/yeah-emcp.el", "schemas/emcp-v1.json" ],
+      "scope": [
+        "lib/yeah-emcp.el",
+        "schemas/emcp-v1.json",
+        "tests/checks/check-emcp-registry-matches-schema.el",
+        "tests/unit/test-yeah-emcp.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -143,7 +186,10 @@
     {
       "id": "undo-boundary-records-every-tick",
       "subject": "every tick's changes can be undone: an undo boundary is taken around the buffer or the file the tick touched",
-      "scope": [ "lib/yeah-undo.el" ],
+      "scope": [
+        "lib/yeah-undo.el",
+        "tests/unit/test-yeah-undo.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -159,7 +205,12 @@
     {
       "id": "gptel-hooks-live-in-one-module-only",
       "subject": "the gptel hooks are registered in exactly one module, lib/yeah-gptel.el, and nowhere else in lib/",
-      "scope": [ "lib/yeah-gptel.el", "lib/" ],
+      "scope": [
+        "lib/yeah-gptel.el",
+        "lib/",
+        "tests/checks/check-gptel-hooks-live-in-one-module.sh",
+        "tests/unit/test-yeah-gptel.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -175,7 +226,11 @@
     {
       "id": "subagent-spawns-a-child-within-the-depth-limit",
       "subject": "a sub-agent spawns a child session, waits for it, and a spawn past the depth limit is refused",
-      "scope": [ "lib/yeah-subagent.el" ],
+      "scope": [
+        "lib/yeah-subagent.el",
+        "tests/checks/check-subagent-depth-limit-is-enforced.el",
+        "tests/unit/test-yeah-subagent.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -191,7 +246,10 @@
     {
       "id": "yeah-shell-keeps-a-bounded-history",
       "subject": "the Yeah shell keeps a bounded history of what was sent to it, and creates its REPL buffer",
-      "scope": [ "lib/yeah-shell.el" ],
+      "scope": [
+        "lib/yeah-shell.el",
+        "tests/unit/test-yeah-shell.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -208,8 +266,11 @@
       "id": "the-agent-loop-is-wired",
       "subject": "the tick, the permission system, the tool registry and the session log are wired into one loop: each is called from outside its own module",
       "scope": [
-        "lib/yeah-loop.el", "lib/yeah-perm.el", "lib/yeah-tools.el",
-        "lib/yeah-session.el"
+        "lib/yeah-loop.el",
+        "lib/yeah-perm.el",
+        "lib/yeah-tools.el",
+        "lib/yeah-session.el",
+        "tests/checks/check-agent-loop-wired.sh"
       ],
       "requirements": [
         {
@@ -226,7 +287,11 @@
     {
       "id": "ptc-sandbox-restricts-model-code",
       "subject": "the PTC sandbox refuses a form whose name is not whitelisted, and refuses code inside a whitelisted form that calls outside the whitelist",
-      "scope": [ "lib/yeah-codes.el" ],
+      "scope": [
+        "lib/yeah-codes.el",
+        "tests/checks/check-ptc-sandbox-restricts.el",
+        "tests/unit/test-yeah-codes.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -242,7 +307,9 @@
     {
       "id": "the-model-is-called-through-the-gptel-hook-surface",
       "subject": "the model is called through the gptel hook surface and nowhere else: the transport has one entry point",
-      "scope": [ "lib/yeah-gptel.el" ],
+      "scope": [
+        "lib/yeah-gptel.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -258,7 +325,9 @@
     {
       "id": "the-acp-agent-speaks-over-stdio",
       "subject": "the ACP agent speaks JSON-RPC over stdio: a client can open the process and exchange an initialize request and its answer",
-      "scope": [ "lib/yeah-wire.el" ],
+      "scope": [
+        "lib/yeah-wire.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
