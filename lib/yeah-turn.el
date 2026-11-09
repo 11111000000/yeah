@@ -10,9 +10,9 @@
 ;;; Commentary:
 ;;
 ;; One turn of the agent loop: ask the model, take the tool calls it asked
-;; for, decide whether each of them may run, run it through the registry,
-;; write what happened into the append-only log, and hand the result back
-;; so that the model can answer again.
+;; for, decide whether each of them may run, run them together, write what
+;; happened into the append-only log, and hand the results back so that
+;; the model can answer again.
 ;;
 ;; The turn does not know how the model is reached. It is handed a
 ;; TRANSPORT: a function of (PROMPT CALLBACK) that calls CALLBACK with the
@@ -32,8 +32,9 @@
 ;;
 ;; What the turn owns is the part that must not be given away: the
 ;; permission system decides whether a call may run, the registry decides
-;; whether its arguments are well formed, and the log remembers what
-;; happened. The model proposes; it does not decide.
+;; whether its arguments are well formed, the scheduler decides what runs
+;; together, and the log remembers what happened. The model proposes; it
+;; does not decide.
 
 ;;; Code:
 
@@ -43,16 +44,12 @@
 (require 'yeah-tools)
 (require 'yeah-perm)
 (require 'yeah-session)
+(require 'yeah-scheduler)
 
 ;; A tool of the model is a gptel-tool struct when gptel is loaded, and a
 ;; plist with a :name key otherwise; the checks use the latter.
 (declare-function gptel-tool-p "gptel" (object))
 (declare-function gptel-tool-name "gptel" (tool))
-
-(defconst yeah-turn--max-calls 32
-  "The most tool calls one turn may dispatch before it stops and says so.
-A model that asks for the same thing for ever must not spend somebody
-else's money for ever.")
 
 (cl-defstruct (yeah-turn (:constructor yeah-turn--make))
   "One run of the agent loop.
@@ -71,15 +68,21 @@ ERROR holds the reason when the run stopped for a reason of its own."
   (error nil))
 
 (defun yeah-turn--tool-name (tool)
-  "Return the name of the gptel-shaped TOOL.
-TOOL is a gptel-tool struct when gptel is loaded, and a plist with a
-`:name' key otherwise; the checks use the latter."
+  "Return the name of the gptel-shaped TOOL."
   (cond ((and (fboundp 'gptel-tool-name) (gptel-tool-p tool))
          (gptel-tool-name tool))
         ((plist-get tool :name) (plist-get tool :name))
         (t (signal 'user-error
                    (list (format "yeah-turn: cannot read the name of a tool: %S"
                                  tool))))))
+
+(defun yeah-turn--resource (args)
+  "Return the resource the tool acts on: its first argument when that
+argument names a thing, and the printed arguments otherwise. The rules
+of the permission system match this, so `read' on a file is matched by
+the path and not by a printed list of arguments."
+  (or (and (stringp (car args)) (car args))
+      (format "%S" args)))
 
 (defun yeah-turn--tick (turn label)
   "Move TURN on LABEL and record the state it moved to.
@@ -107,41 +110,87 @@ bug in the turn, and the run stops with that reason."
                           (list :type "error" :payload reason)))
   reason)
 
-(defun yeah-turn--resource (args)
-  "Return the resource the tool acts on: its first argument when that
-argument names a thing, and the printed arguments otherwise. The rules
-of the permission system match this, so `read' on a file is matched by
-the path and not by a printed list of arguments."
-  (or (and (stringp (car args)) (car args))
-      (format "%S" args)))
-
-(defun yeah-turn--dispatch (turn call)
-  "Run one tool CALL on behalf of TURN.
-Return the outcome plist: `(:name NAME :ok BOOL :result VALUE)' or
-`(:name NAME :ok nil :error REASON)'."
+(defun yeah-turn--prepare (index call)
+  "Prepare the tool CALL at INDEX for the batch.
+Return a plist: :index is the position of the call, :name and :args are
+what the tool is called with, :spec is the registry spec of the tool,
+and :refused is the reason the call may not run — or nil."
   (let* ((name (yeah-turn--tool-name (nth 0 call)))
          (args (nth 1 call))
-         (outcome
-          (condition-case err
-              (let ((decision (yeah-perm-evaluate name (yeah-turn--resource args))))
-                (if (eq decision :allow)
-                    (list :name name :ok t
-                          :result (yeah-tools-call name args))
-                  (list :name name :ok nil
-                        :error (format "the rules say %s" decision))))
-            (user-error
-             (list :name name :ok nil :error (error-message-string err))))))
-    (cl-incf (yeah-turn-calls turn))
-    (yeah-session-append
-     (yeah-turn-session turn)
-     (list :type "tool-result"
-           :tool name
-           :ok (plist-get outcome :ok)
-           :payload (let ((value (if (plist-get outcome :ok)
-                                    (plist-get outcome :result)
-                                  (plist-get outcome :error))))
-                      (if (stringp value) value (format "%S" value)))))
-    outcome))
+         (spec (yeah-tools-get name))
+         (refused
+          (cond
+           ((null spec)
+            (format "there is no tool named %s" name))
+           (t
+            (condition-case err
+                (let ((decision (yeah-perm-evaluate name
+                                                 (yeah-turn--resource args))))
+                  (if (eq decision :allow)
+                      nil
+                    (format "the rules say %s" decision)))
+              (user-error (error-message-string err)))))))
+    (list :index index :name name :args args :spec spec :refused refused)))
+
+(defun yeah-turn--dispatch-batch (turn calls)
+  "Dispatch CALLS together, and continue the turn when they have settled."
+  (let* ((prepared (mapcar (lambda (index)
+                              (yeah-turn--prepare index (nth index calls)))
+                            (number-sequence 0 (1- (length calls)))))
+         (results (make-vector (length calls) nil))
+         (refused (make-vector (length calls) nil))
+         (runnable nil))
+    (dolist (slot prepared)
+      (if (plist-get slot :refused)
+          (progn
+            (aset refused (plist-get slot :index) t)
+            (aset results (plist-get slot :index) (plist-get slot :refused)))
+        (push slot runnable)))
+    (setf runnable (nreverse runnable))
+    (cl-incf (yeah-turn-calls turn) (length calls))
+    (yeah-scheduler-run
+     (mapcar (lambda (slot)
+               (let ((spec (plist-get slot :spec)))
+                 (list :name (plist-get slot :name)
+                       :args (plist-get slot :args)
+                       :handler (lambda (args &optional done)
+                                  (yeah-tools-dispatch (plist-get slot :name)
+                                                       args done))
+                       :async (plist-get spec :async)
+                       :mode (yeah-tools-concurrency spec))))
+             runnable)
+     (lambda (settled)
+       ;; The results are in the order of the CALLS, whatever order the
+       ;; calls finished in: the log of a run is read the same way twice.
+       (let ((i 0))
+         (dolist (slot runnable)
+           (aset results (plist-get slot :index) (aref settled i))
+           (setq i (1+ i))))
+       (let ((i 0))
+         (dolist (call calls)
+           (let* ((result (aref results i))
+                  (value (if (aref refused i) result (format "%S" result))))
+             (yeah-session-append
+              (yeah-turn-session turn)
+              (list :type "tool-result"
+                    :tool (yeah-turn--tool-name (nth 0 call))
+                    :ok (not (aref refused i))
+                    :payload (if (stringp value) value (format "%S" value)))))
+           (setq i (1+ i))))
+       ;; The machine first: the batch is over, and the model is asked
+       ;; again. The results are handed to the model only afterwards, so
+       ;; that the answer that comes back arrives in a state that can
+       ;; receive it.
+       (yeah-turn--tick turn 'tool-end)
+       (yeah-turn--tick turn 'budget-ok)
+       (yeah-turn--tick turn 'continue)
+       ;; The model is told what happened, in the order it asked.
+       (let ((i 0))
+         (dolist (call calls)
+           (let ((continue (nth 2 call)))
+             (when continue
+               (funcall continue (aref results i))))
+           (setq i (1+ i))))))))
 
 (defun yeah-turn--answer (turn answer)
   "Handle the model's ANSWER in TURN."
@@ -156,27 +205,8 @@ Return the outcome plist: `(:name NAME :ok BOOL :result VALUE)' or
                             (list :type "assistant" :payload answer)))
      ((and (consp answer) (eq (car answer) 'tool-call))
       (yeah-turn--tick turn 'stream-end)
-      (let (continues)
-        (dolist (call (cdr answer))
-          (unless (yeah-turn-done turn)
-            (yeah-turn--tick turn 'tool-call)
-            (let* ((outcome (yeah-turn--dispatch turn call))
-                   (continue (nth 2 call)))
-              (when continue
-                (push (cons continue (if (plist-get outcome :ok)
-                                         (plist-get outcome :result)
-                                       (plist-get outcome :error)))
-                      continues)))
-            (yeah-turn--tick turn 'tool-end)
-            (yeah-turn--tick turn 'budget-ok)))
-        ;; Everything that was asked for has been dispatched; the model is
-        ;; asked again with the results. The continuation is called after
-        ;; the machine has recorded the batch, because it may answer at
-        ;; once and the answer must arrive in a state that can receive it.
-        (unless (yeah-turn-done turn)
-          (yeah-turn--tick turn 'continue))
-        (dolist (pair (nreverse continues))
-          (funcall (car pair) (cdr pair)))))
+      (yeah-turn--tick turn 'tool-call)
+      (yeah-turn--dispatch-batch turn (cdr answer)))
      (t
       (yeah-turn--fail turn (format "the model answered with %S" answer))))))
 

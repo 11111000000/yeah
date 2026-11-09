@@ -9,7 +9,7 @@
     "at": "1794244514"
   },
   "uncertainty_budget": 3,
-  "closed_waves": [ "wave-01", "wave-02" ],
+  "closed_waves": [ "wave-01", "wave-02", "wave-03" ],
   "claims": [
     {
       "id": "lib-byte-compiles-clean",
@@ -325,18 +325,21 @@
     },
     {
       "id": "tools-from-one-turn-run-in-parallel",
-      "subject": "tool calls from one assistant message run concurrently, with a declared concurrency mode per tool, and the batch is a barrier",
-      "scope": [ "lib/yeah-scheduler.el" ],
+      "subject": "the tool calls of one answer of the model run together: a shared tool may run alongside the other shared tools, an exclusive tool runs alone, and the batch settles only when every call has settled",
+      "scope": [
+        "lib/yeah-scheduler.el", "lib/yeah-turn.el",
+        "tests/checks/check-tools-run-in-parallel.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
           "spec": "./scripts/dev check tests/checks/check-tools-run-in-parallel.el"
         }
       ],
-      "falsifier": "two tool calls from one message run one after the other, or a batch continues before a tool in it has settled",
+      "falsifier": "two shared calls of one answer run one after the other, an exclusive call runs while another is running, or the batch continues before its last call has settled",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/^          (yeah-scheduler--advance batch)$/          (unless (yeah-batch-running batch) (yeah-scheduler--advance batch))/' lib/yeah-scheduler.el",
       "attestations": []
     },
     {
