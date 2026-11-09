@@ -1,4 +1,4 @@
-;;; yeah-loop.el --- the 18 FSM transitions of the agent loop -*- lexical-binding: t; -*-
+;;; yeah-loop.el --- the 20 FSM transitions of the agent loop -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -6,14 +6,14 @@
 
 ;;; Commentary:
 ;;
-;; This file defines the 18 transitions of the agent-loop FSM
+;; This file defines the 20 transitions of the agent-loop FSM
 ;; (see `decisions/tick-state-machine.yaml' for the normative
 ;; contract). It also exposes `yeah-loop-tick': a one-step driver
 ;; that takes the current state and a "label" (the event) and
 ;; returns the next state or signals `user-error' if the label
 ;; is not a valid transition from the current state.
 ;;
-;; The 18 transitions are derived from the state machine in
+;; The 20 transitions are derived from the state machine in
 ;; `specs/yeah-model.org' (forthcoming in Tier 4). Until that
 ;; spec is committed, the list is a stable working draft and
 ;; any change to it is a protected-policy transition.
@@ -32,6 +32,10 @@
     (post-decide    tool-call       . awaiting-tool)
     (post-decide    permission-ask  . awaiting-user-permission)
     (post-decide    ask-user        . awaiting-user-input)
+    ;; the model is asked again, with the results of what was dispatched
+    (post-decide    continue        . deciding)
+    ;; the model answered with nothing usable: the run failed
+    (deciding       error           . failed)
     (awaiting-tool  tool-end        . accumulating)
     (accumulating   budget-ok       . post-decide)
     (accumulating   budget-overflow . compacting)
@@ -45,17 +49,17 @@
     (awaiting-user-permission answer  . post-decide)
     (awaiting-user-input     timeout . failed)
     (awaiting-user-input     answer  . post-decide))
-  "The 18 raw transition cells.
+  "The 20 raw transition cells.
 Each cell has the shape (FROM LABEL . TO). The runtime
 transition table is built from this list at load time so that
 the count can be checked.")
 
-(unless (= 18 (length yeah-loop--raw-transitions))
-  (error "yeah-loop: transition count drift; expected 18, got %d"
+(unless (= 20 (length yeah-loop--raw-transitions))
+  (error "yeah-loop: transition count drift; expected 20, got %d"
          (length yeah-loop--raw-transitions)))
 
 (defvar yeah-loop-transitions yeah-loop--raw-transitions
-  "The 18 FSM transitions of the Yeah tick.
+  "The 20 FSM transitions of the Yeah tick.
 
 Each cell has the shape (FROM LABEL . TO). Adding or removing
 a transition is a protected-policy transition under

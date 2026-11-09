@@ -1,7 +1,7 @@
 {
   "id": "wave-02",
   "title": "the turn: the model is called, and what it asks for is dispatched",
-  "intent": "The loop exists as a state machine with twelve states and eighteen transitions, and no model is ever called: the hooks are installed, the prelude is prepended, and the prompt is acknowledged with a generated identifier. This wave is the turn: an asynchronous request through gptel that does not block the main loop, the parsing of the tool calls the model asks for, and the wiring of the tick, the permission system, the tool registry and the log into one loop.",
+  "intent": "The loop exists as a state machine with twelve states and eighteen transitions, and no model is ever called: the hooks are installed, the prelude is prepended, and the prompt is acknowledged with a generated identifier. This wave is the turn: an asynchronous request through gptel that does not block the main loop, the parsing of the tool calls the model asks for, and the wiring of the tick, the permission system, the tool registry and the log into one loop. The contract of the machine changes with it: it gains the transition that returns to the model, without which one model turn is all the machine could ever run, and the transition that records a turn which failed. The claim about the number of transitions is revised in the same breath.",
   "touches": [
     "lib/",
     "tests/",

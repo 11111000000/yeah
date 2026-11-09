@@ -19,7 +19,7 @@
 session; that session **is** the run-time of the agent. There is no
 sidecar process and no client/server split:
 
-- the kernel is **Elisp** (`lib/`, thirteen modules, one feature per file);
+- the kernel is **Elisp** (`lib/`, fourteen modules, one feature per file);
 - the model is reached through **gptel**, and only through gptel;
 - the tools are **Elisp functions**, registered in a registry and gated by
   a permission system;
@@ -46,19 +46,25 @@ sidecar process and no client/server split:
 | `yeah-gptel.el` | the gptel hook surface | holds |
 | `yeah-subagent.el` | the sub-agent delegation API | holds |
 | `yeah-shell.el` | the `*yeah-shell*` REPL | holds |
+| `yeah-turn.el` | one turn of the model: the call, the tool calls, the dispatch | holds |
 | `yeah-codes.el` | the PTC sandbox | **refuted** |
 
 ## What does not run yet, and is said so
 
-Two claims are **refuted** in the map, and the waves say what will turn
-them green:
+One claim is **refuted** in the map, and the wave says what will turn it
+green:
 
-- `the-agent-loop-is-wired` — the tick, the permission system, the tool
-  registry and the session log are four modules that nobody calls. The
-  check is `tests/checks/check-agent-loop-wired.sh`; it fails today.
 - `ptc-sandbox-restricts-model-code` — the PTC sandbox gates the *name* of
   a binding and then evaluates the body the model supplied. The check is
   `tests/checks/check-ptc-sandbox-restricts.el`; it fails today.
+
+The loop itself is wired: `the-agent-loop-is-wired` holds, and the turn
+that carries it — `lib/yeah-turn.el` — asks the model through gptel,
+dispatches the tool calls it asked for through the permission system and
+the registry, writes what happened into the append-only log, and asks the
+model again until it asks for nothing. The canary is
+`tests/checks/check-model-turn-runs.el`; it runs against a fake model and
+touches no network.
 
 Two more are **promises about code that does not exist yet** (wave-4): a
 real call to the model through the gptel hooks, and the ACP agent speaking
@@ -92,7 +98,7 @@ repository — `nix build` there writes `result/bin/mathc`.
    with the reference harnesses, the three planes, the three placements,
    and the matrix of what the reference harnesses have and Yeah does not.
 3. `spec.json` — the standing specification.
-4. `waves/*.json` — the plan: thirteen units of work, one per row of the
+4. `waves/*.json` — the plan: fourteen units of work, one per row of the
    parity matrix, each with an intent, a check, a promise and the
    strongest objection against it.
 5. `ELISP_BEST_PRACTICES.md` — the conventions for kernel Elisp; §11 is
