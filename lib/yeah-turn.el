@@ -44,6 +44,7 @@
 (require 'yeah-tools)
 (require 'yeah-perm)
 (require 'yeah-session)
+(require 'yeah-events)
 (require 'yeah-scheduler)
 
 ;; A tool of the model is a gptel-tool struct when gptel is loaded, and a
@@ -106,36 +107,49 @@ bug in the turn, and the run stops with that reason."
   (setf (yeah-turn-error turn) reason
         (yeah-turn-done turn) t)
   (when (yeah-turn-session turn)
-    (yeah-session-append (yeah-turn-session turn)
-                          (list :type "error" :payload reason)))
+    (yeah-events-write (yeah-turn-session turn) "error" :payload reason))
   reason)
 
-(defun yeah-turn--prepare (index call)
-  "Prepare the tool CALL at INDEX for the batch.
+(defun yeah-turn--decide (spec name resource)
+  "Return (EFFECT . REFUSED) for the tool NAME on RESOURCE.
+EFFECT is \"allow\", \"deny\" or \"ask\"; REFUSED is the reason the
+call may not run, or nil when it may."
+  (if (null spec)
+      (cons "deny" (format "there is no tool named %s" name))
+    (condition-case err
+        (let ((decision (yeah-perm-evaluate name resource)))
+          (if (eq decision :allow)
+              (cons "allow" nil)
+            (cons "deny" (format "the rules say %s" decision))))
+      (user-error (cons "ask" (error-message-string err))))))
+
+(defun yeah-turn--prepare (turn index call)
+  "Prepare the tool CALL at INDEX of TURN for the batch.
 Return a plist: :index is the position of the call, :name and :args are
 what the tool is called with, :spec is the registry spec of the tool,
-and :refused is the reason the call may not run — or nil."
+and :refused is the reason the call may not run, or nil.
+
+The log says what happened: the model asked for the tool, the rules
+were asked, and the rules answered."
   (let* ((name (yeah-turn--tool-name (nth 0 call)))
          (args (nth 1 call))
          (spec (yeah-tools-get name))
-         (refused
-          (cond
-           ((null spec)
-            (format "there is no tool named %s" name))
-           (t
-            (condition-case err
-                (let ((decision (yeah-perm-evaluate name
-                                                 (yeah-turn--resource args))))
-                  (if (eq decision :allow)
-                      nil
-                    (format "the rules say %s" decision)))
-              (user-error (error-message-string err)))))))
-    (list :index index :name name :args args :spec spec :refused refused)))
+         (resource (yeah-turn--resource args)))
+    (let ((decision (yeah-turn--decide spec name resource)))
+      (yeah-events-write (yeah-turn-session turn) "tool-request"
+                         :tool name :args (format "%S" args))
+      (yeah-events-write (yeah-turn-session turn) "permission-request"
+                         :action name :resource resource)
+      (yeah-events-write (yeah-turn-session turn) "permission-decision"
+                         :action name :resource resource
+                         :effect (car decision))
+      (list :index index :name name :args args :spec spec
+            :refused (cdr decision)))))
 
 (defun yeah-turn--dispatch-batch (turn calls)
   "Dispatch CALLS together, and continue the turn when they have settled."
   (let* ((prepared (mapcar (lambda (index)
-                              (yeah-turn--prepare index (nth index calls)))
+                              (yeah-turn--prepare turn index (nth index calls)))
                             (number-sequence 0 (1- (length calls)))))
          (results (make-vector (length calls) nil))
          (refused (make-vector (length calls) nil))
@@ -170,12 +184,12 @@ and :refused is the reason the call may not run — or nil."
          (dolist (call calls)
            (let* ((result (aref results i))
                   (value (if (aref refused i) result (format "%S" result))))
-             (yeah-session-append
+             (yeah-events-write
               (yeah-turn-session turn)
-              (list :type "tool-result"
-                    :tool (yeah-turn--tool-name (nth 0 call))
-                    :ok (not (aref refused i))
-                    :payload (if (stringp value) value (format "%S" value)))))
+              "tool-end"
+              :tool (yeah-turn--tool-name (nth 0 call))
+              :ok (not (aref refused i))
+              :payload value))
            (setq i (1+ i))))
        ;; The machine first: the batch is over, and the model is asked
        ;; again. The results are handed to the model only afterwards, so
@@ -201,8 +215,8 @@ and :refused is the reason the call may not run — or nil."
       (yeah-turn--tick turn 'stream-end)
       (yeah-turn--tick turn 'no-tool-calls)
       (setf (yeah-turn-done turn) t)
-      (yeah-session-append (yeah-turn-session turn)
-                            (list :type "assistant" :payload answer)))
+      (yeah-events-write (yeah-turn-session turn) "assistant-message"
+                         :payload answer))
      ((and (consp answer) (eq (car answer) 'tool-call))
       (yeah-turn--tick turn 'stream-end)
       (yeah-turn--tick turn 'tool-call)
@@ -216,8 +230,8 @@ and :refused is the reason the call may not run — or nil."
     (when (eq (yeah-turn-state turn) 'idle)
       (yeah-turn--tick turn 'user-prompt))
     (cl-incf (yeah-turn-turns turn))
-    (yeah-session-append (yeah-turn-session turn)
-                          (list :type "user" :payload prompt))
+    (yeah-events-write (yeah-turn-session turn) "user-message"
+                       :payload prompt)
     (funcall transport prompt
               (lambda (answer &optional _info)
                 (yeah-turn--answer turn answer)))))
