@@ -1,0 +1,95 @@
+{
+  "id": "wave-1",
+  "title": "the standing specification of the kernel",
+  "intent": "Yeah carried the third version of math-coding: a corpus of twenty-one decision files, a hand-written validator, and a bootstrap gate of eight manual checks that every change had to honour by hand. The corpus had grown to the point where the map of the project was the corpus, and the checks were decorative: thirty fixture files that no test loaded, and a validator whose cross-check of the state machine could not fail. The third version is removed. What replaces it is the fourth: one standing specification, fourteen claims about this kernel, and a control for every claim that has been shown to bite the subject it breaks.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "lib-byte-compiles-clean",
+    "fsm-has-twelve-states-and-eighteen-transitions",
+    "session-log-is-append-only",
+    "compaction-is-a-projection-not-a-deletion",
+    "tool-call-validates-its-arguments",
+    "permission-decides-by-the-last-matching-rule",
+    "acp-dispatcher-handles-the-four-methods",
+    "emcp-tool-surface-matches-the-schema",
+    "undo-boundary-records-every-tick",
+    "gptel-hooks-live-in-one-module-only",
+    "subagent-spawns-a-child-within-the-depth-limit",
+    "yeah-shell-keeps-a-bounded-history",
+    "the-agent-loop-is-wired",
+    "ptc-sandbox-restricts-model-code"
+  ],
+  "commitment": [
+    {
+      "claim": "lib-byte-compiles-clean",
+      "state": "holds"
+    },
+    {
+      "claim": "fsm-has-twelve-states-and-eighteen-transitions",
+      "state": "holds"
+    },
+    {
+      "claim": "session-log-is-append-only",
+      "state": "holds"
+    },
+    {
+      "claim": "compaction-is-a-projection-not-a-deletion",
+      "state": "holds"
+    },
+    {
+      "claim": "tool-call-validates-its-arguments",
+      "state": "holds"
+    },
+    {
+      "claim": "permission-decides-by-the-last-matching-rule",
+      "state": "holds"
+    },
+    {
+      "claim": "acp-dispatcher-handles-the-four-methods",
+      "state": "holds"
+    },
+    {
+      "claim": "emcp-tool-surface-matches-the-schema",
+      "state": "holds"
+    },
+    {
+      "claim": "undo-boundary-records-every-tick",
+      "state": "holds"
+    },
+    {
+      "claim": "gptel-hooks-live-in-one-module-only",
+      "state": "holds"
+    },
+    {
+      "claim": "subagent-spawns-a-child-within-the-depth-limit",
+      "state": "holds"
+    },
+    {
+      "claim": "yeah-shell-keeps-a-bounded-history",
+      "state": "holds"
+    },
+    {
+      "claim": "the-agent-loop-is-wired",
+      "state": "refuted"
+    },
+    {
+      "claim": "ptc-sandbox-restricts-model-code",
+      "state": "refuted"
+    }
+  ],
+  "objection": "The claims say what the code does today, and the two that are refuted say that the agent loop is not wired and that the sandbox does not sandbox. A specification that names its own gaps is a different thing from a specification that promises nothing: it can be checked, and it can be wrong in public.",
+  "refuted_by": "The map of the kernel after the wave: if the two refuted claims turn green without the work of wave-2 and wave-3, then the controls were measuring the wrong thing and the specification says nothing."
+}

@@ -1,74 +1,196 @@
 #!/usr/bin/env bash
-# scripts/dev — Yeah v0.0.0-alpha development wrapper.
+# scripts/dev — Yeah development wrapper.
 #
-# This is the bootstrap CLI. Subcommands:
-#   smoke                 — print "yeah-dev stub ok" and exit 0
-#   validate              — run `lib/yeah-validate.el' over the current tree
-#   byte-compile-all      — byte-compile lib/*.el
+# Subcommands:
+#   smoke                 — print "yeah-dev ok" and exit 0
+#   byte-compile-all      — byte-compile every file under lib/
+#   ert FILE...           — run ERT test files (tests/unit/*.el)
+#   map                   — the standing specification: claims, states, uncovered
+#   run                   — execute the checks, bind the evidence, write the trail
+#   gate                  — run, then map; the exit code is the verdict
+#   help                  — this text
 #
-# Exit codes (per AGENTS.md):
-#   0 — pass
-#   1 — fail
-#   2 — blocked
-#   3 — infrastructure error
+# Exit codes (the method's scale, A13/A14):
+#   0 — pass       (Green)
+#   1 — fail       (Red)
+#   2 — blocked    (input error: bad arguments, unknown subcommand)
+#   3 — unknown    (the method could not tell: a tool is missing, a check
+#                    did not run, a control did not bite)
 #
-# Every subcommand prints what it did and either exits 0 or names
-# the blocker.
+# The method binary is `mathc`: set MATHC to its path, or put it on PATH.
+# It comes from the math-coding repository (`nix build` there writes
+# ./result/bin/mathc). The method's own files — spec.json and waves/ — are
+# part of this project, not of the tool.
 
-set -eu
+set -u
 
 cmd="${1:-help}"
-shift || true
+[ $# -gt 0 ] && shift
+
+find_emacs() {
+  if [ -n "${EMACS:-}" ] && [ -x "${EMACS}" ]; then
+    printf '%s' "${EMACS}"
+    return 0
+  fi
+  if command -v emacs >/dev/null 2>&1; then
+    command -v emacs
+    return 0
+  fi
+  if [ -x "$HOME/.nix-profile/bin/emacs" ]; then
+    printf '%s' "$HOME/.nix-profile/bin/emacs"
+    return 0
+  fi
+  return 1
+}
+
+find_mathc() {
+  if [ -n "${MATHC:-}" ]; then
+    printf '%s' "${MATHC}"
+    return 0
+  fi
+  if command -v mathc >/dev/null 2>&1; then
+    command -v mathc
+    return 0
+  fi
+  if [ -x "$HOME/.local/bin/mathc" ]; then
+    printf '%s' "$HOME/.local/bin/mathc"
+    return 0
+  fi
+  return 1
+}
+
+need_mathc() {
+  mathc_bin="$(find_mathc)" || {
+    echo "scripts/dev $cmd: mathc is not on PATH and MATHC is not set." >&2
+    echo "  Get it from the math-coding repository: nix build  (it writes result/bin/mathc)." >&2
+    exit 3
+  }
+}
+
+# Emacs loads a byte-compiled file when it exists, even when the source is
+# newer ("Source file ... newer than byte-compiled file; using older file").
+# A stale .elc next to a modified source therefore makes every check test
+# yesterday's code instead of today's. The bytecode is a build artifact, not
+# a part of the tree: it is removed before anything is loaded.
+clean_bytecode() {
+  rm -f lib/*.elc
+}
 
 case "$cmd" in
   help|--help|-h)
     cat <<'EOF'
-scripts/dev — Yeah v0.0.0-alpha development wrapper
+scripts/dev — Yeah development wrapper
 
 Subcommands:
-  smoke                 — print "yeah-dev stub ok" and exit 0
-  validate              — run the Elisp validator over the current tree
+  smoke                 — print "yeah-dev ok" and exit 0
   byte-compile-all      — byte-compile every file under lib/
-  edit-loop-detect      — flag edit-loop pattern in recent commits
-                          (not yet implemented)
+  ert FILE...           — run ERT test files (tests/unit/*.el)
+  map                   — the standing specification: claims, states, uncovered
+  run                   — execute the checks, bind the evidence, write the trail
+  gate                  — run, then map; the exit code is the verdict
+  help                  — this text
 
 Exit codes:
-  0 — pass
-  1 — fail
-  2 — blocked
-  3 — infrastructure error
+  0 — pass       (Green)
+  1 — fail       (Red)
+  2 — blocked    (input error)
+  3 — unknown    (the method could not tell)
+
+Environment:
+  MATHC  — path to the math-coding binary (default: `mathc` on PATH)
+  EMACS  — path to the Emacs binary (default: `emacs` on PATH)
 EOF
     ;;
 
   smoke)
-    echo "yeah-dev stub ok ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
+    echo "yeah-dev ok ($(date -u +%Y-%m-%dT%H:%M:%SZ))"
     exit 0
     ;;
 
-  validate)
-    if ! command -v emacs >/dev/null 2>&1; then
-      echo "scripts/dev validate: emacs is not on PATH" >&2
-      exit 3
-    fi
-    emacs -Q --batch -L lib -l lib/yeah-validate.el \
-          --eval "(yeah-validate)"
-    ;;
-
   byte-compile-all)
-    if ! command -v emacs >/dev/null 2>&1; then
-      echo "scripts/dev byte-compile-all: emacs is not on PATH" >&2
+    emacs_bin="$(find_emacs)" || {
+      echo "scripts/dev byte-compile-all: emacs is not on PATH and EMACS is not set" >&2
       exit 3
-    fi
+    }
     if [ ! -d lib ]; then
       echo "scripts/dev byte-compile-all: lib/ does not exist" >&2
       exit 3
     fi
-    emacs -Q --batch -L lib -f batch-byte-compile lib/*.el
+    out="$("$emacs_bin" -Q --batch -L lib -f batch-byte-compile lib/*.el 2>&1)"
+    rc=$?
+    clean_bytecode
+    printf '%s\n' "$out"
+    if [ $rc -ne 0 ]; then
+      echo "scripts/dev byte-compile-all: the compilation failed" >&2
+      exit 1
+    fi
+    if printf '%s\n' "$out" | grep -q "Warning:"; then
+      echo "scripts/dev byte-compile-all: the compilation produced warnings" >&2
+      exit 1
+    fi
     ;;
 
-  edit-loop-detect)
-    echo "scripts/dev edit-loop-detect: not yet implemented (Tier 1 of ROADMAP.md)" >&2
-    exit 1
+  ert)
+    if [ $# -lt 1 ]; then
+      echo "scripts/dev ert: needs at least one test file" >&2
+      exit 2
+    fi
+    emacs_bin="$(find_emacs)" || {
+      echo "scripts/dev ert: emacs is not on PATH and EMACS is not set" >&2
+      exit 3
+    }
+    clean_bytecode
+    load_args=()
+    for f in "$@"; do
+      load_args+=(-l "$f")
+    done
+    "$emacs_bin" -Q --batch -L lib "${load_args[@]}" -f ert-run-tests-batch-and-exit
+    ;;
+
+  check)
+    if [ $# -lt 1 ]; then
+      echo "scripts/dev check: needs at least one check file" >&2
+      exit 2
+    fi
+    emacs_bin="$(find_emacs)" || {
+      echo "scripts/dev check: emacs is not on PATH and EMACS is not set" >&2
+      exit 3
+    }
+    clean_bytecode
+    rc=0
+    for f in "$@"; do
+      case "$f" in
+        *.el)
+          "$emacs_bin" -Q --batch -L lib -l "$f" || rc=$?
+          ;;
+        *.sh)
+          bash "$f" || rc=$?
+          ;;
+        *)
+          echo "scripts/dev check: unknown kind of check: $f" >&2
+          exit 2
+          ;;
+      esac
+    done
+    exit $rc
+    ;;
+
+  map)
+    need_mathc
+    "$mathc_bin" --root . map
+    ;;
+
+  run)
+    need_mathc
+    "$mathc_bin" --root . run
+    ;;
+
+  gate)
+    need_mathc
+    "$mathc_bin" --root . run
+    rc=$?
+    "$mathc_bin" --root . map
+    exit $rc
     ;;
 
   *)
