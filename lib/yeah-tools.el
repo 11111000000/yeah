@@ -77,11 +77,23 @@ SPEC is a plist of shape
 
   (:name NAME :description DESC
    :input ((:name PARAM :type TYPE [:optional t]) ...)
-   :handler FN)
+   :handler FN
+   [:concurrency MODE] [:async t])
 
 where NAME is a string, DESC is a string, PARAM is a string, TYPE
 is one of `string', `integer', `symbol', `boolean', and FN is a
 function. Required parameters come first; optional ones come last.
+
+Two more fields are optional and say how the tool is run:
+
+  :concurrency  `shared' (the default) or `exclusive'. A shared tool
+                may run alongside the other shared tools of the same
+                answer; an exclusive tool runs alone, and everything
+                else waits for it.
+  :async        non-nil when the handler takes a continuation: it is
+                called as (FN ARGS DONE) and calls DONE with the
+                result. A tool that waits — on a process, on a timer —
+                says so, and the scheduler does not block on it.
 
 Signals `user-error' if SPEC is malformed or if a tool with the
 same `:name' is already registered."
@@ -96,6 +108,14 @@ same `:name' is already registered."
     (unless (member name yeah-tools--order)
       (setq yeah-tools--order (append yeah-tools--order (list name))))
     spec))
+
+(defun yeah-tools-concurrency (spec)
+  "Return the concurrency mode of the tool SPEC: `shared' or `exclusive'.
+The default is `shared': a tool that may run alongside the other shared
+tools of the same answer. A tool that writes something nobody else may
+touch at the same time declares itself `exclusive'."
+  (let ((mode (plist-get spec :concurrency)))
+    (if (memq mode '(shared exclusive)) mode 'shared)))
 
 (defun yeah-tools-unregister (name)
   "Remove the tool registered under NAME. No-op if absent."
@@ -121,12 +141,12 @@ same `:name' is already registered."
           (setq n (1+ n))))
     n))
 
-(defun yeah-tools--validate-and-apply (name spec args)
-  "Validate ARGS against SPEC for tool NAME, then call the handler.
-Returns the handler's result. Signals `user-error' on count or
-type mismatch."
+(defun yeah-tools--check-args (name spec args)
+  "Signal a `user-error' unless ARGS fit the input of the tool SPEC.
+The count of the arguments, and the type of every one of them, must
+match what the tool declared. This is the gate: a tool is never called
+with arguments it did not ask for."
   (let* ((params (plist-get spec :input))
-         (handler (plist-get spec :handler))
          (req (yeah-tools--required-count params))
          (max (length params))
          (err nil))
@@ -148,8 +168,34 @@ type mismatch."
         (setq idx (1+ idx))))
     (when err
       (signal 'user-error
-              (list (format "yeah-tools-call: %S: %s" name err))))
-    (apply handler args)))
+              (list (format "yeah-tools-call: %S: %s" name err))))))
+
+(defun yeah-tools--validate-and-apply (name spec args)
+  "Validate ARGS against SPEC for tool NAME, then call the handler.
+Returns the handler's result. Signals `user-error' on count or
+type mismatch."
+  (yeah-tools--check-args name spec args)
+  (apply (plist-get spec :handler) args))
+
+(defun yeah-tools-dispatch (name args &optional done)
+  "Run the tool NAME with ARGS and hand the result to DONE.
+
+DONE is called with the result of the tool. A tool that is not
+asynchronous answers at once; a tool that is asynchronous takes the
+continuation itself and calls it when it has settled.
+
+This is the way into the registry from outside it: the arguments are
+checked here, and nowhere else."
+  (let ((spec (yeah-tools-get name)))
+    (unless spec
+      (signal 'user-error
+              (list (format "yeah-tools-dispatch: unknown tool name %S" name))))
+    (yeah-tools--check-args name spec args)
+    (if (plist-get spec :async)
+        (funcall (plist-get spec :handler) args (or done #'ignore))
+      (let ((result (apply (plist-get spec :handler) args)))
+        (when done (funcall done result))
+        result))))
 
 (defun yeah-tools-call (name args)
   "Dispatch a tool call: look up NAME, validate ARGS, call handler.

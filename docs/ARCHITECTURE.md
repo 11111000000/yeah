@@ -126,8 +126,8 @@ repository today.
 | Sub-agents with their own session | task tool with a child session | task tool with a branch | stub |
 | Interface, installation, documentation for people | TUI, web, desktop | TUI, web, extensions | a REPL buffer |
 
-Fourteen rows. One is now filled — the turn — and thirteen are still
-empty. That is the size of the remaining work, and it is the plan:
+Fourteen rows. Two are now filled — the turn and the scheduler — and
+twelve are still empty. That is the size of the remaining work, and it is the plan:
 `waves/` is this table, one unit of work per row, ordered by dependency.
 
 ## 6. The tension between H2 and H3, and how it resolves

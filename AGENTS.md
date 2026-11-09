@@ -67,16 +67,19 @@ One claim is **refuted** today, and the map says so in red:
   wave-07.
 
 The loop is wired and the turn works: `the-agent-loop-is-wired` and
-`the-model-turn-runs-and-parses-tool-calls` hold. The model is called in
+`the-model-turn-runs-and-parses-tool-calls` hold, and so does
+`tools-from-one-turn-run-in-parallel` — the tools of one answer run
+together, an exclusive one runs alone, and the log keeps the order of
+the calls rather than the order of the finishes. The model is called in
 one place only — `yeah-gptel-request` in `lib/yeah-gptel.el` — and the
 canary for that reads the tree.
 
-Twelve claims are **promises about code that does not exist yet**: the
-parallel scheduler, the typed event log, the interface, the approvals with
-reply kinds, the model-driven compaction, the session tree, the runtime
-with its retries and timeouts, the MCP server on stdio, the three
-placements, the sub-agents, the product layer, and the ACP agent speaking
-JSON-RPC over stdio.
+Eleven claims are **promises about code that does not exist yet**: the
+typed event log, the interface, the approvals with reply kinds, the
+model-driven compaction, the session tree, the runtime with its retries
+and timeouts, the MCP server on stdio, the three placements, the
+sub-agents, the product layer, and the ACP agent speaking JSON-RPC over
+stdio.
 
 Two rules that are not negotiable here:
 
