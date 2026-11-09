@@ -153,6 +153,14 @@ thread.
 | service: the agent in its own Emacs | a separate process, clients outside | no problem: the runtime has its own main loop | the agent does not see the person's buffers directly — but it reaches them through `emacsclient`, that is, as a tool |
 | batch: one process, one task | the same Emacs | no problem | no state between runs except the log |
 
+**The decision of the owner: both.** The kernel is the same in every
+placement, and the only thing that differs is *who answers a question
+when there is no human at the keyboard* — the person, or the policy. So
+the kernel takes the answerer the way it takes the transport: as
+something handed to it, not as something it knows. Everything else about
+a placement is plumbing around the kernel, and the plumbing is free to
+differ.
+
 **The rule that follows.** The kernel must run in all three, and no
 placement may block the main loop. Heavy or isolated work goes to
 another Emacs: Emacs already speaks to another Emacs over

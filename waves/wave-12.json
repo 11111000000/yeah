@@ -1,17 +1,28 @@
 {
   "id": "wave-12",
   "title": "the placements: attached, service, batch",
-  "intent": "The single-threaded objection is real: an agent inside the session of a person blocks that person, and a thread is not the answer, because a thread shares the address space and would take the editor down with it. The references never share an address space with an editor, and that is why they never block one. This wave gives the kernel three placements: attached to a session, in its own Emacs as a service, and in batch; and it opens the second Emacs, using the client-server interface Emacs already has, so that heavy work runs apart and can still act on the buffers of the person.",
-  "touches": [ "lib/", "tests/", "scripts/", "spec.json", "waves/" ],
+  "intent": "The single-threaded objection is real: an agent inside the session of a person blocks that person, and a thread is not the answer, because a thread shares the address space and would take the editor down with it. The references never share an address space with an editor, and that is why they never block one. The decision of the owner is that BOTH live: the kernel is the same in every placement, and the only thing that differs is who answers a question when there is no human at the keyboard — the person, or the policy. So the kernel must take the answerer the way it takes the transport: as something handed to it, not as something it knows. This wave is that: the kernel in three placements — attached to a session, in its own Emacs as a service, in batch — and a question in it that nobody is there to answer.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
   "checks": [
     "./scripts/dev byte-compile-all",
     "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
     "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
   ],
-  "claims": [ "the-kernel-runs-in-three-placements" ],
-  "commitment": [
-    { "claim": "the-kernel-runs-in-three-placements", "state": "holds" }
+  "claims": [
+    "the-kernel-runs-in-three-placements"
   ],
-  "objection": "Three placements are three chances for the kernel to behave differently, and the differences will be subtle rather than loud: a question answered in one and not in another, an answer whose order depends on the placement.",
+  "commitment": [
+    {
+      "claim": "the-kernel-runs-in-three-placements",
+      "state": "holds"
+    }
+  ],
+  "objection": "One kernel in three placements is three chances for it to behave differently, and the differences will be subtle rather than loud: a question answered in one placement and not in another, or an answer whose order depends on the placement.",
   "refuted_by": "A run in one placement that produces a different record sequence than the same run in another. If the placement can be observed in the log, the kernel does not know who is driving it."
 }
