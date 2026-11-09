@@ -19,7 +19,7 @@
 session; that session **is** the run-time of the agent. There is no
 sidecar process and no client/server split:
 
-- the kernel is **Elisp** (`lib/`, fifteen modules, one feature per file);
+- the kernel is **Elisp** (`lib/`, sixteen modules, one feature per file);
 - the model is reached through **gptel**, and only through gptel;
 - the tools are **Elisp functions**, registered in a registry and gated by
   a permission system;
@@ -48,6 +48,7 @@ sidecar process and no client/server split:
 | `yeah-shell.el` | the `*yeah-shell*` REPL | holds |
 | `yeah-turn.el` | one turn of the model: the call, the tool calls, the dispatch | holds |
 | `yeah-scheduler.el` | the batch of tool calls: shared, exclusive, and a barrier | holds |
+| `yeah-events.el` | the vocabulary of the log: every record is a declared event | holds |
 | `yeah-codes.el` | the PTC sandbox | **refuted** |
 
 ## What does not run yet, and is said so

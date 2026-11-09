@@ -113,7 +113,7 @@ repository today.
 |---|---|---|---|
 | Loop over model turns, parsing tool calls | `session/prompt.ts:1081` | `core/agent-loop.ts:526` | present: `lib/yeah-turn.el` — the tick, the dispatch, the log, and the model asked again |
 | Parallel tools from one assistant message | FiberSet per tool call | shared/exclusive scheduling with a per-batch barrier | absent: one `awaiting-tool` state |
-| Typed events and a stream for the interface | 12 part types, typed bus, SSE | 13 event types, own EventStream | absent |
+| Typed events and a stream for the interface | 12 part types, typed bus, SSE | 13 event types, own EventStream | present: `lib/yeah-events.el` — the vocabulary of the log, and a record that is refused when it is not of a declared type |
 | Approvals: reply kinds, remembered answers, no-human mode | once, always, reject; headless auto-answer | tool-declared tiers, modes, fails closed | only allow, deny, ask; ask raises |
 | Compaction by a model call, plus pruning of old tool output | hidden compaction agent, fixed template | five methods, own tokenizer | deterministic placeholder |
 | File checkpoint and undo | shadow git, revert restores blobs | absent: context branch only | native Emacs undo — better than both, for buffers |
@@ -126,8 +126,8 @@ repository today.
 | Sub-agents with their own session | task tool with a child session | task tool with a branch | stub |
 | Interface, installation, documentation for people | TUI, web, desktop | TUI, web, extensions | a REPL buffer |
 
-Fourteen rows. Two are now filled — the turn and the scheduler — and
-twelve are still empty. That is the size of the remaining work, and it is the plan:
+Fourteen rows. Three are now filled — the turn, the scheduler and the
+event vocabulary — and eleven are still empty. That is the size of the remaining work, and it is the plan:
 `waves/` is this table, one unit of work per row, ordered by dependency.
 
 ## 6. The tension between H2 and H3, and how it resolves
