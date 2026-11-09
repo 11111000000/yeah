@@ -107,7 +107,7 @@ mathc --root . next
 
 ### What is declared
 
-28 claim(s): 12 holds, 14 not established.
+28 claim(s): 15 holds, 12 not established.
 
 The full list, and what is not covered: `mathc --root . map`.
 
@@ -128,7 +128,7 @@ a check that cannot fail proves nothing.
 For an agent the machine surface is cheaper: `mathc --root . mcp` speaks
 JSON-RPC and returns the next step with every method.
 
-Every verb: mathc - · mathc init · mathc goal · mathc add · mathc accept · mathc budget · mathc map · mathc route · mathc run · mathc record · mathc next · mathc wave · mathc close · mathc draft · mathc install · mathc mcp · mathc propose · mathc doctor.
+Every verb: mathc - · mathc init · mathc goal · mathc add · mathc accept · mathc control · mathc budget · mathc map · mathc route · mathc run · mathc record · mathc next · mathc wave · mathc close · mathc draft · mathc install · mathc mcp · mathc propose · mathc doctor.
 <!-- math-coding:end -->
 
 ## The Elisp side
