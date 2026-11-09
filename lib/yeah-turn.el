@@ -45,6 +45,7 @@
 (require 'yeah-perm)
 (require 'yeah-session)
 (require 'yeah-events)
+(require 'yeah-approval)
 (require 'yeah-scheduler)
 
 ;; A tool of the model is a gptel-tool struct when gptel is loaded, and a
@@ -110,20 +111,21 @@ bug in the turn, and the run stops with that reason."
     (yeah-events-write (yeah-turn-session turn) "error" :payload reason))
   reason)
 
-(defun yeah-turn--decide (spec name resource)
-  "Return (EFFECT . REFUSED) for the tool NAME on RESOURCE.
-EFFECT is \"allow\", \"deny\" or \"ask\"; REFUSED is the reason the
-call may not run, or nil when it may."
+(defun yeah-turn--decide (answerer spec name resource)
+  "Ask the ANSWERER whether the tool NAME may act on RESOURCE.
+Return (EFFECT . REFUSED): EFFECT is \"allow\" or \"deny\", and
+REFUSED is the reason the call may not run, or nil when it may.
+The answerer is either the rules or a person; the kernel does not
+know which."
   (if (null spec)
       (cons "deny" (format "there is no tool named %s" name))
-    (condition-case err
-        (let ((decision (yeah-perm-evaluate name resource)))
-          (if (eq decision :allow)
-              (cons "allow" nil)
-            (cons "deny" (format "the rules say %s" decision))))
-      (user-error (cons "ask" (error-message-string err))))))
+    (let ((decision (funcall answerer (yeah-approval-request name resource))))
+      (if (eq (plist-get decision :effect) :allow)
+          (cons "allow" nil)
+        (cons "deny" (or (plist-get decision :reason)
+                          (format "the rules say %s" name)))))))
 
-(defun yeah-turn--prepare (turn index call)
+(defun yeah-turn--prepare (turn answerer index call)
   "Prepare the tool CALL at INDEX of TURN for the batch.
 Return a plist: :index is the position of the call, :name and :args are
 what the tool is called with, :spec is the registry spec of the tool,
@@ -135,7 +137,7 @@ were asked, and the rules answered."
          (args (nth 1 call))
          (spec (yeah-tools-get name))
          (resource (yeah-turn--resource args)))
-    (let ((decision (yeah-turn--decide spec name resource)))
+    (let ((decision (yeah-turn--decide answerer spec name resource)))
       (yeah-events-write (yeah-turn-session turn) "tool-request"
                          :tool name :args (format "%S" args))
       (yeah-events-write (yeah-turn-session turn) "permission-request"
@@ -146,10 +148,11 @@ were asked, and the rules answered."
       (list :index index :name name :args args :spec spec
             :refused (cdr decision)))))
 
-(defun yeah-turn--dispatch-batch (turn calls)
+(defun yeah-turn--dispatch-batch (turn answerer calls)
   "Dispatch CALLS together, and continue the turn when they have settled."
   (let* ((prepared (mapcar (lambda (index)
-                              (yeah-turn--prepare turn index (nth index calls)))
+                              (yeah-turn--prepare turn answerer index
+                                                 (nth index calls)))
                             (number-sequence 0 (1- (length calls)))))
          (results (make-vector (length calls) nil))
          (refused (make-vector (length calls) nil))
@@ -206,8 +209,8 @@ were asked, and the rules answered."
                (funcall continue (aref results i))))
            (setq i (1+ i))))))))
 
-(defun yeah-turn--answer (turn answer)
-  "Handle the model's ANSWER in TURN."
+(defun yeah-turn--answer (turn answer answerer)
+  "Handle the model's ANSWER in TURN. The ANSWERER answers requests."
   (unless (yeah-turn-done turn)
     (cond
      ((stringp answer)
@@ -220,12 +223,13 @@ were asked, and the rules answered."
      ((and (consp answer) (eq (car answer) 'tool-call))
       (yeah-turn--tick turn 'stream-end)
       (yeah-turn--tick turn 'tool-call)
-      (yeah-turn--dispatch-batch turn (cdr answer)))
+      (yeah-turn--dispatch-batch turn answerer (cdr answer)))
      (t
       (yeah-turn--fail turn (format "the model answered with %S" answer))))))
 
-(defun yeah-turn--ask (turn prompt transport)
-  "Ask the model PROMPT with TRANSPORT, and continue TURN when it answers."
+(defun yeah-turn--ask (turn prompt transport answerer)
+  "Ask the model PROMPT with TRANSPORT, and continue TURN when it answers.
+The ANSWERER is what answers a request for permission."
   (unless (yeah-turn-done turn)
     (when (eq (yeah-turn-state turn) 'idle)
       (yeah-turn--tick turn 'user-prompt))
@@ -234,10 +238,10 @@ were asked, and the rules answered."
                        :payload prompt)
     (funcall transport prompt
               (lambda (answer &optional _info)
-                (yeah-turn--answer turn answer)))))
+                (yeah-turn--answer turn answer answerer)))))
 
 ;;;###autoload
-(defun yeah-turn-run (session prompt &optional transport)
+(defun yeah-turn-run (session prompt &optional transport answerer)
   "Run the agent loop over SESSION with PROMPT and return the run.
 
 TRANSPORT is a function of (PROMPT CALLBACK) that calls CALLBACK with
@@ -251,13 +255,14 @@ The transport may answer now or later: with gptel the answer arrives
 when the model has finished, so the record is filled in over time and
 the caller watches it."
   (let ((transport (or transport
-                      (and (fboundp 'yeah-gptel-request) #'yeah-gptel-request))))
+                      (and (fboundp 'yeah-gptel-request) #'yeah-gptel-request)))
+        (answerer (or answerer #'yeah-approval-policy-decision)))
     (unless transport
       (signal 'user-error
               (list "yeah-turn-run: no transport: gptel is not loaded and no \
 transport was given")))
     (let ((turn (yeah-turn--make :session session)))
-      (yeah-turn--ask turn prompt transport)
+      (yeah-turn--ask turn prompt transport answerer)
       turn)))
 
 (provide 'yeah-turn)

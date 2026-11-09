@@ -27,6 +27,8 @@
 ;;; Code:
 
 (require 'yeah-codes)
+(require 'yeah-tools)
+(require 'yeah-perm)
 
 (let* ((canary (expand-file-name "yeah-ptc-canary.txt" temporary-file-directory))
        (failure nil))
@@ -37,6 +39,24 @@
         (yeah-codes-eval (list (list :name "not-whitelisted" :code "42")) nil)
         (setq failure 'the-unwhitelisted-name-was-accepted))
     (user-error nil))
+
+  ;; Property 1b: a form that calls the tools may still run. The
+  ;; sandbox is a boundary, not a refusal of everything.
+  (let* ((target (expand-file-name "yeah-ptc-target.txt" temporary-file-directory)))
+    (ignore-errors (delete-file target))
+    (with-temp-file target (insert "the target"))
+    (yeah-perm-rules-reset-for-test)
+    (yeah-perm-rules-add (yeah-perm-rule-make "read" "*" 'allow))
+    (let ((records (yeah-codes-eval
+                    (list (list :name "read"
+                                :code (format "(read \"%s\")" target)))
+                    nil)))
+      (unless (and (= 1 (length records))
+                   (eq (plist-get (car records) :ok) t)
+                   (equal (plist-get (car records) :result) "the target"))
+        (setq failure (format "a form that calls the tools did not run: %S"
+                              records))))
+    (ignore-errors (delete-file target)))
 
   ;; Property 2: a whitelisted name carrying a call outside the whitelist
   ;; is refused, and the world outside is untouched.

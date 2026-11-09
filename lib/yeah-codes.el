@@ -30,6 +30,8 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-tools)
+(require 'yeah-perm)
 
 (defgroup yeah-codes nil
   "The Yeah Programmatic Tool Calling (PTC) sandbox."
@@ -141,19 +143,141 @@ a two-element **list** `(NAME VALUE)', not a dotted pair; a
          (val (cdr cell)))
     (list sym (yeah-codes--json-roundtrip val))))
 
+
+(defconst yeah-codes--core
+  '(car cdr caar cadr cddr cdar cons list append length nth elt
+    mapcar mapc seq-filter seq-map seq-reduce
+    progn let let* if cond when unless and or not
+    = < > <= >= + - * / % mod 1+ 1- max min abs
+    princ prin1-to-string format message error
+    string= string< string> string-join concat substring number-to-string
+    list-length reverse sort copy-sequence append
+    quote function tool)
+  "The names a form may use.
+
+A form may call these and nothing else, except for the tools, which it
+calls through `tool'. The set is deliberately small: a name that is not
+here is refused, and a name that is here is safe to call on data the
+model supplied.
+
+The tools are reached through ONE function and not by name: in Emacs
+Lisp a `let' does not shadow the cell of a function, so a form that
+called `read' directly would call the built-in `read' and not the tool
+of the registry. The names of the tools are therefore data, and the
+registry checks them.")
+
+(defun yeah-codes--tool-names ()
+  "Return the names of the tools of the registry, as symbols."
+  (mapcar #'intern (yeah-tools-names)))
+
+(defun yeah-codes--rewrite (form)
+  "Rewrite FORM so that a call of a tool goes through `tool'.
+
+A call whose head is the name of a tool becomes
+`(funcall tool \"NAME\" ARG ...)'. The model writes the call as it
+would write it — the tools are reached by their names — and the
+sandbox rewrites it, because in Emacs Lisp a `let' does not shadow the
+cell of a function: a form that called `read' directly would call the
+built-in `read' and not the tool of the registry.
+
+The rewrite is ours, and it happens after the walk, so the model cannot
+write the `funcall' itself: `funcall' is not among the allowed names."
+  (cond
+   ((not (consp form)) form)
+   ;; a quoted form is data
+   ((eq (car form) 'quote) form)
+   ((memq (car form) (yeah-codes--tool-names))
+    (append (list 'funcall 'tool (symbol-name (car form)))
+            (cdr form)))
+   (t (mapcar #'yeah-codes--rewrite form))))
+
+(defun yeah-codes--permitted-p (form)
+  "Non-nil when FORM may run inside the sandbox.
+
+The walk looks at every list in FORM, and at the name in its head: that
+name must be one of `yeah-codes--core'. A quoted form is data and is not
+walked into.
+
+The check is sound in the direction that matters: a name that is not
+allowed cannot be reached, because a call needs the name in the head of
+a list, and `eval', `apply', `funcall' and every macro are outside the
+allowed set, so nothing can smuggle a call past the walk."
+  (yeah-codes--walk form))
+
+(defun yeah-codes--walk (form)
+  "Walk FORM and report whether every call in it is allowed."
+  (cond
+   ((null form) t)
+   ((symbolp form) t)
+   ((numberp form) t)
+   ((stringp form) t)
+   ((keywordp form) t)
+   ((vectorp form)
+    (let ((ok t))
+      (dotimes (i (length form))
+        (unless (yeah-codes--walk (aref form i)) (setq ok nil)))
+      ok))
+   ((consp form)
+    (let ((head (car form)))
+      (cond
+       ;; a quoted form is data: it is not walked into
+       ((eq head 'quote) t)
+       ((not (or (memq head yeah-codes--core)
+                  (memq head (yeah-codes--tool-names))))
+        nil)
+       (t
+        (let ((ok t))
+          (dolist (cell form)
+            (unless (yeah-codes--walk cell) (setq ok nil)))
+          ok)))))
+   ;; a character, or anything we do not understand: refused
+   (t nil)))
+
+(defun yeah-codes--tool-call (name &rest args)
+  "Run the tool NAME with ARGS inside the sandbox.
+The tool is called through the rules and the registry, exactly as a tool
+called by the turn is: the sandbox does not get a way around the
+permission system, and the name of the tool is checked by the registry
+before anything runs."
+  (unless (and (stringp name) (yeah-tools-get name))
+    (signal 'user-error
+            (list (format "yeah-codes: there is no tool named %S" name))))
+  (let ((decision (condition-case err
+                      (yeah-perm-evaluate name (format "%S" args))
+                    (user-error (cons 'deny (error-message-string err))))))
+    (unless (eq decision :allow)
+      (signal 'user-error
+              (list (format "yeah-codes: the rules do not allow %s" name))))
+    (apply #'yeah-tools-call name (list args))))
+
+(defun yeah-codes--tool-bindings ()
+  "Return the binding list of the sandbox: the tools are reached through
+the single function `tool', whose value the rewritten forms call with
+`funcall'."
+  (list (list 'tool (lambda (name &rest args)
+                        (apply #'yeah-codes--tool-call name args)))))
+
 (defun yeah-codes--eval-one (form inputs)
   "Evaluate one FORM. Return `(:name ... :result ... :ok t)'.
 
 FORM is a plist (:name NAME :code CODE). INPUTS is the full
 alist. NAME is whitelisted at the caller (`yeah-codes-eval').
-CODE is parsed, wrapped in a `let' that binds INPUTS, then
-`eval'd. The result is prin1/read round-tripped."
+CODE is parsed, wrapped in a `let' that binds INPUTS and the tools,
+then `eval'd — but only after the body has been walked: a call that
+is not a tool of the registry and not one of `yeah-codes--core' is
+refused before a single form is evaluated. The result is
+prin1/read round-tripped."
   (let* ((name (yeah-codes--plist-name form))
          (code (plist-get form :code))
          (bindings (mapcar #'yeah-codes--input-binding inputs))
          (body (yeah-codes--read-form code)))
+    (unless (yeah-codes--permitted-p body)
+      (signal 'user-error
+              (list (format "yeah-codes: the form %s calls something outside the sandbox: %S"
+                            name body))))
     (let ((result
-           (eval `(let ,bindings ,body)
+           (eval `(let ,(append bindings (yeah-codes--tool-bindings))
+                     ,(yeah-codes--rewrite body))
                  lexical-binding)))
       (list :name name
             :result (yeah-codes--json-roundtrip result)

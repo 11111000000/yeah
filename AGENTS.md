@@ -60,11 +60,9 @@ that can close it, a falsifier, a register, and a **control**: the command
 that breaks the subject and must make the check go red. A claim whose
 control has never bitten is not established, and the map says so.
 
-One claim is **refuted** today, and the map says so in red:
-
-- `ptc-sandbox-restricts-model-code` — the PTC sandbox gates the *name* of
-  a binding and then evaluates the body the model supplied. This is
-  wave-07.
+No claim is **refuted** any more. The PTC sandbox confines the body of a
+form: it may call the tools of the registry and a small core, and a call
+outside them is refused before a single form is evaluated.
 
 The loop is wired and the turn works: `the-agent-loop-is-wired` and
 `the-model-turn-runs-and-parses-tool-calls` hold, and so does
@@ -110,7 +108,7 @@ mathc --root . next
 
 ### What is declared
 
-28 claim(s): 17 holds, 10 not established.
+28 claim(s): 20 holds, 8 not established.
 
 The full list, and what is not covered: `mathc --root . map`.
 
