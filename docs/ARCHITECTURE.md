@@ -259,17 +259,21 @@ defect affects the method's own repository, which has twenty waves.
 **The build of the method is a moving target, so the build is named.**
 `mathc --version` prints the hash of the binary's own bytes, and two
 different binaries of the same version must never be confused. A claim
-proved by one build is not proved by another: a build of 2026-11-09
-stopped being able to establish any claim at all — including in the
-method's own repository, where the verdict became `unknown` with every
-claim inconclusive — because it compared the digest of the subject after
-putting the tree back, so a control that broke the subject and was
-faithfully restored looked as if it had broken nothing. The evidence in
-`.math/trail.jsonl` is bound to the content that ran, not to the build
-that ran it, so a claim that was proved green by one build stays proved
-until the subject moves; but a build that cannot establish anything will
-report every claim as inconclusive. When the method changes under us, the
-right response is to name the build, not to rewrite the claims.
+proved by one build is not proved by another. On 2026-11-09 a build of
+the method stopped being able to establish any claim at all — including
+in the method's own repository, where the verdict became `unknown` with
+every claim inconclusive — because it compared the digest of the subject
+*after* putting the tree back, so a control that broke the subject and
+was faithfully restored looked as if it had broken nothing. The fix was
+to take the fingerprint immediately after the control and before both the
+check and the restore, and the reason it matters is general: the residue
+of a control is the proof that it did something, so asking after the
+cleanup asks the wrong question. The evidence in `.math/trail.jsonl` is
+bound to the content that ran, not to the build that ran it, so a claim
+proved green by one build stays proved until the subject moves; but a
+build that cannot establish anything will report every claim as
+inconclusive. When the method changes under us, the right response is to
+name the build, not to rewrite the claims.
 
 **A directory with no specification is no longer green, but a claim
 without a check is still allowed.** `mathc add` refuses a claim with no
