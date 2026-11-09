@@ -186,6 +186,14 @@ satisfiable with gptel as it is. What is forbidden is a *blocking* call
 inside a tool body — the thing `ELISP_BEST_PRACTICES` §4.1 already
 forbids.
 
+**What was verified against the real gptel.** The transport was checked
+against gptel 20251007.257, the released version: `gptel-request` and
+`gptel-make-tool` exist as they are declared, a request through
+`yeah-gptel-request' reaches gptel and fails *there* — with no key it
+says so — and `yeah-gptel-tool-for' builds a real `gptel-tool' whose
+arguments are in gptel's schema. The one thing not verified here is the
+network call itself: it needs a key and a backend.
+
 **gptel executes tool calls one at a time.** Its dispatch loop is
 sequential, with an opt-in `async` flag per tool. So parallel tool
 calls are *ours* to build: the registry's spec needs a concurrency field
