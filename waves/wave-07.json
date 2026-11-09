@@ -1,0 +1,28 @@
+{
+  "id": "wave-07",
+  "title": "the sandbox that is a sandbox",
+  "intent": "The PTC sandbox checks the name of the binding the model asked for and then evaluates the body the model supplied, in a plain let. The whitelist is a list of names, so a form named read can delete a file. This is the one claim that is refuted for a reason that matters: it is the mechanism that would make an Emacs Lisp agent competitive with a shell agent, and it is the mechanism that is currently unsafe. The real answer is sandbox.el, which needs Emacs 29 and later; until that exists, the boundary is a static analysis of the free symbols of the form, and anything the analysis does not understand is refused.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "ptc-sandbox-restricts-model-code"
+  ],
+  "commitment": [
+    {
+      "claim": "ptc-sandbox-restricts-model-code",
+      "state": "holds"
+    }
+  ],
+  "objection": "A static analysis of the free symbols of a form is a parser, and parsers have edges: a macro expands, a backquote evaluates, a funcall reaches anything. The check that the body is confined can pass while the body still reaches the host.",
+  "refuted_by": "A form that reaches the host through a path the analysis does not see, run against the boundary. If such a form runs, the boundary is a description and not a boundary."
+}
