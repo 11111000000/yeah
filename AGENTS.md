@@ -1,133 +1,135 @@
-# Yeah v0.0.0-alpha — AGENTS protocol
+# AGENTS.md — the entry point to this repository
 
-> **Work in progress.** Yeah follows the math-coding-style
-> decision-driven workflow: every non-trivial change is recorded as a
-> `decisions/*.yaml` ADR. This `AGENTS.md` is short on purpose; the
-> load-bearing artefact is the decision set in `decisions/`.
+> **Yeah** is an Emacs Lisp agent harness. The user's Emacs session is
+> itself the runtime of the agent: there is no sidecar process and no
+> client/server split. The kernel is Elisp, the model is reached through
+> `gptel`, and the tools are Elisp functions.
+>
+> This repository is governed by **math-coding v4**: the standing
+> specification is `spec.json`, the plan is `waves/*.json`, and the
+> evidence is what the checks produce. There is no decision corpus and no
+> hand-written validator; see §The method below.
 
-This repository implements Yeah v0.0.0-alpha. Until the `yeah gate`
-and `yeah self-check` subcommands are wired (Tier 1 of `ROADMAP.md`),
-every change is subject to the **eight manual bootstrap checks**
-below, in lieu of automated guarantees.
+## Read first, in this order
 
-- **Author**: Petr Kosov &lt;p.b.kosov@yandex.ru&gt;
-- **License**: Apache-2.0 (see `LICENSE`, `NOTICE`)
-- **Active policy**: `bootstrap-yeah@0` (see `decisions/decision.yaml`)
+1. `README.md` — what Yeah is, what runs and what does not.
+2. `spec.json` — the standing specification: the goal, and every claim
+   this repository makes about itself.
+3. `waves/*.json` — the plan: each wave is a unit of work with an intent,
+   a check, a promise and the strongest objection against it.
+4. `ELISP_BEST_PRACTICES.md` — the conventions for writing kernel Elisp;
+   §11 is the trap log.
+5. `AGENTS.md` — this page.
+6. `lib/yeah-*.el` — the kernel: one module per file, one feature per file.
 
-## Read first
+If two of these contradict each other, the contradiction is a finding, not
+a nuisance: say it in the wave that is open, or open a wave for it.
 
-Before changing anything in this repository, read in order:
+## The commands
 
-1. `ROADMAP.md` — single source of truth for priorities. Read this
-   first; it supersedes any inline priority lists.
-2. `PACKAGES.md` — single source of truth for "what exists": every
-   decision, fixture, kernel module, schema, axiom. Use this file to
-   find which decision file to read.
-3. `README.md` — short pitch and pointers.
-4. `decisions/decision.yaml` — the active policy.
-5. The decision file that names the area you're touching
-   (e.g. `decisions/acp-wire-v1.yaml` for ACP work).
-6. The corresponding obligation under `obligations/`, if any.
-7. The corresponding positive + negative fixture pair under
-   `tests/fixtures/`, if any.
-
-If any of these contradict each other, the contradiction is a
-deficit. Log it as `obligations/DEFICIT-<sha>.yaml` with a remedy;
-do not silently resolve it.
-
-## Bootstrap gate (eight manual checks)
-
-Until `yeah self-check` is wired (Tier 1), every change must satisfy:
-
-1. **Read-first order** — items 1–7 above were read in order.
-2. **Decision exists** — every change creates or updates a
-   decision file if it introduces a new commitment, tradeoff,
-   public contract, or architectural choice.
-3. **Fixture pair** — every obligation closes with a positive
-   fixture AND a negative fixture.
-4. **Axiom reference** — every non-trivial change cites an axiom
-   by id in the decision's `axiom_link`. (Axiom index lives in
-   `decisions/`; for now the `axiom_link` values are
-   `A0…A4` to keep alignment with the future validator.)
-5. **Counterexample** — every non-trivial change records a
-   `counterexample:` field.
-6. **Honest time report** — duration claims use one of three
-   observable scales (wall-clock / token-budget / step-count)
-   with a reference class.
-7. **Source distinction** — every "evidence" claim distinguishes
-   declared / derived / attested / reviewed / observed.
-8. **No silent resolve** — every contradiction between documents
-   is logged as a deficit.
-
-## Before work
-
-State this compact contract before editing:
-
-```yaml
-intent: What should become true?
-change_kind: implementation | decision | policy | constitution
-affected_capabilities: []
-must_preserve: []
-counterexample: What plausible case would make this change wrong?
-unknowns: []
-planned_evidence: []
+```sh
+./scripts/dev help                 # the list of subcommands
+./scripts/dev byte-compile-all     # the kernel compiles clean, with no warnings
+./scripts/dev ert tests/unit/*.el  # the unit tests
+./scripts/dev check tests/checks/*  # the canaries: the checks the claims are bound to
+./scripts/dev map                  # the standing specification: claims, states, uncovered
+./scripts/dev run                  # execute the checks, bind the evidence, write the trail
+./scripts/dev gate                 # run, then map; the exit code is the verdict
 ```
 
-For a provably editorial change:
+`scripts/dev` needs Emacs on `PATH` (or `EMACS` set) and the method
+binary (or `MATHC` set). The method binary comes from the math-coding
+repository: `nix build` there writes `result/bin/mathc`.
 
-```yaml
-change_kind: editorial
-reason: Why behavior and policy are unchanged.
+Exit codes are the method's scale: `0` pass, `1` fail, `2` blocked (input
+error), `3` unknown (the method could not tell).
+
+## The method
+
+The map is the main artefact. Start with it:
+
+```sh
+./scripts/dev map
 ```
 
-## Friction
+A claim is a statement about this repository with a scope, a requirement
+that can close it, a falsifier, a register, and a **control**: the command
+that breaks the subject and must make the check go red. A claim whose
+control has never bitten is not established, and the map says so.
 
-Apply the least sufficient response:
+Two claims are **refuted** today, and the map says so in red:
 
-- `silent` — deterministic evidence shows no semantic or protected
-  change.
-- `record` — the change is meaningful but covered by existing
-  decisions and evidence.
-- `ask` — an answer would change behavior, risk, obligations, or
-  recovery.
-- `block` — an explicit policy requirement has an unresolved
-  deficit.
+- `the-agent-loop-is-wired` — the tick, the permission system, the tool
+  registry and the session log are four modules that nobody calls. This is
+  wave-2.
+- `ptc-sandbox-restricts-model-code` — the PTC sandbox gates the *name* of
+  a binding and then evaluates the body the model supplied. This is
+  wave-3.
 
-Never block without naming the rule, affected subject, reason, and
-at least one remedy. Unknown is not Pass. A waiver is not Pass.
+Two claims are **promises about code that does not exist yet** (wave-4):
+a real call to the model through the gptel hooks, and the ACP agent
+speaking JSON-RPC over stdio.
 
-## Edit-loop prevention
+Two rules that are not negotiable here:
 
-If 3 consecutive verification attempts (`emacs -Q --batch -l
-scripts/dev byte-compile-all`, an ERT run, etc.) fail with the same
-error class, STOP. Write `tests/unit/probe_X.el`, run it directly,
-identify whether the issue is a SYNTAX fix (1–3 lines) or a
-STRUCTURE fix (refactor). The trap log at
-`ELISP_BEST_PRACTICES.md §11` is the first place to look when
-debugging.
+- **A check that cannot fail is a comment.** Every claim carries a control
+  that has been shown to bite.
+- **Unknown is not pass.** An exit code of `3` means the method could not
+  tell, and it is never read as success.
 
-## Honest time reporting
+<!-- math-coding:begin -->
+## math-coding in this project
 
-Three allowed scales, **never** combined:
+This block is written by `mathc install` and by nothing else.
+Everything outside it belongs to the project and is never touched.
+Re-run `mathc install` after the specification changes;
+`mathc doctor` says whether this block is current.
 
-```text
-wall-clock-minutes   real seconds/minutes from session start to now
-token-budget         prompt + completion tokens consumed
-step-count           tool calls / reasoning rounds performed
+### The aim
+
+Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only.
+
+Stated by p.b.kosov@yandex.ru, over lib/, tests/, scripts/, schemas/, AGENTS.md, README.md, ELISP_BEST_PRACTICES.md.
+
+### The next step
+
+```sh
+mathc --root . next
 ```
 
-No fourth scale is acceptable without an axiomatic justification.
+### What is declared
 
-## Self-application
+16 claim(s): 12 holds, 2 not established.
 
-Changes to this protocol, the active policy, the kernel, or the
-wire contract always require:
+The full list, and what is not covered: `mathc --root . map`.
 
-1. a decision under the currently active rules;
-2. a strongest practical countercase;
-3. positive and negative conformance fixtures;
-4. a migration and recovery path;
-5. authorization by the previous active policy;
-6. an explicit list of changed verdicts.
+### If you are an agent here
 
-Candidate rules cannot authorize their own adoption.
+```sh
+mathc map      # what is claimed, what is known, what is not covered
+mathc run      # run the checks, bind every proof to the content it ran against
+mathc route    # what needs a person, and why
+mathc next     # the next work, one item
+mathc add ID "SUBJECT" SCOPE "WHAT WOULD REFUTE IT" fact \
+   --requirement verifier:CMD --control CMD
+```
+
+The control is the command that breaks the subject and must fail with it:
+a check that cannot fail proves nothing.
+
+For an agent the machine surface is cheaper: `mathc --root . mcp` speaks
+JSON-RPC and returns the next step with every method.
+
+Every verb: mathc - · mathc init · mathc goal · mathc add · mathc accept · mathc budget · mathc map · mathc route · mathc run · mathc record · mathc next · mathc wave · mathc close · mathc draft · mathc install · mathc mcp · mathc propose · mathc doctor.
+<!-- math-coding:end -->
+
+## The Elisp side
+
+- `lib/` is Elisp only. No C, no Rust, no shell scripts inside the kernel.
+- One feature per file; `(require 'yeah-x)` loads `lib/yeah-x.el`.
+- Public symbols are prefixed `yeah-`; internal helpers use `yeah--`.
+- Domain errors are `user-error`, never `error`.
+- `defvar` variables are rebound with `setq`, not with `let`.
+- Subprocesses are started with `make-process`, never with `shell-command`.
+
+The full list, with the reasons, is in `ELISP_BEST_PRACTICES.md`.

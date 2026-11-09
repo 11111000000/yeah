@@ -1,87 +1,100 @@
-# Yeah — Y(eah) Emacs Agent Harness
+# Yeah — an Emacs Lisp agent harness
 
-> **Status:** v0.1.0-alpha. All Tier 0–4 tasks from `ROADMAP.md`
-> are landed as stubs; the wire layer (ACP, emcp) speaks the
-> protocol but defers real network IO. The 9 active decisions
-> under `decisions/` are the load-bearing artefacts.
+> **Status:** v0.1.0-alpha, governed by **math-coding v4**.
+>
+> The standing specification is `spec.json`: sixteen claims about this
+> repository, each with a check and a control that has been shown to bite.
+> The plan is `waves/*.json`: four units of work, each with an intent, a
+> promise and the strongest objection against it.
+>
+> Run `./scripts/dev map` for the current state. It is the main artefact.
 
 **Yeah** is an Emacs-native agentic harness. The user has an Emacs
-session; that session **is** the run-time of the agent. The harness:
+session; that session **is** the run-time of the agent. There is no
+sidecar process and no client/server split:
 
-- speaks **ACP** (Agent Client Protocol) on the upstream side
-  (any ACP client — Zed, JetBrains IDE — can host Yeah);
-- speaks **MCP** on the downstream side, including `emcp` —
-  Emacs-flavoured tools (`emacs__eval`, `emacs__buffer_*`,
-  `emacs__magit_*`, `emacs__dired_*`, `emacs__describe_*`);
-- re-uses the entire GNU ELPA / MELPA surface (`gptel`,
-  `mcp-server-lib`, `sandbox.el`, `deadgrep`, `jsonrpc.el`,
-  `transient`, …);
-- is governed by a decision-driven workflow, with every non-trivial
-  change recorded as a `decisions/*.yaml` ADR.
+- the kernel is **Elisp** (`lib/`, thirteen modules, one feature per file);
+- the model is reached through **gptel**, and only through gptel;
+- the tools are **Elisp functions**, registered in a registry and gated by
+  a permission system;
+- the session log is **append-only JSONL**; compaction is a projection over
+  it, never a deletion;
+- the wire is **ACP** on the upstream side (JSON-RPC 2.0 over stdio: Zed,
+  JetBrains and any other ACP client can host Yeah) and **MCP** on the
+  downstream side (`emacs__*` tools, so Emacs can be a tool for an
+  external agent).
 
-## What works in v0.1.0-alpha
+## What runs today
 
-- 14 kernel Elisp modules, byte-compile clean under
-  `emacs -Q --batch -L lib -f batch-byte-compile lib/*.el`
-- 104 ERT cases, all passing
-- `scripts/dev` wrapper: `smoke`, `validate`,
-  `byte-compile-all`, `help`
-- Two wire-stable schemas: `schemas/acp-v1.json` and
-  `schemas/emcp-v1.json` (documentation; not enforced at
-  runtime in this revision)
-- The agent loop FSM: 12 states, 18 transitions, observed in
-  `lib/yeah-state.el` and `lib/yeah-loop.el`
+| Module | What it is | State |
+|---|---|---|
+| `yeah-state.el` | the twelve states of the agent loop | holds |
+| `yeah-loop.el` | the eighteen transitions between them | holds |
+| `yeah-session.el` | the append-only JSONL session log | holds |
+| `yeah-compact.el` | compaction as a projection over the log | holds |
+| `yeah-undo.el` | the undo boundary around a tick | holds |
+| `yeah-tools.el` | the in-process tool registry | holds |
+| `yeah-perm.el` | the permission rules, last match wins | holds |
+| `yeah-acp.el` | the ACP agent side | holds |
+| `yeah-emcp.el` | the `emacs__*` tool registry | holds |
+| `yeah-gptel.el` | the gptel hook surface | holds |
+| `yeah-subagent.el` | the sub-agent delegation API | holds |
+| `yeah-shell.el` | the `*yeah-shell*` REPL | holds |
+| `yeah-codes.el` | the PTC sandbox | **refuted** |
 
-## What is a stub in v0.1.0-alpha
+## What does not run yet, and is said so
 
-- ACP `session/prompt`: returns a fake `messageId`; the real
-  LLM call lives in `lib/yeah-gptel.el`, which is a stub that
-  does not yet call gptel.
-- emcp tool handlers: return placeholder strings; the real
-  tool implementations land in v0.2.
-- Code-mode (`lib/yeah-codes.el`): whitelists names, validates
-  inputs, and runs a JSON-clean eval; the real `sandbox.el`
-  integration lands in v0.2 once we add an Emacs 29+ CI
-  target.
-- Sub-agent (`lib/yeah-subagent.el`): spawns a child session
-  and returns a stub result; the async gptel integration
-  lands in v0.2.
-- Compaction (`lib/yeah-compact.el`): uses a deterministic
-  placeholder summarizer; the real gptel summarization lands
-  in v0.2.
+Two claims are **refuted** in the map, and the waves say what will turn
+them green:
+
+- `the-agent-loop-is-wired` — the tick, the permission system, the tool
+  registry and the session log are four modules that nobody calls. The
+  check is `tests/checks/check-agent-loop-wired.sh`; it fails today.
+- `ptc-sandbox-restricts-model-code` — the PTC sandbox gates the *name* of
+  a binding and then evaluates the body the model supplied. The check is
+  `tests/checks/check-ptc-sandbox-restricts.el`; it fails today.
+
+Two more are **promises about code that does not exist yet** (wave-4): a
+real call to the model through the gptel hooks, and the ACP agent speaking
+JSON-RPC over stdio.
+
+The map is red, and that is the point: the surface nobody has checked is
+published, not hidden. `unknown` is not `pass` — an exit code of `3` means
+the method could not tell.
+
+## How to run it
+
+```sh
+./scripts/dev help                  # the subcommands
+./scripts/dev byte-compile-all      # the kernel compiles clean, no warnings
+./scripts/dev ert tests/unit/*.el   # the unit tests
+./scripts/dev check tests/checks/*  # the canaries the claims are bound to
+./scripts/dev map                   # claims, states, uncovered surface
+./scripts/dev run                   # execute the checks, bind the evidence
+./scripts/dev gate                  # run, then map; the exit code is the verdict
+```
+
+`scripts/dev` needs Emacs on `PATH` (or `EMACS` set) and the method
+binary (or `MATHC` set). The method binary comes from the math-coding
+repository — `nix build` there writes `result/bin/mathc`.
+
+## How to read this repository as an agent
+
+1. `AGENTS.md` — the entry point: the reading order, the commands, and
+   the block that `mathc install` generates.
+2. `spec.json` — the standing specification.
+3. `waves/*.json` — the plan.
+4. `ELISP_BEST_PRACTICES.md` — the conventions for kernel Elisp; §11 is
+   the trap log.
+5. `lib/yeah-*.el` — the kernel.
+
+There is no decision corpus: a record of what changed lives in git, and a
+rule lives in `spec.json` while its subject lives.
 
 ## Author
 
-- **Petr Kosov** &lt;p.b.kosov@yandex.ru&gt;
+- **Petr Kosov** <p.b.kosov@yandex.ru>
 
 ## License
 
 - **Apache-2.0** (see `LICENSE`, `NOTICE`)
-
-## How to read this repo as an agent
-
-1. `AGENTS.md` — protocol, bootstrap checks, friction ladder,
-   self-application rule.
-2. `ROADMAP.md` — single source of truth for priorities.
-3. `PACKAGES.md` — single source of truth for what exists.
-4. `decisions/decision.yaml` — active policy.
-5. The specific decision file for the area you're touching.
-6. The corresponding obligation (if any) under `obligations/`.
-7. The corresponding positive + negative fixture pair under
-   `tests/fixtures/`.
-
-If two documents contradict each other, the contradiction is a
-deficit. Log it; do not silently resolve it.
-
-## How to run the tests
-
-```
-emacs -Q --batch -L lib -f batch-byte-compile lib/*.el
-emacs -Q --batch -L lib -l tests/unit/test-yeah-*.el \
-      -f ert-run-tests-batch-and-exit
-./scripts/dev validate
-./scripts/dev byte-compile-all
-bash tests/unit/test-scripts-dev.sh
-```
-
-All five commands should exit 0 on a healthy tree.

@@ -1,0 +1,275 @@
+{
+  "goal": {
+    "text": "Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only.",
+    "scope": [
+      "lib/", "tests/", "scripts/", "schemas/", "AGENTS.md", "README.md",
+      "ELISP_BEST_PRACTICES.md"
+    ],
+    "by": "p.b.kosov@yandex.ru",
+    "at": "1794240763"
+  },
+  "uncertainty_budget": 3,
+  "closed_waves": [ "wave-1" ],
+  "claims": [
+    {
+      "id": "lib-byte-compiles-clean",
+      "subject": "every file under lib/ byte-compiles without errors and without warnings",
+      "scope": [ "lib/" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev byte-compile-all" }
+      ],
+      "falsifier": "the byte-compilation of lib/ fails, or reports a warning",
+      "register": "fact",
+      "accepted": null,
+      "control": "printf '(error \"negative control\")\\n' >> lib/yeah-state.el",
+      "attestations": []
+    },
+    {
+      "id": "fsm-has-twelve-states-and-eighteen-transitions",
+      "subject": "the agent loop is a finite state machine with exactly twelve states and eighteen transitions, and both numbers are fixed by the code",
+      "scope": [ "lib/yeah-state.el", "lib/yeah-loop.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el"
+        }
+      ],
+      "falsifier": "the state list or the transition table has a different length, or a transition is missing",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/^    interrupted$/    completed-tmp/; s/^    completed$/    interrupted/; s/^    completed-tmp$/    completed/' lib/yeah-state.el",
+      "attestations": []
+    },
+    {
+      "id": "session-log-is-append-only",
+      "subject": "the session log is append-only: a record that has been written is never rewritten and never removed",
+      "scope": [ "lib/yeah-session.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-session-log-append-only.el"
+        }
+      ],
+      "falsifier": "an earlier record is missing from the file after a later append",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/'append 'no-message)/nil 'no-message)/\" lib/yeah-session.el",
+      "attestations": []
+    },
+    {
+      "id": "compaction-is-a-projection-not-a-deletion",
+      "subject": "compaction is a projection: the source records stay on disk and the compaction record joins them",
+      "scope": [ "lib/yeah-compact.el", "lib/yeah-session.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-compaction-keeps-sources.el"
+        }
+      ],
+      "falsifier": "a source record disappears from the log when the compaction runs",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/'append 'no-message)/nil 'no-message)/\" lib/yeah-session.el",
+      "attestations": []
+    },
+    {
+      "id": "tool-call-validates-its-arguments",
+      "subject": "a tool call is refused when the number of arguments, or the type of one of them, does not match the tool's declared input",
+      "scope": [ "lib/yeah-tools.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-tools.el"
+        }
+      ],
+      "falsifier": "a call with the wrong number of arguments, or with an argument of the wrong type, is accepted",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(<= (length args) max)/(<= (length args) 100)/' lib/yeah-tools.el",
+      "attestations": []
+    },
+    {
+      "id": "permission-decides-by-the-last-matching-rule",
+      "subject": "the permission system decides by the last matching rule, and asks when nothing matches",
+      "scope": [ "lib/yeah-perm.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-perm.el"
+        }
+      ],
+      "falsifier": "an earlier matching rule overrides a later one, or the default stops being ask",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(setq last-match rule)/(unless last-match (setq last-match rule))/' lib/yeah-perm.el",
+      "attestations": []
+    },
+    {
+      "id": "acp-dispatcher-handles-the-four-methods",
+      "subject": "the ACP dispatcher answers initialize, session/new, session/prompt and session/cancel, and refuses a method it does not know",
+      "scope": [ "lib/yeah-acp.el", "schemas/acp-v1.json" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-acp.el"
+        },
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-acp-dispatcher-routes-every-method.el"
+        }
+      ],
+      "falsifier": "one of the four methods is unrouted, or an unknown method is answered instead of refused",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/\"cancelled\"/\"canceled\"/' lib/yeah-acp.el",
+      "attestations": []
+    },
+    {
+      "id": "emcp-tool-surface-matches-the-schema",
+      "subject": "the emcp registry and schemas/emcp-v1.json name the same tools, and a duplicate id is refused",
+      "scope": [ "lib/yeah-emcp.el", "schemas/emcp-v1.json" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-emcp-registry-matches-schema.el"
+        }
+      ],
+      "falsifier": "the registry and the schema name different tools, or a duplicate id is accepted",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(list \"emacs__dired_list\"/(list \"emacs__dired_list_renamed\"/' lib/yeah-emcp.el",
+      "attestations": []
+    },
+    {
+      "id": "undo-boundary-records-every-tick",
+      "subject": "every tick's changes can be undone: an undo boundary is taken around the buffer or the file the tick touched",
+      "scope": [ "lib/yeah-undo.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-undo.el"
+        }
+      ],
+      "falsifier": "a change made inside the boundary is not recorded in the undo list",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(funcall thunk)/(ignore thunk)/' lib/yeah-undo.el",
+      "attestations": []
+    },
+    {
+      "id": "gptel-hooks-live-in-one-module-only",
+      "subject": "the gptel hooks are registered in exactly one module, lib/yeah-gptel.el, and nowhere else in lib/",
+      "scope": [ "lib/yeah-gptel.el", "lib/" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-gptel-hooks-live-in-one-module.sh"
+        }
+      ],
+      "falsifier": "a second module mentions a gptel hook variable",
+      "register": "fact",
+      "accepted": null,
+      "control": "printf \"(add-hook 'gptel-prompt-transform-functions (lambda (p) p))\\n\" >> lib/yeah-state.el",
+      "attestations": []
+    },
+    {
+      "id": "subagent-spawns-a-child-within-the-depth-limit",
+      "subject": "a sub-agent spawns a child session, waits for it, and a spawn past the depth limit is refused",
+      "scope": [ "lib/yeah-subagent.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-subagent-depth-limit-is-enforced.el"
+        }
+      ],
+      "falsifier": "the child session is not created, or the depth limit is not enforced",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(>= child-depth limit)/(>= child-depth 999)/' lib/yeah-subagent.el",
+      "attestations": []
+    },
+    {
+      "id": "yeah-shell-keeps-a-bounded-history",
+      "subject": "the Yeah shell keeps a bounded history of what was sent to it, and creates its REPL buffer",
+      "scope": [ "lib/yeah-shell.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-shell.el"
+        }
+      ],
+      "falsifier": "the history is unbounded, or the REPL buffer is not created",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(ring-insert yeah-shell--history input)/(setq yeah-shell--history (make-ring 200))/' lib/yeah-shell.el",
+      "attestations": []
+    },
+    {
+      "id": "the-agent-loop-is-wired",
+      "subject": "the tick, the permission system, the tool registry and the session log are wired into one loop: each is called from outside its own module",
+      "scope": [
+        "lib/yeah-loop.el", "lib/yeah-perm.el", "lib/yeah-tools.el",
+        "lib/yeah-session.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-agent-loop-wired.sh"
+        }
+      ],
+      "falsifier": "a module of the loop is called only from inside itself",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/yeah-loop-tick/yeah-loop-tick-off/g' lib/*.el",
+      "attestations": []
+    },
+    {
+      "id": "ptc-sandbox-restricts-model-code",
+      "subject": "the PTC sandbox refuses a form whose name is not whitelisted, and refuses code inside a whitelisted form that calls outside the whitelist",
+      "scope": [ "lib/yeah-codes.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-ptc-sandbox-restricts.el"
+        }
+      ],
+      "falsifier": "the sandbox executes code the model supplied, or accepts a form outside the whitelist",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(not (yeah-codes--whitelist-member name))/(not nil)/' lib/yeah-codes.el",
+      "attestations": []
+    },
+    {
+      "id": "the-model-is-called-through-the-gptel-hook-surface",
+      "subject": "the model is called through the gptel hook surface and nowhere else: the transport has one entry point",
+      "scope": [ "lib/yeah-gptel.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-gptel-is-the-only-call-site.el"
+        }
+      ],
+      "falsifier": "a call to the model bypasses the gptel hooks, or a second module talks to the transport",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "the-acp-agent-speaks-over-stdio",
+      "subject": "the ACP agent speaks JSON-RPC over stdio: a client can open the process and exchange an initialize request and its answer",
+      "scope": [ "lib/yeah-wire.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-acp-stdio-round-trip.el"
+        }
+      ],
+      "falsifier": "a client cannot exchange a JSON-RPC message with the agent over stdio",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    }
+  ]
+}
