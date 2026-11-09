@@ -1,0 +1,28 @@
+{
+  "id": "wave-05",
+  "title": "the interface: the run as the person sees it",
+  "intent": "The reference harnesses are products, and most of their code is the interface, the installation and the server, not the kernel. The aim here is parity from the point of view of the person using it, which means the interface is not a decoration: it is the same event stream, rendered. This wave is the face of the harness: the transcript, the tool calls in flight, the pending approval, the cost so far.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "the-interface-renders-the-event-stream"
+  ],
+  "commitment": [
+    {
+      "claim": "the-interface-renders-the-event-stream",
+      "state": "holds"
+    }
+  ],
+  "objection": "An interface that looks familiar but behaves differently is worse than no interface: the person carries their expectations from another harness and is wrong.",
+  "refuted_by": "A person who sees the same run in the interface and in the log and cannot tell which one is telling the truth."
+}

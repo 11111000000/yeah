@@ -1,0 +1,20 @@
+{
+  "id": "wave-14",
+  "title": "the product: installation, server and documentation for a person",
+  "intent": "Parity from the point of view of a person includes the parts that are not the kernel: how the harness is installed, how it is served, and how it is explained to someone who is not reading its source. The reference harnesses spend most of their code there. This wave is the product layer, and it is also where the strongest objection to the whole architecture is settled: an agent on a phone, running the same task through Emacs Lisp and through shell, where the Emacs arm needs a package manager and the shell arm does not.",
+  "touches": [ "lib/", "tests/", "scripts/", "spec.json", "waves/" ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [ "the-product-installs-serves-and-documents" ],
+  "commitment": [
+    {
+      "claim": "the-product-installs-serves-and-documents",
+      "state": "holds"
+    }
+  ],
+  "objection": "The bootstrap is the part that does not travel, and the installation is where it shows: a package manager on a phone is a worse user experience than a shell that is already there.",
+  "refuted_by": "The same task through Emacs Lisp and through shell on a phone, with the Emacs arm needing a package manager. If that is the bottleneck every time, the architecture is wrong and the kernel should not have been Elisp."
+}

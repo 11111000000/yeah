@@ -1,0 +1,28 @@
+{
+  "id": "wave-08",
+  "title": "context: the compaction is a model call",
+  "intent": "The compactor finds a cut point and writes a projection, and the projection is a projection: the source records stay on disk. But the summary itself is a deterministic placeholder, so a long run is shortened into a text that says nothing. Both reference harnesses summarise with a model call, keep a tail of the recent conversation, and separately prune the outputs of old tools. This wave replaces the placeholder with the call and adds the pruning.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "compaction-is-a-model-call-and-old-outputs-are-pruned"
+  ],
+  "commitment": [
+    {
+      "claim": "compaction-is-a-model-call-and-old-outputs-are-pruned",
+      "state": "holds"
+    }
+  ],
+  "objection": "Compaction by a model call costs tokens and a turn, and the harness is compacting precisely when the context is tight and the model is expensive.",
+  "refuted_by": "A compaction whose summary is worse than the records it replaced. If the run continues worse after the compaction than before it, the feature is a loss."
+}

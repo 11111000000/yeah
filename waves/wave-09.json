@@ -1,0 +1,28 @@
+{
+  "id": "wave-09",
+  "title": "sessions: an index, a tree and a price",
+  "intent": "The session log is append-only and honest, and that is all it is: there is no index, no way to list the sessions of a project, no way to resume one, no way to branch it, and no account of what it cost. The reference harnesses have all four, and a session that cannot be resumed is a session that was thrown away. This wave adds the index, the tree, the resume and the cost, and keeps the log append-only underneath.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "sessions-have-an-index-a-tree-and-a-cost"
+  ],
+  "commitment": [
+    {
+      "claim": "sessions-have-an-index-a-tree-and-a-cost",
+      "state": "holds"
+    }
+  ],
+  "objection": "A tree of sessions is a second structure next to the log, and two structures drift: the tree says one thing and the log another.",
+  "refuted_by": "A resumed session whose tree disagrees with its log, so that the continuation is built on a state that never existed."
+}
