@@ -38,6 +38,16 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-tools)
+
+;; The model is reached through gptel. The declarations are for the
+;; released gptel (20251007): the request is asynchronous and calls the
+;; callback with the answer and the request info, and a tool is built
+;; from a name, a function, a description and its arguments.
+(declare-function gptel-request "gptel"
+  (&optional prompt &key callback buffer position context dry-run
+                    stream in-place system schema transforms fsm))
+(declare-function gptel-make-tool "gptel" (&rest slots))
 
 (defgroup yeah-gptel nil
   "Yeah / gptel transport bridge."
@@ -106,11 +116,79 @@ in Tier 3 alongside `lib/yeah-tools.el' and `lib/yeah-perm.el'."
   "Record the gptel FSM STATE transition.
 In revision 0 the recording is a `message' echo. The future
 hook is `yeah-session-record' (defined in `lib/yeah-session.el',
-Tier 3); when that module lands, replace the `message` below
+Tier 3); when that module lands, replace the `message' below
 with `(yeah-session-record (list :event _event :state state))'.
 The argument shapes accepted today are `(:state STATE)' and
 `(:transition FROM TO)'."
   (message "yeah-gptel: fsm-handler state=%S" state))
+
+(defun yeah-gptel--require-gptel (what)
+  "Signal a user-error unless gptel is loaded, naming WHAT wanted it."
+  (unless (fboundp 'gptel-request)
+    (signal 'user-error
+            (list (format "yeah-gptel: %s needs gptel, which is not loaded" what))))
+  t)
+
+(defun yeah-gptel-request (prompt callback)
+  "Ask the model PROMPT and call CALLBACK with the answer.
+
+This is the ONLY place in Yeah where the model is called. Everything
+else goes through the transport: the claim
+`the-model-is-called-through-the-gptel-hook-surface' is bound to it,
+and the check that binds it looks for any other call of gptel's
+request API in `lib/'.
+
+CALLBACK is called the way gptel calls it: with the answer and the
+request info. The answer is a string when the model has answered with
+text, and `(tool-call . ((TOOL ARGS CB) ...))' when it has asked for
+tools; `lib/yeah-turn.el' is what understands those shapes."
+  (yeah-gptel--require-gptel "yeah-gptel-request")
+  (gptel-request prompt :callback callback))
+
+(defun yeah-gptel--argument-type (type)
+  "Return the gptel name for the registry TYPE.
+The registry knows four types; gptel wants the names of the JSON
+schema, and a symbol argument is carried as a string."
+  (pcase type
+    ('string  "string")
+    ('integer "integer")
+    ('boolean "boolean")
+    ('symbol  "string")
+    (_        "string")))
+
+(defun yeah-gptel-tool-for (name)
+  "Return a gptel tool that runs the registry tool NAME.
+
+The tool is advertised to the model with `:confirm' always true, so
+that gptel hands every call back to the callback instead of running it
+itself: the permission system of Yeah decides what may run, and the
+turn writes what happened into the log. If gptel ran the tool on its
+own, the rules would be a second truth about what may happen."
+  (yeah-gptel--require-gptel "yeah-gptel-tool-for")
+  (let ((spec (yeah-tools-get name)))
+    (unless spec
+      (signal 'user-error
+              (list (format "yeah-gptel-tool-for: no such tool: %S" name))))
+    (gptel-make-tool
+     :name name
+     :function (lambda (&rest args) (yeah-tools-call name args))
+     :description (plist-get spec :description)
+     :args (mapcar (lambda (param)
+                     (list :name (plist-get param :name)
+                           :description (format "the %s argument"
+                                                 (plist-get param :name))
+                           :type (yeah-gptel--argument-type (plist-get param :type))))
+                   (plist-get spec :input))
+     :confirm (lambda (&rest _args) t))))
+
+(defun yeah-gptel-bind-tools (&optional buffer)
+  "Advertise the tools of Yeah's registry to the model in BUFFER.
+The tools are the buffer-local `gptel-tools' of the released gptel;
+this is how a buffer says what the model may ask for."
+  (yeah-gptel--require-gptel "yeah-gptel-bind-tools")
+  (with-current-buffer (or buffer (current-buffer))
+    (setq-local gptel-tools (mapcar #'yeah-gptel-tool-for (yeah-tools-names)))))
+
 
 (defun yeah-gptel-hooks-install ()
   "Register the three gptel hook functions on `gptel-...' variables.

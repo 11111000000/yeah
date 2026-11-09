@@ -111,7 +111,7 @@ repository today.
 
 | Capability | opencode | pi | Yeah |
 |---|---|---|---|
-| Loop over model turns, parsing tool calls | `session/prompt.ts:1081` | `core/agent-loop.ts:526` | absent: the FSM exists, the model is never called |
+| Loop over model turns, parsing tool calls | `session/prompt.ts:1081` | `core/agent-loop.ts:526` | present: `lib/yeah-turn.el` — the tick, the dispatch, the log, and the model asked again |
 | Parallel tools from one assistant message | FiberSet per tool call | shared/exclusive scheduling with a per-batch barrier | absent: one `awaiting-tool` state |
 | Typed events and a stream for the interface | 12 part types, typed bus, SSE | 13 event types, own EventStream | absent |
 | Approvals: reply kinds, remembered answers, no-human mode | once, always, reject; headless auto-answer | tool-declared tiers, modes, fails closed | only allow, deny, ask; ask raises |
@@ -126,9 +126,9 @@ repository today.
 | Sub-agents with their own session | task tool with a child session | task tool with a branch | stub |
 | Interface, installation, documentation for people | TUI, web, desktop | TUI, web, extensions | a REPL buffer |
 
-Thirteen rows, twelve of them empty. That is the size of the remaining
-work, and it is the plan: `waves/` is this table, one unit of work per
-row, ordered by dependency.
+Fourteen rows. One is now filled — the turn — and thirteen are still
+empty. That is the size of the remaining work, and it is the plan:
+`waves/` is this table, one unit of work per row, ordered by dependency.
 
 ## 6. The tension between H2 and H3, and how it resolves
 
