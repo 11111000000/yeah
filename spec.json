@@ -9,7 +9,7 @@
     "at": "1794244514"
   },
   "uncertainty_budget": 3,
-  "closed_waves": [ "wave-01", "wave-02", "wave-03" ],
+  "closed_waves": [ "wave-01", "wave-02", "wave-03", "wave-04" ],
   "claims": [
     {
       "id": "lib-byte-compiles-clean",
@@ -344,18 +344,21 @@
     },
     {
       "id": "the-session-log-is-a-typed-event-stream",
-      "subject": "every step of a run is a typed record in the append-only log: message parts, tool start and end, permission requests and decisions, usage",
-      "scope": [ "lib/yeah-events.el" ],
+      "subject": "every step of a run is a typed record of the log: what the model asked, what the rules answered, what the tool did, and what the model said, and a record carries the fields its type declares",
+      "scope": [
+        "lib/yeah-events.el", "lib/yeah-turn.el",
+        "tests/checks/check-events-are-typed.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
           "spec": "./scripts/dev check tests/checks/check-events-are-typed.el"
         }
       ],
-      "falsifier": "a step of a run leaves no typed record, or two kinds of step share one record",
+      "falsifier": "the log holds a record of an unknown type, a record whose fields are not the ones its type declares, or a step of the run that leaves no record",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(unless (yeah-events--same-fields-p declared given)/(unless t (yeah-events--same-fields-p declared given)/' lib/yeah-events.el",
       "attestations": []
     },
     {

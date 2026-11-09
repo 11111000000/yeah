@@ -104,11 +104,13 @@ Returns a list of failures; an empty list means the turn behaved."
                       (yeah-turn-states turn))
               failures))
       (unless (equal (yeah-check--types records)
-                     '("header" "user" "tool-result" "assistant"))
+                     '("header" "user-message" "tool-request"
+                       "permission-request" "permission-decision"
+                       "tool-end" "assistant-message"))
         (push (format "the log holds the wrong records: %S"
                       (yeah-check--types records))
               failures))
-      (unless (equal (plist-get (nth 2 records) :tool) "probe")
+      (unless (equal (plist-get (nth 5 records) :tool) "probe")
         (push "the logged tool is not the one that ran" failures)))
     (ignore-errors (delete-directory root t t))
     failures))
@@ -134,12 +136,12 @@ Returns a list of failures; an empty list means the turn behaved."
               failures))
       (when (car ran)
         (push "the refused tool ran anyway" failures))
-      (unless (= 4 (length records))
-        (push (format "the log holds %d records, expected 4" (length records))
+      (unless (= 7 (length records))
+        (push (format "the log holds %d records, expected 7" (length records))
               failures))
-      (when (>= (length records) 3)
+      (when (>= (length records) 6)
         (unless (equal "deny: probe on /tmp/probe-target"
-                       (plist-get (nth 2 records) :payload))
+                       (plist-get (nth 5 records) :payload))
           (push (format "the refusal was not logged as one: %S"
                         (plist-get (nth 2 records) :payload))
                 failures))))

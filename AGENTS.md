@@ -74,8 +74,8 @@ the calls rather than the order of the finishes. The model is called in
 one place only — `yeah-gptel-request` in `lib/yeah-gptel.el` — and the
 canary for that reads the tree.
 
-Eleven claims are **promises about code that does not exist yet**: the
-typed event log, the interface, the approvals with reply kinds, the
+Ten claims are **promises about code that does not exist yet**: the
+interface, the approvals with reply kinds, the
 model-driven compaction, the session tree, the runtime with its retries
 and timeouts, the MCP server on stdio, the three placements, the
 sub-agents, the product layer, and the ACP agent speaking JSON-RPC over
@@ -110,7 +110,7 @@ mathc --root . next
 
 ### What is declared
 
-28 claim(s): 15 holds, 12 not established.
+28 claim(s): 16 holds, 11 not established.
 
 The full list, and what is not covered: `mathc --root . map`.
 
