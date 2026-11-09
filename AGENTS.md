@@ -60,18 +60,23 @@ that can close it, a falsifier, a register, and a **control**: the command
 that breaks the subject and must make the check go red. A claim whose
 control has never bitten is not established, and the map says so.
 
-Two claims are **refuted** today, and the map says so in red:
+One claim is **refuted** today, and the map says so in red:
 
-- `the-agent-loop-is-wired` — the tick, the permission system, the tool
-  registry and the session log are four modules that nobody calls. This is
-  wave-2.
 - `ptc-sandbox-restricts-model-code` — the PTC sandbox gates the *name* of
   a binding and then evaluates the body the model supplied. This is
-  wave-3.
+  wave-07.
 
-Two claims are **promises about code that does not exist yet** (wave-4):
-a real call to the model through the gptel hooks, and the ACP agent
-speaking JSON-RPC over stdio.
+The loop is wired and the turn works: `the-agent-loop-is-wired` and
+`the-model-turn-runs-and-parses-tool-calls` hold. The model is called in
+one place only — `yeah-gptel-request` in `lib/yeah-gptel.el` — and the
+canary for that reads the tree.
+
+Twelve claims are **promises about code that does not exist yet**: the
+parallel scheduler, the typed event log, the interface, the approvals with
+reply kinds, the model-driven compaction, the session tree, the runtime
+with its retries and timeouts, the MCP server on stdio, the three
+placements, the sub-agents, the product layer, and the ACP agent speaking
+JSON-RPC over stdio.
 
 Two rules that are not negotiable here:
 

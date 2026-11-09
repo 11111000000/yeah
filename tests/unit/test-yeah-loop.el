@@ -12,9 +12,9 @@
 (require 'yeah-state)
 (require 'yeah-loop)
 
-(ert-deftest yeah-loop-transition-count-is-18 ()
-  "The transition table has exactly 18 entries."
-  (should (= 18 (yeah-loop-transition-count))))
+(ert-deftest yeah-loop-transition-count-is-20 ()
+  "The transition table has exactly 20 entries."
+  (should (= 20 (yeah-loop-transition-count))))
 
 (ert-deftest yeah-loop-tick-idle-on-user-prompt ()
   "user-prompt from idle goes to deciding."
@@ -25,12 +25,25 @@
   (should (eq (yeah-loop-tick 'deciding 'stream-end) 'post-decide)))
 
 (ert-deftest yeah-loop-tick-post-decide-fans-out ()
-  "post-decide has four legal labels: no-tool-calls, tool-call,
-permission-ask, ask-user."
+  "post-decide has five legal labels: no-tool-calls, tool-call,
+permission-ask, ask-user, continue."
   (should (eq (yeah-loop-tick 'post-decide 'no-tool-calls)  'completed))
   (should (eq (yeah-loop-tick 'post-decide 'tool-call)      'awaiting-tool))
   (should (eq (yeah-loop-tick 'post-decide 'permission-ask) 'awaiting-user-permission))
-  (should (eq (yeah-loop-tick 'post-decide 'ask-user)        'awaiting-user-input)))
+  (should (eq (yeah-loop-tick 'post-decide 'ask-user)        'awaiting-user-input))
+  (should (eq (yeah-loop-tick 'post-decide 'continue)        'deciding)))
+
+(ert-deftest yeah-loop-tick-deciding-on-error ()
+  "error from deciding goes to failed: the model answered with
+something the turn cannot use, and the run failed rather than
+pretending it finished."
+  (should (eq (yeah-loop-tick 'deciding 'error) 'failed)))
+
+(ert-deftest yeah-loop-tick-post-decide-on-continue ()
+  "continue from post-decide goes back to deciding: the model is
+asked again, with the results of what was dispatched. Without this
+transition the machine can run one model turn and no more."
+  (should (eq (yeah-loop-tick 'post-decide 'continue) 'deciding)))
 
 (ert-deftest yeah-loop-tick-awaiting-tool-on-tool-end ()
   "tool-end from awaiting-tool goes to accumulating."
