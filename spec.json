@@ -1,21 +1,22 @@
 {
   "goal": {
-    "text": "Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only.",
+    "text": "Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only",
     "scope": [
       "lib/",
       "tests/",
       "scripts/",
       "schemas/",
+      "docs/",
       "AGENTS.md",
       "README.md",
       "ELISP_BEST_PRACTICES.md"
     ],
     "by": "p.b.kosov@yandex.ru",
-    "at": "1794240763"
+    "at": "1794244514"
   },
   "uncertainty_budget": 3,
   "closed_waves": [
-    "wave-1"
+    "wave-01"
   ],
   "claims": [
     {
@@ -335,6 +336,222 @@
         }
       ],
       "falsifier": "a client cannot exchange a JSON-RPC message with the agent over stdio",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "the-model-turn-runs-and-parses-tool-calls",
+      "subject": "one turn of the model runs through gptel without blocking the main loop, and the tool calls it asks for are parsed and dispatched",
+      "scope": [
+        "lib/yeah-turn.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-model-turn-runs.el"
+        }
+      ],
+      "falsifier": "the main loop blocks while the model is answering, or a tool call the model asked for is not dispatched",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "tools-from-one-turn-run-in-parallel",
+      "subject": "tool calls from one assistant message run concurrently, with a declared concurrency mode per tool, and the batch is a barrier",
+      "scope": [
+        "lib/yeah-scheduler.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-tools-run-in-parallel.el"
+        }
+      ],
+      "falsifier": "two tool calls from one message run one after the other, or a batch continues before a tool in it has settled",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "the-session-log-is-a-typed-event-stream",
+      "subject": "every step of a run is a typed record in the append-only log: message parts, tool start and end, permission requests and decisions, usage",
+      "scope": [
+        "lib/yeah-events.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-events-are-typed.el"
+        }
+      ],
+      "falsifier": "a step of a run leaves no typed record, or two kinds of step share one record",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "the-interface-renders-the-event-stream",
+      "subject": "the interface shows the run as it happens: the transcript, the tool calls in flight, the pending approval and the cost so far",
+      "scope": [
+        "lib/yeah-ui.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-interface-renders-events.el"
+        }
+      ],
+      "falsifier": "the interface cannot show what the run is doing without reading the log",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "approvals-have-reply-kinds-and-a-headless-policy",
+      "subject": "an approval is answered once, always or rejected, and a run without a human resolves the question by policy instead of failing",
+      "scope": [
+        "lib/yeah-approval.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-approvals-have-reply-kinds.el"
+        }
+      ],
+      "falsifier": "a run without a human dies on its first approval, or an answer given once is remembered forever",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "compaction-is-a-model-call-and-old-outputs-are-pruned",
+      "subject": "the context is compacted by a model call that keeps the tail, and the outputs of old tools are pruned separately",
+      "scope": [
+        "lib/yeah-context.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-compaction-is-a-model-call.el"
+        }
+      ],
+      "falsifier": "the context is compacted by a placeholder, or a long run grows without bound",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "sessions-have-an-index-a-tree-and-a-cost",
+      "subject": "sessions can be listed, resumed, branched and reverted, and every session reports what it cost in tokens and money",
+      "scope": [
+        "lib/yeah-sessions.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-sessions-have-a-tree.el"
+        }
+      ],
+      "falsifier": "a session cannot be resumed, a branch loses the abandoned path, or the cost of a session is unknown",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "the-runtime-retries-times-out-and-never-blocks",
+      "subject": "a failing call is retried with backoff, every tool has a timeout, a run has a deadline, and nothing waits in the main loop",
+      "scope": [
+        "lib/yeah-runtime.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-runtime-never-blocks.el"
+        }
+      ],
+      "falsifier": "a transient failure is not retried, a hanging tool has no timeout, or the main loop waits",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "the-mcp-server-speaks-over-stdio",
+      "subject": "the emacs tool namespace is served over stdio, and the tools it publishes are the ones the registry holds",
+      "scope": [
+        "lib/yeah-mcp.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-mcp-speaks-over-stdio.el"
+        }
+      ],
+      "falsifier": "a client cannot list or call the published tools, or the published set drifts from the registry",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "the-kernel-runs-in-three-placements",
+      "subject": "the same kernel runs attached to a session, in its own Emacs as a service, and in batch, and the placement changes nothing but the answer to a question",
+      "scope": [
+        "lib/yeah-placement.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-three-placements.el"
+        }
+      ],
+      "falsifier": "the kernel behaves differently depending on where it runs, or a run in a service cannot reach the buffers of a person",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "a-subagent-runs-its-own-session",
+      "subject": "a sub-agent runs in its own session with its own context and its own permissions, and its result comes back to the parent",
+      "scope": [
+        "lib/yeah-team.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-subagent-own-session.el"
+        }
+      ],
+      "falsifier": "a sub-agent shares the parent context, or exceeds the depth limit, or its result is lost",
+      "register": "fact",
+      "accepted": null,
+      "control": null,
+      "attestations": []
+    },
+    {
+      "id": "the-product-installs-serves-and-documents",
+      "subject": "the harness installs, serves and explains itself: an installation path, a server mode, and documentation written for a person",
+      "scope": [
+        "lib/yeah-product.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-product-installs.el"
+        }
+      ],
+      "falsifier": "the harness cannot be installed, cannot be served, or can only be used by an agent that reads the source",
       "register": "fact",
       "accepted": null,
       "control": null,

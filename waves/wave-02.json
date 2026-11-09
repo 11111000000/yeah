@@ -1,0 +1,38 @@
+{
+  "id": "wave-02",
+  "title": "the turn: the model is called, and what it asks for is dispatched",
+  "intent": "The loop exists as a state machine with twelve states and eighteen transitions, and no model is ever called: the hooks are installed, the prelude is prepended, and the prompt is acknowledged with a generated identifier. This wave is the turn: an asynchronous request through gptel that does not block the main loop, the parsing of the tool calls the model asks for, and the wiring of the tick, the permission system, the tool registry and the log into one loop.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "the-agent-loop-is-wired",
+    "the-model-turn-runs-and-parses-tool-calls",
+    "the-model-is-called-through-the-gptel-hook-surface"
+  ],
+  "commitment": [
+    {
+      "claim": "the-agent-loop-is-wired",
+      "state": "holds"
+    },
+    {
+      "claim": "the-model-turn-runs-and-parses-tool-calls",
+      "state": "holds"
+    },
+    {
+      "claim": "the-model-is-called-through-the-gptel-hook-surface",
+      "state": "holds"
+    }
+  ],
+  "objection": "A turn that does not block the main loop still blocks the run: the callback comes back on the main loop, so parsing and dispatch happen there, and a slow tool in the batch holds the whole turn.",
+  "refuted_by": "A run in which the model is asked twice and the second answer differs from the first in the tool calls only. If the dispatch depends on the order of the callbacks rather than on the content of the answer, the turn is not deterministic and the claim is not established."
+}

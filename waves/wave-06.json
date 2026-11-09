@@ -1,0 +1,28 @@
+{
+  "id": "wave-06",
+  "title": "approvals: a question that can be answered, and a policy that answers it",
+  "intent": "The permission system has the same shape as the reference ones: a rule is an action and a resource, the last matching rule decides, and the default is to ask. Two things are missing. The answers: once, always, reject. And the case of no human at all: today ask raises an error, so an unattended run dies on its first approval, while the references either answer automatically or fail closed. This wave adds both, and reconciles them with the acceptance interface gptel already has.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "approvals-have-reply-kinds-and-a-headless-policy"
+  ],
+  "commitment": [
+    {
+      "claim": "approvals-have-reply-kinds-and-a-headless-policy",
+      "state": "holds"
+    }
+  ],
+  "objection": "A remembered answer is a permission that outlives the person who gave it, and a policy that answers by itself is a permission nobody gave. The two are hard to tell apart after the fact.",
+  "refuted_by": "A run with no human that proceeds on a remembered answer from a session that is over. If the scope of the memory is not visible in the decision record, the answer cannot be audited."
+}

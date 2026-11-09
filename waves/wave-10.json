@@ -1,0 +1,20 @@
+{
+  "id": "wave-10",
+  "title": "robustness: retries, timeouts, a deadline and no blocking",
+  "intent": "The kernel has no retry, no timeout, no deadline, and no guard against a model that repeats the same call for ever. The reference harnesses have all four, and they have them because an agent without them burns money silently. This wave adds them, and adds the rule that the main loop never waits: a long wait is a process filter or a timer, and the main loop stays free.",
+  "touches": [ "lib/", "tests/", "scripts/", "spec.json", "waves/" ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [ "the-runtime-retries-times-out-and-never-blocks" ],
+  "commitment": [
+    {
+      "claim": "the-runtime-retries-times-out-and-never-blocks",
+      "state": "holds"
+    }
+  ],
+  "objection": "Retries multiply the cost of a failure, and a model that fails in a loop will retry in a loop too.",
+  "refuted_by": "A run that retries a permanent failure until the deadline, where one refusal would have been cheaper and clearer."
+}

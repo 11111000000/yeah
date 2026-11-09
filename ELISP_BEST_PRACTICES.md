@@ -127,11 +127,31 @@ control.
 
 ## §9. Concurrency
 
-§9.1 — **don't use `make-thread` in the kernel.** The agent loop is
-single-threaded; sub-agents run in their own Emacs processes, not
-threads.
+§9.1 — **the main loop never waits.** This is the rule that everything
+else in this section serves. A wait is a process filter, a timer, or a
+state of the machine — never a call that blocks the loop. The person
+using Emacs must be able to keep typing while the agent works, whether
+the agent runs in their session or in its own.
 
-§9.2 — **accept-process-output is the only blocking call.** All
+§9.2 — **threads are for waiting, not for isolation.** Emacs has real
+threads, and `lexical-binding` is `t` by default since Emacs 30, so
+lexical variables are private to a thread while globals stay shared. Use
+a thread for a slow read or a slow process. Do not use one to isolate
+the agent: a thread shares the address space, sees the buffers and the
+secrets of the person, and a crash in it takes the editor down.
+
+§9.3 — **isolation is a process, and the process is another Emacs.**
+Heavy work, work that must not touch the person's session, and work
+that runs unattended belong in a separate Emacs. Emacs already speaks to
+another Emacs over `emacsclient`, so the second process can act on the
+first one's buffers — as a tool, not as a trespass.
+
+§9.4 — **do not plan on the branch API.** `make-branch`,
+`clone-branch` and `terminate-branch` were in Emacs 29 and are **not in
+Emacs 30** — verified on the Emacs 30.2 this repository targets. A plan
+that depends on them is a plan on an API that does not exist.
+
+§9.5 — **accept-process-output is the only blocking call.** All
 subprocess IO returns to the loop through a process filter; the loop
 itself never blocks on user input — that is the `awaiting-user-input`
 state.
@@ -243,3 +263,22 @@ success, and a waived claim is never read as a passing one.
   readable.
 - **Convention:** a check is a claim about behaviour. A control that
   destroys the file destroys the claim too.
+
+### §11.6 — a hook on a variable that no longer exists is not a hook
+
+- **Date:** 2026-11-09 (the parity analysis)
+- **Symptom:** `lib/yeah-gptel.el` registers three gptel hooks. Two of
+  them exist in current gptel; the third, `gptel-fsm-handlers`, does
+  not. `add-hook` on an unbound variable succeeds, the install function
+  reports success, and the hook is never called by anything.
+- **Cause:** gptel changed its surface: the current hooks are
+  `gptel-prompt-transform-functions`, `gptel-pre-tool-call-functions` and
+  `gptel-post-tool-call-functions`, and gptel grew an internal state
+  machine of its own. A hook that no longer exists cannot fail, and a
+  registration that cannot fail is indistinguishable from a working one.
+- **Fix:** a hook is a claim about a foreign program, and it needs a
+  check like any other: the check must ask the foreign program whether
+  the variable is bound, and its control must remove the binding and
+  make the check red.
+- **Convention:** when registering a hook in a program you do not own,
+  assert that the variable exists, and record that assertion as a claim.

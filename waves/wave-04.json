@@ -1,0 +1,28 @@
+{
+  "id": "wave-04",
+  "title": "the event log: every step of a run is a typed record",
+  "intent": "The session log is append-only JSONL and it works, but its records have no vocabulary: there is no type for the start of a tool call, for the end of one, for a request of approval, for the refusal of one, for the spend of tokens. Both reference harnesses have a typed event union, and their interfaces render exactly that union. This wave gives the log that vocabulary, and the log becomes the event stream.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "the-session-log-is-a-typed-event-stream"
+  ],
+  "commitment": [
+    {
+      "claim": "the-session-log-is-a-typed-event-stream",
+      "state": "holds"
+    }
+  ],
+  "objection": "A vocabulary of events is a public contract, and a public contract in a project that has not shipped yet is a promise made twice: once in the schema and once in the code that writes it.",
+  "refuted_by": "A client that renders the stream and a reader of the raw log that disagree about what a record means. If the schema and the writer can drift, the vocabulary is decoration."
+}
