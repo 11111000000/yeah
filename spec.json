@@ -2,35 +2,21 @@
   "goal": {
     "text": "Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only",
     "scope": [
-      "lib/",
-      "tests/",
-      "scripts/",
-      "schemas/",
-      "docs/",
-      "AGENTS.md",
-      "README.md",
-      "ELISP_BEST_PRACTICES.md"
+      "lib/", "tests/", "scripts/", "schemas/", "docs/", "AGENTS.md",
+      "README.md", "ELISP_BEST_PRACTICES.md"
     ],
     "by": "p.b.kosov@yandex.ru",
     "at": "1794244514"
   },
   "uncertainty_budget": 3,
-  "closed_waves": [
-    "wave-01"
-  ],
+  "closed_waves": [ "wave-01", "wave-02" ],
   "claims": [
     {
       "id": "lib-byte-compiles-clean",
       "subject": "every file under lib/ byte-compiles without errors and without warnings",
-      "scope": [
-        "lib/",
-        "scripts/dev"
-      ],
+      "scope": [ "lib/", "scripts/dev" ],
       "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev byte-compile-all"
-        }
+        { "kind": "verifier", "spec": "./scripts/dev byte-compile-all" }
       ],
       "falsifier": "the byte-compilation of lib/ fails, or reports a warning",
       "register": "fact",
@@ -39,13 +25,11 @@
       "attestations": []
     },
     {
-      "id": "fsm-has-twelve-states-and-eighteen-transitions",
-      "subject": "the agent loop is a finite state machine with exactly twelve states and eighteen transitions, and both numbers are fixed by the code",
+      "id": "fsm-has-twelve-states-and-twenty-transitions",
+      "subject": "the agent loop is a finite state machine with exactly twelve states and twenty transitions: the machine can run one model turn and be asked again, and it can record a turn that failed",
       "scope": [
-        "lib/yeah-state.el",
-        "lib/yeah-loop.el",
-        "tests/unit/test-yeah-state.el",
-        "tests/unit/test-yeah-loop.el"
+        "lib/yeah-state.el", "lib/yeah-loop.el",
+        "tests/unit/test-yeah-state.el", "tests/unit/test-yeah-loop.el"
       ],
       "requirements": [
         {
@@ -53,7 +37,7 @@
           "spec": "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el"
         }
       ],
-      "falsifier": "the state list or the transition table has a different length, or a transition is missing",
+      "falsifier": "the state list or the transition table has a different length, a transition is missing, or the machine cannot return to the model",
       "register": "fact",
       "accepted": null,
       "control": "sed -i 's/^    interrupted$/    completed-tmp/; s/^    completed$/    interrupted/; s/^    completed-tmp$/    completed/' lib/yeah-state.el",
@@ -83,8 +67,7 @@
       "id": "compaction-is-a-projection-not-a-deletion",
       "subject": "compaction is a projection: the source records stay on disk and the compaction record joins them",
       "scope": [
-        "lib/yeah-compact.el",
-        "lib/yeah-session.el",
+        "lib/yeah-compact.el", "lib/yeah-session.el",
         "tests/checks/check-compaction-keeps-sources.el",
         "tests/unit/test-yeah-compact.el"
       ],
@@ -103,10 +86,7 @@
     {
       "id": "tool-call-validates-its-arguments",
       "subject": "a tool call is refused when the number of arguments, or the type of one of them, does not match the tool's declared input",
-      "scope": [
-        "lib/yeah-tools.el",
-        "tests/unit/test-yeah-tools.el"
-      ],
+      "scope": [ "lib/yeah-tools.el", "tests/unit/test-yeah-tools.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -122,10 +102,7 @@
     {
       "id": "permission-decides-by-the-last-matching-rule",
       "subject": "the permission system decides by the last matching rule, and asks when nothing matches",
-      "scope": [
-        "lib/yeah-perm.el",
-        "tests/unit/test-yeah-perm.el"
-      ],
+      "scope": [ "lib/yeah-perm.el", "tests/unit/test-yeah-perm.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -142,8 +119,7 @@
       "id": "acp-dispatcher-handles-the-four-methods",
       "subject": "the ACP dispatcher answers initialize, session/new, session/prompt and session/cancel, and refuses a method it does not know",
       "scope": [
-        "lib/yeah-acp.el",
-        "schemas/acp-v1.json",
+        "lib/yeah-acp.el", "schemas/acp-v1.json",
         "tests/unit/test-yeah-acp.el",
         "tests/checks/check-acp-dispatcher-routes-every-method.el"
       ],
@@ -167,8 +143,7 @@
       "id": "emcp-tool-surface-matches-the-schema",
       "subject": "the emcp registry and schemas/emcp-v1.json name the same tools, and a duplicate id is refused",
       "scope": [
-        "lib/yeah-emcp.el",
-        "schemas/emcp-v1.json",
+        "lib/yeah-emcp.el", "schemas/emcp-v1.json",
         "tests/checks/check-emcp-registry-matches-schema.el",
         "tests/unit/test-yeah-emcp.el"
       ],
@@ -187,10 +162,7 @@
     {
       "id": "undo-boundary-records-every-tick",
       "subject": "every tick's changes can be undone: an undo boundary is taken around the buffer or the file the tick touched",
-      "scope": [
-        "lib/yeah-undo.el",
-        "tests/unit/test-yeah-undo.el"
-      ],
+      "scope": [ "lib/yeah-undo.el", "tests/unit/test-yeah-undo.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -207,8 +179,7 @@
       "id": "gptel-hooks-live-in-one-module-only",
       "subject": "the gptel hooks are registered in exactly one module, lib/yeah-gptel.el, and nowhere else in lib/",
       "scope": [
-        "lib/yeah-gptel.el",
-        "lib/",
+        "lib/yeah-gptel.el", "lib/",
         "tests/checks/check-gptel-hooks-live-in-one-module.sh",
         "tests/unit/test-yeah-gptel.el"
       ],
@@ -247,10 +218,7 @@
     {
       "id": "yeah-shell-keeps-a-bounded-history",
       "subject": "the Yeah shell keeps a bounded history of what was sent to it, and creates its REPL buffer",
-      "scope": [
-        "lib/yeah-shell.el",
-        "tests/unit/test-yeah-shell.el"
-      ],
+      "scope": [ "lib/yeah-shell.el", "tests/unit/test-yeah-shell.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -267,11 +235,9 @@
       "id": "the-agent-loop-is-wired",
       "subject": "the tick, the permission system, the tool registry and the session log are wired into one loop: each is called from outside its own module",
       "scope": [
-        "lib/yeah-loop.el",
-        "lib/yeah-perm.el",
-        "lib/yeah-tools.el",
-        "lib/yeah-session.el",
-        "tests/checks/check-agent-loop-wired.sh"
+        "lib/yeah-loop.el", "lib/yeah-perm.el", "lib/yeah-tools.el",
+        "lib/yeah-session.el", "tests/checks/check-agent-loop-wired.sh",
+        "lib/yeah-turn.el"
       ],
       "requirements": [
         {
@@ -289,8 +255,7 @@
       "id": "ptc-sandbox-restricts-model-code",
       "subject": "the PTC sandbox refuses a form whose name is not whitelisted, and refuses code inside a whitelisted form that calls outside the whitelist",
       "scope": [
-        "lib/yeah-codes.el",
-        "tests/checks/check-ptc-sandbox-restricts.el",
+        "lib/yeah-codes.el", "tests/checks/check-ptc-sandbox-restricts.el",
         "tests/unit/test-yeah-codes.el"
       ],
       "requirements": [
@@ -307,9 +272,10 @@
     },
     {
       "id": "the-model-is-called-through-the-gptel-hook-surface",
-      "subject": "the model is called through the gptel hook surface and nowhere else: the transport has one entry point",
+      "subject": "the model is called through the gptel hook surface and nowhere else: one function in one module is the whole of the transport",
       "scope": [
-        "lib/yeah-gptel.el"
+        "lib/yeah-gptel.el",
+        "tests/checks/check-gptel-is-the-only-call-site.el"
       ],
       "requirements": [
         {
@@ -317,18 +283,16 @@
           "spec": "./scripts/dev check tests/checks/check-gptel-is-the-only-call-site.el"
         }
       ],
-      "falsifier": "a call to the model bypasses the gptel hooks, or a second module talks to the transport",
+      "falsifier": "a second module calls the model directly, or the call site does not exist",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(defun yeah-gptel-request/(defun yeah-gptel-request-disabled/' lib/yeah-gptel.el",
       "attestations": []
     },
     {
       "id": "the-acp-agent-speaks-over-stdio",
       "subject": "the ACP agent speaks JSON-RPC over stdio: a client can open the process and exchange an initialize request and its answer",
-      "scope": [
-        "lib/yeah-wire.el"
-      ],
+      "scope": [ "lib/yeah-wire.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -343,9 +307,9 @@
     },
     {
       "id": "the-model-turn-runs-and-parses-tool-calls",
-      "subject": "one turn of the model runs through gptel without blocking the main loop, and the tool calls it asks for are parsed and dispatched",
+      "subject": "one turn asks the model, dispatches the tool calls the model asked for through the permission system and the registry, writes what happened into the log, and asks the model again until it asks for nothing",
       "scope": [
-        "lib/yeah-turn.el"
+        "lib/yeah-turn.el", "tests/checks/check-model-turn-runs.el"
       ],
       "requirements": [
         {
@@ -353,18 +317,16 @@
           "spec": "./scripts/dev check tests/checks/check-model-turn-runs.el"
         }
       ],
-      "falsifier": "the main loop blocks while the model is answering, or a tool call the model asked for is not dispatched",
+      "falsifier": "a tool call the model asked for is not dispatched, or is dispatched without the rules deciding, or the results do not reach the log",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(yeah-tools-call name args)/(list :refused)/' lib/yeah-turn.el",
       "attestations": []
     },
     {
       "id": "tools-from-one-turn-run-in-parallel",
       "subject": "tool calls from one assistant message run concurrently, with a declared concurrency mode per tool, and the batch is a barrier",
-      "scope": [
-        "lib/yeah-scheduler.el"
-      ],
+      "scope": [ "lib/yeah-scheduler.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -380,9 +342,7 @@
     {
       "id": "the-session-log-is-a-typed-event-stream",
       "subject": "every step of a run is a typed record in the append-only log: message parts, tool start and end, permission requests and decisions, usage",
-      "scope": [
-        "lib/yeah-events.el"
-      ],
+      "scope": [ "lib/yeah-events.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -398,9 +358,7 @@
     {
       "id": "the-interface-renders-the-event-stream",
       "subject": "the interface shows the run as it happens: the transcript, the tool calls in flight, the pending approval and the cost so far",
-      "scope": [
-        "lib/yeah-ui.el"
-      ],
+      "scope": [ "lib/yeah-ui.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -416,9 +374,7 @@
     {
       "id": "approvals-have-reply-kinds-and-a-headless-policy",
       "subject": "an approval is answered once, always or rejected, and a run without a human resolves the question by policy instead of failing",
-      "scope": [
-        "lib/yeah-approval.el"
-      ],
+      "scope": [ "lib/yeah-approval.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -434,9 +390,7 @@
     {
       "id": "compaction-is-a-model-call-and-old-outputs-are-pruned",
       "subject": "the context is compacted by a model call that keeps the tail, and the outputs of old tools are pruned separately",
-      "scope": [
-        "lib/yeah-context.el"
-      ],
+      "scope": [ "lib/yeah-context.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -452,9 +406,7 @@
     {
       "id": "sessions-have-an-index-a-tree-and-a-cost",
       "subject": "sessions can be listed, resumed, branched and reverted, and every session reports what it cost in tokens and money",
-      "scope": [
-        "lib/yeah-sessions.el"
-      ],
+      "scope": [ "lib/yeah-sessions.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -470,9 +422,7 @@
     {
       "id": "the-runtime-retries-times-out-and-never-blocks",
       "subject": "a failing call is retried with backoff, every tool has a timeout, a run has a deadline, and nothing waits in the main loop",
-      "scope": [
-        "lib/yeah-runtime.el"
-      ],
+      "scope": [ "lib/yeah-runtime.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -488,9 +438,7 @@
     {
       "id": "the-mcp-server-speaks-over-stdio",
       "subject": "the emacs tool namespace is served over stdio, and the tools it publishes are the ones the registry holds",
-      "scope": [
-        "lib/yeah-mcp.el"
-      ],
+      "scope": [ "lib/yeah-mcp.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -506,9 +454,7 @@
     {
       "id": "the-kernel-runs-in-three-placements",
       "subject": "the same kernel runs attached to a session, in its own Emacs as a service, and in batch, and the placement changes nothing but the answer to a question",
-      "scope": [
-        "lib/yeah-placement.el"
-      ],
+      "scope": [ "lib/yeah-placement.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -524,9 +470,7 @@
     {
       "id": "a-subagent-runs-its-own-session",
       "subject": "a sub-agent runs in its own session with its own context and its own permissions, and its result comes back to the parent",
-      "scope": [
-        "lib/yeah-team.el"
-      ],
+      "scope": [ "lib/yeah-team.el" ],
       "requirements": [
         {
           "kind": "verifier",
@@ -542,9 +486,7 @@
     {
       "id": "the-product-installs-serves-and-documents",
       "subject": "the harness installs, serves and explains itself: an installation path, a server mode, and documentation written for a person",
-      "scope": [
-        "lib/yeah-product.el"
-      ],
+      "scope": [ "lib/yeah-product.el" ],
       "requirements": [
         {
           "kind": "verifier",
