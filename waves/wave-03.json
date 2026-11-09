@@ -1,0 +1,28 @@
+{
+  "id": "wave-03",
+  "title": "the scheduler: the tools of one answer run together",
+  "intent": "The registry accepts one tool call at a time, and the state machine has a single awaiting-tool state, so a task that needs five reads costs five turns of the model: five times the tokens, five times the context. The reference harnesses run the calls of one answer concurrently, with a concurrency mode declared per tool and a barrier at the end of the batch. This wave is that scheduler.",
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "tools-from-one-turn-run-in-parallel"
+  ],
+  "commitment": [
+    {
+      "claim": "tools-from-one-turn-run-in-parallel",
+      "state": "holds"
+    }
+  ],
+  "objection": "Parallel tools make the log order undefined, and a log whose order depends on which tool finished first is harder to read than a log that is merely slow.",
+  "refuted_by": "Two calls of one batch that touch the same file and are serialised by a per-resource lock, while calls on different files overlap in time. If the order of the records cannot be reconstructed, the log is no longer a log."
+}

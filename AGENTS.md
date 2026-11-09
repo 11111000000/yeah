@@ -13,14 +13,17 @@
 ## Read first, in this order
 
 1. `README.md` — what Yeah is, what runs and what does not.
-2. `spec.json` — the standing specification: the goal, and every claim
+2. `docs/ARCHITECTURE.md` — the target shape: the aim stated as parity
+   with the reference harnesses, the three planes, the three placements,
+   and the matrix of what is still missing.
+3. `spec.json` — the standing specification: the goal, and every claim
    this repository makes about itself.
-3. `waves/*.json` — the plan: each wave is a unit of work with an intent,
+4. `waves/*.json` — the plan: each wave is a unit of work with an intent,
    a check, a promise and the strongest objection against it.
-4. `ELISP_BEST_PRACTICES.md` — the conventions for writing kernel Elisp;
+5. `ELISP_BEST_PRACTICES.md` — the conventions for writing kernel Elisp;
    §11 is the trap log.
-5. `AGENTS.md` — this page.
-6. `lib/yeah-*.el` — the kernel: one module per file, one feature per file.
+6. `AGENTS.md` — this page.
+7. `lib/yeah-*.el` — the kernel: one module per file, one feature per file.
 
 If two of these contradict each other, the contradiction is a finding, not
 a nuisance: say it in the wave that is open, or open a wave for it.
@@ -87,9 +90,9 @@ Re-run `mathc install` after the specification changes;
 
 ### The aim
 
-Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only.
+Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only
 
-Stated by p.b.kosov@yandex.ru, over lib/, tests/, scripts/, schemas/, AGENTS.md, README.md, ELISP_BEST_PRACTICES.md.
+Stated by p.b.kosov@yandex.ru, over lib/, tests/, scripts/, schemas/, docs/, AGENTS.md, README.md, ELISP_BEST_PRACTICES.md.
 
 ### The next step
 
@@ -99,7 +102,7 @@ mathc --root . next
 
 ### What is declared
 
-16 claim(s): 12 holds, 2 not established.
+28 claim(s): 12 holds, 14 not established.
 
 The full list, and what is not covered: `mathc --root . map`.
 

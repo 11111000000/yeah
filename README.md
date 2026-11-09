@@ -2,10 +2,16 @@
 
 > **Status:** v0.1.0-alpha, governed by **math-coding v4**.
 >
-> The standing specification is `spec.json`: sixteen claims about this
+> The standing specification is `spec.json`: twenty-eight claims about this
 > repository, each with a check and a control that has been shown to bite.
-> The plan is `waves/*.json`: four units of work, each with an intent, a
+> The plan is `waves/*.json`: fourteen units of work, one per row of the
+> parity matrix in `docs/ARCHITECTURE.md`, each with an intent, a check, a
 > promise and the strongest objection against it.
+>
+> The aim is stated as parity: everything that works in the reference
+> harnesses — pi and opencode — must work here too, at the same quality,
+> from the point of view of the person using it. The matrix says which
+> rows are still empty.
 >
 > Run `./scripts/dev map` for the current state. It is the main artefact.
 
@@ -82,11 +88,16 @@ repository — `nix build` there writes `result/bin/mathc`.
 
 1. `AGENTS.md` — the entry point: the reading order, the commands, and
    the block that `mathc install` generates.
-2. `spec.json` — the standing specification.
-3. `waves/*.json` — the plan.
-4. `ELISP_BEST_PRACTICES.md` — the conventions for kernel Elisp; §11 is
+2. `docs/ARCHITECTURE.md` — the target shape: the aim stated as parity
+   with the reference harnesses, the three planes, the three placements,
+   and the matrix of what the reference harnesses have and Yeah does not.
+3. `spec.json` — the standing specification.
+4. `waves/*.json` — the plan: thirteen units of work, one per row of the
+   parity matrix, each with an intent, a check, a promise and the
+   strongest objection against it.
+5. `ELISP_BEST_PRACTICES.md` — the conventions for kernel Elisp; §11 is
    the trap log.
-5. `lib/yeah-*.el` — the kernel.
+6. `lib/yeah-*.el` — the kernel.
 
 There is no decision corpus: a record of what changed lives in git, and a
 rule lives in `spec.json` while its subject lives.

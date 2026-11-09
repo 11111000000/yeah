@@ -1,0 +1,20 @@
+{
+  "id": "wave-11",
+  "title": "the wire: ACP as an agent, MCP as a server, MCP as a client",
+  "intent": "The ACP handlers are pure functions with no process around them, and the MCP registry holds nine tools with placeholder handlers. Both reference harnesses are MCP clients, and this project is an MCP server: that is the complement, not the overlap. This wave is the wire: an ACP process speaking JSON-RPC over stdio, an MCP server publishing the registry, and an MCP client so that Yeah can use the tools of other agents as well as offer its own.",
+  "touches": [ "lib/", "tests/", "scripts/", "spec.json", "waves/" ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+  ],
+  "claims": [
+    "the-acp-agent-speaks-over-stdio", "the-mcp-server-speaks-over-stdio"
+  ],
+  "commitment": [
+    { "claim": "the-acp-agent-speaks-over-stdio", "state": "holds" },
+    { "claim": "the-mcp-server-speaks-over-stdio", "state": "holds" }
+  ],
+  "objection": "Publishing the tools of Emacs to the world is a promise about trust, and the trust boundary of a server is the client that calls it.",
+  "refuted_by": "A client that can call the published tools of Emacs is by definition able to read everything the person can read. If the published surface can be widened without a decision, the decision is not a decision."
+}

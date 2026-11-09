@@ -1,5 +1,5 @@
 {
-  "id": "wave-1",
+  "id": "wave-01",
   "title": "the standing specification of the kernel",
   "intent": "Yeah carried the third version of math-coding: a corpus of twenty-one decision files, a hand-written validator, and a bootstrap gate of eight manual checks that every change had to honour by hand. The corpus had grown to the point where the map of the project was the corpus, and the checks were decorative: thirty fixture files that no test loaded, and a validator whose cross-check of the state machine could not fail. The third version is removed. What replaces it is the fourth: one standing specification, fourteen claims about this kernel, and a control for every claim that has been shown to bite the subject it breaks.",
   "touches": [
