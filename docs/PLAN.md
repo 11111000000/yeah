@@ -99,7 +99,12 @@ claiming general isolation.
 - Files: `lib/yeah-codes.el`, `tests/checks/check-ptc-sandbox-restricts.el`,
   `spec.json`, security documentation.
 
-**0.3 Add execution failure canaries (U1–U4).**
+**0.3 Add execution failure canaries (U1–U4).** **Status: implemented on
+2026-11-10.** The scheduler now has a per-call once-only guard, catches sync
+and async handler failures, normalizes nil/non-string results, and preserves
+call order. The turn logs structured failures and always gives the model a
+string. Five scheduler ERT cases and an end-to-end U1–U4 canary pass; the
+full suite has 118 ERT tests.
 
 - U1: malformed tool args become a structured tool failure, not a stuck FSM.
 - U2: a handler exception fails pending work and lets the batch settle.
@@ -110,14 +115,21 @@ claiming general isolation.
 - Files: `lib/yeah-turn.el`, `lib/yeah-scheduler.el`, `lib/yeah-tools.el`,
   `tests/checks/`.
 
-**0.4 Make the evidence toolchain reliable.**
+**0.4 Make the evidence toolchain reliable.** **Status: deferred pending the
+math-coding v5 migration.** v4 is frozen; its map/run/gate commands were not
+run during Stages 0.1–0.3. Ordinary byte compilation, ERT and direct canary
+execution remain the active local checks.
 
 - Pin a compatible mathc build or adjust `scripts/dev` to its supported CLI.
 - Ensure map/gate exit codes distinguish pass, fail, blocked and unknown.
 - Keep unit and canary execution independent of mathc availability.
 - Files: `scripts/dev`, CI/development documentation.
 
-**0.5 Reconcile source and documentation.**
+**0.5 Reconcile source and documentation.** **Status: implemented on
+2026-11-10.** Kernel comments no longer reference nonexistent `decisions/`,
+ROADMAP or Tier milestones; FSM documentation describes current states;
+placeholders explicitly identify themselves; stale dynamic-binding guidance
+was corrected; README reports the current 118-test baseline.
 
 - Remove stale Tier/ROADMAP/nonexistent `decisions/` references and incorrect
   state counts in comments.

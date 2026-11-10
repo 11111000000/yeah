@@ -11,27 +11,13 @@
 ;;
 ;; The tools of one answer of the model are a BATCH: they were asked for
 ;; together, and the model is asked again when they have all answered.
-;; Running them one after the other makes the model wait for the slowest
-;; of them before each of them; running them together is what the
-;; reference harnesses do, and it is the difference between one round
-;; trip and several.
+;; Shared tools may overlap; an exclusive tool runs alone.  Results retain
+;; call order regardless of completion order.
 ;;
-;; Two rules, and both come from the same place — the tools of one answer
-;; were asked for together, so they may touch the same thing:
-;;
-;;   * a tool declared SHARED may run alongside the other shared tools;
-;;   * a tool declared EXCLUSIVE runs alone: it waits for everything that
-;;     is running, and everything after it waits for it.
-;;
-;; The third rule is about the log: the execution is parallel, the record
-;; is not. The results are written in the order of the CALLS, never in the
-;; order in which they happened to finish, so that the log of a run can
-;; be read the same way twice.
-;;
-;; The scheduler never blocks. A call that waits — on a process, on a
-;; timer — says so: its handler takes a continuation and calls it when
-;; the call has settled. The batch settles when every call has settled,
-;; and only then is the continuation of the batch called.
+;; Every call settles at most once.  Handler failures become structured
+;; `(:yeah-error MESSAGE)' results, nil results are explicit failures, and
+;; successful model-facing results are strings.  A duplicate asynchronous
+;; callback cannot decrement the pending count or advance the batch twice.
 
 ;;; Code:
 
@@ -40,56 +26,84 @@
 (cl-defstruct (yeah-batch (:constructor yeah-batch--make))
   "One batch of tool calls.
 
-CALLS are the calls to run. INDEX is the next one to consider. RUNNING
-is the number of calls that have not settled. RESULTS is a vector of
-the results, in the order of the calls. DEFERRED holds the exclusive
-calls that wait for the others to finish, in the order they were met.
-EXCLUSIVE is the exclusive call that is running, if any. CONTINUATION
-is called with the results when the batch has settled. SETTLED says
-whether it has."
+CALLS are the calls to run.  INDEX is the next one to consider.  RUNNING is
+the number of calls that have not settled.  RESULTS is a vector in call
+order.  SETTLED-CALLS is the per-call once-only guard.  DEFERRED holds
+exclusive calls in order.  EXCLUSIVE is the active exclusive call, if any.
+CONTINUATION is called once after the whole batch settles.  SETTLED says
+whether that has happened."
   (calls nil)
   (index 0)
   (running 0)
   (results nil)
+  (settled-calls nil)
   (deferred nil)
   (exclusive nil)
   (continuation nil)
   (settled nil))
 
+(defun yeah-scheduler--normalize-result (result)
+  "Return a provider-safe representation of one tool RESULT.
+A nil result is a failure.  Existing `(:yeah-error ...)' values retain
+their identity; other non-string values are printed."
+  (cond
+   ((null result)
+    (list :yeah-error "Error: tool produced no result"))
+   ((and (consp result) (plist-get result :yeah-error)) result)
+   ((stringp result) result)
+   (t (format "%S" result))))
+
+(defun yeah-scheduler--error-result (err)
+  "Return a structured failure for signaled error ERR."
+  (list :yeah-error (format "Error: %s" (error-message-string err))))
+
 (defun yeah-scheduler--settle (batch index result)
-  "Record RESULT as the result of the call at INDEX in BATCH."
-  (aset (yeah-batch-results batch) index result)
-  (cl-decf (yeah-batch-running batch))
-  (when (and (yeah-batch-exclusive batch)
-              (= (plist-get (yeah-batch-exclusive batch) :index) index))
-    (setf (yeah-batch-exclusive batch) nil))
-  (yeah-scheduler--advance batch))
+  "Settle the call at INDEX in BATCH with RESULT, unless it already settled.
+The first result wins.  Duplicate callbacks are no-ops."
+  (unless (aref (yeah-batch-settled-calls batch) index)
+    (aset (yeah-batch-settled-calls batch) index t)
+    (aset (yeah-batch-results batch) index
+          (yeah-scheduler--normalize-result result))
+    (cl-decf (yeah-batch-running batch))
+    (when (and (yeah-batch-exclusive batch)
+               (= (plist-get (yeah-batch-exclusive batch) :index) index))
+      (setf (yeah-batch-exclusive batch) nil))
+    (yeah-scheduler--advance batch)))
 
 (defun yeah-scheduler--start (batch index)
-  "Start the call at INDEX in BATCH. Return t when it settled at once."
+  "Start the call at INDEX in BATCH.
+A handler exception becomes the call's failure result instead of escaping
+and leaving the batch pending."
   (let* ((call (nth index (yeah-batch-calls batch)))
          (handler (plist-get call :handler))
          (args (plist-get call :args)))
     (cl-incf (yeah-batch-running batch))
     (if (plist-get call :async)
-        (progn
-          (funcall handler args
-                    (lambda (result)
-                      (yeah-scheduler--settle batch index result)))
-          ;; This call is waiting: the next shared call may start now.
-          (yeah-scheduler--advance batch)
-          nil)
-      (let ((result (funcall handler args)))
-        (yeah-scheduler--settle batch index result)
-        t))))
+        (condition-case err
+            (progn
+              (funcall handler args
+                       (lambda (result)
+                         (yeah-scheduler--settle batch index result)))
+              (yeah-scheduler--advance batch)
+              nil)
+          (error
+           (yeah-scheduler--settle batch index
+                                   (yeah-scheduler--error-result err))
+           nil))
+      (condition-case err
+          (let ((result (funcall handler args)))
+            (yeah-scheduler--settle batch index result)
+            t)
+        (error
+         (yeah-scheduler--settle batch index
+                                 (yeah-scheduler--error-result err))
+         nil)))))
 
 (defun yeah-scheduler--advance (batch)
   "Start what may be started in BATCH, and finish it when nothing is left."
   (unless (yeah-batch-settled batch)
     (cond
-     ;; An exclusive call that is running: nothing else may start.
      ((yeah-batch-exclusive batch) nil)
-     ;; An exclusive call that waits: it starts when nothing else runs.
      ((and (yeah-batch-deferred batch)
            (= (yeah-batch-running batch) 0))
       (let* ((call (car (yeah-batch-deferred batch)))
@@ -105,7 +119,6 @@ whether it has."
         (setf (yeah-batch-index batch) (1+ index))
         (if (eq (plist-get call :mode) 'exclusive)
             (progn
-              ;; The calls after an exclusive one wait for it.
               (setf (yeah-batch-deferred batch)
                     (append (yeah-batch-deferred batch)
                             (list (plist-put call :index index))))
@@ -119,24 +132,16 @@ whether it has."
 
 ;;;###autoload
 (defun yeah-scheduler-run (calls continuation)
-  "Run CALLS and call CONTINUATION with their results when they have all
-settled.
+  "Run CALLS and invoke CONTINUATION once when every call has settled.
 
-CALLS is a list of plists:
-
-  :name     the name of the tool
-  :args     the arguments of the call
-  :handler  the function that runs it; it is called with the list of
-            arguments, and with a continuation when the call is async
-  :async    non-nil when the handler takes a continuation
-  :mode     `shared' or `exclusive'
-
-The results are a vector in the order of the CALLS, whatever order the
-calls finished in. The function returns immediately: a batch that is
-still running is finished later, when its last call settles."
+Each call is a plist with :name, :args, :handler, :async and :mode
+ (`shared' or `exclusive').  A synchronous handler receives ARGS; an
+asynchronous handler receives ARGS and a continuation.  Results are a vector
+in call order containing strings or `(:yeah-error MESSAGE)' failures."
   (let ((batch (yeah-batch--make
                 :calls calls
                 :results (make-vector (length calls) nil)
+                :settled-calls (make-vector (length calls) nil)
                 :continuation continuation)))
     (yeah-scheduler--advance batch)
     batch))

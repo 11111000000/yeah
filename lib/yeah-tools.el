@@ -20,17 +20,10 @@
 ;; purpose: a tool that lives in both is registered once in each,
 ;; and the same handler function serves both sides.
 ;;
-;; Public API (see `decisions/tools-registry@0'):
-;;
-;;   * `yeah-tools-register SPEC'
-;;   * `yeah-tools-unregister NAME'
-;;   * `yeah-tools-get NAME'
-;;   * `yeah-tools-names'
-;;   * `yeah-tools-call NAME ARGS'
-;;
-;; plus the test-only `yeah-tools-reset-for-test'. Built-ins are
-;; registered at load time: the first tool is `read', which reads
-;; the file at `path' and returns its contents as a string.
+;; Public operations register/unregister/lookup tools and validate and
+;; dispatch calls.  The current built-in `read' returns a whole file; real
+;; offset/limit handling and the rest of the coding tool set belong to
+;; Stage 1 of `docs/PLAN.md'.
 
 ;;; Code:
 
@@ -41,9 +34,9 @@
   :group 'yeah)
 
 (defvar yeah-tools--registry (make-hash-table :test 'equal :size 16)
-  "Hash table mapping tool name (string) to spec plist.
-Each value has shape (:name NAME :description DESC :input PARAMS
-:handler FN). Rebind with `setq', not `let'.")
+  "Current global table mapping tool names to specification plists.
+Each value has shape (:name NAME :description DESC :input PARAMS :handler FN).
+Run-scoped registries replace global sharing in the placement stage.")
 
 (defvar yeah-tools--order nil
   "List of tool names in the order they were first registered.

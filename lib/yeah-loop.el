@@ -6,17 +6,11 @@
 
 ;;; Commentary:
 ;;
-;; This file defines the 20 transitions of the agent-loop FSM
-;; (see `decisions/tick-state-machine.yaml' for the normative
-;; contract). It also exposes `yeah-loop-tick': a one-step driver
-;; that takes the current state and a "label" (the event) and
-;; returns the next state or signals `user-error' if the label
-;; is not a valid transition from the current state.
-;;
-;; The 20 transitions are derived from the state machine in
-;; `specs/yeah-model.org' (forthcoming in Tier 4). Until that
-;; spec is committed, the list is a stable working draft and
-;; any change to it is a protected-policy transition.
+;; This file defines the current 20 transitions of the agent-loop FSM and
+;; exposes `yeah-loop-tick', which returns the next state for a state/event
+;; pair or signals `user-error' for an invalid transition.  The target
+;; invariants are valid, bounded and recoverable transitions, not a permanent
+;; transition count; see `docs/ARCHITECTURE.md' and `docs/PLAN.md'.
 
 ;;; Code:
 
@@ -59,11 +53,9 @@ the count can be checked.")
          (length yeah-loop--raw-transitions)))
 
 (defvar yeah-loop-transitions yeah-loop--raw-transitions
-  "The 20 FSM transitions of the Yeah tick.
-
-Each cell has the shape (FROM LABEL . TO). Adding or removing
-a transition is a protected-policy transition under
-`decisions/tick-state-machine@0'.")
+  "The current FSM transition cells, each with shape (FROM LABEL . TO).
+Changes must keep the run bounded and recoverable and be reflected in
+`docs/ARCHITECTURE.md', `docs/PLAN.md' and the relevant checks.")
 
 (defun yeah-loop--find-transition (from label)
   "Return the destination state for the transition FROM

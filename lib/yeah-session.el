@@ -9,28 +9,14 @@
 
 ;;; Commentary:
 ;;
-;; The session log is the durable, append-only record of an
-;; agent conversation. See `decisions/append-only-session-log@0'
-;; for the contract and `decisions/session-impl@0' for the
-;; shape. The on-disk format is one JSONL record per line; the
-;; first line is always a `header' record; later lines are
-;; `message', `tool-call', `tool-result', or `compaction'
-;; records. Records carry a monotonic integer id; the id is
-;; the only handle for compaction cut-points.
+;; The session log is the durable, append-only record of an agent
+;; conversation and the source for projections described in
+;; `docs/ARCHITECTURE.md'.  The on-disk format is one JSONL record per line.
+;; Records carry monotonic integer ids used for compaction cut-points.
 ;;
-;; The public API is exactly seven functions:
-;;
-;;   * `yeah-session-open'                 -- open or create the log
-;;   * `yeah-session-close'                -- release the buffer handle
-;;   * `yeah-session-append'               -- write a new record
-;;   * `yeah-session-records'              -- list all records (read-only)
-;;   * `yeah-session-project'              -- compacted projection
-;;   * `yeah-session-record-compaction'    -- write a compaction record
-;;   * `yeah-session-idle-p'               -- session is at the header
-;;
-;; The functions `yeah-session-delete' and `yeah-session-rewrite'
-;; are deliberately *not* defined. The negative fixture and the
-;; ERT case `yeah-session-no-delete-or-rewrite-api' assert this.
+;; Public operations open/close sessions, append and read records, build a
+;; compacted projection, record compaction and test whether a session is
+;; idle.  Destructive delete/rewrite operations deliberately do not exist.
 
 ;;; Code:
 
@@ -42,10 +28,9 @@
   :group 'yeah)
 
 (defcustom yeah-session--root nil
-  "Override the default Yeah root for the session log directory.
-When nil, the directory holding `lib/yeah-session.el' is used
-as the default root in tests, and `default-directory' is used
-otherwise. Rebind with `setq', not `let'."
+  "Override the root below which `sessions/<id>.jsonl' is stored.
+When nil, sessions are stored below `default-directory'.  Tests can use a
+request-local binding or set this explicitly for a test session."
   :type '(choice (const nil) directory)
   :group 'yeah-session)
 

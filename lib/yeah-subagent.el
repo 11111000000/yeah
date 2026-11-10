@@ -9,13 +9,12 @@
 
 ;;; Commentary:
 ;;
-;; A sub-agent is a child gptel session that runs in its own
-;; buffer and returns a summary to the parent when it finishes.
-;; The sub-agent inherits the parent's `yeah-session' root and
-;; the parent's `yeah-tools' registry reference but has its own
-;; message log and its own buffer.
+;; Sub-agent delegation is intended to run a child gptel session in
+;; its own buffer and return a summary to the parent. See
+;; `docs/ARCHITECTURE.md' (D8) for the target design and
+;; `docs/PLAN.md' for the delegation delivery stage.
 ;;
-;; Public API (see `decisions/subagent-impl@0'):
+;; Public API:
 ;;
 ;;   * `yeah-subagent-spawn PARENT-SESSION ROLE PROMPT &optional DEPTH'
 ;;   * `yeah-subagent-wait CHILD-ID'
@@ -23,9 +22,9 @@
 ;;   * `yeah-subagent-depth-limit'
 ;;   * `yeah-subagent-reset-for-test'
 ;;
-;; This module is a **stub**. The child does not actually run
-;; gptel asynchronously; the replacement hook is documented
-;; inline and lands with `subagent-impl@1'.
+;; Sub-agent execution is a placeholder: spawning creates a child
+;; session and buffer and records a synchronous stub result, but runs
+;; neither gptel nor an agent loop.
 
 ;;; Code:
 
@@ -38,20 +37,15 @@
 
 (defvar yeah-subagent--max-depth 3
   "Maximum sub-agent depth. The top-level loop is at depth 0.
-Spawning a child whose depth would be equal to or greater than
-this value raises `user-error'. Rebind with `setq', not `let'.")
+A child whose depth would be equal to or greater than this limit is refused.")
 
 (defvar yeah-subagent--active (make-hash-table :test 'eq :size 8)
-  "Hash table mapping a child id (integer) to the child's
-result plist. The plist has shape
-
-  (:id ID :role STRING :prompt STRING :depth INTEGER
-   :child-session SESSION :status SYMBOL :result STRING)
-
-Rebind with `setq', not `let'.")
+  "Table mapping child ids to child result plists.
+Each plist has shape (:id ID :role ROLE :prompt PROMPT :depth DEPTH
+:child-session SESSION :status STATUS :result RESULT).")
 
 (defvar yeah-subagent--next-id 0
-  "Next monotonic child id to assign. Rebind with `setq', not `let'.")
+  "Next monotonic child id to assign.")
 
 (defun yeah-subagent--reset-table ()
   "Replace the active-sub-agents hash with a fresh empty one."
@@ -126,8 +120,8 @@ session is a new `yeah-session-open' under the parent's root
 directory. The child has its own buffer named
 `*yeah-subagent-<ROLE>-<id>*'.
 
-This is a **stub**: it does not actually run gptel. The
-result plist has shape
+This is a placeholder: it runs neither gptel nor an agent loop.
+The result plist has shape
 
   (:id ID :role ROLE :prompt PROMPT :depth CHILD-DEPTH
    :child-session SESSION :status completed :result STRING)

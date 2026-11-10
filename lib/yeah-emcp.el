@@ -1,4 +1,4 @@
-;;; yeah-emcp.el --- the emcp tool registry (first wave) -*- lexical-binding: t; -*-
+;;; yeah-emcp.el --- the emcp tool registry -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -9,21 +9,19 @@
 
 ;;; Commentary:
 ;;
-;; The `emcp' MCP server publishes a stable tool surface under the
-;; `emacs__*' namespace (see `decisions/emcp-mcp-server@0' and
-;; `decisions/emcp-tool-surface@0'). This file is the tool
-;; *registry*: it stores the tool specs (id, description, input
-;; parameters, handler) and exposes four primitives:
+;; The `emcp' MCP server exposes tools under the `emacs__*' namespace.
+;; This file is the tool registry: it stores tool specs (id, description,
+;; input parameters, handler) and exposes four primitives:
 ;;
 ;;   * `yeah-emcp-tool-ids'    -- list of all registered tool ids
 ;;   * `yeah-emcp-tool-spec'   -- look up one tool's spec (or nil)
 ;;   * `yeah-emcp-handle-call' -- dispatch to a tool's handler
 ;;   * `yeah-emcp-register-tool' -- add a new tool to the registry
 ;;
-;; In the first wave every handler is a **stub** that returns a
-;; placeholder string documenting which tier will wire the real
-;; implementation. Real wiring lands in Tier 3 (read-side tools)
-;; and Tier 4 (eval / write-side tools).
+;; Every built-in handler is a placeholder that returns a string and
+;; performs none of the operation named by its spec. See
+;; `docs/ARCHITECTURE.md' for the target tool architecture and
+;; `docs/PLAN.md' for the MCP delivery stage.
 ;;
 ;; The registry is built once, on demand, the first time any
 ;; lookup primitive is called. There are no top-level side
@@ -40,9 +38,8 @@
   :group 'yeah)
 
 (defvar yeah-emcp--registry (make-hash-table :test 'equal :size 32)
-  "Hash table mapping tool id (string) to spec plist.
-Each value has shape (:id ID :description DESC :input PARAMS
-:handler FN). Rebind with `setq', not `let'.")
+  "Current global table mapping published tool ids to specification plists.
+Each value has shape (:id ID :description DESC :input PARAMS :handler FN).")
 
 (defvar yeah-emcp--order nil
   "List of tool ids in the order they were first registered.
@@ -79,55 +76,55 @@ same `:id' is already registered."
       (setq yeah-emcp--order (append yeah-emcp--order (list id))))
     spec))
 
-(defun yeah-emcp--make-stub (id tier)
-  "Build a stub handler that documents which TIER will wire ID.
-The returned function ignores its single argument; the
-placeholder string records the target tier."
+(defun yeah-emcp--make-stub (id _stage)
+  "Build a placeholder handler for ID.
+The returned function ignores its argument and performs no tool operation.
+_STAGE is retained only to avoid changing the built-in registration shape."
   (lambda (input)
     (ignore input)
-    (format "%s: not yet wired; real handler lands in %s" id tier)))
+    (format "%s: not implemented; see the wire stage in docs/PLAN.md" id)))
 
 (defun yeah-emcp--ensure-built-ins ()
-  "Populate the registry with the first-wave tool ids, idempotently."
+  "Populate the registry with the built-in tool ids, idempotently."
   (unless yeah-emcp--built-in-p
     (let ((entries
            (list
              (list "emacs__eval"
                    "Evaluate an Emacs Lisp expression and return its value as a string."
                    '("expr")
-                   (yeah-emcp--make-stub "emacs__eval" "Tier 3"))
+                   (yeah-emcp--make-stub "emacs__eval" "placeholder"))
              (list "emacs__buffer_list"
                    "List live buffers, optionally filtered by a name prefix."
                    '("prefix")
-                   (yeah-emcp--make-stub "emacs__buffer_list" "Tier 3"))
+                   (yeah-emcp--make-stub "emacs__buffer_list" "placeholder"))
              (list "emacs__buffer_read"
                    "Return the contents of a buffer, optionally restricted to a range."
                    '("name" "start" "end")
-                   (yeah-emcp--make-stub "emacs__buffer_read" "Tier 3"))
+                   (yeah-emcp--make-stub "emacs__buffer_read" "placeholder"))
              (list "emacs__buffer_write"
                    "Replace or insert text in a buffer at a given position."
                    '("name" "start" "end" "text")
-                   (yeah-emcp--make-stub "emacs__buffer_write" "Tier 4"))
+                   (yeah-emcp--make-stub "emacs__buffer_write" "placeholder"))
              (list "emacs__magit_status"
                    "Return the current Magit status buffer as a string."
                    nil
-                   (yeah-emcp--make-stub "emacs__magit_status" "Tier 4"))
+                   (yeah-emcp--make-stub "emacs__magit_status" "placeholder"))
              (list "emacs__describe_function"
                    "Return the help string of a function symbol."
                    '("symbol")
-                   (yeah-emcp--make-stub "emacs__describe_function" "Tier 3"))
+                   (yeah-emcp--make-stub "emacs__describe_function" "placeholder"))
              (list "emacs__describe_variable"
                    "Return the help string of a variable symbol."
                    '("symbol")
-                   (yeah-emcp--make-stub "emacs__describe_variable" "Tier 3"))
+                   (yeah-emcp--make-stub "emacs__describe_variable" "placeholder"))
              (list "emacs__dired_list"
                    "List files in a directory (default: project root)."
                    '("directory")
-                   (yeah-emcp--make-stub "emacs__dired_list" "Tier 4"))
+                   (yeah-emcp--make-stub "emacs__dired_list" "placeholder"))
              (list "emacs__project_find_file"
                    "Find a file by name within the current project."
                    '("name")
-                   (yeah-emcp--make-stub "emacs__project_find_file" "Tier 4")))))
+                   (yeah-emcp--make-stub "emacs__project_find_file" "placeholder")))))
       (dolist (entry entries)
         (let* ((id   (nth 0 entry))
                (desc (nth 1 entry))
@@ -149,8 +146,8 @@ placeholder string records the target tier."
 
 (defun yeah-emcp-handle-call (id args)
   "Dispatch a tool call: look up ID and call its handler with ARGS.
-Returns the handler's return value (in the first wave, a string).
-Signals `user-error' if ID is not registered."
+Returns the handler's return value. Built-in handlers currently
+return placeholder strings. Signals `user-error' if ID is not registered."
   (let ((spec (yeah-emcp-tool-spec id)))
     (unless spec
       (signal 'user-error

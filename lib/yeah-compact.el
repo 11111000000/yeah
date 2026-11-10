@@ -9,24 +9,15 @@
 
 ;;; Commentary:
 ;;
-;; The compactor is a pure projection over the append-only
-;; session log (see `decisions/append-only-session-log@0' and
-;; `decisions/compact-impl@0'). Given a session and a target
-;; character count, it walks the records from oldest to newest,
-;; accumulates a `prin1'-length budget, and returns the record
-;; id of the first record that crosses the target. Records
-;; before the cut-point are summarised; records from the
-;; cut-point onwards are preserved verbatim.
+;; The compactor is a projection over the append-only session log.  It finds
+;; a cut-point from a character target, summarizes records before it and
+;; appends one compaction record through `yeah-session-record-compaction'.
+;; Source records are never modified.
 ;;
-;; The compactor is A0-separated from `lib/yeah-session.el':
-;; the only write it performs is through
-;; `yeah-session-record-compaction', which appends a single
-;; `compaction' record. Source records are never modified.
-;;
-;; Real summarisation is a `gptel' call (Tier 4 / Tier 5);
-;; the default summarizer here is a deterministic placeholder
-;; that returns a hand-readable string. The replacement point
-;; is `yeah-compact-summarize''s optional SUMMARIZER argument.
+;; The default summarizer calls the model through `yeah-context-summarize';
+;; callers can supply another summarizer for tests.  That context function
+;; currently contains blocking wait behavior scheduled for replacement in
+;; Stage 2 of `docs/PLAN.md'.
 
 ;;; Code:
 

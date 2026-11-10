@@ -1,4 +1,4 @@
-;;; yeah-state.el --- the 10 FSM states -*- lexical-binding: t; -*-
+;;; yeah-state.el --- the agent FSM states -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -9,26 +9,20 @@
 
 ;;; Commentary:
 ;;
-;; The agent loop is a deterministic finite state machine with
-;; exactly 10 states (see `decisions/tick-state-machine.yaml`).
-;; This file defines the state set and the predicate that
-;; distinguishes terminal states from non-terminal ones. The
-;; transitions themselves live in `lib/yeah-loop.el`; this file
-;; is data only.
+;; This file defines the agent's current state set and predicates for valid
+;; and terminal states.  Transitions live in `lib/yeah-loop.el'.  The target
+;; invariants are documented in `docs/ARCHITECTURE.md'; the number of states
+;; is not itself an architectural invariant.
 
 ;;; Code:
 
 (require 'cl-lib)
 
 (defgroup yeah nil
-  "Yeah — Y(eah) Emacs Agent Harness."
+  "Yeah — Y-combinator, Emacs Agent Harness."
   :group 'tools)
 
-;; The 10 states. Order is meaningful: the first four are the
-;; "happy path"; the next four are the "wait" states; the last
-;; three are the "terminal" states. The order is exposed for
-;; diagnostics (e.g. printing the FSM trace) but is not load-bearing
-;; for the state machine itself.
+;; Order is exposed for diagnostics but is not load-bearing for transitions.
 (defconst yeah-state-list
   '(idle
     deciding
@@ -42,17 +36,12 @@
     interrupted
     completed
     failed)
-  "The 12 states of the Yeah tick FSM.
-
-See `decisions/tick-state-machine.yaml' (revision 2) for the
-normative contract. Adding or removing a state is a
-protected-policy transition. Revision 0 of the decision said
-10 states; revision 1 added `post-decide'; revision 2 added
-`accumulating' to match the transition table in
-`lib/yeah-loop.el'.")
+  "The current states of the Yeah tick FSM.
+Changes must preserve valid, bounded and recoverable transitions and be
+reflected in `docs/ARCHITECTURE.md', `docs/PLAN.md' and the relevant checks.")
 
 (defsubst yeah-state-p (object)
-  "Non-nil if OBJECT is one of the 10 FSM states."
+  "Non-nil if OBJECT is one of the states in `yeah-state-list'."
   (and (symbolp object)
        (memq object yeah-state-list)))
 

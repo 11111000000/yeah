@@ -9,50 +9,19 @@
 
 ;;; Commentary:
 ;;
-;; The Yeah agent loop consults this module before invoking any
-;; tool (see `decisions/perm-impl@0'). The model is the opencode v2
-;; `(action resource) -> effect' rule set: a rule triples an
-;; action string, a resource string, and an effect
-;; (`allow', `deny', `ask'); the **last-matching** rule wins; if no
-;; rule matches, the default is `ask'.
+;; The agent consults this module before invoking a tool.  A rule combines
+;; an action string, a resource string and an effect (`allow', `deny', `ask').
+;; Actions match exactly; resources match exactly or by the literal wildcard
+;; "*".  The last matching rule wins, and no match defaults to `ask'.
+;; Deny/ask signal `user-error'; callers such as approvals convert these to
+;; decisions.
 ;;
-;; Public surface:
-;;
-;;   * `yeah-perm-rule-make ACT RES EFF'  -- build a rule plist
-;;   * `yeah-perm-rules-add RULE'         -- register RULE
-;;   * `yeah-perm-rules-list'             -- return all rules
-;;   * `yeah-perm-rules-reset-for-test'   -- drop all rules
-;;   * `yeah-perm-evaluate ACT RES'       -- central check
-;;   * `yeah-perm-record-decision ACT RES REPLY SAVE' -- record
-;;
-;; Matching algorithm (documented in the source):
-;;
-;;   A rule matches a query `(ACT RES)' iff
-;;
-;;     (string= ACT rule-action)
-;;     and
-;;     (or (string= RES rule-resource)
-;;         (string= "*" rule-resource))
-;;
-;;   i.e. action is exact, resource is exact-or-wildcard.
-;;   Wildcard action is **not** allowed. `yeah-perm-evaluate'
-;;   scans the rule list in registration order and applies the
-;;   **last** matching rule's effect. When no rule matches,
-;;   the default effect is `ask'.
-;;
-;; On `:deny' the evaluator raises
-;; `(user-error "deny: <action> on <resource>")'; on `:ask' it
-;; raises `(user-error "ask: <action> on <resource>")'. The
-;; loop wraps this in `condition-case' if it needs a tri-state
-;; answer without exception machinery.
-;;
-;; Runtime decisions are recorded by `yeah-perm-record-decision'.
-;; When REPLY is `allow' and SAVE is `always', the rule is
-;; persisted into the ruleset via `yeah-perm-rules-add'. All
-;; other shapes are recorded as session-scoped decisions (and
-;; live only in the session log, owned by `lib/yeah-session.el',
-;; Tier 3 #20). Until that module lands, the session-log path
-;; is a stub that returns the plist it would have written.
+;; Public operations construct/add/list rules, evaluate a query and record a
+;; runtime decision.  An allow/always answer adds a persistent rule.  Other
+;; decisions use `yeah-perm--session-log-fn' when installed; without that
+;; hook the current implementation returns the decision plist unchanged.
+;; Run-scoped rather than global rules are a later placement-stage item in
+;; `docs/PLAN.md'.
 
 ;;; Code:
 
@@ -63,18 +32,13 @@
   :group 'yeah)
 
 (defvar yeah-perm--rules nil
-  "List of permission rules in registration order (newest last).
-Each element is the plist returned by `yeah-perm-rule-make':
-`(:action ACT :resource RES :effect EFF)'. Rebind with `setq',
-not `let'.")
+  "Current global permission rules in registration order, newest last.
+Run-scoped rules replace this global set in the placement stage.")
 
 (defvar yeah-perm--session-log-fn nil
-  "Function that records a session-scoped decision.
-The function takes one argument, a plist of shape
-`(:action ACT :resource RES :reply REPLY :save SAVE)', and
-returns whatever the session log module wants to return.
-When nil, `yeah-perm-record-decision' returns the plist
-unchanged (a stub). Rebind with `setq', not `let'.")
+  "Optional function that records a session-scoped decision.
+It receives `(:action ACT :resource RES :reply REPLY :save SAVE)'.  When nil,
+`yeah-perm-record-decision' returns that decision plist unchanged.")
 
 (defconst yeah-perm--effects '(allow deny ask)
   "The three effect symbols recognised by the permission system.")
@@ -150,8 +114,7 @@ On `:deny', raises `(user-error \"deny: <action> on <resource>\")'.
 On `:ask', raises `(user-error \"ask: <action> on <resource>\")'.
 When no rule matches, the default effect is `:ask'.
 
-The matching algorithm is documented at the top of this file
-and in `decisions/perm-impl@0'."
+The matching algorithm is documented at the top of this file."
   (let ((last-match nil)
         (rule nil)
         (rest nil))
@@ -178,14 +141,10 @@ and in `decisions/perm-impl@0'."
 REPLY is one of `allow', `deny', `ask'. SAVE is `nil' for
 session-only, the symbol `always' to persist.
 
-When REPLY is `allow' and SAVE is `always', persist
-`(ACTION RESOURCE , `allow') into the ruleset via
-`yeah-perm-rules-add'. Otherwise record the decision in the
-session log (a stub: when `yeah-perm--session-log-fn' is nil,
-returns the decision plist).
-
-Returns the persisted rule (when persisted) or the value of
-the session-log function (when not)."
+When REPLY is `allow' and SAVE is `always', add an allow rule through
+`yeah-perm-rules-add'.  Otherwise pass the decision to
+`yeah-perm--session-log-fn' when installed, or return its plist unchanged
+when no session-log hook is configured."
   (unless (stringp action)
     (signal 'user-error
             (list (format "yeah-perm-record-decision: action must be a string, got %S"

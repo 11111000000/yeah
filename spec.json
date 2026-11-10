@@ -525,6 +525,61 @@
       "accepted": null,
       "control": null,
       "attestations": []
+    },
+    {
+      "id": "turn-survives-malformed-tool-args",
+      "subject": "malformed tool argument containers become a bounded tool failure and the turn completes",
+      "scope": [ "lib/yeah-turn.el", "lib/yeah-scheduler.el", "tests/checks/check-turn-handles-tool-failures.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-handles-tool-failures.el" }
+      ],
+      "falsifier": "malformed args escape as an error, hang the turn, or produce a successful tool-end",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(listp args)/(not (listp args))/' lib/yeah-turn.el",
+      "attestations": []
+    },
+    {
+      "id": "turn-settles-after-handler-exception",
+      "subject": "a synchronous or asynchronous tool handler exception becomes a structured failure and the batch settles",
+      "scope": [ "lib/yeah-scheduler.el", "tests/unit/test-yeah-scheduler.el", "tests/checks/check-turn-handles-tool-failures.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-scheduler.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-handles-tool-failures.el" }
+      ],
+      "falsifier": "a handler exception escapes the scheduler or leaves a pending call",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(yeah-scheduler--error-result err)/(error err)/' lib/yeah-scheduler.el",
+      "attestations": []
+    },
+    {
+      "id": "turn-first-result-wins",
+      "subject": "every tool call settles at most once: a duplicate asynchronous callback is a no-op",
+      "scope": [ "lib/yeah-scheduler.el", "tests/unit/test-yeah-scheduler.el", "tests/checks/check-turn-handles-tool-failures.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-scheduler.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-handles-tool-failures.el" }
+      ],
+      "falsifier": "a duplicate callback replaces the first result, decrements pending twice, or emits another tool-end",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(unless (aref (yeah-batch-settled-calls batch) index)/(when t/' lib/yeah-scheduler.el",
+      "attestations": []
+    },
+    {
+      "id": "tool-result-is-provider-safe",
+      "subject": "every model-facing tool result is a string or a structured error; nil and non-string results are normalized before logging and continuation",
+      "scope": [ "lib/yeah-scheduler.el", "lib/yeah-turn.el", "tests/unit/test-yeah-scheduler.el", "tests/checks/check-turn-handles-tool-failures.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-scheduler.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-handles-tool-failures.el" }
+      ],
+      "falsifier": "a nil or non-string result reaches the model, or a missing result is logged as success",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(list :yeah-error \"Error: tool produced no result\")/nil/' lib/yeah-scheduler.el",
+      "attestations": []
     }
   ]
 }

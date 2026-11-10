@@ -9,17 +9,13 @@
 
 ;;; Commentary:
 ;;
-;; This file implements the agent side of the Agent Client
-;; Protocol v1 (ACP) for Yeah v0.0.0-alpha. The wire contract
-;; is fixed by `decisions/acp-wire-v1@0'; this file is the
-;; reference implementation of the four handler functions plus
-;; a JSON-RPC 2.0 dispatcher.
+;; This file provides agent-side Agent Client Protocol v1 (ACP)
+;; handlers and a JSON-RPC 2.0 dispatcher. See
+;; `docs/ARCHITECTURE.md' for the target protocol boundary and
+;; `docs/PLAN.md' for the ACP delivery stage.
 ;;
-;; The handlers are PURE: each takes a plist and returns a
-;; plist. No subprocess is opened, no IO happens, no global
-;; state mutates. The stdio loop that glues these handlers to
-;; the wire is wired separately (see `scripts/dev acp-server',
-;; Tier 2 of ROADMAP.md).
+;; The handlers take plists and return plists. They do not open
+;; subprocesses or perform IO; stdio transport is outside this module.
 ;;
 ;; The wire keys are kebab-case on both sides (per
 ;; ELISP_BEST_PRACTICES.md §5.2 and §8.1). JSON-RPC 2.0
@@ -27,15 +23,16 @@
 ;; level of the response; we keep those camelCase because they
 ;; are the JSON-RPC standard, not ACP.
 ;;
-;; The handlers committed here are:
+;; The handlers provided here are:
 ;;   * yeah-acp-initialize      - handshake
-;;   * yeah-acp-session-new     - create a session
-;;   * yeah-acp-session-prompt  - enqueue a prompt
-;;   * yeah-acp-session-cancel  - cancel a session
+;;   * yeah-acp-session-new     - generate a session id
+;;   * yeah-acp-session-prompt  - acknowledge a prompt
+;;   * yeah-acp-session-cancel  - acknowledge cancellation
 ;;   * yeah-acp-handle-message  - JSON-RPC dispatcher
 ;;   * yeah-acp-version         - version probe
 ;;
-;; See `decisions/acp-handlers@0' for the normative contract.
+;; Prompt and cancel are placeholders: they do not execute prompts
+;; or cancel agent runs.
 
 ;;; Code:
 
@@ -47,8 +44,7 @@
 
 (defconst yeah-acp--protocol-version "2025-01-01"
   "The ACP v1 protocol version Yeah speaks.
-Bump only as part of a wire-protocol transition under
-`decisions/acp-wire-v1@0'.")
+Bump only as part of an ACP wire-protocol transition.")
 
 (defconst yeah-acp--agent-name "yeah"
   "The `agentInfo.name' Yeah reports to ACP clients.")
@@ -87,20 +83,18 @@ carry a `protocolVersion'."
             :clientProtocolVersion client-version)))
 
 (defun yeah-acp-session-new (_request)
-  "Create a new ACP session and return a `(:sessionId ID)' plist.
+  "Create a new ACP session id and return a `(:sessionId ID)' plist.
 
-REQUEST is the `SessionNewRequest' plist. The new session id
-is generated locally; session state lives in module-private
-storage and is replaced by `lib/yeah-session.el' in Tier 3."
+REQUEST is the `SessionNewRequest' plist. The id is generated
+locally; no persistent session state is created."
   (list :sessionId (yeah-acp--make-session-id)))
 
 (defun yeah-acp-session-prompt (request)
   "Acknowledge a `session/prompt' request and return a `(:messageId ID)' plist.
 
 REQUEST is a `SessionPromptRequest' plist (`sessionId', `text').
-The real prompt execution lives in `lib/yeah-loop.el' (Tier 3
-of ROADMAP.md); this handler is a stub that acknowledges the
-request with a generated message id."
+This handler is a placeholder: it returns a generated message id
+and does not execute the prompt."
   (unless (and (consp request)
                (plist-member request :sessionId)
                (plist-member request :text))
@@ -113,8 +107,8 @@ request with a generated message id."
 
 REQUEST is a `SessionCancelRequest' plist (`sessionId'). The
 returned plist has shape `(:status \"cancelled\" :sessionId ID)'.
-Cancellation has no effect on the agent loop today; the
-acknowledgement is the contract."
+This handler is a placeholder: it returns an acknowledgement but
+does not cancel an agent run."
   (unless (and (consp request)
                (plist-member request :sessionId))
     (signal 'user-error
@@ -205,9 +199,7 @@ MESSAGE is the human-readable error message."
     (json-serialize response)))
 
 (defvar yeah-acp--counter 0
-  "Module-private monotonic counter for id generation.
-Used by `yeah-acp--make-session-id' and
-`yeah-acp--make-message-id'. Rebind with `setq', not `let'.")
+  "Module-private monotonic counter for session and message id generation.")
 
 (defun yeah-acp--next-counter ()
   "Return a process-unique counter for id generation.

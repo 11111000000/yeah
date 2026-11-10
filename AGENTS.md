@@ -37,6 +37,11 @@ work item. Never resolve it by silently making documentation more optimistic.
 - REPL, ACP prompt/cancel, MCP handlers and sub-agent execution contain
   placeholders. Do not build new public behavior on top of them while their
   stage's prerequisites are unmet.
+- Stage 0.5 is implemented: module comments match current behavior and no
+  longer reference nonexistent decisions/Tier/ROADMAP documents. Stage 0.4
+  awaits math-coding v5; do not run frozen v4 commands.
+- Stage 0.3 is implemented: tool failures are bounded, model-facing results
+  are strings, and duplicate async callbacks cannot settle a call twice.
 - Stage 0.2 is implemented: PTC is disabled by default and the demonstrated
   higher-order-function bypasses have regression tests. It remains an
   experimental restricted evaluator, never a sandbox for untrusted code.
