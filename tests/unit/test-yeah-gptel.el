@@ -6,76 +6,128 @@
 
 ;;; Commentary:
 ;;
-;; Positive and negative tests for `lib/yeah-gptel.el'. The
-;; positive tests exercise the happy path (the prelude is
-;; appended, the passthrough returns the call, the FSM handler
-;; accepts valid shapes, the install/uninstall cycle is
-;; symmetric). The negative test exercises the closest
-;; plausible failure mode (gptel is not loaded).
+;; The fake gptel in these tests implements the public request contract.  No
+;; network or installed gptel is required.
 
 ;;; Code:
 
 (require 'ert)
 (require 'yeah-gptel)
 
-(ert-deftest yeah-gptel-prompt-transform-appends-prelude ()
-  "`yeah-gptel-prompt-transform' prepends the prelude to PROMPT."
-  (let* ((original "hello world")
-         (info nil)
-         (transformed (yeah-gptel-prompt-transform original info)))
-    (should (stringp transformed))
-    (should (string-prefix-p yeah-gptel-prelude transformed))
-    (should (string-match-p (regexp-quote original) transformed))
-    (should (> (length transformed) (length original)))))
+(defmacro yeah-gptel-test--with-contract (&rest body)
+  "Run BODY with a supported fake gptel version and dynamic settings."
+  (declare (indent 0))
+  `(let ((gptel-version "0.9.9.6")
+         (gptel-backend 'global-backend)
+         (gptel-model 'global-model)
+         (gptel-tools '(global-tool))
+         (gptel-use-tools t)
+         (gptel-use-context 'system))
+     (cl-letf (((symbol-function 'gptel-make-tool)
+                (lambda (&rest slots) slots)))
+       ,@body)))
 
-(ert-deftest yeah-gptel-pre-tool-call-passthrough ()
-  "`yeah-gptel-pre-tool-call' returns the call unchanged when
-the gptel-tools registry is empty (the Tier-3 registry has
-not landed yet). Today every call is a passthrough."
-  (let* ((call '(:name "read" :args ("foo")))
-         (echoed nil)
-         (returned nil))
-    (cl-letf (((symbol-function 'message)
-               (lambda (fmt &rest args)
-                 (setq echoed (cons (apply #'format fmt args) echoed))
-                 nil)))
-      (setq returned (yeah-gptel-pre-tool-call call)))
-    (should (equal returned call))))
+(ert-deftest yeah-gptel-check-contract-accepts-supported-version ()
+  (yeah-gptel-test--with-contract
+    (cl-letf (((symbol-function 'gptel-request)
+               (lambda (&rest _args) nil))
+              ((symbol-function 'gptel-make-tool)
+               (lambda (&rest slots) slots)))
+      (should (eq t (yeah-gptel-check-contract))))))
 
-(ert-deftest yeah-gptel-fsm-handler-accepts-valid-event ()
-  "`yeah-gptel-fsm-handler' accepts the two valid event shapes:
-`(:state STATE)' and `(:transition FROM TO)'. It must not
-signal `user-error' or `error' for either shape."
-  (let ((event-1 (list :state 'idle))
-        (event-2 (list :transition 'idle 'user-prompt))
-        (echoed nil))
-    (cl-letf (((symbol-function 'message)
-               (lambda (fmt &rest args)
-                 (setq echoed (cons (apply #'format fmt args) echoed))
-                 nil)))
-      (condition-case nil
-          (progn
-            (yeah-gptel-fsm-handler event-1 'idle)
-            (yeah-gptel-fsm-handler event-2 'idle)
-            (should t))
-        (error (should nil))
-        (user-error (should nil))))))
+(ert-deftest yeah-gptel-check-contract-rejects-unsupported-version ()
+  (yeah-gptel-test--with-contract
+    (setq gptel-version "0.0.0")
+    (should-error (yeah-gptel-check-contract) :type 'user-error)))
 
-(ert-deftest yeah-gptel-handles-missing-gptel ()
-  "`yeah-gptel-hooks-install' and `yeah-gptel-hooks-uninstall'
-must not signal when gptel is not loaded. The test wraps the
-install call in `condition-case' and asserts no error escapes.
-The test is symmetric for uninstall."
-  (let ((err-install nil)
-        (err-uninstall nil))
-    (condition-case nil
-        (yeah-gptel-hooks-install)
-      (error (setq err-install t)))
-    (condition-case nil
-        (yeah-gptel-hooks-uninstall)
-      (error (setq err-uninstall t)))
-    (should-not err-install)
-    (should-not err-uninstall)))
+(ert-deftest yeah-gptel-check-contract-rejects-missing-gptel ()
+  (cl-letf (((symbol-function 'gptel-request) nil))
+    (should-error (yeah-gptel-check-contract) :type 'user-error)))
+
+(ert-deftest yeah-gptel-request-freezes-private-configuration ()
+  (yeah-gptel-test--with-contract
+    (let (captured returned)
+      (cl-letf (((symbol-function 'gptel-request)
+                 (lambda (prompt &rest keys)
+                   (setq captured
+                         (list :prompt prompt :keys keys
+                               :backend gptel-backend :model gptel-model
+                               :tools gptel-tools :use-tools gptel-use-tools
+                               :use-context gptel-use-context))
+                   (setq returned (list 'request-fsm)))))
+        (yeah-gptel-request "question" #'ignore
+                            :backend 'private-backend :model 'private-model
+                            :tools nil :system "private system"
+                            :stream t :context 'private-context :dry-run t))
+      (should (equal "question" (plist-get captured :prompt)))
+      (should (eq 'private-backend (plist-get captured :backend)))
+      (should (eq 'private-model (plist-get captured :model)))
+      (should-not (plist-get captured :tools))
+      (should-not (plist-get captured :use-tools))
+      (should-not (plist-get captured :use-context))
+      (let ((keys (plist-get captured :keys)))
+        (should (equal "private system" (plist-get keys :system)))
+        (should (eq t (plist-get keys :stream)))
+        (should (eq 'private-context (plist-get keys :context)))
+        (should (eq t (plist-get keys :dry-run))))
+      (should (equal '(request-fsm) returned))
+      (should (eq 'global-backend gptel-backend))
+      (should (eq 'global-model gptel-model))
+      (should (equal '(global-tool) gptel-tools))
+      (should (eq 'system gptel-use-context)))))
+
+(ert-deftest yeah-gptel-request-builds-registry-tools-by-default ()
+  (yeah-gptel-test--with-contract
+    (let (captured)
+      (cl-letf (((symbol-function 'gptel-make-tool)
+                 (lambda (&rest slots) slots))
+                ((symbol-function 'gptel-request)
+                 (lambda (_prompt &rest _keys)
+                   (setq captured (list :tools gptel-tools
+                                        :use-tools gptel-use-tools))
+                   nil)))
+        (yeah-gptel-request "question" #'ignore))
+      (should (= 1 (length (plist-get captured :tools))))
+      (should (equal "read" (plist-get (car (plist-get captured :tools)) :name)))
+      (should (eq t (plist-get captured :use-tools))))))
+
+(ert-deftest yeah-gptel-request-does-not-install-global-hooks ()
+  (yeah-gptel-test--with-contract
+    (let (hook-called)
+      (cl-letf (((symbol-function 'add-hook)
+                 (lambda (&rest _args) (setq hook-called t)))
+                ((symbol-function 'remove-hook)
+                 (lambda (&rest _args) (setq hook-called t)))
+                ((symbol-function 'gptel-request)
+                 (lambda (&rest _args) nil)))
+        (yeah-gptel-request "question" #'ignore :tools nil))
+      (should-not hook-called))))
+
+(ert-deftest yeah-gptel-request-rejects-invalid-callback ()
+  (should-error (yeah-gptel-request "question" nil) :type 'user-error))
+
+(ert-deftest yeah-gptel-tool-for-rejects-unknown-tool ()
+  (cl-letf (((symbol-function 'gptel-make-tool)
+             (lambda (&rest slots) slots)))
+    (should-error (yeah-gptel-tool-for "does-not-exist") :type 'user-error)))
+
+(ert-deftest yeah-gptel-callback-normalizes-errors-and-usage ()
+  (let (answer received-info)
+    (yeah-gptel--callback
+     (lambda (response info)
+       (setq answer response received-info info))
+     nil
+     (list :status "HTTP 429" :tokens '(:input 120 :output 7 :cache 3)))
+    (should (equal '(error . "HTTP 429") answer))
+    (should (equal '(:input 120 :output 7 :cache 3 :cached nil)
+                   (plist-get received-info :yeah-usage)))))
+
+(ert-deftest yeah-gptel-callback-preserves-public-response-shapes ()
+  (dolist (response '("text" t (reasoning . "thinking") (tool-call)))
+    (let (answer)
+      (yeah-gptel--callback (lambda (value _info) (setq answer value))
+                            response nil)
+      (should (equal response answer)))))
 
 (provide 'test-yeah-gptel)
 ;;; test-yeah-gptel.el ends here

@@ -1,4 +1,4 @@
-;;; yeah-codes.el --- Tier 4 #22 PTC sandbox (stub) -*- lexical-binding: t; -*-
+;;; yeah-codes.el --- experimental programmatic tool calling -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -9,23 +9,11 @@
 
 ;;; Commentary:
 ;;
-;; The Programmatic Tool Calling (PTC) sandbox is the answer to
-;; "save round-trips" in opencode / pi. The model issues several
-;; tool calls in one turn as a single Elisp form; we execute the
-;; form inside a sandboxed environment. The contract is fixed by
-;; `decisions/sandbox-elisp-codes-mode@0': the sandbox is
-;; `sandbox.el' (Emacs 29+) plus a static whitelist of allowed
-;; bindings; values cross the boundary as JSON-clean `read'/
-;; `prin1' pairs; the boundary is a `let'-binding, not a
-;; function call.
-;;
-;; This file lands a **stub** for the public API. The whitelist
-;; gate and the JSON-clean boundary are real; the underlying
-;; `sandbox.el' integration is deferred until an Emacs 29+ CI
-;; target exists. The stub evaluates each form in a `let' that
-;; exposes the whitelisted names plus INPUTS as lexical
-;; bindings. See `decisions/codes-impl@0' for the full
-;; commitment and reversal path.
+;; This module is an EXPERIMENTAL restricted evaluator for programmatic tool
+;; calling.  It is disabled by default and is not wired into the agent loop.
+;; Its whitelist reduces the operations a form can express, but it is not a
+;; security sandbox: Emacs Lisp `eval' still runs in the user's process.
+;; Untrusted model code requires a separately designed process boundary.
 
 ;;; Code:
 
@@ -34,27 +22,28 @@
 (require 'yeah-perm)
 
 (defgroup yeah-codes nil
-  "The Yeah Programmatic Tool Calling (PTC) sandbox."
+  "Experimental Yeah programmatic tool calling."
   :group 'yeah)
 
-(defvar yeah-codes--whitelist
-  '( "read" "edit" "grep" "glob" "bash" "webfetch" "text" "image" "console" "exit")
-  "List of currently-allowed PTC binding names, in canonical order.
+(defcustom yeah-codes-enable-ptc nil
+  "Enable the experimental PTC evaluator when non-nil.
+This is not a security boundary and must not be enabled for untrusted model
+code.  The default nil makes `yeah-codes-eval' refuse every request before
+reading or evaluating any form."
+  :type 'boolean
+  :group 'yeah-codes)
 
-These are the names the model may pass as `:name' to
-`yeah-codes-eval'. The default list is the ten names fixed
-by `decisions/sandbox-elisp-codes-mode@0'. Mutations go
-through `yeah-codes-allow' / `yeah-codes-disallow' so the
-order stays canonical. Rebind with `setq', not `let',
-per `ELISP_BEST_PRACTICES.md §11.1'.")
+(defvar yeah-codes--whitelist
+  '("read" "edit" "grep" "glob" "bash" "webfetch" "text" "image" "console" "exit")
+  "List of allowed PTC form names, in canonical order.
+These names are metadata for the experimental evaluator, not capabilities
+granted to untrusted code.  Mutate the list with `yeah-codes-allow' and
+`yeah-codes-disallow'.")
 
 (defun yeah-codes-whitelist ()
-  "Return the list of PTC binding names currently allowed.
-
-The order matches the canonical whitelist fixed by
-`decisions/sandbox-elisp-codes-mode@0'. Mutate through
-`yeah-codes-allow' / `yeah-codes-disallow'; do not push to
-the returned list directly."
+  "Return the allowed PTC form names in their canonical order.
+Mutate the underlying list through `yeah-codes-allow' and
+`yeah-codes-disallow', not by modifying the returned list."
   (declare (pure t) (side-effect-free t))
   yeah-codes--whitelist)
 
@@ -124,9 +113,8 @@ parser sees a list. Read errors of any flavour
   "Return `read'/`prin1' round-trip of VALUE.
 
 The result is `equal' to VALUE for every JSON-clean value:
-atoms, lists, strings, numbers, the standard t/nil. This is
-the `sandbox-elisp-codes-mode@0' boundary: nothing leaves
-the sandbox that hasn't been prin1/read round-tripped."
+atoms, lists, strings, numbers, and the standard t/nil.  The round trip
+normalizes data returned by the evaluator; it is not an isolation boundary."
   (read (prin1-to-string value)))
 
 (defun yeah-codes--input-binding (cell)
@@ -146,25 +134,22 @@ a two-element **list** `(NAME VALUE)', not a dotted pair; a
 
 (defconst yeah-codes--core
   '(car cdr caar cadr cddr cdar cons list append length nth elt
-    mapcar mapc seq-filter seq-map seq-reduce
     progn let let* if cond when unless and or not
     = < > <= >= + - * / % mod 1+ 1- max min abs
     princ prin1-to-string format message error
     string= string< string> string-join concat substring number-to-string
-    list-length reverse sort copy-sequence append
+    list-length reverse copy-sequence append
     quote function tool)
-  "The names a form may use.
+  "Names the experimental evaluator may call directly.
+Higher-order functions such as `mapcar' and `sort' are deliberately absent:
+they would accept a quoted arbitrary function symbol and escape the call
+whitelist.  Their absence closes a demonstrated bypass, but does not prove
+that `eval' is a security boundary.
 
-A form may call these and nothing else, except for the tools, which it
-calls through `tool'. The set is deliberately small: a name that is not
-here is refused, and a name that is here is safe to call on data the
-model supplied.
-
-The tools are reached through ONE function and not by name: in Emacs
-Lisp a `let' does not shadow the cell of a function, so a form that
-called `read' directly would call the built-in `read' and not the tool
-of the registry. The names of the tools are therefore data, and the
-registry checks them.")
+Tools are reached through ONE function and not by name: in Emacs Lisp a
+`let' does not shadow the cell of a function, so a form that called `read'
+directly would call the built-in `read' and not the tool of the registry.
+The names of the tools are therefore data, and the registry checks them.")
 
 (defun yeah-codes--tool-names ()
   "Return the names of the tools of the registry, as symbols."
@@ -192,16 +177,10 @@ write the `funcall' itself: `funcall' is not among the allowed names."
    (t (mapcar #'yeah-codes--rewrite form))))
 
 (defun yeah-codes--permitted-p (form)
-  "Non-nil when FORM may run inside the sandbox.
-
-The walk looks at every list in FORM, and at the name in its head: that
-name must be one of `yeah-codes--core'. A quoted form is data and is not
-walked into.
-
-The check is sound in the direction that matters: a name that is not
-allowed cannot be reached, because a call needs the name in the head of
-a list, and `eval', `apply', `funcall' and every macro are outside the
-allowed set, so nothing can smuggle a call past the walk."
+  "Return non-nil when FORM passes the restricted-call walk.
+Every call head must be in `yeah-codes--core' or name a registry tool.
+This syntactic check is only a restriction on expressible forms, not proof
+of process, resource or side-effect isolation."
   (yeah-codes--walk form))
 
 (defun yeah-codes--walk (form)
@@ -234,9 +213,9 @@ allowed set, so nothing can smuggle a call past the walk."
    (t nil)))
 
 (defun yeah-codes--tool-call (name &rest args)
-  "Run the tool NAME with ARGS inside the sandbox.
+  "Run the tool NAME with ARGS inside the evaluator.
 The tool is called through the rules and the registry, exactly as a tool
-called by the turn is: the sandbox does not get a way around the
+called by the turn is: the evaluator does not get a way around the
 permission system, and the name of the tool is checked by the registry
 before anything runs."
   (unless (and (stringp name) (yeah-tools-get name))
@@ -251,7 +230,7 @@ before anything runs."
     (apply #'yeah-tools-call name (list args))))
 
 (defun yeah-codes--tool-bindings ()
-  "Return the binding list of the sandbox: the tools are reached through
+  "Return the binding list of the evaluator: the tools are reached through
 the single function `tool', whose value the rewritten forms call with
 `funcall'."
   (list (list 'tool (lambda (name &rest args)
@@ -273,7 +252,7 @@ prin1/read round-tripped."
          (body (yeah-codes--read-form code)))
     (unless (yeah-codes--permitted-p body)
       (signal 'user-error
-              (list (format "yeah-codes: the form %s calls something outside the sandbox: %S"
+              (list (format "yeah-codes: the form %s calls something outside the evaluator: %S"
                             name body))))
     (let ((result
            (eval `(let ,(append bindings (yeah-codes--tool-bindings))
@@ -284,28 +263,17 @@ prin1/read round-tripped."
             :ok t))))
 
 (defun yeah-codes-eval (form-alist &optional inputs)
-  "Evaluate every form in FORM-ALIST inside the PTC sandbox.
+  "Evaluate FORM-ALIST only when `yeah-codes-enable-ptc' is non-nil.
+Signal `user-error' before reading any form while PTC is disabled, as it is
+by default.  This experimental evaluator is not a security boundary.
 
-FORM-ALIST is a list of plists, each of shape
-`(:name NAME :code CODE)', where NAME is a string naming the
-PTC binding being invoked and CODE is a string holding the
-Elisp body. INPUTS is an alist of `((KEY . VALUE) ...)' that
-pre-binds KEY as a lexical variable before the form runs.
-
-Return a list of plists, one per input form, each of shape
-`(:name NAME :result VALUE :ok t)'. The list order matches
-FORM-ALIST. Every VALUE is `read'/`prin1' round-tripped
-(JSON-clean).
-
-Hard-error cases (each raises `user-error'):
-
-  * a FORM-ALIST entry whose `:name' is not in the whitelist;
-  * a FORM-ALIST entry whose `:code' fails `read';
-  * a non-string NAME in FORM-ALIST or INPUTS.
-
-Soft-error cases (the offending form gets `:ok nil' under the
-gate above; in this stub they raise `user-error' too) are not
-differentiated; the boundary is uniform."
+FORM-ALIST contains `(:name NAME :code CODE)' plists.  INPUTS is an alist of
+lexical values.  Results are returned as `(:name NAME :result VALUE :ok t)'
+plists after a `prin1'/`read' round trip.  Invalid names, malformed code and
+calls outside the restricted core signal `user-error'."
+  (unless yeah-codes-enable-ptc
+    (signal 'user-error
+            (list "yeah-codes-eval: experimental PTC is disabled; set `yeah-codes-enable-ptc' only for trusted code")))
   (unless (listp form-alist)
     (signal 'user-error
             (list (format "yeah-codes-eval: FORM-ALIST must be a list, got %S"
@@ -326,12 +294,9 @@ differentiated; the boundary is uniform."
           form-alist))
 
 (defun yeah-codes-sandbox-available-p ()
-  "Non-nil if the `sandbox' feature is loaded or loadable.
-
-In this stub, the check is `(featurep \\='sandbox)'. The real
-`sandbox.el' integration lands in `codes-impl@1', at which
-point this function attempts `(require \\='sandbox nil t)'
-before falling back to `featurep'."
+  "Return non-nil when the optional `sandbox' feature is loaded.
+This feature check does not make PTC safe and does not enable it.  Yeah does
+not currently integrate `sandbox.el' or claim process isolation."
   (declare (pure t) (side-effect-free t))
   (featurep 'sandbox))
 

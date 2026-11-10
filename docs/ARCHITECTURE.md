@@ -1,311 +1,356 @@
-# ARCHITECTURE — the target shape of Yeah
+# ARCHITECTURE — Yeah, the Y-combinator Emacs Agent Harness
 
-> **Status: target, not current.**
+> **Document status: normative target.** This file describes the system Yeah
+> is being built to become. It is not evidence that the system already works.
+> `spec.json` and `./scripts/dev map` describe the verified present;
+> `docs/PLAN.md` describes the path from one to the other.
 >
-> This document says what Yeah is being built to become, and what "done"
-> means for it. It is not a description of the code: `lib/` is the code,
-> `spec.json` says what is true of the code today, and `waves/*.json` are
-> the units of work. This document says what the whole thing is *for*, so
-> that a change can be judged against an intention and not only against
-> a test.
+> When this document and the code disagree, the disagreement is a finding.
+> Do not silently rewrite either side.
 
-## 1. The aim, stated as parity
+## 1. Identity and purpose
 
-Yeah is an Emacs Lisp agent harness. It must be **not worse than the
-reference harnesses — pi and opencode — in everything that works in them
-today, at the same quality, from the point of view of the person using
-it.**
+**Yeah** means **Y-combinator, Emacs Agent Harness**.
 
-That is the whole definition, and it is deliberately not a number. There
-is no ratio to compute and no score to optimise. The reference
-implementations are readable, and their code is the specification of what
-"works there": the loop over model turns, parallel tool calls, a typed
-event stream, approvals with remembered answers, compaction by a model
-call, file checkpoints, resumable and branching sessions, cost accounting,
-retries and timeouts, background jobs, sub-agents, an MCP client, an ACP
-agent side, a server mode, a user interface, and an installation.
+The Y-combinator gives recursion without requiring a name. Yeah takes three
+consequences from that idea:
 
-Parity means all of that, working as well as it works there. The
-reference code was read for this document, and the matrix in §5 is taken
-from it, not from their documentation.
+1. **Recursion.** An agent may create bounded child work without knowing the
+   whole shape of the work in advance.
+2. **Self-reference.** An agent can inspect the runtime in which it runs,
+   including Yeah itself: functions, documentation, buffers, tests and tools.
+3. **A fixed point.** Yeah must eventually be able to develop and verify
+   Yeah. The canonical demonstration is: inspect a failing canary, edit its
+   subject, run the tests, review the diff and commit through Magit.
 
-## 2. The four hypotheses
+Yeah is not a chat client, a terminal wrapper, or an interface to an agent
+implemented elsewhere. **The harness itself is Emacs Lisp.** A model provider
+is an external service; the agent is not.
 
-- **H1 — a platform.** Emacs is dying as a desktop application and living
-  as an agent runtime. It is the only mature program that is at once a
-  programming language runtime, an editor, a process model, an RPC
-  surface, and a cross-platform binary — including Android and the
-  browser.
-- **H2 — a harness without a human.** The harness is not an interface
-  inside Emacs. It is a runtime driven from outside; a human at the
-  keyboard is one master among several, not a required one.
-- **H3 — the agent works in Emacs, not around it.** The agent's tools are
-  Emacs functions, its state is Emacs state, and it acts on the user's
-  real buffers, magit, project and org-mode. A shell agent pays a
-  process boundary and a serialisation for every one of those.
-- **H4 — one runtime, many places.** The same harness runs on a phone, in
-  a browser, on a desktop, and inside editors that speak ACP.
+The purpose is larger than a coding assistant: to preserve and extend the
+useful culture of Emacs — introspection, inspectable state, composable tools,
+user control and durable text — in an agent-native form.
 
-H2 and H3 are the load-bearing ones, and they pull in opposite
-directions, which is why §6 exists.
+## 2. The product promise
 
-## 3. Three planes
+Yeah is intended to become competitive with complete harnesses such as
+opencode and pi, while offering capabilities a shell-only harness cannot:
 
+- direct access to live buffers, including unsaved text;
+- the editor's own documentation and source as agent context;
+- structured edits and undo in the user's actual editing environment;
+- Eglot/Flymake diagnostics without a second build system;
+- Magit, Org, project.el, Dired, TRAMP and emacsclient as native capabilities;
+- an inspectable, durable session journal rather than an opaque process state;
+- local models and offline workflows as first-class configurations.
+
+Parity is a goal to be measured, not a claim to be advertised prematurely.
+The primary success measure is whether tasks are completed correctly, not
+whether the feature checklist is long.
+
+## 3. Non-negotiable invariants
+
+1. **Elisp kernel.** `lib/` is Elisp. There is no hidden agent sidecar.
+2. **One model gateway.** All model traffic goes through the private gptel
+   adapter. The rest of the kernel does not know provider APIs.
+3. **One tool gateway.** Model-originated tool execution goes through the
+   registry, argument validation and permission policy.
+4. **Append-only history.** No operation rewrites or deletes an acknowledged
+   journal record. Compaction and pruning create projections or new events.
+5. **No blocking wait in interactive Emacs.** Waiting is represented by a
+   process callback, a timer or an explicit state.
+6. **The kernel does not know its master.** Human, ACP, MCP and batch drivers
+   use the same run controller and journal.
+7. **Fail closed.** Unknown protocol shapes, unapproved effects and unknown
+   sandbox operations are refused rather than guessed.
+8. **No silent stubs.** A public path that is not implemented says so and
+   stops. A green check must never be produced by a placeholder.
+9. **User ownership.** No telemetry by default, no hidden global keybindings,
+   no secret material in configuration examples or logs.
+10. **Honest limits.** Documentation states what cancellation, persistence,
+    undo, isolation and replay do *not* guarantee.
+
+## 4. The ten architectural decisions
+
+These decisions are the stable core of the design. Changing one requires an
+explicit update to this section, the relevant plan item and the specification.
+
+### D1 — The journal is the source of truth
+
+The session journal is append-only JSONL. Model context, UI state, cost,
+pending approvals, session trees and recovery information are projections.
+
+Every journal event has a schema version, session id, event id and timestamp.
+Events that participate in execution also carry the relevant run, turn,
+tool-call and parent/correlation identifiers. The vocabulary includes not
+only messages and tools, but compaction, pruning, steering, nudges,
+cancellation, approvals and protocol errors.
+
+A provider history that cannot be replayed safely is not silently repaired.
+The session becomes explicitly non-replayable and further execution stops.
+
+### D2 — Yeah owns its execution state machine
+
+Yeah does not build its correctness on advice to gptel internals. gptel owns
+HTTP and provider serialization; Yeah owns run state, tool settlement,
+permissions, cancellation and recovery.
+
+The number of states is not an invariant. The invariants are valid
+transitions, once-only settlement, bounded waiting and a recoverable terminal
+state. Four failure classes are mandatory checks: malformed tool arguments,
+exceptions in handlers, duplicate asynchronous callbacks and nil/non-string
+tool results.
+
+### D3 — gptel is a narrow, private model adapter
+
+The adapter normalizes streaming text, reasoning, tool calls, usage and
+provider errors. It does not mutate the user's global gptel configuration or
+install global hooks.
+
+Backend, model, instructions and editor context are frozen when input is
+accepted. Supported gptel versions are pinned and checked with contract
+tests. A missing hook or changed callback shape is a compatibility failure,
+not a no-op.
+
+### D4 — Typed tools are central; evaluation is an explicit option
+
+The ordinary agent uses declared tools with JSON-compatible schemas and
+structured results. The initial set is Read, Glob, Grep, Edit, Write, Bash,
+Introspect, Diagnostics and the relevant Emacs buffer/project tools.
+
+An Eval capability may expose ordinary Elisp helper functions, but it is
+separately permissioned and confirmed. It is not a sandbox. The old PTC path
+is experimental and must not be presented as a security boundary.
+
+Batch helper operations are preferred over unrestricted programmatic tool
+calling: one Edit call can apply a validated list of replacements without
+giving the model a general evaluator.
+
+### D5 — Buffer edits use optimistic concurrency
+
+Every read that can lead to an edit returns the buffer's
+`buffer-chars-modified-tick`. An edit requires a current tick and exact old
+text/ranges. All ranges are validated before mutation; edits apply bottom-up;
+a logical edit is one undo step; a no-op does not add undo history.
+
+Stale input is rejected and reread. The agent never guesses offsets after the
+user or another tool has changed the buffer.
+
+### D6 — Large output becomes an artifact; context is calibrated
+
+Tool output has explicit limits. Oversized output is written with private
+permissions below Yeah's data directory; the model receives a bounded excerpt,
+an absolute artifact reference and truncation metadata.
+
+Context estimates start with a documented heuristic (including CJK-aware
+counting) and are calibrated against provider-reported usage. Compaction is
+an asynchronous model operation that commits only a complete, nonblank
+summary. Its source events remain in the journal.
+
+### D7 — The human is an asynchronous master
+
+Steering is delivered at a batch boundary, never halfway through a tool batch.
+Pending input is bounded, persisted and recovered only deliberately.
+Cancellation stops further settlement and managed processes where possible;
+it does not pretend to roll back arbitrary effects or kill every descendant.
+
+Completion nudges are bounded, visible events. They ask the model to verify
+completion criteria instead of stopping prematurely; they are not an infinite
+hidden loop.
+
+### D8 — Agents and skills are declarative
+
+Agent presets live in Markdown or Org files with metadata: name, description,
+model, allowed tools and system prompt. Skills use the agentskills.io layout
+and compatible well-known directories where practical.
+
+A sub-agent has a child run context, an explicit parent event, a restricted
+tool set, a depth limit and a budget. Its intermediate events remain
+inspectable; a summary alone is not an audit trail.
+
+### D9 — Plan and Build are permission profiles
+
+Plan mode is a read-oriented rule profile. Build mode enables the normal
+approved effect set. Switching modes is a journal event. PlanExit is an
+approval operation, not a second execution engine.
+
+### D10 — Design rationale and verified facts live together
+
+This file records why the architecture has its shape. `spec.json` records
+what is currently established. `docs/PLAN.md` records intended work.
+`ELISP_BEST_PRACTICES.md` records language-level traps;
+`docs/ENGINEERING.md` records system-wide engineering rules.
+
+A substantial decision change updates this file before or with its code.
+Git is the historical record; there is no second, contradictory design corpus.
+
+## 5. Component architecture
+
+```text
+ Human (`M-x yeah`)     ACP clients      MCP clients      Batch
+          \__________________ Session API / Run Controller __________/
+                                  |
+             +--------------------+--------------------+
+             |                    |                    |
+       Model adapter        Tool registry        Policy / approvals
+       (private gptel)    (typed, validated)    (rules as data)
+             |                    |                    |
+             +--------- Execution scheduler -----------+
+                       shared/exclusive, once-only,
+                       cancellation, deadlines
+                                  |
+                    Append-only versioned event journal
+                                  |
+             +--------------------+--------------------+
+             |                    |                    |
+        Model context        Read models/UI       Session index/cost
+                                  |
+                 attached / service / batch placements
 ```
-  plane 1 — the kernel        pure Elisp: no UI, no transport, no policy
-      lib/yeah-state.el   the twelve states
-      lib/yeah-loop.el    the eighteen transitions
-      lib/yeah-tools.el   the tool registry
-      lib/yeah-perm.el    the permission rules
-      lib/yeah-session.el the append-only log
-      lib/yeah-compact.el compaction as a projection
-      lib/yeah-undo.el    the undo boundary
-      lib/yeah-codes.el   programmatic tool calling
-      lib/yeah-subagent.el  the delegation API
-      lib/yeah-shell.el   the human REPL
-      lib/yeah-gptel.el   the transport bridge
 
-  plane 2 — the transports   one conversation, spoken by several masters
-      lib/yeah-acp.el     ACP, agent side: JSON-RPC 2.0 over stdio
-      lib/yeah-emcp.el    MCP server: the emacs__ tool namespace
-      lib/yeah-gptel.el   the model transport, through gptel
+### Run Controller
 
-  plane 3 — the runtime      where Emacs lives, and who is watching
-      attached   a session a person is using
-      service    a dedicated Emacs, driven by protocol clients
-      batch      one process, one task, no persistence
+A run has an explicit context containing at least its ids, session, model
+adapter, registry, policy, answerer, cancellation token, budgets, clock and
+event sink. Registries and permissions must not be implicit process-wide
+state shared by unrelated runs.
+
+The controller is the only component that advances the run. UI, protocols and
+tests submit commands to it; they do not reproduce its transitions.
+
+### Tool contract
+
+A tool declaration contains:
+
+- stable name and human/model description;
+- JSON-compatible input schema, required and optional fields;
+- handler and synchronous/asynchronous shape;
+- risk/capability classification;
+- shared/exclusive or resource-lock declaration;
+- timeout and output limits where applicable.
+
+A result is structured: success/failure, content or typed error, truncation
+information and artifact references. Tool errors are values for the model and
+events for the journal; they do not wedge the run.
+
+### Event envelope
+
+The exact schema is versioned. At minimum:
+
+```text
+schema-version, event-id, session-id, timestamp, type, payload
+run-id, turn-id, tool-call-id, parent-event-id   (when applicable)
 ```
 
-### The invariant
+Payloads are typed per event. Unknown types and unknown replay-relevant
+provider fields fail closed. Writers validate before append. Readers detect
+truncation/corruption rather than silently dropping records.
 
-**The kernel does not know who is driving it.** It is handed a prompt and
-it produces records; it never opens a socket, never asks a question it
-cannot record, and never assumes that a human will answer.
+## 6. Emacs-native capability layer
 
-Everything else follows:
+The differentiating tools are not decorations. They are the reason to build
+the harness in Emacs:
 
-- A tool is a plain Elisp function with a declared input shape. It is
-  called the same way from the human REPL, from an ACP client and from an
-  MCP client.
-- A session is an append-only log. Every master sees the same log.
-- A permission decision is a *record*, not a question. The kernel never
-  blocks waiting for an answer; it emits a decision request and
-  continues when the policy answers it.
+- **Introspection:** describe functions/variables, apropos, source location,
+  documentation and relevant Info text.
+- **Live state:** read and edit buffers, compilation output, messages,
+  project state and diagnostics without terminal scraping.
+- **Elisp verification:** check-parens, byte compilation, checkdoc and ERT.
+- **Structural editing:** sexp operations for Lisp and tree-sitter where a
+  grammar is available.
+- **Diagnostics:** Eglot/Flymake feedback after edits.
+- **Version control:** Magit-aware status, diff, checkpoints and review.
+- **Org:** plans as TODO trees, session export as durable documents and
+  reproducible examples through Babel.
+- **Remote work:** TRAMP through the same buffer/file abstractions.
+- **Inter-process Emacs:** emacsclient as an explicit, permissioned bridge to
+  a person's attached session.
 
-## 4. The three masters
+Optional packages are detected at runtime. The base system works without
+Magit, Eglot, Org add-ons or a particular completion framework.
 
-| Master | Envelope | What it needs from the kernel |
-|---|---|---|
-| a human | the REPL, and the ordinary Emacs UI | a readable transcript, a place to approve, and nothing that breaks the editor |
-| an ACP client | JSON-RPC 2.0 over stdio | sessions that can be cancelled, prompts that stream, results that arrive as messages |
-| another agent | MCP over stdio: the `emacs__*` namespace | tools that are named, described, argument-checked and safe to call from outside |
+## 7. Concurrency and placements
 
-The human is the odd one out: the other two are programs with no
-patience and no window. They need a session id, a way to cancel, and an
-honest answer when something cannot be done. The human needs a face.
+Emacs threads may coordinate waiting; they are not an isolation boundary.
+Heavy, unattended or untrusted work belongs in a separate Emacs process.
 
-## 5. The parity matrix
+- **Attached:** the default interactive placement. The agent works with live
+  buffers and must not block editing.
+- **Service:** a dedicated Emacs for protocol clients or unattended work.
+  Access to a person's buffers through emacsclient is an explicit capability.
+- **Batch:** one process and one task, suitable for CI and benchmarks.
 
-Read from the reference implementations. "Yeah" is the state of this
-repository today.
+The placement may change process ownership and who answers approvals. It may
+not change the canonical sequence of semantic events.
 
-| Capability | opencode | pi | Yeah |
-|---|---|---|---|
-| Loop over model turns, parsing tool calls | `session/prompt.ts:1081` | `core/agent-loop.ts:526` | present: `lib/yeah-turn.el` — the tick, the dispatch, the log, and the model asked again |
-| Parallel tools from one assistant message | FiberSet per tool call | shared/exclusive scheduling with a per-batch barrier | absent: one `awaiting-tool` state |
-| Typed events and a stream for the interface | 12 part types, typed bus, SSE | 13 event types, own EventStream | present: `lib/yeah-events.el` — the vocabulary of the log, and a record that is refused when it is not of a declared type |
-| Approvals: reply kinds, remembered answers, no-human mode | once, always, reject; headless auto-answer | tool-declared tiers, modes, fails closed | only allow, deny, ask; ask raises |
-| Compaction by a model call, plus pruning of old tool output | hidden compaction agent, fixed template | five methods, own tokenizer | deterministic placeholder |
-| File checkpoint and undo | shadow git, revert restores blobs | absent: context branch only | native Emacs undo — better than both, for buffers |
-| Sessions: index, tree, resume, revert | SQLite, projections, fork | JSONL, branching | append-only log, no index |
-| Token and cost accounting per session | per step, message, session | same, plus per-tool latency | absent |
-| Robustness: retries, timeouts, deadline, loop guard, background | all five | all five | absent |
-| MCP client for foreign tool servers | present | present | absent; we are a server |
-| ACP agent side | 13 methods | present | 4 handlers, no process |
-| Server mode and headless run | serve, run, acp, mini | CLI, ACP, RPC | absent |
-| Sub-agents with their own session | task tool with a child session | task tool with a branch | stub |
-| Interface, installation, documentation for people | TUI, web, desktop | TUI, web, extensions | a REPL buffer |
+## 8. Security model
 
-Fourteen rows. Three are now filled — the turn, the scheduler and the
-event vocabulary — and eleven are still empty. That is the size of the remaining work, and it is the plan:
-`waves/` is this table, one unit of work per row, ordered by dependency.
+The model, repository instructions, fetched text and tool output are
+untrusted inputs. Security is capability-based:
 
-## 6. The tension between H2 and H3, and how it resolves
+- canonical workspace paths and explicit outside-workspace permission;
+- separate read, write, process and network capabilities;
+- once/session/project/global approval scopes;
+- deny-by-default headless policy;
+- bounded time, tokens, output, pending input and child depth;
+- no secret files or credentials in logs, examples or test fixtures;
+- no claim that regex/whitelist evaluation is a complete sandbox.
 
-**The tension.** H3 says the agent acts in the user's Emacs: real
-buffers, real magit, real project. H2 says the harness must run without a
-human, which means it must be a runtime that can be driven from outside,
-which means it must not be entangled with one person's editing session.
-A single Emacs process cannot be both the user's editor and a service for
-other clients.
+General untrusted evaluation, if ever offered, requires a separately designed
+process boundary and its own adversarial verification.
 
-**How the references solve it.** They never try. opencode's agent is
-always a separate process, and the editor is a client of it; pi's agent
-is a process with several modes. Neither shares an address space with the
-user's editor, which is exactly why neither is blocked by a single
-thread.
+## 9. Product and interface
 
-**How Yeah resolves it.** Three placements of one kernel:
+`M-x yeah` is the primary interactive entry point. The interface renders the
+journal: streamed text, reasoning visibility, tool calls and results,
+approvals, diffs, usage, errors, child work and cancellation state.
 
-| Placement | Who lives there | Single-threading | Cost |
-|---|---|---|---|
-| attached: the agent in the person's session | the same Emacs | agent work blocks the editor if it waits in the main loop | least: the agent works on live buffers |
-| service: the agent in its own Emacs | a separate process, clients outside | no problem: the runtime has its own main loop | the agent does not see the person's buffers directly — but it reaches them through `emacsclient`, that is, as a tool |
-| batch: one process, one task | the same Emacs | no problem | no state between runs except the log |
+Emacs UI libraries are adapters, not kernel dependencies. magit-section,
+transient, tabulated-list and the user's completing-read framework are
+preferred to custom replacements when they reduce UI code.
 
-**The decision of the owner: both.** The kernel is the same in every
-placement, and the only thing that differs is *who answers a question
-when there is no human at the keyboard* — the person, or the policy. So
-the kernel takes the answerer the way it takes the transport: as
-something handed to it, not as something it knows. Everything else about
-a placement is plumbing around the kernel, and the plumbing is free to
-differ.
+Installation targets a clean supported Emacs with one documented action.
+Development tools such as mathc and Nix are never runtime dependencies.
 
-**The rule that follows.** The kernel must run in all three, and no
-placement may block the main loop. Heavy or isolated work goes to
-another Emacs: Emacs already speaks to another Emacs over
-`emacsclient`, so the second process can act on the first one's buffers.
-The agent in its own Emacs, with the user's Emacs as one more client, is
-the form that satisfies H2 and H3 together — and it is precisely the
-form in which a second Emacs gets opened.
+## 10. Verification and success
 
-**Threads, and what they are good for.** Emacs has real threads
-(`make-thread`), and `lexical-binding` is `t` by default since Emacs 30,
-which makes lexical variables private to a thread while globals stay
-shared. Threads buy concurrency of *waiting*: a slow process or a slow
-network read can proceed while the main loop stays alive. They do not buy
-isolation: a thread shares the address space, sees the user's buffers
-and secrets, and a crash in it takes the editor down. Note also that the
-branch API of Emacs 29 (`make-branch` and friends) is **not present in
-Emacs 30** — verified on the Emacs 30.2 this repository targets — so no
-plan may depend on it.
+There are four verification levels:
 
-The division is therefore: threads for waiting, another process for
-isolation, and a scheduler for parallel work.
+1. **Unit:** pure transitions, validation, projections and helpers.
+2. **Contract/canary:** the failure classes and invariants named by claims,
+   each with a control that can make the check fail.
+3. **Integration:** real gptel versions, process/protocol round trips,
+   restart/recovery and the complete coding scenario.
+4. **Live/evaluation:** pinned real providers, comparative tasks against
+   opencode/pi and Emacs-native tasks.
 
-## 7. What the model transport actually gives us
+The fixed-point scenario — Yeah repairing a Yeah canary and producing a
+reviewable commit — is the flagship integration test. Long-session recovery,
+responsive cancellation and clean-Emacs installation are release gates.
 
-The transport is gptel, and reading its source changes two assumptions.
+## 11. Non-goals
 
-**The model call does not need a thread.** gptel's request is
-asynchronous and its callback is invoked from the main loop while the
-editor stays usable. So the rule "the main loop never waits" is
-satisfiable with gptel as it is. What is forbidden is a *blocking* call
-inside a tool body — the thing `ELISP_BEST_PRACTICES` §4.1 already
-forbids.
+- a second kernel in another language;
+- a terminal or web UI before the interactive vertical slice works;
+- advice-based modification of gptel internals as an architecture;
+- destructive compaction or snapshots replacing the journal;
+- unrestricted evaluation presented as safe;
+- a plugin ecosystem duplicating the tool and skill registries;
+- telemetry, provider lock-in or mandatory cloud-only operation.
 
-**What was verified against the real gptel.** The transport was checked
-against gptel 20251007.257, the released version: `gptel-request` and
-`gptel-make-tool` exist as they are declared, a request through
-`yeah-gptel-request' reaches gptel and fails *there* — with no key it
-says so — and `yeah-gptel-tool-for' builds a real `gptel-tool' whose
-arguments are in gptel's schema. The one thing not verified here is the
-network call itself: it needs a key and a backend.
+## 12. Research references
 
-**gptel executes tool calls one at a time.** Its dispatch loop is
-sequential, with an opt-in `async` flag per tool. So parallel tool
-calls are *ours* to build: the registry's spec needs a concurrency field
-of the kind pi has (`shared` or `exclusive`), and the scheduler needs to
-exist. gptel will not provide it.
+Shallow research clones are kept outside this repository under
+`../emacs-agents-research/`. The useful conclusions are:
 
-**Two more facts, both uncomfortable.** gptel has its own tool-call
-acceptance UI, with accept, reject and steer; and the hook
-`gptel-fsm-handlers`, which `lib/yeah-gptel.el` registers, **no longer
-exists** in current gptel — the current hooks are
-`gptel-prompt-transform-functions`, `gptel-pre-tool-call-functions` and
-`gptel-post-tool-call-functions`, and gptel now has an internal state
-machine of its own. So: two approval UIs must not both exist, and the
-third hook of Yeah is currently dead. Both need their own claims.
-
-## 8. H3, restated
-
-The earlier form of this hypothesis was "the agent generates Elisp". The
-reference code says that is the risky form: neither opencode nor pi lets
-the model write free-form code. Their tools are declared with schemas,
-and code execution is an *option* — opencode has a sandboxed code mode
-that calls tools in parallel inside it, pi has `eval` as one of its
-tools.
-
-Parity says something sharper: a shell agent can write and run code, so
-Yeah must be able to as well, and must do it inside Emacs. The shape
-that satisfies both safety and capability is:
-
-1. a **declared, typed vocabulary** of tools, with input shapes and
-   concurrency modes;
-2. **programmatic tool calling** on top of it: one form that performs
-   several operations in one round trip, which is what the code mode of
-   opencode does and what `lib/yeah-codes.el` is for;
-3. the form runs inside a **boundary** — a static analysis of the free
-   symbols of the form, and eventually `sandbox.el` — so that a form
-   cannot reach the host.
-
-The claim `ptc-sandbox-restricts-model-code` is refuted today, because
-the whitelist gates the *name* of the binding and not the body inside
-it. Until that is repaired, H3 has no safe implementation: the one
-mechanism that would make an Elisp agent competitive with a shell agent
-is also the one that is currently unsafe.
-
-## 9. The strongest objection to this architecture
-
-*An agent that works in Emacs needs a bootstrap that Python and shell do
-not need, and the bootstrap is the whole difference between a runtime
-that runs on a phone and one that needs a package manager on the phone.
-Until the bootstrap is solved, H3 is a preference and H4 is a hope, and
-the only parts that work are the ones Emacs already did: text, buffers,
-files and a shell.*
-
-**What would refute it:** an agent on a phone, running the same task
-through Emacs Lisp and through shell, where the Emacs arm needs a
-package manager and the shell arm does not. The architecture is wrong if
-the bootstrap is the bottleneck in every run, because the bootstrap is
-the part that does not travel.
-
-This objection lives on the plan, in `wave-14`, because the method holds
-that the dialectic belongs to the unit of work.
-
-## 11. Two defects of the tool, found by using it
-
-**The wave queue is sorted lexicographically, not numerically.** `mathc
-next` reads the files of `waves/` and sorts their names as strings, so
-with ten waves or more it points at `wave-10` before `wave-2`, and the
-agent is led to the wrong work. The waves here are therefore named
-`wave-01` … `wave-14`, and the numbering is padded on purpose. The same
-defect affects the method's own repository, which has twenty waves.
-
-**The build of the method is a moving target, so the build is named.**
-`mathc --version` prints the hash of the binary's own bytes, and two
-different binaries of the same version must never be confused. A claim
-proved by one build is not proved by another. On 2026-11-09 a build of
-the method stopped being able to establish any claim at all — including
-in the method's own repository, where the verdict became `unknown` with
-every claim inconclusive — because it compared the digest of the subject
-*after* putting the tree back, so a control that broke the subject and
-was faithfully restored looked as if it had broken nothing. The fix was
-to take the fingerprint immediately after the control and before both the
-check and the restore, and the reason it matters is general: the residue
-of a control is the proof that it did something, so asking after the
-cleanup asks the wrong question. The evidence in `.math/trail.jsonl` is
-bound to the content that ran, not to the build that ran it, so a claim
-proved green by one build stays proved until the subject moves; but a
-build that cannot establish anything will report every claim as
-inconclusive. When the method changes under us, the right response is to
-name the build, not to rewrite the claims.
-
-**A directory with no specification is no longer green, but a claim
-without a check is still allowed.** `mathc add` refuses a claim with no
-requirement, and accepts one whose check does not exist yet; the map then
-says "the check is not proven able to fail". The fourteen promises of
-this plan are in that state on purpose — they are plans, and a plan is
-not an uncertainty (law A17). The price is that they cost nothing until
-their subject appears.
-
-## 12. Out of scope, on purpose
-
-- A GUI that imitates another harness. The interface is one master among
-  several; it comes last, and it should look like whatever is familiar,
-  not like the kernel.
-- A second runtime. The kernel is Elisp, and the decision to keep it so
-  is in the aim and the claims.
-- A plugin ecosystem beyond the tool registry and the MCP client. The
-  registry is the extension point; anything else is a second way to say
-  the same thing.
+- **karthink/gptel-agent:** declarative agents, interoperable skills and a
+  strong compaction prompt; not its destructive buffer compaction.
+- **beacoder/gptel-agent-harness:** concrete gptel failure classes,
+  completion nudges, token calibration and Plan/Build behavior; not its
+  advice-based coupling to gptel internals.
+- **punzik/emacs-agent:** tick-based editing, output artifacts, bounded
+  steering/pending input, frozen configuration, replay validation and honest
+  documentation of limitations; not unrestricted evaluation as a safe tool.
+- **xenodium/acp.el** and the ACP specification: protocol references only;
+  agent-shell, Claude Code clients, aidermacs and ECA clients are not
+  in-Emacs harnesses and are not architectural models for the kernel.

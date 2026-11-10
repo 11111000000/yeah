@@ -1,201 +1,438 @@
-# PLAN — where this is, what comes next, and what is open
+# PLAN — the road to Yeah 1.0
 
-> This document is written for the next session: for an agent that will
-> pick the work up without the history that produced it. It says what the
-> project is, what it believes, what has been done, what is next in the
-> order the plan fixes, and which questions are not the agent's to
-> answer.
+> **Status: execution plan, not current capability.** The target and its
+> rationale are in `docs/ARCHITECTURE.md`; binding engineering rules are in
+> `docs/ENGINEERING.md`. The machine-checked present is `spec.json` and
+> `./scripts/dev map`.
 >
-> The machine's own state is in `spec.json` and in the map
-> (`./scripts/dev map`). This document is the part a map cannot carry:
-> the reasoning, the order, and the open questions.
+> This plan introduces eight **stages**. Existing `waves/wave-01.json` …
+> `wave-14.json` remain the historical math-coding units until corresponding
+> new claims/waves are added. A stage is not considered closed here: closure
+> requires the specification and its evidence to agree.
 
-## 1. What the project is
+## 1. Current baseline
 
-Yeah is an Emacs Lisp agent harness. The user's Emacs session is itself
-the runtime of the agent: there is no sidecar process and no
-client/server split. The kernel is Elisp, the model is reached through
-`gptel`, the tools are Elisp functions, and the session log is
-append-only JSONL.
+Verified on 2026-11-10 in this checkout:
 
-The harness has three faces, and they are one codebase: a REPL for a
-person inside Emacs, an ACP agent that Zed or JetBrains can host, and an
-MCP server that publishes the `emacs__*` tools to other agents.
+- all 21 `lib/` modules byte-compile without warnings;
+- 104/104 ERT unit tests pass;
+- the existing canary command exits successfully;
+- the installed `mathc` does not accept the `--root` invocation used by
+  `scripts/dev`, so the map/gate needs a compatible pinned tool;
+- live provider behavior was not verified during that review.
 
-## 2. What it believes
+The code contains useful kernel pieces, but not a usable complete agent:
 
-Four claims, and each can be false:
+- `yeah-shell.el` echoes a stub rather than running a turn;
+- ACP prompt/cancel and sub-agent execution are placeholders;
+- EMCP handlers are placeholders;
+- the only built-in registry tool is `read`, and it ignores offset/limit;
+- `yeah-context-summarize` waits on the event loop and can return an empty
+  summary;
+- the turn does not yet connect context overflow to compaction;
+- global registries/rules and incomplete event correlation obstruct isolated
+  concurrent runs;
+- the PTC whitelist was experimentally bypassed with a permitted higher-order
+  function and a quoted `delete-file` symbol. It is not a safe boundary.
 
-- **H1 — a platform.** Emacs is dying as a desktop application and
-  living as an agent runtime: a language, an editor, a process model, an
-  RPC surface and a cross-platform binary in one program — including
-  Android and the browser.
-- **H2 — a harness without a human.** The harness is a runtime driven
-  from outside. A person is one master among several, not a required
-  one. The consequence was decided by the owner: the kernel is the same
-  in every placement, and what differs is *who answers* a question when
-  nobody is at the keyboard — the person, or the policy.
-- **H3 — the agent works in Emacs, not around it.** The tools are the
-  editor's own; the undo is the editor's own; the log is a file on the
-  disk. The agent acts on real buffers, real magit and real project.
-- **H4 — one runtime, many places.** The same harness on a phone, in a
-  browser, on a desktop, and inside editors that speak ACP.
+The first stages therefore prioritize truth, security and a vertical slice,
+not additional protocols.
 
-**Parity is the aim.** Not worse than pi or opencode in everything that
-works there today, at the same quality, from the point of view of the
-person using it. There is no ratio and no score: the reference
-implementations were read, and their code is the checklist.
+## 2. Stage map and dependencies
 
-**The method is math-coding v4, and it is strict about itself.** A claim
-is a statement about this repository with a scope, a requirement that can
-close it, a falsifier, a register, and a *control*: the command that
-breaks the subject and must make the check go red. A claim whose control
-has never bitten is not established, and the map says so. Unknown is
-never read as pass. The waves in `waves/` are the units of work, each with
-an intent, a check, a promise and the strongest objection against it.
+```text
+0. Honesty and safety
+   └─> 1. Coding tools
+         └─> 2. Context and compaction
+               └─> 3. Human control
+                     └─> 4. Installable interactive product  [PUBLIC ALPHA]
+                           └─> 5. ACP/MCP wire
+                                 └─> 6. Placements
+                                       └─> 7. Delegation and ecosystem
 
-## 3. Where the work stands
-
-The closed waves and what they delivered:
-
-| Wave | What it delivered |
-|---|---|
-| 01 | the standing specification: the third version's corpus removed, the specification and the waves in their place |
-| 02 | the turn: the model is called through gptel, its tool calls are parsed and dispatched |
-| 03 | the scheduler: the tools of one answer run together, an exclusive one runs alone, the batch is a barrier |
-| 04 | the vocabulary of the log: every record is a declared event with the declared fields |
-| 05 | the interface: the view is read from the event stream and from nothing else |
-| 06 | the approvals: once, always, reject; a run with nobody answers by policy |
-| 07 | the sandbox: the body of a form is confined before a single form is evaluated |
-| 08 | the context: the summary is written by the model, the old tool outputs are pruned |
-| 09 | the sessions: the index of a project, the tree of a session, the price of a run |
-| 10 | the guards of a run: a failing call is retried, a hanging call is cut, a repeated call is stopped |
-
-The kernel at this moment: twenty-one modules, no third-party dependency
-(`cl-lib`, `json` and `ring` only), a byte-compile that is clean with no
-warnings, 104 ERT cases, and seventeen canaries — all green.
-
-The transport was verified against the real thing: gptel 20251007.257
-installed, a real model asked through `yeah-gptel-request` (MiniMax,
-OpenAI-compatible, the fastest model the endpoint offers), HTTP 200 and
-the answer. The live check lives in `tests/live/live-model-call.el` and
-takes the key from the environment; **no key is ever written into this
-repository**.
-
-## 4. What comes next, in the order the plan fixes
-
-Each wave is a unit of work with a promise. The order is by dependency,
-not by beauty.
-
-| Wave | What it promises |
-|---|---|
-| 11 — провод | ACP speaks JSON-RPC over stdio, the MCP server publishes the registry over stdio, and the MCP client lets Yeah use the tools of other agents |
-| 12 — размещения | the same kernel runs attached, in its own Emacs as a service, and in batch; the placement is not visible in the log |
-| 13 — под-агенты | a sub-agent runs in its own session with its own context and restricted permissions, and its result comes back |
-| 14 — продукт | the harness installs, serves, and explains itself to a person |
-
-The order matters in one place: wave 11 comes before wave 12, because a
-placement without a wire is a placement with nobody in it.
-
-## 5. The variants that are open
-
-These are decisions about meaning, not about mechanism. They are the
-owner's to make; the plan assumes the first and leaves the rest.
-
-1. **The surface of the harness.** Does the familiar interface live
-   inside Emacs (a chat buffer with the shape of the harnesses people
-   know), outside it (the web and the terminal that opencode and pi
-   have), or both? The plan assumes the kernel serves both and the
-   interface is a client of it.
-2. **How much the agent may do without a person.** The rules decide
-   today, and the default is to refuse. The variant: which operations
-   are allowed unattended by default — reading, editing a scratch file,
-   running a command — and which always need a person.
-3. **What the model may write.** The PTC sandbox confines a form to the
-   tools of the registry and a small core. The variant: whether the
-   model may also write plain Elisp that is *read* rather than run
-   (a macro, a piece of configuration), and what the boundary is.
-4. **The trust of the service mode.** In the attached mode the agent
-   runs with the rights of the person. In the service mode it runs as a
-   daemon. The variant: what the service mode is allowed to reach —
-   the person's buffers through `emacsclient`, or nothing of theirs.
-5. **The packaging.** The kernel needs only an interpreter, and the
-   interface needs more. The variant: what is shipped — a package, a
-   tarball, or an `emacs -Q` script that fetches what it needs — and
-   what a phone is expected to install.
-6. **The measurement.** The method measures the method; nobody has
-   measured the harness. The variant: the experiment that would decide
-   whether an Emacs Lisp agent is as good as a shell one — the same
-   task, two arms, the same rubric.
-7. **The licence of the ecosystem.** The kernel is Apache-2.0 and
-   depends on nothing outside Emacs. The variant: what happens to that
-   if the sandbox turns out to need `sandbox.el`, which is GPL.
-
-## 6. How to work in this repository
-
-```sh
-./scripts/dev map                 # the state: claims, states, uncovered
-./scripts/dev next                # the next unit of work, one item
-./scripts/dev byte-compile-all     # the kernel compiles clean, no warnings
-./scripts/dev ert tests/unit/*.el  # the unit tests
-./scripts/dev check tests/checks/* # the canaries
-./scripts/dev run                  # the method executes the checks and binds the evidence
-./scripts/dev gate                 # run, then map; the exit code is the verdict
+Benchmarks and documentation run continuously; 1.0 requires stages 0–7 and
+release gates from §11.
 ```
 
-The rules that the repository holds itself to:
+ACP and service mode are delayed deliberately: they must transport a working
+kernel, not conceal missing execution behind protocol handlers. Minimal
+Emacs-native UI and installation come before them because they validate the
+actual user experience.
 
-- A wave closes only when its promises are met, and a promise is a claim
-  in `spec.json`.
-- A claim carries a **control**: the command that breaks the subject and
-  must make the check go red. If the control changes nothing, the map
-  says "the control changed nothing in the tree" — and the claim is not
-  established. That message is the most useful thing the method says.
-- The evidence is bound to the content of the files: change a file and
-  the proof of the claim about it is stale.
-- The scope of a claim names the files the claim is about *and* the
-  instrument that checks it, so that changing either invalidates the
-  proof.
-- A check that cannot fail is a comment. The canaries in `tests/checks/`
-  are the checks; the claims in `spec.json` are what they are bound to.
+## 3. Stage 0 — honesty, compatibility and safety
 
-## 7. The traps that were paid for
+### Intent
 
-They are in `ELISP_BEST_PRACTICES.md` §11, and they are worth knowing
-before writing a line of kernel code:
+Remove known false assurances and protect the kernel before it grows.
 
-- A `let` does not shadow the **cell of a function** in Emacs Lisp. A
-  form that calls `read` inside a sandbox calls the built-in `read`, not
-  the tool of the registry. The tools are reached through one function
-  and a rewrite, and the names of the tools are data.
-- `&key` is a `cl-lib` extension: in a plain `defun` it is either
-  malformed or wrong. Use `cl-defun`.
-- `write-file`'s second argument is `VISIT`, not the content. A file
-  written that way is empty, and a check that reads it will say that the
-  thing under test is empty.
-- Emacs loads a byte-compiled file **in preference to a newer source**.
-  A stale `.elc` next to a modified source makes every control blind, and
-  `scripts/dev` removes the bytecode before it loads anything.
-- `process-filter` takes one argument in current Emacs; the pending
-  output is read by calling the filter with an empty string.
-- `run-with-timer` takes three arguments: the time, the repeat, the
-  function.
-- A timer that is started inside another timer is only reached by a
-  later turn of the event loop. A check that waits must pump the loop in
-  steps, not sleep through it.
-- The filter of a process receives the output as its second argument. A
-  filter that reads the output *from the filter* calls itself for ever,
-  and the nesting depth is the symptom.
-- `&key` is an extension of `cl-lib`: in a plain `defun` it is either
-  malformed or wrong. Use `cl-defun`.
-- A model that reasons sends its thinking as its own chunk, before the
-  answer. The turn waits for the answer and ignores the thinking, and
-  the fake in the checks speaks the way gptel speaks.
+### Work items
 
-## 8. If you continue
+**0.1 Repair the gptel boundary.** **Status: implemented on 2026-11-10.**
+The adapter now validates pinned gptel 0.9.9.5/0.9.9.6 contracts, passes
+private backend/model/tools/system options without global hooks, disables
+ambient editor context, normalizes failures and usage, and returns gptel's
+FSM. All 110 ERT tests pass and a no-network dry-run against real gptel
+0.9.9.6 succeeds. No live provider request was made.
 
-Read in this order: `AGENTS.md`, this document, `docs/ARCHITECTURE.md`,
-then `./scripts/dev map` and `./scripts/dev next`. Take the wave that
-`next` names. Write the module, write the canary, give the claim a
-control that bites, and close the wave only when the method says its
-promises are met.
+- Remove registration and documentation of nonexistent/unsupported hooks,
+  including `gptel-fsm-handlers` on the current gptel contract.
+- Make requests privately configured; do not mutate global gptel settings.
+- Normalize text, reasoning, tool calls, errors and usage at the boundary.
+- Add an explicit supported-version/contract check.
+- Files: `lib/yeah-gptel.el`, `lib/yeah-turn.el`, gptel unit/canary tests,
+  `tests/live/live-model-call.el`.
+
+**0.2 Quarantine PTC.** **Status: implemented on 2026-11-10.**
+`yeah-codes-eval` is disabled by default, refuses before reading forms while
+disabled, and is documented as an experiment rather than a sandbox. The
+confirmed `mapcar` bypass and the analogous `sort` predicate bypass are
+regression-tested and rejected by removing uncontrolled higher-order calls
+from the restricted core. This closes the demonstrated exploits without
+claiming general isolation.
+
+- Mark the current PTC implementation experimental and keep it off public
+  execution paths.
+- Add the confirmed higher-order-function/quoted-symbol exploit as an
+  adversarial regression test.
+- Correct the claim so it no longer asserts a safe general sandbox. Decide
+  separately whether a restricted interpreter is worth retaining.
+- Files: `lib/yeah-codes.el`, `tests/checks/check-ptc-sandbox-restricts.el`,
+  `spec.json`, security documentation.
+
+**0.3 Add execution failure canaries (U1–U4).**
+
+- U1: malformed tool args become a structured tool failure, not a stuck FSM.
+- U2: a handler exception fails pending work and lets the batch settle.
+- U3: a duplicate async callback cannot produce a second result or advance
+  the state twice; first result wins.
+- U4: nil/non-string tool results are normalized before logging/provider
+  serialization.
+- Files: `lib/yeah-turn.el`, `lib/yeah-scheduler.el`, `lib/yeah-tools.el`,
+  `tests/checks/`.
+
+**0.4 Make the evidence toolchain reliable.**
+
+- Pin a compatible mathc build or adjust `scripts/dev` to its supported CLI.
+- Ensure map/gate exit codes distinguish pass, fail, blocked and unknown.
+- Keep unit and canary execution independent of mathc availability.
+- Files: `scripts/dev`, CI/development documentation.
+
+**0.5 Reconcile source and documentation.**
+
+- Remove stale Tier/ROADMAP/nonexistent `decisions/` references and incorrect
+  state counts in comments.
+- Ensure every placeholder is named as such and no public README table calls
+  a placeholder operational.
+- Record D1–D10 as accepted target decisions in ARCHITECTURE.
+
+### Required claims and controls
+
+- `turn-survives-malformed-tool-args`: control injects non-plist args; the
+  check must observe a bounded failure, not hang.
+- `turn-settles-after-handler-exception`: control makes a handler signal;
+  every call must reach one terminal result.
+- `turn-first-result-wins`: control invokes a continuation twice; exactly one
+  `tool-end` and one state settlement are allowed.
+- `tool-result-is-provider-safe`: control returns nil; outgoing content must
+  be a valid string/error representation.
+- `no-dead-gptel-hook-contract`: control points at an unsupported gptel
+  contract; startup/request must fail explicitly.
+- `ptc-is-not-a-public-security-boundary`: control exposes PTC publicly or
+  weakens its guard; the release check must fail.
+
+### Exit criteria
+
+All four execution failure classes have biting tests; no unsupported gptel
+hook is registered; PTC is not presented as safe; the standard test commands
+pass; map/gate either works with the pinned tool or is honestly blocked.
+
+## 4. Stage 1 — a useful coding tool set
+
+### Intent
+
+Complete real coding tasks through the existing registry and permissions.
+
+### Work items
+
+**1.1 Complete the common tool result.** Structured success/error content,
+truncation metadata, artifact references and bounded serialization.
+
+**1.2 Implement file discovery and reading.**
+
+- Read honors byte/character/line semantics chosen in its schema, including
+  offset and limit.
+- Glob and Grep are git-aware where available, bounded and project-rooted.
+- Paths are canonicalized before permission evaluation.
+
+**1.3 Implement guarded Edit and Write.**
+
+- Reads return `buffer-chars-modified-tick` where a buffer is involved.
+- Edit requires expected old text/ranges and tick; stale input is rejected.
+- Validate all replacements first; apply bottom-up; one logical undo step.
+- Saving is separate from editing; user changes are not discarded.
+- Write uses clear create/overwrite semantics and approval.
+- Files: `lib/yeah-tools.el`, `lib/yeah-undo.el`, new focused tool modules
+  only if the single-feature rule requires them.
+
+**1.4 Implement Bash and jobs.**
+
+- `make-process`, explicit shell/argv semantics, UTF-8, working directory,
+  idle and maximum timeouts, cancellation and bounded output.
+- Long jobs expose start/status/read/cancel instead of blocking a turn.
+
+**1.5 Add output artifacts.** Oversized output is stored under private data
+ directories with `0700`/`0600`; model results carry an excerpt and reference.
+
+**1.6 Add Emacs-native tools.**
+
+- Introspect: describe/apropos/source lookup with bounded results.
+- Buffer read for live named buffers.
+- Elisp check: read/check-parens/byte-compile/ERT as appropriate.
+- Diagnostics: Eglot/Flymake when available, with explicit unavailable states.
+
+### Required checks
+
+- wrong argument shapes and workspace escapes are refused;
+- stale tick and nonunique old text never mutate a buffer;
+- a no-op edit does not add undo history;
+- duplicate process callbacks settle once;
+- output limits produce an artifact, not unbounded context;
+- live coding scenario: read a small project, reproduce a failing test, edit
+  it, rerun the test and return a reviewable diff.
+
+### Exit criteria
+
+The live scenario works with at least one pinned real provider through gptel.
+A control that bypasses tick validation or path checks makes the relevant
+canary fail. No tool returns placeholder success.
+
+## 5. Stage 2 — context, usage and asynchronous compaction
+
+### Intent
+
+Long tasks remain responsive, bounded and recoverable.
+
+### Work items
+
+**2.1 Introduce model capabilities and budgets.** Context window, reserve,
+output limits and per-run token/time/cost budgets are explicit configuration,
+not universal constants.
+
+**2.2 Calibrate token estimates.** Separate provider usage from estimates;
+include system prompt and tool schemas; account for CJK; calibrate
+`actual/estimated` within a bounded range.
+
+**2.3 Make compaction asynchronous.** Overflow enters `compacting`; a model
+callback emits success/failure; no `accept-process-output` wait loop. Empty,
+cancelled or failed summaries do not replace the projection.
+
+**2.4 Use a durable summary contract.** The prompt preserves goals, progress,
+mistakes/dead ends, decisions, files, constraints and next steps. Repeated
+compaction uses the previous summary and retained suffix correctly.
+
+**2.5 Unify pruning and compaction with the event vocabulary.** Sources stay
+append-only; pruned state is represented by events/projection rules, not
+unlogged mutation.
+
+**2.6 Recovery and scale.** Detect partial JSONL tails, rebuild projections
+from the journal and measure full-log scans before introducing a derived
+index.
+
+### Exit criteria
+
+A session beyond its context budget compacts without blocking interactive
+Emacs; restart produces the same projection; original records remain;
+provider outage leaves the previous projection intact; the UI shows what
+happened.
+
+## 6. Stage 3 — human control and robust runs
+
+### Intent
+
+A person can guide, interrupt and recover work without hidden state.
+
+### Work items
+
+**3.1 Freeze accepted input.** Backend, model, instructions and editor context
+are captured at submission and retained through queues/continuations.
+
+**3.2 Steering.** Deliver clarification at tool-batch boundaries; record it;
+define behavior when the run finishes before delivery.
+
+**3.3 Pending input.** Bounded FIFO (initial target: 8 entries and 256 KiB),
+persisted safely, never auto-executed after restart, with explicit
+edit/withdraw/recover operations.
+
+**3.4 Cancellation.** Propagate to requests, managed processes and callbacks;
+late results cannot mutate the run; report possible side effects honestly.
+
+**3.5 Completion supervision.** At most a small configurable number of visible
+nudges after apparent completion; reset on real progress; stop on dead
+buffers, budgets or terminal states.
+
+**3.6 Runtime guards.** Transient retry with backoff, whole-run deadline,
+doom-loop detection that permits legitimate repeated reads, and structured
+terminal reasons.
+
+### Exit criteria
+
+The integration scenario “start → steer → cancel → restart Emacs → inspect
+partial results → deliberately recover input” works. No late callback changes
+a terminal run; no hidden infinite nudge/retry loop exists.
+
+## 7. Stage 4 — installable interactive product (public alpha)
+
+### Intent
+
+A person can install and use Yeah without reading source or developer docs.
+
+### Work items
+
+**4.1 Product entry.** Add the package header/autoloads and `M-x yeah` with
+project/session selection and first-run backend setup using gptel and
+auth-source.
+
+**4.2 Journal UI.** Streamed transcript, tool calls/results, folds, reasoning
+visibility, pending approvals, diffs, cost, errors and cancellation. Build the
+view only from journal projections. Use magit-section/transient/
+tabulated-list optionally and preserve the user's completion framework.
+
+**4.3 Approval and review.** once/always/reject with scope; diff before writes;
+Plan/Build permission profiles; clear indication of side effects.
+
+**4.4 Installation and configuration.** One init snippet through
+package-vc-install or an equivalent supported path; one clean-Emacs bootstrap
+path; XDG-compatible data/config locations; no mathc/Nix runtime dependency.
+
+**4.5 Operability and documentation.** `M-x yeah-doctor`, concise quick start,
+current limitations, privacy/security guidance and troubleshooting.
+
+### Alpha release gate
+
+On a clean supported Emacs, one documented installation action and backend
+configuration lead to the Stage 1 coding task in the interactive UI. The user
+can approve, steer, cancel, inspect the diff, quit, restart and resume. No
+credentials appear in logs. Unit/canary/integration suites pass.
+
+## 8. Stage 5 — ACP and MCP wire
+
+### Intent
+
+Expose the working kernel to programs without creating a second agent.
+
+### Work items
+
+- JSON-RPC stdio framing using the project's chosen `jsonrpc` adapter;
+- real ACP initialize/new/prompt/update/cancel/load behavior against the
+  current protocol schema;
+- MCP server with actual registry handlers, argument validation and bounded
+  results;
+- MCP client with namespaced imported tools and independent permission rules;
+- backpressure, malformed-message handling, shutdown and cancellation;
+- protocol redaction and trust documentation.
+
+Use `../emacs-agents-research/acp.el/` and the ACP specification as references,
+not as runtime dependencies.
+
+### Exit criteria
+
+A real ACP editor completes the Stage 1 scenario, including streaming and
+cancel. An external MCP client lists and calls explicitly published Emacs
+capabilities. The same canonical journal semantics hold as in interactive use.
+
+## 9. Stage 6 — attached, service and batch placements
+
+### Intent
+
+One kernel, three operational forms, no hidden global run state.
+
+### Work items
+
+- Move session registry, policy, cancellation and configuration into run
+  contexts;
+- attached placement with nonblocking interactive behavior;
+- service placement in a dedicated Emacs with lifecycle management;
+- batch entry for CI/benchmarks with explicit headless allowlists;
+- emacsclient bridge to a person's buffers as a separately approved tool;
+- canonical event comparison across placements, excluding timestamps/random
+  ids and explicitly transport-specific metadata.
+
+### Exit criteria
+
+The same scripted task produces equivalent semantic events in all three
+placements. Service cannot access attached buffers without the bridge
+capability. Batch returns a useful exit code and durable journal.
+
+## 10. Stage 7 — declarative delegation and ecosystem
+
+### Intent
+
+Implement the Y in Yeah: bounded, inspectable recursive work.
+
+### Work items
+
+- Markdown/Org agent presets with name, description, model, tools and prompt;
+- agentskills.io-compatible discovery and progressive loading;
+- child run contexts with restricted tools, depth and shared budgets;
+- parent/child event lineage and child summaries backed by inspectable events;
+- optional cheaper child model and parallel independent children;
+- Org TODO plan projection and Org session export;
+- fixed-point demonstration: Yeah diagnoses and repairs a Yeah canary, runs
+  tests, reviews the diff and prepares a Magit commit under approval.
+
+### Exit criteria
+
+A parent can delegate two independent tasks, inspect their actual work,
+cancel the subtree and recover within budget. A child cannot exceed its
+granted capabilities or spawn beyond its declared depth.
+
+## 11. Continuous quality and 1.0 release gates
+
+### Benchmark suites
+
+1. **General coding:** identical initial repositories, tasks, model and
+   budgets for Yeah/opencode/pi; score verified task success, time, tokens,
+   cost and human interventions.
+2. **Emacs-native:** live buffers, Eglot, Magit, Org and introspection tasks;
+   these test the architectural advantage, not just parity.
+3. **Robustness:** long sessions, network failures, duplicate callbacks,
+   malformed data, cancellation, crash/restart and output floods.
+4. **Fixed point:** the Yeah-on-Yeah canary repair with a reviewable result.
+
+### 1.0 requires
+
+- stages 0–7 closed by current claims and controls;
+- clean installation and the interactive vertical slice passing on every
+  supported Emacs/gptel combination;
+- no known security-boundary bypass or public placeholder path;
+- durable recovery and cancellation integration tests passing;
+- benchmark results published with methodology, including losses;
+- README limitations, security/privacy guide, architecture, engineering
+  guidance and user documentation current;
+- package checks clean and a versioned release with migration policy.
+
+## 12. Immediate execution order
+
+Start with a small, reviewable Stage 0 sequence:
+
+1. repair the gptel contract and remove the dead hook (0.1);
+2. quarantine PTC and add its exploit regression (0.2);
+3. add and satisfy U1–U4 canaries (0.3);
+4. restore a reliable map/gate toolchain (0.4);
+5. reconcile module comments and claims (0.5).
+
+Do not start ACP, service mode or sub-agents before the corresponding earlier
+exit criteria hold. Each implementation commit should be small enough to
+review and should include its tests, control and documentation update.
+
+## 13. Decisions still requiring product ownership
+
+These are not implementation details for an agent to decide silently:
+
+- exact minimum Emacs/gptel versions and release cadence;
+- default unattended capabilities and command/network policy;
+- whether restricted evaluation deserves a separate process design at all;
+- service-mode access to personal buffers;
+- package distribution channels (MELPA/ELPA/bootstrap) and signing;
+- final benchmark task set and acceptable parity threshold;
+- whether Apache-2.0 remains compatible with every optional integration.

@@ -180,7 +180,7 @@
     },
     {
       "id": "gptel-hooks-live-in-one-module-only",
-      "subject": "the gptel hooks are registered in exactly one module, lib/yeah-gptel.el, and nowhere else in lib/",
+      "subject": "no module installs global gptel hooks; lib/yeah-gptel.el configures each request privately without changing global gptel state",
       "scope": [
         "lib/yeah-gptel.el", "lib/",
         "tests/checks/check-gptel-hooks-live-in-one-module.sh",
@@ -192,7 +192,7 @@
           "spec": "./scripts/dev check tests/checks/check-gptel-hooks-live-in-one-module.sh"
         }
       ],
-      "falsifier": "a second module mentions a gptel hook variable",
+      "falsifier": "any module installs or removes a global gptel hook instead of passing private request options",
       "register": "fact",
       "accepted": null,
       "control": "printf \"(add-hook 'gptel-prompt-transform-functions (lambda (p) p))\\n\" >> lib/yeah-state.el",
@@ -256,7 +256,7 @@
     },
     {
       "id": "ptc-sandbox-restricts-model-code",
-      "subject": "the PTC sandbox confines the body of a form: it may call the tools of the registry and a small core, and a call outside them is refused before a single form is evaluated",
+      "subject": "experimental PTC is disabled by default and is not a security boundary; when explicitly enabled for trusted code, direct and higher-order calls outside its restricted core are refused before evaluation",
       "scope": [
         "lib/yeah-codes.el", "tests/checks/check-ptc-sandbox-restricts.el"
       ],
@@ -266,7 +266,7 @@
           "spec": "./scripts/dev check tests/checks/check-ptc-sandbox-restricts.el"
         }
       ],
-      "falsifier": "a form that calls something outside the sandbox runs, or the sandbox refuses every form including the ones that only call the tools",
+      "falsifier": "disabled PTC evaluates a form, a normal enabled registry tool is rejected, or a forbidden direct/higher-order form executes an outside effect",
       "register": "fact",
       "accepted": null,
       "control": "sed -i 's/(unless (yeah-codes--permitted-p body)/(unless t (yeah-codes--permitted-p body)/' lib/yeah-codes.el",
@@ -274,7 +274,7 @@
     },
     {
       "id": "the-model-is-called-through-the-gptel-hook-surface",
-      "subject": "the model is called through the gptel hook surface and nowhere else: one function in one module is the whole of the transport, and it speaks gptel's shape",
+      "subject": "the model is called through the private gptel adapter and nowhere else: one function in one module is the whole of the transport, and it speaks gptel's supported request shape",
       "scope": [
         "lib/yeah-gptel.el",
         "tests/checks/check-gptel-is-the-only-call-site.el",
@@ -293,7 +293,7 @@
       "falsifier": "a second module calls the model directly, the call site does not exist, or the transport does not reach gptel with the prompt and the callback",
       "register": "fact",
       "accepted": null,
-      "control": "sed -i 's/(defun yeah-gptel-request/(defun yeah-gptel-request-disabled/' lib/yeah-gptel.el",
+      "control": "sed -i 's/(cl-defun yeah-gptel-request/(cl-defun yeah-gptel-request-disabled/' lib/yeah-gptel.el",
       "attestations": []
     },
     {

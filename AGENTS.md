@@ -1,92 +1,94 @@
 # AGENTS.md — the entry point to this repository
 
-> **Yeah** is an Emacs Lisp agent harness. The user's Emacs session is
-> itself the runtime of the agent: there is no sidecar process and no
-> client/server split. The kernel is Elisp, the model is reached through
-> `gptel`, and the tools are Elisp functions.
+> **Yeah** means **Y-combinator, Emacs Agent Harness**. The harness itself is
+> Emacs Lisp; Emacs is not merely a client to an external agent. The model is
+> reached through gptel, effects go through the tool registry and permission
+> system, and session history is append-only JSONL.
 >
-> This repository is governed by **math-coding v4**: the standing
-> specification is `spec.json`, the plan is `waves/*.json`, and the
-> evidence is what the checks produce. There is no decision corpus and no
-> hand-written validator; see §The method below.
+> The long-term Y metaphor means bounded recursive delegation, runtime
+> self-inspection and a fixed point where Yeah can develop and verify Yeah.
+> These are goals, not assertions about today's prototype.
+>
+> This repository is governed by **math-coding v4**: `spec.json` holds claims,
+> `waves/*.json` holds historical work units and evidence comes from checks.
+> `docs/PLAN.md` defines the current target sequence; do not mistake an old
+> wave number or a green module row for a working end-to-end feature.
 
 ## Read first, in this order
 
-1. `README.md` — what Yeah is, what runs and what does not.
-2. `docs/ARCHITECTURE.md` — the target shape: the aim stated as parity
-   with the reference harnesses, the three planes, the three placements,
-   and the matrix of what is still missing.
-3. `spec.json` — the standing specification: the goal, and every claim
-   this repository makes about itself.
-4. `waves/*.json` — the plan: each wave is a unit of work with an intent,
-   a check, a promise and the strongest objection against it.
-5. `ELISP_BEST_PRACTICES.md` — the conventions for writing kernel Elisp;
-   §11 is the trap log.
-6. `AGENTS.md` — this page.
-7. `lib/yeah-*.el` — the kernel: one module per file, one feature per file.
+1. `README.md` — actual current status and explicit limitations.
+2. `docs/ARCHITECTURE.md` — the normative target: purpose, ten decisions,
+   contracts, security, placements and non-goals.
+3. `docs/PLAN.md` — the detailed eight-stage execution plan and release gates.
+4. `docs/ENGINEERING.md` — binding dependency, infrastructure, library,
+   process, security, testing and packaging practices.
+5. `spec.json` — the standing machine-checked specification.
+6. `waves/*.json` — existing math-coding units, with intent, check, promise
+   and objection.
+7. `ELISP_BEST_PRACTICES.md` — kernel Elisp conventions; §11 is the trap log.
+8. `lib/yeah-*.el` — the implementation, one feature per file.
 
-If two of these contradict each other, the contradiction is a finding, not
-a nuisance: say it in the wave that is open, or open a wave for it.
+If two sources contradict each other, report the contradiction in the open
+work item. Never resolve it by silently making documentation more optimistic.
+
+## Current warnings for every agent
+
+- This is a kernel prototype, not a usable coding product.
+- REPL, ACP prompt/cancel, MCP handlers and sub-agent execution contain
+  placeholders. Do not build new public behavior on top of them while their
+  stage's prerequisites are unmet.
+- Stage 0.2 is implemented: PTC is disabled by default and the demonstrated
+  higher-order-function bypasses have regression tests. It remains an
+  experimental restricted evaluator, never a sandbox for untrusted code.
+- Stage 0.1 is implemented: gptel requests use a private, version-checked
+  adapter without global hooks. Recheck compatibility whenever gptel changes;
+  supported pinned versions are declared in `lib/yeah-gptel.el`.
+- `yeah-context-summarize` contains blocking wait behavior targeted for
+  removal; do not copy that pattern.
+- A `holds` claim proves its stated check only, not overall product readiness.
 
 ## The commands
 
 ```sh
-./scripts/dev help                 # the list of subcommands
-./scripts/dev byte-compile-all     # the kernel compiles clean, with no warnings
-./scripts/dev ert tests/unit/*.el  # the unit tests
-./scripts/dev check tests/checks/*  # the canaries: the checks the claims are bound to
-./scripts/dev map                  # the standing specification: claims, states, uncovered
-./scripts/dev run                  # execute the checks, bind the evidence, write the trail
-./scripts/dev gate                 # run, then map; the exit code is the verdict
-# and once, against a real model (needs a key in the environment):
+./scripts/dev help                  # the list of subcommands
+./scripts/dev byte-compile-all      # kernel compiles clean, with no warnings
+./scripts/dev ert tests/unit/*.el   # unit tests
+./scripts/dev check tests/checks/*  # canaries bound to claims
+./scripts/dev map                   # claims, states and uncovered surface
+./scripts/dev run                   # execute checks and bind evidence
+./scripts/dev gate                  # run, then map; exit code is the verdict
+# Opt-in real model call; credentials come from the environment:
 emacs -Q --batch -L lib -l tests/live/live-model-call.el
 ```
 
-`scripts/dev` needs Emacs on `PATH` (or `EMACS` set) and the method
-binary (or `MATHC` set). The method binary comes from the math-coding
-repository: `nix build` there writes `result/bin/mathc`.
+`scripts/dev` needs Emacs on `PATH` (or `EMACS`). Method commands also need a
+compatible math-coding binary on `PATH` or in `MATHC`. A CLI/version mismatch
+is blocked tooling, not a successful check.
 
-Exit codes are the method's scale: `0` pass, `1` fail, `2` blocked (input
-error), `3` unknown (the method could not tell).
+Exit codes are: `0` pass, `1` fail, `2` blocked/input error and `3` unknown.
+Unknown is never pass.
 
 ## The method
 
-The map is the main artefact. Start with it:
+Start with the map when the compatible method binary is available:
 
 ```sh
 ./scripts/dev map
 ```
 
-A claim is a statement about this repository with a scope, a requirement
-that can close it, a falsifier, a register, and a **control**: the command
-that breaks the subject and must make the check go red. A claim whose
-control has never bitten is not established, and the map says so.
+A claim has a scope, requirement, falsifier, register and **control**. The
+control breaks the subject and must make the check fail by a real assertion,
+not merely by making the test unreadable or crashing Emacs. A claim whose
+control has not bitten is not established.
 
-No claim is **refuted** any more. The PTC sandbox confines the body of a
-form: it may call the tools of the registry and a small core, and a call
-outside them is refused before a single form is evaluated.
+Two rules are not negotiable:
 
-The loop is wired and the turn works: `the-agent-loop-is-wired` and
-`the-model-turn-runs-and-parses-tool-calls` hold, and so does
-`tools-from-one-turn-run-in-parallel` — the tools of one answer run
-together, an exclusive one runs alone, and the log keeps the order of
-the calls rather than the order of the finishes. The model is called in
-one place only — `yeah-gptel-request` in `lib/yeah-gptel.el` — and the
-canary for that reads the tree.
+- **A check that cannot fail is a comment.**
+- **Unknown is not pass.**
 
-Ten claims are **promises about code that does not exist yet**: the
-interface, the approvals with reply kinds, the
-model-driven compaction, the session tree, the runtime with its retries
-and timeouts, the MCP server on stdio, the three placements, the
-sub-agents, the product layer, and the ACP agent speaking JSON-RPC over
-stdio.
-
-Two rules that are not negotiable here:
-
-- **A check that cannot fail is a comment.** Every claim carries a control
-  that has been shown to bite.
-- **Unknown is not pass.** An exit code of `3` means the method could not
-  tell, and it is never read as success.
+A placeholder that returns success is also a failed implementation. Public
+scenarios must be tested end to end, not inferred from the presence of a
+function or module.
 
 <!-- math-coding:begin -->
 ## math-coding in this project
@@ -134,13 +136,27 @@ JSON-RPC and returns the next step with every method.
 Every verb: mathc - · mathc init · mathc goal · mathc add · mathc accept · mathc control · mathc budget · mathc map · mathc route · mathc run · mathc record · mathc next · mathc wave · mathc close · mathc draft · mathc install · mathc mcp · mathc propose · mathc doctor.
 <!-- math-coding:end -->
 
-## The Elisp side
+## Working rules
 
-- `lib/` is Elisp only. No C, no Rust, no shell scripts inside the kernel.
+- Follow the stage order in `docs/PLAN.md`; do not start ACP, placements or
+  sub-agents ahead of their prerequisites.
+- Every new claim needs a control shown to bite. Every feature needs an
+  observable end-to-end check appropriate to its layer.
+- `lib/` is Elisp only. No C, Rust or shell scripts inside the kernel.
 - One feature per file; `(require 'yeah-x)` loads `lib/yeah-x.el`.
-- Public symbols are prefixed `yeah-`; internal helpers use `yeah--`.
-- Domain errors are `user-error`, never `error`.
-- `defvar` variables are rebound with `setq`, not with `let`.
-- Subprocesses are started with `make-process`, never with `shell-command`.
+- Public symbols use `yeah-`; internal helpers use `yeah--` or the module's
+  established internal prefix.
+- Domain errors are `user-error` or structured tool errors, not false success.
+- Use `let` for request-local dynamic configuration of special variables;
+  use `setq` only for intended global/session mutation. See ELISP §11.1.
+- Subprocesses use `make-process`, never blocking `shell-command` in tools.
+- Interactive execution never waits by spinning the event loop.
+- Run context, permissions and sessions must not leak through new global
+  mutable state.
+- No telemetry, secret logging, global default keybindings or global gptel
+  mutation.
+- Development-only Nix/mathc/research clones never become runtime dependencies.
 
-The full list, with the reasons, is in `ELISP_BEST_PRACTICES.md`.
+The detailed rationale and additional rules are in `docs/ENGINEERING.md` and
+`ELISP_BEST_PRACTICES.md`. Update documentation whenever behavior changes;
+update `AGENTS.md` if the documented workflow itself changes.

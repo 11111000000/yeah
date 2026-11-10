@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
-# check-gptel-hooks-live-in-one-module.sh — canary for the gptel surface.
+# check-gptel-hooks-live-in-one-module.sh — no global gptel integration hooks.
 #
-# The gptel hooks are the only place where Yeah talks to the transport, and
-# they are registered in exactly one module. A second module that touches a
-# hook variable is a second integration point, and a second integration
-# point is a second truth about how the transport is driven.
+# Yeah configures each gptel request privately.  A global gptel hook in any
+# kernel module is a forbidden second integration path and can also affect
+# the user's unrelated gptel sessions.  The historical filename is retained
+# until the frozen math-coding v4 specification is migrated.
 #
-# Exit codes: 0 — one module; 1 — more than one.
+# Exit codes: 0 — no global gptel hooks; 1 — a hook was found; 2 — bad input.
 
 set -u
-
 cd "$(dirname "$0")/../.." || exit 2
 [ -d lib ] || exit 2
 
-foreign="$(grep -lE 'gptel-(prompt-transform|pre-tool-call)-functions|gptel-fsm-handlers' \
-             lib/*.el 2>/dev/null | grep -v 'lib/yeah-gptel.el' || true)"
-
-if [ -n "$foreign" ]; then
-  echo "these modules mention a gptel hook: $foreign" >&2
+if grep -nE '\((add-hook|remove-hook)[[:space:]]+.*gptel-' lib/*.el; then
+  echo "global gptel hooks are forbidden; pass request options privately" >&2
   exit 1
 fi
 

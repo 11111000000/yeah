@@ -1,28 +1,14 @@
-;;; check-ptc-sandbox-restricts.el --- canary for the PTC sandbox -*- lexical-binding: t; -*-
+;;; check-ptc-sandbox-restricts.el --- PTC quarantine and exploit regressions -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
 ;; This file is part of Yeah.
-;;
-;; Yeah is free software: you can redistribute it and/or modify
-;; it under the terms of the Apache License, Version 2.0.
 
 ;;; Commentary:
 ;;
-;; The Programmatic Tool Calling sandbox is supposed to be a sandbox. Two
-;; properties follow from that, and this check asserts both:
-;;
-;;   1. a form whose `:name' is not on the whitelist is rejected;
-;;   2. a form whose `:name' IS on the whitelist, but whose body calls
-;;      something outside the whitelist, is rejected as well, and the file
-;;      it tried to touch is still there.
-;;
-;; Property 2 does not hold today: the whitelist gates the NAME of the
-;; binding, not the code inside the form, so a form named "read" can
-;; delete a file. The check fails today, and that is the point: it is the
-;; canary for the claim `ptc-sandbox-restricts-model-code`.
-;;
-;; Exit codes: 0 — the sandbox holds; 1 — it does not.
+;; PTC is an experimental restricted evaluator, not a security boundary.
+;; Verify that it is disabled by default and that the two demonstrated
+;; higher-order-function bypasses are rejected when it is explicitly enabled.
 
 ;;; Code:
 
@@ -30,51 +16,53 @@
 (require 'yeah-tools)
 (require 'yeah-perm)
 
-(let* ((canary (expand-file-name "yeah-ptc-canary.txt" temporary-file-directory))
-       (failure nil))
-
-  ;; Property 1: an unwhitelisted name is refused.
-  (condition-case nil
+(let ((failures nil)
+      (target (make-temp-file "yeah-ptc-canary")))
+  (unwind-protect
       (progn
-        (yeah-codes-eval (list (list :name "not-whitelisted" :code "42")) nil)
-        (setq failure 'the-unwhitelisted-name-was-accepted))
-    (user-error nil))
+        ;; The public entry point is off by default.
+        (let ((yeah-codes-enable-ptc nil))
+          (condition-case nil
+              (progn
+                (yeah-codes-eval '((:name "read" :code "42")))
+                (push "disabled PTC accepted a form" failures))
+            (user-error nil)))
 
-  ;; Property 1b: a form that calls the tools may still run. The
-  ;; sandbox is a boundary, not a refusal of everything.
-  (let* ((target (expand-file-name "yeah-ptc-target.txt" temporary-file-directory)))
-    (ignore-errors (delete-file target))
-    (with-temp-file target (insert "the target"))
-    (yeah-perm-rules-reset-for-test)
-    (yeah-perm-rules-add (yeah-perm-rule-make "read" "*" 'allow))
-    (let ((records (yeah-codes-eval
-                    (list (list :name "read"
-                                :code (format "(read \"%s\")" target)))
-                    nil)))
-      (unless (and (= 1 (length records))
-                   (eq (plist-get (car records) :ok) t)
-                   (equal (plist-get (car records) :result) "the target"))
-        (setq failure (format "a form that calls the tools did not run: %S"
-                              records))))
-    (ignore-errors (delete-file target)))
+        (let ((yeah-codes-enable-ptc t))
+          ;; A normal registry tool still works when explicitly enabled.
+          (yeah-perm-rules-reset-for-test)
+          (yeah-perm-rules-add (yeah-perm-rule-make "read" "*" 'allow))
+          (condition-case err
+              (let ((records (yeah-codes-eval
+                              (list (list :name "read"
+                                          :code (format "(read %S)" target))))))
+                (unless (and (= 1 (length records))
+                             (eq t (plist-get (car records) :ok)))
+                  (push "an enabled registry tool did not run" failures)))
+            (user-error
+             (push (format "an enabled registry tool was rejected: %S" err)
+                   failures)))
 
-  ;; Property 2: a whitelisted name carrying a call outside the whitelist
-  ;; is refused, and the world outside is untouched.
-  (write-file canary "alive")
-  (ignore-errors
-    (yeah-codes-eval
-     (list (list :name "read"
-                 :code (format "(delete-file \"%s\")" canary)))
-     nil))
-  (unless (file-exists-p canary)
-    (setq failure 'the-model-code-was-executed))
-  (when (file-exists-p canary)
-    (delete-file canary))
+          ;; Direct and higher-order bypasses are refused before execution.
+          (dolist (code (list (format "(delete-file %S)" target)
+                              (format "(mapcar 'delete-file '(%S))" target)
+                              (format "(sort '(%S 1) 'delete-file)" target)))
+            (condition-case nil
+                (progn
+                  (yeah-codes-eval (list (list :name "read" :code code)))
+                  (push (format "forbidden form was accepted: %s" code)
+                        failures))
+              (user-error nil))
+            (unless (file-exists-p target)
+              (push (format "forbidden form deleted the target: %s" code)
+                    failures)))))
 
-  (if failure
-      (progn
-        (message "ptc sandbox: %s" failure)
-        (kill-emacs 1))
+    (when (file-exists-p target)
+      (delete-file target)))
+  (dolist (failure failures)
+    (message "ptc: %s" failure))
+  (if failures
+      (kill-emacs 1)
     (kill-emacs 0)))
 
 ;;; check-ptc-sandbox-restricts.el ends here
