@@ -11,7 +11,7 @@
   "uncertainty_budget": 3,
   "closed_waves": [
     "wave-01", "wave-02", "wave-03", "wave-04", "wave-05", "wave-06",
-    "wave-07"
+    "wave-07", "wave-08"
   ],
   "claims": [
     {
@@ -408,18 +408,21 @@
     },
     {
       "id": "compaction-is-a-model-call-and-old-outputs-are-pruned",
-      "subject": "the context is compacted by a model call that keeps the tail, and the outputs of old tools are pruned separately",
-      "scope": [ "lib/yeah-context.el" ],
+      "subject": "the context of a run is counted, an overflow is seen, the summary is written by the model and not by a placeholder, and the outputs of old tools are pruned without leaving the log",
+      "scope": [
+        "lib/yeah-context.el", "lib/yeah-compact.el",
+        "tests/checks/check-compaction-is-a-model-call.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
           "spec": "./scripts/dev check tests/checks/check-compaction-is-a-model-call.el"
         }
       ],
-      "falsifier": "the context is compacted by a placeholder, or a long run grows without bound",
+      "falsifier": "the summary is not the one the model wrote, an overflow is not seen, or a pruned record is no longer a record",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(or answer \"\")/(or \"a placeholder\")/' lib/yeah-context.el",
       "attestations": []
     },
     {
