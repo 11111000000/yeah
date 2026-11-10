@@ -2,24 +2,43 @@
   "goal": {
     "text": "Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only",
     "scope": [
-      "lib/", "tests/", "scripts/", "schemas/", "docs/", "AGENTS.md",
-      "README.md", "ELISP_BEST_PRACTICES.md"
+      "lib/",
+      "tests/",
+      "scripts/",
+      "schemas/",
+      "docs/",
+      "AGENTS.md",
+      "README.md",
+      "ELISP_BEST_PRACTICES.md"
     ],
     "by": "p.b.kosov@yandex.ru",
     "at": "1794244514"
   },
   "uncertainty_budget": 3,
   "closed_waves": [
-    "wave-01", "wave-02", "wave-03", "wave-04", "wave-05", "wave-06",
-    "wave-07", "wave-08", "wave-09"
+    "wave-01",
+    "wave-02",
+    "wave-03",
+    "wave-04",
+    "wave-05",
+    "wave-06",
+    "wave-07",
+    "wave-08",
+    "wave-09"
   ],
   "claims": [
     {
       "id": "lib-byte-compiles-clean",
       "subject": "every file under lib/ byte-compiles without errors and without warnings",
-      "scope": [ "lib/", "scripts/dev" ],
+      "scope": [
+        "lib/",
+        "scripts/dev"
+      ],
       "requirements": [
-        { "kind": "verifier", "spec": "./scripts/dev byte-compile-all" }
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev byte-compile-all"
+        }
       ],
       "falsifier": "the byte-compilation of lib/ fails, or reports a warning",
       "register": "fact",
@@ -31,8 +50,10 @@
       "id": "fsm-has-twelve-states-and-twenty-transitions",
       "subject": "the agent loop is a finite state machine with exactly twelve states and twenty transitions: the machine can run one model turn and be asked again, and it can record a turn that failed",
       "scope": [
-        "lib/yeah-state.el", "lib/yeah-loop.el",
-        "tests/unit/test-yeah-state.el", "tests/unit/test-yeah-loop.el"
+        "lib/yeah-state.el",
+        "lib/yeah-loop.el",
+        "tests/unit/test-yeah-state.el",
+        "tests/unit/test-yeah-loop.el"
       ],
       "requirements": [
         {
@@ -70,7 +91,8 @@
       "id": "compaction-is-a-projection-not-a-deletion",
       "subject": "compaction is a projection: the source records stay on disk and the compaction record joins them",
       "scope": [
-        "lib/yeah-compact.el", "lib/yeah-session.el",
+        "lib/yeah-compact.el",
+        "lib/yeah-session.el",
         "tests/checks/check-compaction-keeps-sources.el",
         "tests/unit/test-yeah-compact.el"
       ],
@@ -89,7 +111,10 @@
     {
       "id": "tool-call-validates-its-arguments",
       "subject": "a tool call is refused when the number of arguments, or the type of one of them, does not match the tool's declared input",
-      "scope": [ "lib/yeah-tools.el", "tests/unit/test-yeah-tools.el" ],
+      "scope": [
+        "lib/yeah-tools.el",
+        "tests/unit/test-yeah-tools.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -105,7 +130,10 @@
     {
       "id": "permission-decides-by-the-last-matching-rule",
       "subject": "the permission system decides by the last matching rule, and asks when nothing matches",
-      "scope": [ "lib/yeah-perm.el", "tests/unit/test-yeah-perm.el" ],
+      "scope": [
+        "lib/yeah-perm.el",
+        "tests/unit/test-yeah-perm.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -122,7 +150,8 @@
       "id": "acp-dispatcher-handles-the-four-methods",
       "subject": "the ACP dispatcher answers initialize, session/new, session/prompt and session/cancel, and refuses a method it does not know",
       "scope": [
-        "lib/yeah-acp.el", "schemas/acp-v1.json",
+        "lib/yeah-acp.el",
+        "schemas/acp-v1.json",
         "tests/unit/test-yeah-acp.el",
         "tests/checks/check-acp-dispatcher-routes-every-method.el"
       ],
@@ -146,7 +175,8 @@
       "id": "emcp-tool-surface-matches-the-schema",
       "subject": "the emcp registry and schemas/emcp-v1.json name the same tools, and a duplicate id is refused",
       "scope": [
-        "lib/yeah-emcp.el", "schemas/emcp-v1.json",
+        "lib/yeah-emcp.el",
+        "schemas/emcp-v1.json",
         "tests/checks/check-emcp-registry-matches-schema.el",
         "tests/unit/test-yeah-emcp.el"
       ],
@@ -165,7 +195,10 @@
     {
       "id": "undo-boundary-records-every-tick",
       "subject": "every tick's changes can be undone: an undo boundary is taken around the buffer or the file the tick touched",
-      "scope": [ "lib/yeah-undo.el", "tests/unit/test-yeah-undo.el" ],
+      "scope": [
+        "lib/yeah-undo.el",
+        "tests/unit/test-yeah-undo.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -182,7 +215,8 @@
       "id": "gptel-hooks-live-in-one-module-only",
       "subject": "the gptel hooks are registered in exactly one module, lib/yeah-gptel.el, and nowhere else in lib/",
       "scope": [
-        "lib/yeah-gptel.el", "lib/",
+        "lib/yeah-gptel.el",
+        "lib/",
         "tests/checks/check-gptel-hooks-live-in-one-module.sh",
         "tests/unit/test-yeah-gptel.el"
       ],
@@ -221,7 +255,10 @@
     {
       "id": "yeah-shell-keeps-a-bounded-history",
       "subject": "the Yeah shell keeps a bounded history of what was sent to it, and creates its REPL buffer",
-      "scope": [ "lib/yeah-shell.el", "tests/unit/test-yeah-shell.el" ],
+      "scope": [
+        "lib/yeah-shell.el",
+        "tests/unit/test-yeah-shell.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -238,8 +275,11 @@
       "id": "the-agent-loop-is-wired",
       "subject": "the tick, the permission system, the tool registry and the session log are wired into one loop: each is called from outside its own module",
       "scope": [
-        "lib/yeah-loop.el", "lib/yeah-perm.el", "lib/yeah-tools.el",
-        "lib/yeah-session.el", "tests/checks/check-agent-loop-wired.sh",
+        "lib/yeah-loop.el",
+        "lib/yeah-perm.el",
+        "lib/yeah-tools.el",
+        "lib/yeah-session.el",
+        "tests/checks/check-agent-loop-wired.sh",
         "lib/yeah-turn.el"
       ],
       "requirements": [
@@ -258,7 +298,8 @@
       "id": "ptc-sandbox-restricts-model-code",
       "subject": "the PTC sandbox confines the body of a form: it may call the tools of the registry and a small core, and a call outside them is refused before a single form is evaluated",
       "scope": [
-        "lib/yeah-codes.el", "tests/checks/check-ptc-sandbox-restricts.el"
+        "lib/yeah-codes.el",
+        "tests/checks/check-ptc-sandbox-restricts.el"
       ],
       "requirements": [
         {
@@ -299,7 +340,9 @@
     {
       "id": "the-acp-agent-speaks-over-stdio",
       "subject": "the ACP agent speaks JSON-RPC over stdio: a client can open the process and exchange an initialize request and its answer",
-      "scope": [ "lib/yeah-wire.el" ],
+      "scope": [
+        "lib/yeah-wire.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -316,7 +359,8 @@
       "id": "the-model-turn-runs-and-parses-tool-calls",
       "subject": "one turn asks the model, dispatches the tool calls the model asked for through the permission system and the registry, writes what happened into the log, and asks the model again until it asks for nothing",
       "scope": [
-        "lib/yeah-turn.el", "tests/checks/check-model-turn-runs.el"
+        "lib/yeah-turn.el",
+        "tests/checks/check-model-turn-runs.el"
       ],
       "requirements": [
         {
@@ -334,7 +378,8 @@
       "id": "tools-from-one-turn-run-in-parallel",
       "subject": "the tool calls of one answer of the model run together: a shared tool may run alongside the other shared tools, an exclusive tool runs alone, and the batch settles only when every call has settled",
       "scope": [
-        "lib/yeah-scheduler.el", "lib/yeah-turn.el",
+        "lib/yeah-scheduler.el",
+        "lib/yeah-turn.el",
         "tests/checks/check-tools-run-in-parallel.el"
       ],
       "requirements": [
@@ -353,7 +398,8 @@
       "id": "the-session-log-is-a-typed-event-stream",
       "subject": "every step of a run is a typed record of the log: what the model asked, what the rules answered, what the tool did, and what the model said, and a record carries the fields its type declares",
       "scope": [
-        "lib/yeah-events.el", "lib/yeah-turn.el",
+        "lib/yeah-events.el",
+        "lib/yeah-turn.el",
         "tests/checks/check-events-are-typed.el"
       ],
       "requirements": [
@@ -372,7 +418,8 @@
       "id": "the-interface-renders-the-event-stream",
       "subject": "the interface reads the event stream and nothing else: it shows the transcript, the tool calls and their state, the approvals that are still waiting, and what the run has cost",
       "scope": [
-        "lib/yeah-ui.el", "lib/yeah-events.el",
+        "lib/yeah-ui.el",
+        "lib/yeah-events.el",
         "tests/checks/check-interface-renders-events.el"
       ],
       "requirements": [
@@ -391,7 +438,8 @@
       "id": "approvals-have-reply-kinds-and-a-headless-policy",
       "subject": "an approval is answered once, always or reject, and a run with nobody at the keyboard answers by the policy: the rules allow what they name and refuse everything else",
       "scope": [
-        "lib/yeah-approval.el", "lib/yeah-perm.el",
+        "lib/yeah-approval.el",
+        "lib/yeah-perm.el",
         "tests/checks/check-approvals-have-reply-kinds.el"
       ],
       "requirements": [
@@ -410,7 +458,8 @@
       "id": "compaction-is-a-model-call-and-old-outputs-are-pruned",
       "subject": "the context of a run is counted, an overflow is seen, the summary is written by the model and not by a placeholder, and the outputs of old tools are pruned without leaving the log",
       "scope": [
-        "lib/yeah-context.el", "lib/yeah-compact.el",
+        "lib/yeah-context.el",
+        "lib/yeah-compact.el",
         "tests/checks/check-compaction-is-a-model-call.el"
       ],
       "requirements": [
@@ -429,7 +478,8 @@
       "id": "sessions-have-an-index-a-tree-and-a-cost",
       "subject": "the sessions of a project can be listed, every one of them says what it cost, and a run can be continued from a point that is not the end without the rest of the line disappearing",
       "scope": [
-        "lib/yeah-sessions.el", "lib/yeah-session.el",
+        "lib/yeah-sessions.el",
+        "lib/yeah-session.el",
         "tests/checks/check-sessions-have-a-tree.el"
       ],
       "requirements": [
@@ -446,24 +496,29 @@
     },
     {
       "id": "the-runtime-retries-times-out-and-never-blocks",
-      "subject": "a failing call is retried with backoff, every tool has a timeout, a run has a deadline, and nothing waits in the main loop",
-      "scope": [ "lib/yeah-runtime.el" ],
+      "subject": "a call that fails is tried again, a call that hangs is cut, a run that repeats itself is stopped, and none of it holds the main loop",
+      "scope": [
+        "lib/yeah-runtime.el",
+        "tests/checks/check-runtime-never-blocks.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
           "spec": "./scripts/dev check tests/checks/check-runtime-never-blocks.el"
         }
       ],
-      "falsifier": "a transient failure is not retried, a hanging tool has no timeout, or the main loop waits",
+      "falsifier": "a failing call is not tried again, a hanging call is not cut, a repeated call is not seen, or the call waits in the main loop",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(cl-defun yeah-runtime-call/(cl-defun yeah-runtime-call-disabled/' lib/yeah-runtime.el",
       "attestations": []
     },
     {
       "id": "the-mcp-server-speaks-over-stdio",
       "subject": "the emacs tool namespace is served over stdio, and the tools it publishes are the ones the registry holds",
-      "scope": [ "lib/yeah-mcp.el" ],
+      "scope": [
+        "lib/yeah-mcp.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -479,7 +534,9 @@
     {
       "id": "the-kernel-runs-in-three-placements",
       "subject": "the same kernel runs attached to a session, in its own Emacs as a service, and in batch, and the placement changes nothing but the answer to a question",
-      "scope": [ "lib/yeah-placement.el" ],
+      "scope": [
+        "lib/yeah-placement.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -495,7 +552,9 @@
     {
       "id": "a-subagent-runs-its-own-session",
       "subject": "a sub-agent runs in its own session with its own context and its own permissions, and its result comes back to the parent",
-      "scope": [ "lib/yeah-team.el" ],
+      "scope": [
+        "lib/yeah-team.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
@@ -511,7 +570,9 @@
     {
       "id": "the-product-installs-serves-and-documents",
       "subject": "the harness installs, serves and explains itself: an installation path, a server mode, and documentation written for a person",
-      "scope": [ "lib/yeah-product.el" ],
+      "scope": [
+        "lib/yeah-product.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
