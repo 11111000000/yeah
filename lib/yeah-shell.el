@@ -6,11 +6,10 @@
 
 ;;; Commentary:
 ;;
-;; The Yeah shell is a `shell-mode'-like REPL buffer that sends
-;; user input to the agent loop. It is intentionally a thin
-;; wrapper: a buffer with a prompt, history through `savehist',
-;; and a `yeah-shell-send-input' command. The actual gptel
-;; call lives behind that command and lands in a later revision.
+;; The Yeah shell is a small `shell-mode'-like buffer with prompt history.
+;; `yeah-shell-send-input' currently echoes a clearly marked stub instead of
+;; running the agent loop.  The real interactive path is the product-stage
+;; work item in `docs/PLAN.md'.
 
 ;;; Code:
 

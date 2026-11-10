@@ -83,7 +83,7 @@ ERROR holds the reason when the run stopped for a reason of its own."
 argument names a thing, and the printed arguments otherwise. The rules
 of the permission system match this, so `read' on a file is matched by
 the path and not by a printed list of arguments."
-  (or (and (stringp (car args)) (car args))
+  (or (and (listp args) (stringp (car args)) (car args))
       (format "%S" args)))
 
 (defun yeah-turn--tick (turn label)
@@ -186,12 +186,15 @@ were asked, and the rules answered."
        (let ((i 0))
          (dolist (call calls)
            (let* ((result (aref results i))
-                  (value (if (aref refused i) result (format "%S" result))))
+                  (tool-error (and (consp result)
+                                   (plist-get result :yeah-error)))
+                  (failed (or (aref refused i) tool-error))
+                  (value (if tool-error tool-error result)))
              (yeah-events-write
               (yeah-turn-session turn)
               "tool-end"
               :tool (yeah-turn--tool-name (nth 0 call))
-              :ok (not (aref refused i))
+              :ok (not failed)
               :payload value))
            (setq i (1+ i))))
        ;; The machine first: the batch is over, and the model is asked
@@ -201,12 +204,16 @@ were asked, and the rules answered."
        (yeah-turn--tick turn 'tool-end)
        (yeah-turn--tick turn 'budget-ok)
        (yeah-turn--tick turn 'continue)
-       ;; The model is told what happened, in the order it asked.
+       ;; Every model-facing result is a string, including failures.
        (let ((i 0))
          (dolist (call calls)
-           (let ((continue (nth 2 call)))
+           (let* ((continue (nth 2 call))
+                  (result (aref results i))
+                  (value (or (and (consp result)
+                                  (plist-get result :yeah-error))
+                             result)))
              (when continue
-               (funcall continue (aref results i))))
+               (funcall continue value)))
            (setq i (1+ i))))))))
 
 (defun yeah-turn--answer (turn answer answerer)

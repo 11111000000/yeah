@@ -37,15 +37,16 @@ kernel:
 
 - a defined run state machine and model-turn orchestration;
 - a typed tool registry and last-match permission rules;
-- shared/exclusive scheduling for tool batches;
+- shared/exclusive scheduling with once-only settlement and structured tool
+  failure handling;
 - an append-only JSONL session store and typed event vocabulary;
 - event-derived view models and session projections;
 - undo boundaries, retries/timeouts and context/compaction primitives;
 - initial ACP/EMCP data structures and test fakes.
 
-At the documentation review baseline, byte compilation was clean, 104 ERT
-unit tests passed and the canary command exited successfully. Run the checks
-again for current evidence.
+After Stage 0.3, byte compilation is clean and 118 ERT unit tests pass.
+Direct canaries cover transport, scheduling and tool failures.  Frozen
+math-coding v4 map/run/gate results are not treated as current evidence.
 
 ## What is not finished
 

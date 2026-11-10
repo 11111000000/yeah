@@ -21,27 +21,21 @@
 ;; `buffer-undo-list'; one `undo' step rolls back everything
 ;; the thunk did.
 ;;
-;; Public surface (see `decisions/undo-impl@0'):
+;; Public operations wrap buffer/file changes, inspect undo history and
+;; clean up buffers opened by this module.  Buffers opened by
+;; `yeah-undo-around-file' are tracked in `yeah-undo--opened-buffers' and
+;; killed in LIFO order by `yeah-undo-cleanup'.
 ;;
-;;   * `yeah-undo-around-buffer BUFFER THUNK'
-;;   * `yeah-undo-around-file PATH THUNK'
-;;   * `yeah-undo-cleanup'
-;;   * `yeah-undo-list-size BUFFER'
-;;   * `yeah-undo-reset-for-test'
-;;
-;; Buffers opened by `yeah-undo-around-file' are tracked in
-;; `yeah-undo--opened-buffers' so `yeah-undo-cleanup' can kill
-;; them in LIFO order.
+;; Modification-tick guarded structural edits are a Stage 1 extension; undo
+;; history is not persisted across restart.
 
 ;;; Code:
 
 (require 'cl-lib)
 
 (defvar buffer-undo-list nil
-  "Buffer-local undo history list (forward declaration for byte-compiler).
-The real definition lives in `simple.el'; we declare it here
-so that `yeah-undo-list-size' compiles without a free-variable
-warning. Rebind with `setq', not `let'.")
+  "Forward declaration of Emacs's buffer-local undo history list.
+The real definition lives in `simple.el'.")
 
 (defgroup yeah-undo nil
   "The Yeah per-tick undo boundary."
@@ -49,10 +43,7 @@ warning. Rebind with `setq', not `let'.")
 
 (defvar yeah-undo--opened-buffers nil
   "Stack of buffers opened by `yeah-undo-around-file'.
-A buffer is pushed when `find-file-noselect' is called; the
-most-recently-opened buffer is at the head of the list.
-`yeah-undo-cleanup' walks the list in order, killing each
-buffer and emptying the stack. Rebind with `setq', not `let'.")
+`yeah-undo-cleanup' kills them in LIFO order and empties the stack.")
 
 (defun yeah-undo-around-buffer (buffer thunk)
   "Execute THUNK inside BUFFER with an `(undo-boundary)' before and after.
