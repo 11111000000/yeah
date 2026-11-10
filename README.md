@@ -19,7 +19,7 @@
 session; that session **is** the run-time of the agent. There is no
 sidecar process and no client/server split:
 
-- the kernel is **Elisp** (`lib/`, twenty modules, one feature per file);
+- the kernel is **Elisp** (`lib/`, twenty-one modules, one feature per file);
 - the model is reached through **gptel**, and only through gptel;
 - the tools are **Elisp functions**, registered in a registry and gated by
   a permission system;
@@ -53,6 +53,7 @@ sidecar process and no client/server split:
 | `yeah-ui.el` | what the person sees, read from the event stream | holds |
 | `yeah-context.el` | the budget of the context: the count, the overflow, the pruning | holds |
 | `yeah-sessions.el` | the sessions of a project: the index, the tree, the price | holds |
+| `yeah-runtime.el` | the guards of a run: retries, timeouts, the loop guard | holds |
 | `yeah-codes.el` | the PTC sandbox: the body of a form is confined | holds |
 
 ## What does not run yet, and is said so
