@@ -11,7 +11,7 @@
   "uncertainty_budget": 3,
   "closed_waves": [
     "wave-01", "wave-02", "wave-03", "wave-04", "wave-05", "wave-06",
-    "wave-07", "wave-08"
+    "wave-07", "wave-08", "wave-09"
   ],
   "claims": [
     {
@@ -427,18 +427,21 @@
     },
     {
       "id": "sessions-have-an-index-a-tree-and-a-cost",
-      "subject": "sessions can be listed, resumed, branched and reverted, and every session reports what it cost in tokens and money",
-      "scope": [ "lib/yeah-sessions.el" ],
+      "subject": "the sessions of a project can be listed, every one of them says what it cost, and a run can be continued from a point that is not the end without the rest of the line disappearing",
+      "scope": [
+        "lib/yeah-sessions.el", "lib/yeah-session.el",
+        "tests/checks/check-sessions-have-a-tree.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
           "spec": "./scripts/dev check tests/checks/check-sessions-have-a-tree.el"
         }
       ],
-      "falsifier": "a session cannot be resumed, a branch loses the abandoned path, or the cost of a session is unknown",
+      "falsifier": "the index does not name the sessions, the cost of a run is unknown, or the branch loses the path that was abandoned",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(push record abandoned)/(push record path)/' lib/yeah-sessions.el",
       "attestations": []
     },
     {
