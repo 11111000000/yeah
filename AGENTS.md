@@ -38,6 +38,8 @@ a nuisance: say it in the wave that is open, or open a wave for it.
 ./scripts/dev map                  # the standing specification: claims, states, uncovered
 ./scripts/dev run                  # execute the checks, bind the evidence, write the trail
 ./scripts/dev gate                 # run, then map; the exit code is the verdict
+# and once, against a real model (needs a key in the environment):
+emacs -Q --batch -L lib -l tests/live/live-model-call.el
 ```
 
 `scripts/dev` needs Emacs on `PATH` (or `EMACS` set) and the method

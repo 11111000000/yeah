@@ -220,6 +220,10 @@ were asked, and the rules answered."
       (setf (yeah-turn-done turn) t)
       (yeah-events-write (yeah-turn-session turn) "assistant-message"
                          :payload answer))
+     ((and (consp answer) (memq (car answer) '(reasoning tool-result)))
+      ;; Not the answer: the model is still thinking, or the tools were
+      ;; run and their results are on their way. The answer comes later.
+      nil)
      ((and (consp answer) (eq (car answer) 'tool-call))
       (yeah-turn--tick turn 'stream-end)
       (yeah-turn--tick turn 'tool-call)

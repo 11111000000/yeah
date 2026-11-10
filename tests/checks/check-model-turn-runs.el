@@ -43,20 +43,22 @@ the check see the same variable."
                     (format "probe ran on %s" path)))))
 
 (defun yeah-check--fake-model (asked)
-  "Return a transport that asks the model once and then answers.
-The first answer is a tool call for `probe'; the second is text. The
-result of the call is handed back to the model, as gptel does. ASKED is
-a one element cell holding the number of times the model was asked."
+  "Return a transport that asks the model and then answers.
+The model first thinks out loud, then asks for the tool, then answers.
+The reasoning comes as its own chunk, exactly as a reasoning model sends
+it: the turn must not mistake the thinking for the answer. ASKED is a
+one element cell holding the number of times the model was asked."
   (lambda (prompt callback)
     (setf (car asked) (1+ (car asked)))
-    (if (= (car asked) 1)
-        (funcall callback
-                 (list 'tool-call
-                       (list (list :name "probe")
-                             (list "/tmp/probe-target")
-                             (lambda (value)
-                               (funcall callback (format "done: %s" value))))))
-      (funcall callback "the model is done"))))
+    ;; One request, several answers: the model thinks out loud, then asks
+    ;; for the tool, and the answer comes after the tool has run.
+    (funcall callback (cons 'reasoning "the model is thinking"))
+    (funcall callback
+             (list 'tool-call
+                   (list (list :name "probe")
+                         (list "/tmp/probe-target")
+                         (lambda (value)
+                           (funcall callback (format "done: %s" value))))))))
 
 (defun yeah-check--log-records (root name)
   "Return the records of the log of session NAME under ROOT.
