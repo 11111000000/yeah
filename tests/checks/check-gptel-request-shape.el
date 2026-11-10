@@ -3,33 +3,31 @@
 ;; Copyright (C) 2026  Petr Kosov
 ;;
 ;; This file is part of Yeah.
-;;
-;; Yeah is free software: you can redistribute it and/or modify
-;; it under the terms of the Apache License, Version 2.0.
 
 ;;; Commentary:
 ;;
-;; The transport is a seam, and a seam is worth nothing unless both sides
-;; agree on its shape. This check puts a fake gptel under the seam and
-;; asserts that `yeah-gptel-request' speaks to it the way gptel speaks:
-;; the prompt first, the callback as a keyword, and the answer back
-;; through that callback.
-;;
-;; No network is touched and gptel need not be installed: the fake is
-;; defined before the transport is loaded, and it stands in for gptel.
-;;
-;; Exit codes: 0 — the seam holds; 1 — it does not.
+;; A fake gptel records how the private adapter calls its public request API.
+;; No network or installed gptel is required.
 
 ;;; Code:
 
-;; The fake gptel: it records how it was called and answers at once.
-(defvar yeah-check--gptel-calls nil
-  "The calls the fake gptel received, newest first.")
+(defvar gptel-version "0.9.9.6")
+(defvar gptel-backend nil)
+(defvar gptel-model nil)
+(defvar gptel-tools nil)
+(defvar gptel-use-tools nil)
+(defvar gptel-use-context nil)
+(defvar yeah-check--gptel-calls nil)
 
-(defun gptel-request (prompt &key callback &rest _ignored)
-  "Stand in for gptel's request: record the call and answer at once."
-  (push (list :prompt prompt :callback callback) yeah-check--gptel-calls)
-  (when callback
+(defun gptel-make-tool (&rest slots)
+  "Return fake tool SLOTS."
+  slots)
+
+(defun gptel-request (prompt &rest keys)
+  "Record PROMPT and KEYS and answer through the supplied callback."
+  (push (list :prompt prompt :keys keys :use-context gptel-use-context)
+        yeah-check--gptel-calls)
+  (when-let ((callback (plist-get keys :callback)))
     (funcall callback "the answer" nil))
   nil)
 
@@ -37,28 +35,23 @@
 
 (let ((failures nil)
       (answer nil))
-
-  (unless (fboundp 'yeah-gptel-request)
-    (push "there is no transport to check" failures))
-
-  (when (fboundp 'yeah-gptel-request)
-    (yeah-gptel-request "what is the question?"
-                        (lambda (value &optional _info)
-                          (setq answer value))))
-
+  (yeah-gptel-request "what is the question?"
+                      (lambda (value &optional _info)
+                        (setq answer value)))
   (unless (= 1 (length yeah-check--gptel-calls))
     (push "the transport did not reach gptel" failures))
-
-  (unless (equal "what is the question?"
-                 (plist-get (car yeah-check--gptel-calls) :prompt))
-    (push "the prompt did not reach gptel unchanged" failures))
-
-  (unless (functionp (plist-get (car yeah-check--gptel-calls) :callback))
-    (push "the callback did not reach gptel" failures))
-
+  (let ((call (car yeah-check--gptel-calls)))
+    (unless (equal "what is the question?" (plist-get call :prompt))
+      (push "the prompt did not reach gptel unchanged" failures))
+    (unless (functionp (plist-get (plist-get call :keys) :callback))
+      (push "the callback did not reach gptel" failures))
+    (unless (equal yeah-gptel-prelude
+                   (plist-get (plist-get call :keys) :system))
+      (push "the private system prompt did not reach gptel" failures))
+    (when (plist-get call :use-context)
+      (push "ambient gptel editor context was not disabled" failures)))
   (unless (equal answer "the answer")
     (push "the answer did not come back through the callback" failures))
-
   (dolist (failure failures)
     (message "transport: %s" failure))
   (if failures

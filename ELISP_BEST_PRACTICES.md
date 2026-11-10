@@ -183,27 +183,23 @@ success, and a waived claim is never read as a passing one.
 > Each entry is added in the same commit that surfaces the trap; the date
 > is the commit date.
 
-### §11.1 — `(let ((defvar-var X)) …)` does not rebind `defvar` under `lexical-binding: t`
+### §11.1 — know whether a variable is special before choosing `let` or `setq`
 
-- **Date:** 2026-10-12 (commits `8e2f324` and `93ffe8f`)
-- **Module:** `lib/yeah-validate.el` (removed in the v4 migration; the rule
-  stands)
-- **Symptom:** a test that does
-  ```
-  (let ((yeah-validate--decisions-dir "decisions"))
-    …)
-  ```
-  fails to see the rebound value; `default-directory` is correct but
-  `directory-files` reads the global dynamic value.
-- **Cause:** under `lexical-binding: t`, `let` creates a lexical binding
-  that shadows the variable for the lexical scope of the let body. The
-  `defvar`-declared variable is also `special` (dynamic), and inside a
-  function compiled with `lexical-binding: t` the function body reads the
-  *global dynamic* binding, not the lexical one. The two bindings are
-  independent.
-- **Fix:** use `setq` to mutate the dynamic binding.
-- **Convention:** when documenting a new `defvar` in `lib/`, add a
-  docstring note: "Rebind with `setq`, not `let'."
+- **Date:** clarified on 2026-11-10 while making gptel requests private.
+- **Rule:** `let` dynamically rebinds a special variable (one defined by
+  `defcustom` or an initialized `defvar`) and restores its previous value on
+  exit. This is the correct way to scope configuration without mutating
+  global state. gptel explicitly documents it for `gptel-backend`,
+  `gptel-model`, `gptel-use-tools` and `gptel-use-context`.
+- **Trap:** an uninitialized forward declaration such as `(defvar x)` must
+  not be relied on to make test/fake bindings special in every context.
+  Declare external variables with an initial value, for example
+  `(defvar gptel-model nil)`, when the local module needs dynamic bindings
+  before the real library is loaded. `special-variable-p` can verify the
+  declaration; tests should also verify the observed value.
+- **Do not** replace request-local `let` bindings with global `setq`: that
+  leaks configuration into unrelated sessions. Use `setq` only when global
+  mutation is actually intended.
 
 ### §11.2 — a stale `.elc` shadows a newer `.el`, and Emacs says so while doing it
 

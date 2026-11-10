@@ -1,4 +1,4 @@
-;;; yeah-gptel.el --- gptel transport bridge -*- lexical-binding: t; -*-
+;;; yeah-gptel.el --- private gptel transport adapter -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -6,149 +6,84 @@
 
 ;;; Commentary:
 ;;
-;; The single integration point between Yeah and the gptel
-;; transport (see `decisions/gptel-as-transport.yaml'). This
-;; module is the *only* place in Yeah that registers gptel hooks
-;; and the *only* place that calls `gptel-request-...'. Every
-;; other module that needs to talk to the model goes through
-;; the hook surface installed here.
+;; This module is the only integration point between Yeah and gptel.  A
+;; request carries its own backend, model, tools and system prompt; Yeah does
+;; not install global hooks or change the user's global gptel configuration.
 ;;
-;; The three hooks (one per `gptel-...' variable) are:
-;;
-;;   * `gptel-prompt-transform-functions' — augmented with
-;;     `yeah-gptel-prompt-transform', which prepends the Yeah
-;;     system-prompt prelude (tools, FSM states, manifesto).
-;;
-;;   * `gptel-pre-tool-call-functions' — augmented with
-;;     `yeah-gptel-pre-tool-call', which currently passes the
-;;     call through unchanged. Real wiring lands in Tier 3
-;;     alongside `lib/yeah-tools.el' and `lib/yeah-perm.el'.
-;;
-;;   * `gptel-fsm-handlers' — augmented with
-;;     `yeah-gptel-fsm-handler', which records the state
-;;     transition in the current session. In revision 0 the
-;;     recording is a `message' echo; the future hook into
-;;     `lib/yeah-session.el' is documented inline.
-;;
-;; When `gptel' is not loaded, the install/uninstall functions
-;; are no-ops that catch `void-function' and `void-variable'
-;; so that Yeah can boot in environments without gptel (CI,
-;; tests). See `decisions/gptel-hook-surface.yaml'.
+;; gptel intentionally reads several request settings dynamically.  The
+;; `let' bindings in `yeah-gptel-request' follow its public contract: they
+;; give one request a frozen configuration without changing global values.
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'yeah-tools)
+(require 'gptel nil t)
 
-;; The model is reached through gptel. The declarations are for the
-;; released gptel (20251007): the request is asynchronous and calls the
-;; callback with the answer and the request info, and a tool is built
-;; from a name, a function, a description and its arguments.
 (declare-function gptel-request "gptel"
   (&optional prompt &key callback buffer position context dry-run
                     stream in-place system schema transforms fsm))
 (declare-function gptel-make-tool "gptel" (&rest slots))
+(defvar gptel-backend nil)
+(defvar gptel-model nil)
+(defvar gptel-tools nil)
+(defvar gptel-use-context nil)
+(defvar gptel-use-tools nil)
+(defvar gptel-version nil)
 
 (defgroup yeah-gptel nil
-  "Yeah / gptel transport bridge."
+  "Yeah / private gptel transport adapter."
   :group 'yeah)
+
+(defconst yeah-gptel--supported-versions '("0.9.9.5" "0.9.9.6")
+  "gptel versions whose request contract has been checked by Yeah.")
 
 (defcustom yeah-gptel-prelude
   (concat
-   "# Yeah — system prompt\n"
-   "\n"
-   "You are an agent of the Yeah runtime. The agent loop is a\n"
-   "deterministic finite state machine with 12 states (see\n"
-   "`lib/yeah-state.el'). Your tool calls must conform to the\n"
-   "schemas exposed via `lib/yeah-tools.el' (Tier 3).\n"
-   "\n"
-   "Manifesto: stay within Emacs, route all LLM traffic through\n"
-   "the gptel hook surface, and never bypass the permission\n"
-   "system.\n")
-  "The Yeah system-prompt prelude prepended by `yeah-gptel-prompt-transform'.
-Configure with `setq' or `customize-set-variable'; not via `let'-binding."
+   "# Yeah — system prompt\n\n"
+   "You are an agent running inside Emacs through the Yeah harness. "
+   "Use the advertised tools when they help complete the task. "
+   "Tool execution is controlled by Yeah's permission system.\n")
+  "Default system prompt for Yeah model requests."
   :type 'string
   :group 'yeah-gptel)
 
-(defvar yeah-gptel--installed nil
-  "Non-nil when the three gptel hooks are currently registered.
-Internal flag for idempotent install/uninstall.")
-
-(defun yeah-gptel--safe-add-hook (hook function)
-  "Add FUNCTION to HOOK when HOOK is a bound variable.
-Returns t on success, nil when HOOK is unbound. Catches
-`void-variable' for the case where gptel is not loaded."
-  (condition-case nil
-      (progn
-        (add-hook hook function)
-        t)
-    (void-variable nil)
-    (void-function nil)))
-
-(defun yeah-gptel--safe-remove-hook (hook function)
-  "Remove FUNCTION from HOOK when HOOK is a bound variable.
-Returns t on success, nil when HOOK is unbound. Catches
-`void-variable' for the case where gptel is not loaded."
-  (condition-case nil
-      (progn
-        (remove-hook hook function)
-        t)
-    (void-variable nil)
-    (void-function nil)))
-
-(defun yeah-gptel-prompt-transform (prompt _info)
-  "Prepend the Yeah prelude to PROMPT before each gptel turn.
-_INFO is the gptel request info plist; unused in revision 0.
-The prelude advertises the tools, FSM states, and manifesto."
-  (declare (pure t) (side-effect-free t))
-  (concat yeah-gptel-prelude prompt))
-
-(defun yeah-gptel-pre-tool-call (call)
-  "Wrap a gptel tool CALL before dispatch.
-In revision 0 the wrapper is a passthrough: the call is returned
-unchanged after a debug `message'. Real wiring (permission
-checks, tool-registry lookup, per-tool pre-conditions) lands
-in Tier 3 alongside `lib/yeah-tools.el' and `lib/yeah-perm.el'."
-  (message "yeah-gptel: pre-tool-call %S" call)
-  call)
-
-(defun yeah-gptel-fsm-handler (_event state)
-  "Record the gptel FSM STATE transition.
-In revision 0 the recording is a `message' echo. The future
-hook is `yeah-session-record' (defined in `lib/yeah-session.el',
-Tier 3); when that module lands, replace the `message' below
-with `(yeah-session-record (list :event _event :state state))'.
-The argument shapes accepted today are `(:state STATE)' and
-`(:transition FROM TO)'."
-  (message "yeah-gptel: fsm-handler state=%S" state))
-
 (defun yeah-gptel--require-gptel (what)
-  "Signal a user-error unless gptel is loaded, naming WHAT wanted it."
+  "Signal `user-error' unless gptel is available, naming WHAT wanted it."
   (unless (fboundp 'gptel-request)
     (signal 'user-error
             (list (format "yeah-gptel: %s needs gptel, which is not loaded" what))))
   t)
 
-(defun yeah-gptel-request (prompt callback)
-  "Ask the model PROMPT and call CALLBACK with the answer.
-
-This is the ONLY place in Yeah where the model is called. Everything
-else goes through the transport: the claim
-`the-model-is-called-through-the-gptel-hook-surface' is bound to it,
-and the check that binds it looks for any other call of gptel's
-request API in `lib/'.
-
-CALLBACK is called the way gptel calls it: with the answer and the
-request info. The answer is a string when the model has answered with
-text, and `(tool-call . ((TOOL ARGS CB) ...))' when it has asked for
-tools; `lib/yeah-turn.el' is what understands those shapes."
-  (yeah-gptel--require-gptel "yeah-gptel-request")
-  (gptel-request prompt :callback callback))
+(defun yeah-gptel-check-contract ()
+  "Validate the gptel contract used by Yeah.
+Return t when the loaded gptel is supported.  Signal `user-error' for an
+unknown version or missing request/tool bindings instead of silently
+continuing with an incompatible transport."
+  (yeah-gptel--require-gptel "yeah-gptel-check-contract")
+  (unless (and (boundp 'gptel-version)
+               (stringp gptel-version))
+    (signal 'user-error
+            (list "yeah-gptel: loaded gptel does not expose `gptel-version'")))
+  (unless (member gptel-version yeah-gptel--supported-versions)
+    (signal 'user-error
+            (list (format "yeah-gptel: unsupported gptel version %S; supported: %s"
+                          gptel-version
+                          (string-join yeah-gptel--supported-versions ", ")))))
+  (dolist (variable '(gptel-backend gptel-model gptel-tools
+                      gptel-use-tools gptel-use-context))
+    (unless (boundp variable)
+      (signal 'user-error
+              (list (format "yeah-gptel: gptel %s does not bind %S"
+                            gptel-version variable)))))
+  (unless (fboundp 'gptel-make-tool)
+    (signal 'user-error
+            (list (format "yeah-gptel: gptel %s does not define `gptel-make-tool'"
+                          gptel-version))))
+  t)
 
 (defun yeah-gptel--argument-type (type)
-  "Return the gptel name for the registry TYPE.
-The registry knows four types; gptel wants the names of the JSON
-schema, and a symbol argument is carried as a string."
+  "Return the JSON Schema type name for registry TYPE."
   (pcase type
     ('string  "string")
     ('integer "integer")
@@ -157,14 +92,13 @@ schema, and a symbol argument is carried as a string."
     (_        "string")))
 
 (defun yeah-gptel-tool-for (name)
-  "Return a gptel tool that runs the registry tool NAME.
-
-The tool is advertised to the model with `:confirm' always true, so
-that gptel hands every call back to the callback instead of running it
-itself: the permission system of Yeah decides what may run, and the
-turn writes what happened into the log. If gptel ran the tool on its
-own, the rules would be a second truth about what may happen."
+  "Return a gptel tool description for registry tool NAME.
+The confirmation function always returns true, so gptel returns tool calls
+to Yeah's callback instead of executing them outside Yeah's permission and
+logging path."
   (yeah-gptel--require-gptel "yeah-gptel-tool-for")
+  (unless (fboundp 'gptel-make-tool)
+    (signal 'user-error (list "yeah-gptel-tool-for: gptel-make-tool is unavailable")))
   (let ((spec (yeah-tools-get name)))
     (unless spec
       (signal 'user-error
@@ -177,58 +111,109 @@ own, the rules would be a second truth about what may happen."
                      (list :name (plist-get param :name)
                            :description (format "the %s argument"
                                                  (plist-get param :name))
-                           :type (yeah-gptel--argument-type (plist-get param :type))))
+                           :type (yeah-gptel--argument-type
+                                  (plist-get param :type))))
                    (plist-get spec :input))
      :confirm (lambda (&rest _args) t))))
 
+(defun yeah-gptel--request-tools (tools)
+  "Resolve the request TOOLS option.
+`registry' builds tools from Yeah's registry, nil disables tools, and a list
+is used as an explicit list of gptel tool objects."
+  (pcase tools
+    ('registry (mapcar #'yeah-gptel-tool-for (yeah-tools-names)))
+    ('nil nil)
+    ((pred listp) tools)
+    (_ (signal 'user-error
+               (list (format "yeah-gptel-request: invalid tools option: %S" tools))))))
+
+(defun yeah-gptel--usage (info)
+  "Return normalized token usage from request INFO, or nil when unavailable."
+  (when-let ((tokens (plist-get info :tokens)))
+    (list :input (and (numberp (plist-get tokens :input))
+                      (plist-get tokens :input))
+          :output (and (numberp (plist-get tokens :output))
+                       (plist-get tokens :output))
+          :cache (and (numberp (plist-get tokens :cache))
+                      (plist-get tokens :cache))
+          :cached (and (numberp (plist-get tokens :cached))
+                       (plist-get tokens :cached)))))
+
+(defun yeah-gptel--failure-reason (info)
+  "Return a printable provider failure reason from request INFO."
+  (let ((reason (or (plist-get info :error)
+                    (plist-get info :status)
+                    "no response")))
+    (if (stringp reason) reason (format "%S" reason))))
+
+(defun yeah-gptel--normalize-response (response info)
+  "Normalize gptel RESPONSE and INFO for Yeah's run loop.
+Text, reasoning, tool calls/results and the streaming sentinel t retain
+gptel's public shapes.  Failures and unknown shapes become `(error . REASON)'."
+  (cond
+   ((or (stringp response) (eq response t)) response)
+   ((and (consp response)
+         (memq (car response) '(reasoning tool-call tool-result)))
+    response)
+   ((eq response 'abort) (cons 'error "the model request was aborted"))
+   ((null response) (cons 'error (yeah-gptel--failure-reason info)))
+   (t (cons 'error (format "unsupported gptel response shape: %S" response)))))
+
+(defun yeah-gptel--callback (callback response info)
+  "Deliver normalized RESPONSE and INFO to CALLBACK."
+  (let ((normalized-info (and (listp info) (copy-sequence info))))
+    (when-let ((usage (yeah-gptel--usage info)))
+      (setq normalized-info (plist-put normalized-info :yeah-usage usage)))
+    (funcall callback
+             (yeah-gptel--normalize-response response info)
+             normalized-info)))
+
+;;;###autoload
+(cl-defun yeah-gptel-request
+    (prompt callback &key backend model (tools 'registry)
+                    (system yeah-gptel-prelude) stream context dry-run)
+  "Ask the model PROMPT and call CALLBACK with its response and request info.
+
+This is the only place in Yeah that calls `gptel-request'.  BACKEND and MODEL
+default to the user's current gptel choices.  TOOLS is `registry' for Yeah's
+registered tools, nil for no tools, or an explicit list of gptel tools.
+SYSTEM defaults to `yeah-gptel-prelude' and may be nil.  STREAM, CONTEXT and
+DRY-RUN have the meanings documented by `gptel-request'.
+
+Responses retain gptel's text/reasoning/tool shapes; failures become
+`(error . REASON)'.  When usage is available, CALLBACK's info contains
+`:yeah-usage' with normalized input/output/cache/cached counts.
+
+The configuration is captured for this request only.  Global gptel settings
+are not modified and ambient gptel editor context is disabled.  The return
+value is gptel's request state machine, which can be inspected or aborted."
+  (unless (functionp callback)
+    (signal 'user-error
+            (list (format "yeah-gptel-request: callback is not a function: %S"
+                          callback))))
+  (yeah-gptel-check-contract)
+  (let* ((request-tools (yeah-gptel--request-tools tools))
+         (gptel-backend (or backend gptel-backend))
+         (gptel-model (or model gptel-model))
+         (gptel-tools request-tools)
+         (gptel-use-tools (and request-tools t))
+         (gptel-use-context nil))
+    (gptel-request prompt
+                   :callback (lambda (response info)
+                               (yeah-gptel--callback callback response info))
+                   :system system
+                   :stream stream
+                   :context context
+                   :dry-run dry-run)))
+
 (defun yeah-gptel-bind-tools (&optional buffer)
-  "Advertise the tools of Yeah's registry to the model in BUFFER.
-The tools are the buffer-local `gptel-tools' of the released gptel;
-this is how a buffer says what the model may ask for."
+  "Advertise Yeah's registry as buffer-local gptel tools in BUFFER.
+This helper is for interactive gptel buffers only.  `yeah-gptel-request'
+passes its own tools directly and does not depend on this buffer state."
   (yeah-gptel--require-gptel "yeah-gptel-bind-tools")
   (with-current-buffer (or buffer (current-buffer))
-    (setq-local gptel-tools (mapcar #'yeah-gptel-tool-for (yeah-tools-names)))))
-
-
-(defun yeah-gptel-hooks-install ()
-  "Register the three gptel hook functions on `gptel-...' variables.
-Idempotent: a second call is a no-op. Catches `void-variable'
-and `void-function' so that Yeah can boot in environments
-without gptel loaded."
-  (if yeah-gptel--installed
-      nil
-    (let ((installed
-           (and (yeah-gptel--safe-add-hook
-                 'gptel-prompt-transform-functions
-                 #'yeah-gptel-prompt-transform)
-                (yeah-gptel--safe-add-hook
-                 'gptel-pre-tool-call-functions
-                 #'yeah-gptel-pre-tool-call)
-                (yeah-gptel--safe-add-hook
-                 'gptel-fsm-handlers
-                 #'yeah-gptel-fsm-handler))))
-      (when installed
-        (setq yeah-gptel--installed t))
-      installed)))
-
-(defun yeah-gptel-hooks-uninstall ()
-  "Remove the three gptel hook functions registered by
-`yeah-gptel-hooks-install'. Idempotent: a second call is a
-no-op. Catches `void-variable' and `void-function' so the
-function is safe to call without gptel loaded."
-  (if (not yeah-gptel--installed)
-      nil
-    (prog1 nil
-      (yeah-gptel--safe-remove-hook
-       'gptel-prompt-transform-functions
-       #'yeah-gptel-prompt-transform)
-      (yeah-gptel--safe-remove-hook
-       'gptel-pre-tool-call-functions
-       #'yeah-gptel-pre-tool-call)
-      (yeah-gptel--safe-remove-hook
-       'gptel-fsm-handlers
-       #'yeah-gptel-fsm-handler)
-      (setq yeah-gptel--installed nil))))
+    (setq-local gptel-tools
+                (mapcar #'yeah-gptel-tool-for (yeah-tools-names)))))
 
 (provide 'yeah-gptel)
 ;;; yeah-gptel.el ends here

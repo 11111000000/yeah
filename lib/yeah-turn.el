@@ -228,6 +228,8 @@ were asked, and the rules answered."
       (yeah-turn--tick turn 'stream-end)
       (yeah-turn--tick turn 'tool-call)
       (yeah-turn--dispatch-batch turn answerer (cdr answer)))
+     ((and (consp answer) (eq (car answer) 'error))
+      (yeah-turn--fail turn (format "%s" (cdr answer))))
      (t
       (yeah-turn--fail turn (format "the model answered with %S" answer))))))
 
