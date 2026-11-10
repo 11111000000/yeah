@@ -35,7 +35,8 @@
   (dolist (n '(1 2 3 4 5 6))
     (yeah-session-append session (list :type "user" :payload (format "line-%d" n))))
   (let* ((before (yeah-check--records-of path))
-         (result (yeah-compact-run session 40))
+         (result (yeah-compact-run session 40
+                                    (lambda (records) "a summary of the run")))
          (after (yeah-check--records-of path)))
     (unless result
       (message "the compactor returned nothing")

@@ -78,17 +78,19 @@ enough to hold every record (no compaction needed)."
       (yeah-compact-test--cleanup tmpdir))))
 
 (ert-deftest yeah-compact-summarize-default-format ()
-  "`yeah-compact-summarize' with no SUMMARIZER uses the default
-placeholder and returns a deterministic string of the documented
-shape."
+  "`yeah-compact-summarize' with no SUMMARIZER asks the model, and
+returns what the model said."
   (let* ((tmpdir (yeah-compact-test--make-tmpdir))
          (s (yeah-compact-test--make-session tmpdir "summary-default" 3)))
     (unwind-protect
-        (let* ((summary (yeah-compact-summarize s 3)))
+        (let* ((saved yeah-context--transport)
+               (yeah-context--transport
+                (lambda (prompt callback)
+                  (funcall callback "what the model says")))
+               (summary (yeah-compact-summarize s 3)))
           (should (stringp summary))
-          (should (string-prefix-p "summary of 3 records" summary))
-          (should (string-match-p "first=" summary))
-          (should (string-match-p "last=" summary)))
+          (should (equal summary "what the model says"))
+          (setq yeah-context--transport saved))
       (yeah-compact-test--cleanup tmpdir))))
 
 (ert-deftest yeah-compact-summarize-custom-summarizer ()
@@ -132,11 +134,13 @@ and returns a plist whose `:cut-point' and `:summary' are non-nil."
     (unwind-protect
         (let* ((records (yeah-session-records s))
                (total (apply #'+ (mapcar (lambda (r) (length (prin1-to-string r))) records)))
+               (yeah-context--transport (lambda (prompt callback)
+                                          (funcall callback "the summary")))
                (report (yeah-compact-run s (1- total))))
           (should (integerp (plist-get report :cut-point)))
           (should (>= (plist-get report :cut-point) 1))
           (should (stringp (plist-get report :summary)))
-          (should (string-prefix-p "summary of " (plist-get report :summary)))
+          (should (equal "the summary" (plist-get report :summary)))
           (should (integerp (plist-get report :projection-count)))
           (let* ((proj (yeah-session-project s))
                  (head-type (plist-get (nth 0 proj) :type)))
@@ -152,10 +156,14 @@ successful `yeah-compact-run' than before."
         (let* ((before (yeah-compact-projection-length s))
                (records (yeah-session-records s))
                (total (apply #'+ (mapcar (lambda (r) (length (prin1-to-string r))) records)))
+               (saved yeah-context--transport)
+               (yeah-context--transport (lambda (prompt callback)
+                                          (funcall callback "the summary")))
                (_ (yeah-compact-run s (1- total)))
                (after (yeah-compact-projection-length s)))
           (should (> before after))
-          (should (< after (length (yeah-session-records s)))))
+          (should (< after (length (yeah-session-records s))))
+          (setq yeah-context--transport saved))
       (yeah-compact-test--cleanup tmpdir))))
 
 (provide 'test-yeah-compact)

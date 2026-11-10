@@ -32,6 +32,7 @@
 
 (require 'cl-lib)
 (require 'yeah-session)
+(require 'yeah-context)
 
 (defgroup yeah-compact nil
   "Yeah compactor (pure projection over the session log)."
@@ -66,15 +67,12 @@ the returned id onwards are preserved verbatim."
     result))
 
 (defun yeah-compact--default-summarizer (records)
-  "Deterministic placeholder summarizer.
-Prints the count, the first record's id, and the last record's
-id. The replacement point for the real `gptel' summarisation
-(Tier 4 / Tier 5) is `yeah-compact-summarize''s optional
-SUMMARIZER argument."
-  (format "summary of %d records, first=%S, last=%S"
-          (length records)
-          (car records)
-          (car (last records))))
+  "Summarize RECORDS by asking the model.
+The summary of a run is written by the model, because nothing else
+knows what mattered in the conversation. The records stay on disk; only
+the projection changes."
+  (yeah-context-summarize
+   (mapconcat (lambda (record) (format "%S" record)) records "\n")))
 
 (defun yeah-compact-summarize (session cut-point &optional summarizer)
   "Summarise the records before CUT-POINT in SESSION.
