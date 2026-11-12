@@ -1,4 +1,4 @@
-# Yeah — Y-combinator, Emacs Agent Harness
+# Yeah — Emacs Agent Harness
 
 > **Status: v0.1.0-alpha; a kernel prototype, not yet a usable product.**
 > Read `docs/PLAN.md` for the current baseline and the road to a public
@@ -13,7 +13,8 @@ not inside a separate agent process with Emacs acting as a client. The model
 is reached through **gptel**; tools are permissioned Elisp functions; session
 history is an **append-only JSONL journal**.
 
-The **Y** stands for the Y-combinator and expresses the long-term design:
+The name is a recursive acronym — **Yeah**, Emacs Agent Harness — and the
+**Y** stands for the Y-combinator, which expresses the long-term design:
 bounded recursive delegation, self-inspection and a fixed point at which Yeah
 can help develop and verify Yeah itself.
 
