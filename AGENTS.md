@@ -58,7 +58,8 @@ work item. Never resolve it by silently making documentation more optimistic.
 - Stage 4 is implemented offline: `M-x yeah`, journal commands, doctor and a
   package-vc bootstrap exist.  Bootstrap and live-provider interactive work
   are not yet verified, so the public alpha gate remains open.
-- Stage 3 is implemented offline: persistent pending FIFO, frozen inputs,
+- Stage 3 is implemented offline: the Plan and Build permission profiles,
+  a persistent pending FIFO, frozen inputs,
   steering at batch boundaries, cancellation, nudges and deadlines have
   integration tests, including synchronous callback races. The journey of a
   person — ask, steer, quit, restart, withdraw, recover, cancel — is checked

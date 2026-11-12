@@ -82,6 +82,29 @@ question. Return the decision."
                            'allow))
      (list :effect :allow :reply :always))))
 
+(defun yeah-approval-profile-decision (profile request &optional person)
+  "Answer REQUEST under the permission profile PROFILE.
+
+PERSON answers what the profile does not decide.  The profile decides
+first: a tool the profile forbids is refused, and everything else is
+left to the person."
+  (let* ((rules (yeah-perm-profile profile))
+         (action (plist-get request :action))
+         (resource (plist-get request :resource))
+         (effect (if rules
+                     (yeah-perm-effect action resource rules)
+                   'ask)))
+    (if (eq effect 'deny)
+        (list :effect :deny :reply :reject
+              :reason (format "the %s profile does not allow %s" profile action))
+      (funcall (or person #'yeah-approval-policy-decision) request))))
+
+(defun yeah-approval-profile-answerer (profile &optional person)
+  "Return an answerer that answers under the permission profile PROFILE.
+PERSON answers what the profile does not decide."
+  (lambda (request)
+    (yeah-approval-profile-decision profile request person)))
+
 (defun yeah-approval-person-answerer (answer)
   "Return an answerer that asks the person through ANSWER.
 ANSWER is a function of the REQUEST; it returns the reply, which is

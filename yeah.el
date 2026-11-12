@@ -23,9 +23,11 @@
 
 ;;;###autoload
 (defun yeah ()
-  "Open an interactive Yeah session for the current project."
+  "Open an interactive Yeah session for the current project.
+The session runs under a permission profile: `plan' refuses the tools
+that change the world, `build' asks for them."
   (interactive)
-  (yeah-product-open))
+  (yeah-product-open nil nil nil nil nil nil (yeah-product--choose-profile)))
 
 ;;;###autoload
 (defun yeah-ask (prompt)

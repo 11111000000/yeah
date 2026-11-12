@@ -19,7 +19,8 @@
   ],
   "claims": [
     "human-control-is-queued-and-cancellable",
-    "the-journey-of-a-person-works-end-to-end"
+    "the-journey-of-a-person-works-end-to-end",
+    "the-permission-profiles-are-plan-and-build"
   ],
   "commitment": [
     {
@@ -29,9 +30,13 @@
     {
       "claim": "the-journey-of-a-person-works-end-to-end",
       "state": "holds"
+    },
+    {
+      "claim": "the-permission-profiles-are-plan-and-build",
+      "state": "holds"
     }
   ],
   "objection": "A queue is a promise to deliver, and a promise to deliver steering at a boundary the run may never reach is a promise the person cannot count on.",
   "refuted_by": "A cancel followed by a late callback that still writes to the journal, or a steering input that is accepted, reported as pending, and never delivered. Either one makes the channel decorative.",
-  "note": "The journey is checked with a fake model: the same path a person walks — ask, steer, quit, restart, withdraw, recover, cancel — without a network. A steering is addressed to one run: when that run ends without delivering it, the steering is withdrawn and the withdrawal is written into the journal, so that the person can see that their words were not used."
+  "note": "The journey is checked with a fake model: the same path a person walks — ask, steer, quit, restart, withdraw, recover, cancel — without a network. A steering is addressed to one run: when that run ends without delivering it, the steering is withdrawn and the withdrawal is written into the journal, so that the person can see that their words were not used. The session runs under a permission profile: Plan refuses the tools that change the world before anyone is asked, Build asks the person for them, and neither profile changes the rules of the person."
 }

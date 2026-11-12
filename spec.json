@@ -567,7 +567,7 @@
     },
     {
       "id": "a-subagent-runs-its-own-session",
-      "subject": "a sub-agent runs in its own session with its own context and its own permissions: a tool it was not granted is refused, the refusal is in its own journal, and its result comes back to the parent",
+      "subject": "a sub-agent runs in its own session with its own context and its own permissions: a tool it was not granted is refused, the refusal is in its own journal, its result comes back to the parent, and two children of one parent run at the same time",
       "scope": [ "lib/yeah-subagent.el", "lib/yeah-run.el", "tests/unit/test-yeah-subagent.el" ],
       "requirements": [
         {
@@ -575,7 +575,7 @@
           "spec": "./scripts/dev ert tests/unit/test-yeah-subagent.el"
         }
       ],
-      "falsifier": "a sub-agent shares the session of its parent, or it may use a tool it was not granted, or its result is lost",
+      "falsifier": "a sub-agent shares the session of its parent, or it may use a tool it was not granted, or its result is lost, or a second child waits for the first",
       "register": "fact",
       "accepted": null,
       "control": "sed -i 's/(format \"%s.sub-%d\" parent-id child-id)/(format \"%s\" parent-id)/' lib/yeah-subagent.el",
@@ -724,6 +724,25 @@
       "register": "fact",
       "accepted": null,
       "control": "sed -i 's/(yeah-control--release-steering control)/(ignore control)/' lib/yeah-control.el",
+      "attestations": []
+    },
+    {
+      "id": "the-permission-profiles-are-plan-and-build",
+      "subject": "the permission profiles are Plan and Build: Plan refuses the tools that change the world before anyone is asked, Build asks the person for them, and a profile never changes the persistent rules of the person",
+      "scope": [
+        "lib/yeah-perm.el", "lib/yeah-approval.el", "lib/yeah-product.el",
+        "tests/unit/test-yeah-perm.el", "tests/unit/test-yeah-approval.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-perm.el tests/unit/test-yeah-approval.el"
+        }
+      ],
+      "falsifier": "the plan profile lets a tool that changes the world through, or the build profile refuses it without asking, or a profile changes the rules of the person",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/'deny)/'ask)/\" lib/yeah-perm.el",
       "attestations": []
     },
     {
