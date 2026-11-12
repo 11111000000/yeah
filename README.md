@@ -5,6 +5,9 @@
 > alpha. `spec.json` and `./scripts/dev map` are the machine-checked source
 > of truth; documentation never substitutes for that evidence.
 
+> **Website:** <https://11111000000.github.io/yeah/> — the static site in
+> `site/`, published by GitHub Pages on every push that touches it.
+
 **Yeah** is an Emacs Lisp agent harness: the agent executes inside Emacs,
 not inside a separate agent process with Emacs acting as a client. The model
 is reached through **gptel**; tools are permissioned Elisp functions; session
