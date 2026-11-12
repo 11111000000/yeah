@@ -41,8 +41,8 @@
       (insert-file-contents path))
     (buffer-string)))
 
-(ert-deftest yeah-edit-unique-edit-updates-buffer-without-saving ()
-  "A unique match is replaced in memory and the file is not saved."
+(ert-deftest yeah-edit-unique-edit-updates-buffer-and-saves ()
+  "A unique match is replaced in memory and the file is saved."
   (yeah-edit-test--with-tools
     (let ((path (make-temp-file "yeah-edit-unique-" nil ".txt")))
       (unwind-protect
@@ -61,11 +61,12 @@
               (should (equal (expand-file-name path)
                              (plist-get metadata :path)))
               (should (> (plist-get metadata :tick) old-tick))
-              (should (eq t (plist-get metadata :modified)))
+              (should (eq t (plist-get metadata :saved)))
+              (should-not (plist-get metadata :modified))
               (should (equal "alpha omega gamma"
                              (with-current-buffer buffer (buffer-string))))
               (should (> (yeah-undo-list-size buffer) undo-before))
-              (should (equal "alpha beta gamma"
+              (should (equal "alpha omega gamma"
                              (yeah-edit-test--file-contents path)))))
         (yeah-edit-test--cleanup path)))))
 

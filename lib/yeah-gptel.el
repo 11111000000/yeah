@@ -27,6 +27,7 @@
 (defvar gptel-backend nil)
 (defvar gptel-model nil)
 (defvar gptel-tools nil)
+(defvar gptel-include-reasoning nil)
 (defvar gptel-use-context nil)
 (defvar gptel-use-tools nil)
 (defvar gptel-version nil)
@@ -46,6 +47,16 @@
    "Tool execution is controlled by Yeah's permission system.\n")
   "Default system prompt for Yeah model requests."
   :type 'string
+  :group 'yeah-gptel)
+
+(defcustom yeah-gptel-include-reasoning t
+  "How the model's reasoning is kept in the conversation.
+A model that reasons narrates its plan, and dropping that plan from the
+history makes the model start the task over on every turn.  Keep the
+reasoning in the conversation by default; set this to nil to hide it.
+The value is bound per request, never mutated globally."
+  :type '(choice (const :tag "Keep the reasoning" t)
+                 (const :tag "Hide it" nil))
   :group 'yeah-gptel)
 
 (defun yeah-gptel--require-gptel (what)
@@ -105,7 +116,8 @@ logging path."
               (list (format "yeah-gptel-tool-for: no such tool: %S" name))))
     (gptel-make-tool
      :name name
-     :function (lambda (&rest args) (yeah-tools-call name args))
+     :function (lambda (&rest args)
+                 (yeah-tools-call name (yeah-tools-normalize-args name args)))
      :description (plist-get spec :description)
      :args (mapcar (lambda (param)
                      (list :name (plist-get param :name)
@@ -197,7 +209,8 @@ value is gptel's request state machine, which can be inspected or aborted."
          (gptel-model (or model gptel-model))
          (gptel-tools request-tools)
          (gptel-use-tools (and request-tools t))
-         (gptel-use-context nil))
+         (gptel-use-context nil)
+         (gptel-include-reasoning yeah-gptel-include-reasoning))
     (gptel-request prompt
                    :callback (lambda (response info)
                                (yeah-gptel--callback callback response info))

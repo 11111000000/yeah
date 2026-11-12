@@ -19,7 +19,10 @@ Verified on 2026-11-12 in this checkout:
 - all 23 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
 - the installed `mathc` does not accept the `--root` invocation used by
   `scripts/dev`, so the map/gate needs a compatible pinned tool;
-- live provider behavior was not verified during that review.
+- live provider behavior is verified on 2026-11-12: the live coding task
+  (MiniMax-M2.7) reads the project, edits the file with a guarded edit,
+  saves it, and the test of the project passes.  The interactive UI path
+  against a live provider is still not verified.
 
 The code contains a working kernel and a working wire, but not yet a usable
 product:
@@ -377,6 +380,9 @@ On a clean supported Emacs, one documented installation action and backend
 configuration lead to the Stage 1 coding task in the interactive UI. The user
 can approve, steer, cancel, inspect the diff, quit, restart and resume. No
 credentials appear in logs. Unit/canary/integration suites pass.
+
+**Partly verified on 2026-11-12:** the coding task itself is verified against
+a real provider (MiniMax-M2.7).  The interactive UI path is not verified yet.
 
 ## 8. Stage 5 — ACP and MCP wire
 

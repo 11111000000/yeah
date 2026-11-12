@@ -19,19 +19,43 @@
 (require 'yeah-result)
 (require 'yeah-undo)
 
+(defcustom yeah-edit-save-after-edit t
+  "Non-nil means `edit' saves the buffer after a guarded edit.
+An agent that cannot save cannot finish a coding task: the file it is
+asked to fix would stay broken on disk.  Set this to nil when edits
+should stay in the buffer for the person to save by hand.  The undo
+boundary is recorded in both cases, so the person can revert."
+  :type 'boolean
+  :group 'yeah)
+
+(defun yeah-edit--save (buffer)
+  "Save BUFFER when `yeah-edit-save-after-edit' is non-nil, and return
+non-nil when the buffer was saved.  Saving writes the buffer to the file
+it visits; it never discards the person's unsaved changes, because those
+changes live in the buffer, not in the file."
+  (with-current-buffer buffer
+    (when yeah-edit-save-after-edit
+      (let ((require-final-newline nil))
+        (save-buffer))
+      t)))
+
 (defun yeah-edit--ok (path buffer changed)
   "Return a successful edit result for PATH, BUFFER and CHANGED."
-  (with-current-buffer buffer
-    (let ((tick (buffer-chars-modified-tick)))
-      (yeah-result-ok
-       (if (zerop changed)
-           (format "No changes; tick %d." tick)
-         (format "Replaced %d occurrence%s; tick %d."
-                 changed (if (= changed 1) "" "s") tick))
-       (list :path path
-             :changed changed
-             :tick tick
-             :modified (buffer-modified-p))))))
+  (let ((saved (yeah-edit--save buffer)))
+    (with-current-buffer buffer
+      (let ((tick (buffer-chars-modified-tick)))
+        (yeah-result-ok
+         (if (zerop changed)
+             (format "No changes; tick %d%s." tick
+                     (if saved "; saved" ""))
+           (format "Replaced %d occurrence%s; tick %d%s."
+                   changed (if (= changed 1) "" "s") tick
+                   (if saved "; saved" "")))
+         (list :path path
+               :changed changed
+               :tick tick
+               :saved (and saved t)
+               :modified (buffer-modified-p)))))))
 
 (defun yeah-edit--match-positions (old-str)
   "Return exact match positions for OLD-STR, latest first."
@@ -155,7 +179,7 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
   (list
    (list :name "edit"
          :description
-         "Replace exact text in a visiting buffer or a file opened in a buffer. old_str must be nonempty and match exactly once unless replace_all is true. When supplied, tick guards against stale buffer state. The edit is one undo step and is never saved. After any rejection, read fresh state before retrying with a fresh tick."
+         "Replace exact text in a visiting buffer or a file opened in a buffer. old_str must be nonempty and match exactly once unless replace_all is true. When supplied, tick guards against stale buffer state; pass the tick from the result of the read tool, or omit it to skip the guard. The edit is one undo step and the buffer is saved (see `yeah-edit-save-after-edit'). After any rejection, read fresh state before retrying with a fresh tick."
          :input (list (list :name "path" :type 'string)
                       (list :name "old_str" :type 'string)
                       (list :name "new_str" :type 'string)

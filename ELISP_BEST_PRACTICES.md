@@ -343,3 +343,58 @@ success, and a waived claim is never read as a passing one.
   promise that the next pair sees the previous one.
 - **Convention:** a value that a function returns must be built by that
   call; a constant in the source is not a scratch pad.
+
+### §11.11 — the model names the arguments of a tool; the registry expects positional
+
+- **Date:** 2026-11-12 (the live coding task)
+- **Symptom:** every tool call fails with "expected N..M args, got K".
+- **Cause:** the model sends named arguments (`:path`, `:offset`, ...), and
+  `yeah-tools-call` expects positional arguments in the order the tool
+  declared them. The mismatch is invisible in offline tests because the
+  fake transports pass positional arguments.
+- **Fix:** normalize at the boundary — `yeah-tools-normalize-args` maps
+  named arguments to the declared positional order, and a missing optional
+  argument keeps its place as nil so that later arguments do not move.
+- **Convention:** the tool contract is a contract about order; the model's
+  contract is about names. The adapter owns the difference.
+
+### §11.12 — JSON false arrives as `:json-false`
+
+- **Date:** 2026-11-12 (the live coding task)
+- **Symptom:** a model that passes a boolean argument is refused with
+  "arg N (replace_all) expected boolean".
+- **Cause:** gptel parses the model's JSON with `:false-object
+  :json-false`, so JSON `false` arrives as the symbol `:json-false`, not
+  as nil. The type check then rejects the argument.
+- **Fix:** normalize JSON booleans and null at the boundary too —
+  `:json-false` and `:json-null` mean nil, and `:json-true` means t.
+- **Convention:** a tool that declares a boolean argument must accept
+  every spelling of false that a provider can produce.
+
+### §11.13 — an edit that is never saved is not an edit
+
+- **Date:** 2026-11-12 (the live coding task)
+- **Symptom:** the edit tool reports "Replaced 1 occurrence", and the file
+  on disk is unchanged, so the model reads the broken file again and
+  retries forever.
+- **Cause:** the tool edited the buffer without saving it. An agent that
+  cannot save cannot finish a coding task.
+- **Fix:** the edit saves the buffer by default
+  (`yeah-edit-save-after-edit`), with the undo boundary preserved so the
+  person can revert. Saving also must not add a final newline to a file
+  that had none, or the tool silently reformats the file.
+- **Convention:** a coding agent's changes must reach the file; review is
+  undo, not an unsaved buffer.
+
+### §11.14 — the tick of a file is how the model proves it read it
+
+- **Date:** 2026-11-12 (the live coding task)
+- **Symptom:** the model's guarded edit is refused with "stale tick",
+  because the model passed 0 as the tick.
+- **Cause:** the model had no way to learn the tick. The read tool did not
+  return it, so the model guessed.
+- **Fix:** the read tool returns the tick in its metadata, and the edit
+  tool's description says to pass the tick from the read result, or to
+  omit it to skip the guard.
+- **Convention:** optimistic concurrency is only useful when the reader
+  can see the version it is supposed to compare against.

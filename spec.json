@@ -617,6 +617,25 @@
       "attestations": []
     },
     {
+      "id": "a-real-model-finishes-a-coding-task",
+      "subject": "a real model finishes a coding task: it reads the project, edits the file with a guarded edit, saves it, and the test of the project passes — with the arguments the model actually sends (named arguments, JSON booleans) and with the reasoning kept in the conversation",
+      "scope": [
+        "lib/yeah-gptel.el", "lib/yeah-tools.el", "lib/yeah-files.el",
+        "lib/yeah-edit.el", "tests/live/live-coding-task.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-coding-task.el"
+        }
+      ],
+      "falsifier": "the model's named arguments are refused, or JSON false is refused, or the edit is not saved, or the model restarts the task because its plan was dropped",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(defcustom yeah-edit-save-after-edit t/(defcustom yeah-edit-save-after-edit nil/' lib/yeah-edit.el",
+      "attestations": []
+    },
+    {
       "id": "the-product-installs-serves-and-documents",
       "subject": "the package exposes M-x yeah, M-x yeah-ask and M-x yeah-doctor, declares supported Emacs/gptel versions, and provides a package-vc bootstrap with no development-tool dependency",
       "scope": [ "yeah.el", "lib/yeah-product.el", "install/yeah-bootstrap.el", "tests/unit/test-yeah-product.el", "tests/checks/check-product-installs.el" ],
