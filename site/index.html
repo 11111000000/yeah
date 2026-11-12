@@ -181,98 +181,107 @@
         change the sequence of semantic events.
       </p>
 
-      <figure class="diagram reveal">
-        <svg viewBox="0 0 900 330" role="img" aria-labelledby="diagram-title diagram-desc">
-          <defs>
-            <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0 1 L7 4 L0 7 z" fill="var(--c-grey50)"/>
-            </marker>
-          </defs>
-          <title id="diagram-title">Yeah architecture</title>
-          <desc id="diagram-desc">Drivers — human, ACP, MCP and batch — feed a session API and run controller. The controller drives a model adapter, a tool registry and a policy engine. These feed an execution scheduler, which writes an append-only event journal. The journal feeds model context, read models and the session index, which reach the attached, service and batch placements.</desc>
+      <figure class="scheme reveal">
+        <div class="scheme__drivers">
+          <span class="chip">Human · <code>M-x yeah</code></span>
+          <span class="chip">ACP clients</span>
+          <span class="chip">MCP clients</span>
+          <span class="chip">Batch</span>
+        </div>
 
-          <g class="d-grid">
-            <rect x="20"  y="30"  width="180" height="44" rx="3"/>
-            <rect x="20"  y="90"  width="180" height="44" rx="3"/>
-            <rect x="20"  y="150" width="180" height="44" rx="3"/>
-            <rect x="20"  y="210" width="180" height="44" rx="3"/>
-          </g>
-          <g class="d-label d-label--left">
-            <text x="110" y="57"  text-anchor="middle">Human · M-x yeah</text>
-            <text x="110" y="117" text-anchor="middle">ACP client</text>
-            <text x="110" y="177" text-anchor="middle">MCP client</text>
-            <text x="110" y="237" text-anchor="middle">Batch</text>
-          </g>
+        <div class="scheme__converge" aria-hidden="true"></div>
+        <div class="scheme__link" aria-hidden="true"></div>
 
-          <g class="d-arrow">
-            <path d="M200 52  C 230 52, 230 92, 262 92"/>
-            <path d="M200 112 L 262 112"/>
-            <path d="M200 172 C 230 172, 230 132, 262 132"/>
-            <path d="M200 232 C 230 232, 230 152, 262 152"/>
-          </g>
+        <div class="scheme__row">
+          <div class="node node--strong">
+            <span class="node__title">Session API</span>
+            <span class="node__sub">Run Controller</span>
+          </div>
+        </div>
 
-          <rect class="d-strong" x="262" y="74" width="210" height="96" rx="3"/>
-          <g class="d-label">
-            <text x="367" y="112" text-anchor="middle">Session API</text>
-            <text x="367" y="136" text-anchor="middle">Run Controller</text>
-          </g>
+        <div class="scheme__link" aria-hidden="true"></div>
 
-          <g class="d-arrow">
-            <path d="M472 96  L 520 96"/>
-            <path d="M472 122 L 520 122"/>
-            <path d="M472 148 L 520 148"/>
-          </g>
+        <div class="scheme__trio">
+          <div class="branch">
+            <div class="node">
+              <span class="node__title">Model adapter</span>
+              <span class="node__sub">private gptel</span>
+            </div>
+            <span class="branch__tick" aria-hidden="true"></span>
+          </div>
+          <div class="branch">
+            <div class="node">
+              <span class="node__title">Tool registry</span>
+              <span class="node__sub">typed, validated</span>
+            </div>
+            <span class="branch__tick" aria-hidden="true"></span>
+          </div>
+          <div class="branch">
+            <div class="node">
+              <span class="node__title">Policy &amp; approvals</span>
+              <span class="node__sub">rules as data</span>
+            </div>
+            <span class="branch__tick" aria-hidden="true"></span>
+          </div>
+        </div>
 
-          <g class="d-grid">
-            <rect x="520" y="74" width="180" height="34" rx="3"/>
-            <rect x="520" y="112" width="180" height="34" rx="3"/>
-            <rect x="520" y="150" width="180" height="34" rx="3"/>
-          </g>
-          <g class="d-label">
-            <text x="610" y="96"  text-anchor="middle">Model adapter (gptel)</text>
-            <text x="610" y="134" text-anchor="middle">Tool registry</text>
-            <text x="610" y="172" text-anchor="middle">Policy &amp; approvals</text>
-          </g>
+        <div class="scheme__spine" aria-hidden="true"></div>
+        <div class="scheme__link" aria-hidden="true"></div>
 
-          <g class="d-arrow">
-            <path d="M610 184 L 610 214"/>
-          </g>
+        <div class="scheme__row">
+          <div class="node">
+            <span class="node__title">Execution scheduler</span>
+            <span class="node__sub">shared or exclusive · once-only · bounded</span>
+          </div>
+        </div>
 
-          <rect class="d-strong" x="500" y="214" width="220" height="40" rx="3"/>
-          <text class="d-label" x="610" y="239" text-anchor="middle">Execution scheduler</text>
+        <div class="scheme__link" aria-hidden="true"></div>
 
-          <g class="d-arrow">
-            <path d="M500 234 L 452 234"/>
-          </g>
+        <div class="scheme__row">
+          <div class="node node--accent">
+            <span class="node__title">Append-only event journal</span>
+            <span class="node__sub">versioned JSONL · never rewritten</span>
+          </div>
+        </div>
 
-          <rect class="d-accent" x="258" y="212" width="194" height="44" rx="3"/>
-          <text class="d-label" x="355" y="239" text-anchor="middle">Append-only journal</text>
+        <div class="scheme__link" aria-hidden="true"></div>
 
-          <g class="d-arrow">
-            <path d="M300 256 L 300 292"/>
-            <path d="M355 256 L 355 292"/>
-            <path d="M410 256 L 410 292"/>
-          </g>
+        <div class="scheme__trio">
+          <div class="branch">
+            <div class="node">
+              <span class="node__title">Model context</span>
+            </div>
+            <span class="branch__tick" aria-hidden="true"></span>
+          </div>
+          <div class="branch">
+            <div class="node">
+              <span class="node__title">Read models &amp; UI</span>
+            </div>
+            <span class="branch__tick" aria-hidden="true"></span>
+          </div>
+          <div class="branch">
+            <div class="node">
+              <span class="node__title">Session index &amp; cost</span>
+            </div>
+            <span class="branch__tick" aria-hidden="true"></span>
+          </div>
+        </div>
 
-          <g class="d-grid">
-            <rect x="228" y="292" width="144" height="32" rx="3"/>
-            <rect x="283" y="292" width="144" height="32" rx="3"/>
-            <rect x="338" y="292" width="144" height="32" rx="3"/>
-          </g>
-          <g class="d-label d-label--small">
-            <text x="300" y="313" text-anchor="middle">Model context</text>
-            <text x="355" y="313" text-anchor="middle">Read models</text>
-            <text x="410" y="313" text-anchor="middle">Session index</text>
-          </g>
+        <div class="scheme__spine" aria-hidden="true"></div>
+        <div class="scheme__link" aria-hidden="true"></div>
 
-          <g class="d-arrow">
-            <path d="M800 96  C 830 96, 830 234, 800 234"/>
-            <path d="M800 234 L 748 234"/>
-          </g>
-          <rect class="d-grid" x="748" y="212" width="132" height="44" rx="3"/>
-          <text class="d-label d-label--small" x="814" y="232" text-anchor="middle">attached</text>
-          <text class="d-label d-label--small" x="814" y="248" text-anchor="middle">service · batch</text>
-        </svg>
+        <div class="scheme__row">
+          <div class="node node--wide">
+            <span class="node__title">attached · service · batch</span>
+            <span class="node__sub">the same events for the same task</span>
+          </div>
+        </div>
+
+        <figcaption class="scheme__caption">
+          The flow of commands and events. Every driver submits to the same
+          controller and writes the same journal; the placement may change
+          who owns the process, never the sequence of events.
+        </figcaption>
       </figure>
 
       <h3 class="subhead reveal">Ten decisions that hold the shape</h3>
