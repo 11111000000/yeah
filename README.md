@@ -32,7 +32,7 @@ feature already claimed.
 
 ## What exists today
 
-The repository contains 33 focused Elisp modules implementing pieces of the
+The repository contains 36 focused Elisp modules implementing pieces of the
 kernel:
 
 - a defined run state machine and model-turn orchestration;
@@ -52,13 +52,18 @@ kernel:
 - an ACP v1 agent over newline JSON-RPC on stdio, with real sessions, journal
   updates, streaming tool calls and cancellation;
 - an MCP server publishing the read-only `emacs__*` surface, and an MCP client
-  that imports the tools of a foreign server under a namespaced name.
+  that imports the tools of a foreign server under a namespaced name;
+- a run context that owns the session, the transport, the answerer and the
+  rules of one run, and three placements: attached, service and batch;
+- an emacsclient bridge to the live buffers of an attached Emacs, approved
+  separately and off by default.
 
-After Stage 5, byte compilation is clean and 198 ERT unit tests pass.
+After Stage 6, byte compilation is clean and 221 ERT unit tests pass.
 Direct canaries cover transport, scheduling, tool failures, real coding,
-asynchronous compaction, product installation entry points and the wire:
-real Emacs processes serving ACP and MCP over stdio.  Frozen math-coding v4
-map/run/gate results are not treated as current evidence.
+asynchronous compaction, product installation entry points, the wire
+(real Emacs processes serving ACP and MCP over stdio) and the placements
+(the same task in three real processes, compared event by event).  Frozen
+math-coding v4 map/run/gate results are not treated as current evidence.
 Live-provider task completion is unverified.
 
 ## What is not finished
@@ -69,8 +74,9 @@ Do not infer a working product from the presence of a module:
   a prompt is running is read after that prompt reaches a terminal state;
 - the ACP agent and the MCP server have never been driven by a third-party
   client or editor, and no live provider was involved in the wire checks;
-- sub-agent execution is still a stub, and the three placements are not
-  implemented;
+- the bridge to the buffers of an attached Emacs was checked against a stub
+  program, never against a live Emacs server;
+- sub-agent execution is still a stub;
 - global state and incomplete event correlation still limit concurrent runs;
 - PTC is disabled by default and remains **experimental, not a security
   boundary**; its demonstrated higher-order-function bypasses are covered by

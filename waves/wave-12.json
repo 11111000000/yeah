@@ -11,18 +11,29 @@
   ],
   "checks": [
     "./scripts/dev byte-compile-all",
-    "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-perm.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el tests/unit/test-yeah-undo.el tests/unit/test-yeah-acp.el tests/unit/test-yeah-emcp.el tests/unit/test-yeah-gptel.el tests/unit/test-yeah-subagent.el tests/unit/test-yeah-shell.el tests/unit/test-yeah-codes.el",
-    "./scripts/dev check tests/checks/check-session-log-append-only.el tests/checks/check-compaction-keeps-sources.el tests/checks/check-emcp-registry-matches-schema.el tests/checks/check-acp-dispatcher-routes-every-method.el tests/checks/check-gptel-hooks-live-in-one-module.sh tests/checks/check-subagent-depth-limit-is-enforced.el"
+    "./scripts/dev ert tests/unit/test-yeah-run.el tests/unit/test-yeah-placement.el tests/unit/test-yeah-emacs-bridge.el",
+    "./scripts/dev check tests/checks/check-three-placements.el"
   ],
   "claims": [
-    "the-kernel-runs-in-three-placements"
+    "the-kernel-runs-in-three-placements",
+    "a-run-owns-its-rules",
+    "the-bridge-reaches-the-buffers-of-a-person"
   ],
   "commitment": [
     {
       "claim": "the-kernel-runs-in-three-placements",
       "state": "holds"
+    },
+    {
+      "claim": "a-run-owns-its-rules",
+      "state": "holds"
+    },
+    {
+      "claim": "the-bridge-reaches-the-buffers-of-a-person",
+      "state": "holds"
     }
   ],
   "objection": "One kernel in three placements is three chances for it to behave differently, and the differences will be subtle rather than loud: a question answered in one placement and not in another, or an answer whose order depends on the placement.",
-  "refuted_by": "A run in one placement that produces a different record sequence than the same run in another. If the placement can be observed in the log, the kernel does not know who is driving it."
+  "refuted_by": "A run in one placement that produces a different record sequence than the same run in another. If the placement can be observed in the log, the kernel does not know who is driving it.",
+  "note": "The check runs the same scripted task in three real processes and compares the canonical projection of the three journals. The bridge is the one capability a service placement does not have by default: its tools are not in the registry until the operator asks for them, and the permission system approves them by their own names."
 }

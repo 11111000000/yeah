@@ -284,8 +284,10 @@ Steering is delivered only after the entire batch has settled."
               (yeah-turn-session turn)
               "tool-end"
               :tool (yeah-turn--tool-name (nth 0 call))
-              :ok (and (not (aref refused i))
-                       (yeah-result-success-p result))
+              :ok (if (and (not (aref refused i))
+                           (yeah-result-success-p result))
+                    t
+                  :false)
               :payload (yeah-result-model-text result)))
            (setq i (1+ i))))
        (yeah-turn--tick turn 'tool-end)
