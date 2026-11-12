@@ -567,18 +567,34 @@
     },
     {
       "id": "a-subagent-runs-its-own-session",
-      "subject": "a sub-agent runs in its own session with its own context and its own permissions, and its result comes back to the parent",
-      "scope": [ "lib/yeah-team.el" ],
+      "subject": "a sub-agent runs in its own session with its own context and its own permissions: a tool it was not granted is refused, the refusal is in its own journal, and its result comes back to the parent",
+      "scope": [ "lib/yeah-subagent.el", "lib/yeah-run.el", "tests/unit/test-yeah-subagent.el" ],
       "requirements": [
         {
           "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-subagent-own-session.el"
+          "spec": "./scripts/dev ert tests/unit/test-yeah-subagent.el"
         }
       ],
-      "falsifier": "a sub-agent shares the parent context, or exceeds the depth limit, or its result is lost",
+      "falsifier": "a sub-agent shares the session of its parent, or it may use a tool it was not granted, or its result is lost",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(format \"%s.sub-%d\" parent-id child-id)/(format \"%s\" parent-id)/' lib/yeah-subagent.el",
+      "attestations": []
+    },
+    {
+      "id": "an-agent-preset-is-a-file",
+      "subject": "an agent preset is a file, not code: a header with a name, a description, a model and the tools it may use, and a body that is the prompt",
+      "scope": [ "lib/yeah-agent.el", "tests/unit/test-yeah-agent.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-agent.el"
+        }
+      ],
+      "falsifier": "a preset cannot be found, or its header is not read, or its body is read when the preset is only listed",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(string-prefix-p \"---\" text)/(string-prefix-p \"+++\" text)/' lib/yeah-agent.el",
       "attestations": []
     },
     {

@@ -1,38 +1,46 @@
-;;; yeah-subagent.el --- sub-agent delegation API (stub) -*- lexical-binding: t; -*-
+;;; yeah-subagent.el --- sub-agent delegation -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
-;;
-;; This file is part of Yeah.
 ;;
 ;; Yeah is free software: you can redistribute it and/or modify
 ;; it under the terms of the Apache License, Version 2.0.
 
 ;;; Commentary:
 ;;
-;; Sub-agent delegation is intended to run a child gptel session in
-;; its own buffer and return a summary to the parent. See
-;; `docs/ARCHITECTURE.md' (D8) for the target design and
-;; `docs/PLAN.md' for the delegation delivery stage.
+;; A sub-agent is a run of its own: its own session, its own context, its
+;; own journal, and a set of tools it may use that is smaller than the set
+;; its parent may use.  The child cannot exceed what it was granted, and
+;; every attempt to do so is in its journal, where the parent can read it.
+;;
+;; The lineage is in the names: the session of a child is
+;; `<parent>.sub-<n>', so the tree of a session is readable from the files
+;; alone.  The parent is told what happened, too: the journal of the parent
+;; carries a `spawn' event and a `child-end' event.
+;;
+;; The depth is bounded: a child whose depth would reach the limit is
+;; refused, and the refusal is a `user-error' rather than a silent
+;; truncation.
 ;;
 ;; Public API:
 ;;
-;;   * `yeah-subagent-spawn PARENT-SESSION ROLE PROMPT &optional DEPTH'
-;;   * `yeah-subagent-wait CHILD-ID'
-;;   * `yeah-subagent-fork-summary PARENT-SESSION CHILD-SESSION'
+;;   * `yeah-subagent-spawn' PARENT-SESSION ROLE PROMPT &key ...
+;;   * `yeah-subagent-wait' CHILD-ID
+;;   * `yeah-subagent-cancel' CHILD-ID
+;;   * `yeah-subagent-children' PARENT-SESSION
+;;   * `yeah-subagent-fork-summary' PARENT-SESSION CHILD-SESSION
 ;;   * `yeah-subagent-depth-limit'
 ;;   * `yeah-subagent-reset-for-test'
-;;
-;; Sub-agent execution is a placeholder: spawning creates a child
-;; session and buffer and records a synchronous stub result, but runs
-;; neither gptel nor an agent loop.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-events)
+(require 'yeah-perm)
+(require 'yeah-run)
 (require 'yeah-session)
 
 (defgroup yeah-subagent nil
-  "Yeah sub-agent delegation API."
+  "Yeah sub-agent delegation."
   :group 'yeah)
 
 (defvar yeah-subagent--max-depth 3
@@ -40,9 +48,13 @@
 A child whose depth would be equal to or greater than this limit is refused.")
 
 (defvar yeah-subagent--active (make-hash-table :test 'eq :size 8)
-  "Table mapping child ids to child result plists.
-Each plist has shape (:id ID :role ROLE :prompt PROMPT :depth DEPTH
-:child-session SESSION :status STATUS :result RESULT).")
+  "Table mapping child ids to child record plists.
+Each record has shape (:id ID :role ROLE :prompt PROMPT :depth DEPTH
+:child-session SESSION :status STATUS :result RESULT :turn TURN
+:parent-id PARENT :tools TOOLS).")
+
+(defvar yeah-subagent--sessions (make-hash-table :test 'eq :size 8)
+  "Table mapping child ids to the session of their parent.")
 
 (defvar yeah-subagent--next-id 0
   "Next monotonic child id to assign.")
@@ -52,9 +64,8 @@ Each plist has shape (:id ID :role ROLE :prompt PROMPT :depth DEPTH
   (setq yeah-subagent--active (make-hash-table :test 'eq :size 8)))
 
 (defun yeah-subagent--root-from (session)
-  "Return the root directory of `session', the directory that
-holds the `sessions/' subdir holding the JSONL file. Recovered
-by walking up two levels from the `:path'."
+  "Return the root directory of SESSION, the directory that holds the
+`sessions/' subdir holding the JSONL file."
   (let ((path (plist-get session :path)))
     (when (stringp path)
       (let* ((dir (file-name-directory path))
@@ -65,13 +76,8 @@ by walking up two levels from the `:path'."
         (when root
           (directory-file-name root))))))
 
-(defun yeah-subagent--buffer-name (role id)
-  "Return the buffer name for a child with ROLE and id ID."
-  (format "*yeah-subagent-%s-%d*" role id))
-
-(defun yeah-subagent--validate-spawn-args (parent-session role prompt depth)
-  "Validate the args of a call to `yeah-subagent-spawn'.
-Signals `user-error' on a bad shape. Returns nil."
+(defun yeah-subagent--validate (parent-session role prompt depth)
+  "Validate the arguments of a spawn.  Signals `user-error' on a bad shape."
   (unless (and (consp parent-session) (plist-get parent-session :path))
     (signal 'user-error
             (list (format "yeah-subagent-spawn: bad parent session %S"
@@ -88,90 +94,158 @@ Signals `user-error' on a bad shape. Returns nil."
     (signal 'user-error
             (list (format "yeah-subagent-spawn: DEPTH must be a non-negative integer, got %S"
                           depth))))
-  (let ((child-depth (1+ depth))
-        (limit       yeah-subagent--max-depth))
-    (when (>= child-depth limit)
-      (signal 'user-error
-              (list (format
-                      "yeah-subagent-spawn: child depth %d would exceed limit %d"
-                      child-depth limit)))))
+  (when (>= (1+ depth) yeah-subagent--max-depth)
+    (signal 'user-error
+            (list (format "yeah-subagent-spawn: child depth %d would exceed limit %d"
+                          (1+ depth) yeah-subagent--max-depth))))
   nil)
 
-(defun yeah-subagent--stub-result (prompt)
-  "Return the placeholder result string for the stub.
-Echoes the first 80 characters of PROMPT so tests can assert
-that the prompt reached the child."
-  (let ((snippet (substring prompt 0 (min (length prompt) 80))))
-    (format "stub: %s" snippet)))
+(defun yeah-subagent--rules (tools)
+  "Return the rules that allow the tools named TOOLS and nothing else."
+  (mapcar (lambda (name) (yeah-perm-rule-make name "*" 'allow)) tools))
 
-(defun yeah-subagent-spawn (parent-session role prompt &optional depth)
-  "Spawn a child sub-agent and return its result plist.
+(defun yeah-subagent--last-answer (session)
+  "Return the last thing the model said in SESSION, or nil."
+  (let ((answer nil))
+    (dolist (record (yeah-session-records session))
+      (when (equal (plist-get record :type) "assistant-message")
+        (setq answer (plist-get record :payload))))
+    answer))
 
-PARENT-SESSION is the parent's session plist (from
-`yeah-session-open'). ROLE is a string identifying the role
-the child plays (e.g. \"explore\", \"review\", \"worker\").
-PROMPT is the user message. DEPTH is the depth of the caller
-in the sub-agent tree; the top-level loop passes 0; a child at
-depth 1 passes 1. The child's depth is `1+ DEPTH'.
+(defun yeah-subagent--finish (child-id turn)
+  "Record the end of the child CHILD-ID, whose TURN has finished."
+  (let ((record (gethash child-id yeah-subagent--active)))
+    (when record
+      (let* ((session (plist-get record :child-session))
+             (answer (yeah-subagent--last-answer session))
+             (ok (eq 'completed (yeah-turn-state turn)))
+             (parent (gethash child-id yeah-subagent--sessions)))
+        (setf (plist-get record :status) (if ok 'completed 'failed)
+              (plist-get record :result) (or answer ""))
+        (when parent
+          (yeah-events-write parent "child-end"
+                             :child (plist-get session :id)
+                             :role (plist-get record :role)
+                             :ok ok
+                             :summary (or answer "")))))))
 
-Signals `user-error' when the child's depth would be equal to
-or greater than `yeah-subagent-depth-limit'. The child
-session is a new `yeah-session-open' under the parent's root
-directory. The child has its own buffer named
-`*yeah-subagent-<ROLE>-<id>*'.
+(cl-defun yeah-subagent-spawn (parent-session role prompt
+                                  &key depth transport tools budget answerer)
+  "Spawn a child sub-agent and return its record.
 
-This is a placeholder: it runs neither gptel nor an agent loop.
-The result plist has shape
+PARENT-SESSION is the session of the parent.  ROLE names what the child
+does.  PROMPT is the task of the child.  DEPTH is the depth of the
+caller; the child is one deeper.  TRANSPORT reaches the model; it
+defaults to gptel.  TOOLS are the tools the child may use: every other
+tool is refused, and the refusal is in the journal of the child.  BUDGET
+is the context budget of the child.
 
-  (:id ID :role ROLE :prompt PROMPT :depth CHILD-DEPTH
-   :child-session SESSION :status completed :result STRING)
+The child runs in its own session, whose id carries the lineage:
+`<parent-id>.sub-<n>'.  The spawn is asynchronous: the record comes
+back with the status `running', and `yeah-subagent-wait' waits for the
+child to finish.
 
-and is also stored in `yeah-subagent--active' under ID for
-later lookup by `yeah-subagent-wait' or
-`yeah-subagent-fork-summary'.
-
-DEPTH defaults to 0 (top-level loop)."
+Signals `user-error' when the depth of the child would reach
+`yeah-subagent-depth-limit'."
   (let ((d (or depth 0)))
-    (yeah-subagent--validate-spawn-args parent-session role prompt d)
-    (let* ((root             (yeah-subagent--root-from parent-session))
-           (parent-id        (plist-get parent-session :id))
-           (child-id         yeah-subagent--next-id)
+    (yeah-subagent--validate parent-session role prompt d)
+    (let* ((root (yeah-subagent--root-from parent-session))
+           (child-id (cl-incf yeah-subagent--next-id))
+           (parent-id (plist-get parent-session :id))
            (child-session-id (format "%s.sub-%d" parent-id child-id))
-           (child-session    (yeah-session-open child-session-id root))
-           (child-depth      (1+ d))
-           (result-string    (yeah-subagent--stub-result prompt))
-           (record (list :id child-id
-                         :role role
-                         :prompt prompt
-                         :depth child-depth
-                         :child-session child-session
-                         :status 'completed
-                         :result result-string)))
-      (setq yeah-subagent--next-id (1+ yeah-subagent--next-id))
+           (child-session (yeah-session-open child-session-id root))
+           (child-depth (1+ d))
+           (record nil))
+      (setq record (list :id child-id
+                          :role role
+                          :prompt prompt
+                          :depth child-depth
+                          :child-session child-session
+                          :status 'running
+                          :result nil
+                          :turn nil
+                          :parent-id parent-id
+                          :parent-session-id parent-id
+                          :tools tools))
       (puthash child-id record yeah-subagent--active)
-      (let ((child-buffer-name (yeah-subagent--buffer-name role child-id)))
-        (condition-case nil
-            (get-buffer-create child-buffer-name)
-          (error nil)))
-      record)))
+      (puthash child-id parent-session yeah-subagent--sessions)
+      (yeah-events-write parent-session "spawn"
+                         :child child-session-id :role role :depth child-depth)
+      (let ((context (yeah-run-context-create
+                      :placement 'service
+                      :session child-session
+                      :transport transport
+                      :answerer answerer
+                      :rules (yeah-subagent--rules tools)
+                      :budget budget
+                      :on-done (lambda (turn)
+                                 (yeah-subagent--finish child-id turn)))))
+        (setf (plist-get record :turn)
+              (yeah-run-context-start context prompt))
+        record))))
 
-(defun yeah-subagent-wait (child-id)
-  "Return the result plist for CHILD-ID.
-The stub is synchronous: the result is the one recorded at
-spawn time, with `:status completed'. Signals `user-error'
-if CHILD-ID does not name an active sub-agent."
+(defun yeah-subagent-wait (child-id &optional timeout)
+  "Wait for the child CHILD-ID to finish and return its record.
+The wait is bounded by TIMEOUT seconds.  Signals `user-error' when
+CHILD-ID does not name a sub-agent."
   (let ((record (gethash child-id yeah-subagent--active)))
     (unless record
       (signal 'user-error
               (list (format "yeah-subagent-wait: no active sub-agent %S"
                             child-id))))
-    record))
+    (let ((turn (plist-get record :turn))
+          (deadline (+ (float-time) (or timeout 60))))
+      (while (and turn
+                  (not (yeah-turn-done turn))
+                  (< (float-time) deadline))
+        (accept-process-output nil 0.05))
+      record)))
+
+(defun yeah-subagent-cancel (child-id &optional reason)
+  "Cancel the child CHILD-ID and everything it spawned.
+Return non-nil when a running child was cancelled."
+  (let ((record (gethash child-id yeah-subagent--active)))
+    (when record
+      (let ((cancelled nil))
+        (dolist (child (yeah-subagent--children-of child-id))
+          (when (yeah-subagent-cancel (plist-get child :id) reason)
+            (setq cancelled t)))
+        (let ((turn (plist-get record :turn)))
+          (when (and turn (not (yeah-turn-done turn)))
+            (yeah-turn-cancel turn (or reason "cancelled by the parent"))
+            (setq cancelled t)))
+        cancelled))))
+
+(defun yeah-subagent--children-of (child-id)
+  "Return the records of the children of the child CHILD-ID."
+  (let ((children nil)
+        (record (gethash child-id yeah-subagent--active)))
+    (when record
+      (let ((parent (plist-get record :child-session)))
+        (maphash
+         (lambda (_id other)
+           (when (equal (plist-get other :parent-session-id)
+                        (plist-get parent :id))
+             (push other children)))
+         yeah-subagent--active)))
+    (nreverse children)))
+
+(defun yeah-subagent-children (parent-session)
+  "Return the records of the children of PARENT-SESSION."
+  (let ((children nil)
+        (parent-id (plist-get parent-session :id)))
+    (maphash
+     (lambda (_id record)
+       (when (equal (plist-get record :parent-session-id) parent-id)
+         (push record children)))
+     yeah-subagent--active)
+    (sort children (lambda (left right) (< (plist-get left :id)
+                                           (plist-get right :id))))))
 
 (defun yeah-subagent--find-id-by-session (child-session)
-  "Return the child id whose `:child-session' equals CHILD-SESSION,
-or nil if no such child exists."
+  "Return the child id whose `:child-session' equals CHILD-SESSION, or nil."
   (let ((target child-session)
-        (found  nil))
+        (found nil))
     (maphash
      (lambda (id record)
        (when (and (null found)
@@ -181,36 +255,32 @@ or nil if no such child exists."
     found))
 
 (defun yeah-subagent-fork-summary (parent-session child-session)
-  "Return a one-line summary string for CHILD-SESSION.
-The summary has shape `[sub-agent N] <result>' where N is the
-child id and `<result>' is the result string recorded at
-spawn time. PARENT-SESSION is accepted for symmetry with the
-public API but is not used to compute the summary.
-
-Signals `user-error' if CHILD-SESSION does not name an
-active sub-agent."
+  "Return a summary of what CHILD-SESSION did, for PARENT-SESSION.
+The summary is backed by the journal of the child: it says what the
+child answered, and it names the child."
   (ignore parent-session)
-  (let* ((id     (yeah-subagent--find-id-by-session child-session))
+  (let* ((id (yeah-subagent--find-id-by-session child-session))
          (record (and id (gethash id yeah-subagent--active))))
     (unless record
       (signal 'user-error
               (list (format "yeah-subagent-fork-summary: no active sub-agent for session %S"
                             child-session))))
-    (let ((result-string (plist-get record :result)))
-      (format "[sub-agent %d] %s" id result-string))))
+    (format "[sub-agent %d] %s"
+            id
+            (or (plist-get record :result)
+                (yeah-subagent--last-answer child-session)
+                ""))))
 
 (defun yeah-subagent-depth-limit ()
-  "Return the maximum sub-agent depth.
-Reads the dynamic `yeah-subagent--max-depth' so tests can
-override the value with `setq'."
+  "Return the maximum sub-agent depth."
   yeah-subagent--max-depth)
 
 (defun yeah-subagent-reset-for-test ()
   "Drop every active sub-agent and reset the id counter.
-Tests only. Matches the convention of
-`yeah-tools-reset-for-test' and `yeah-perm-rules-reset-for-test'."
+Tests only."
   (yeah-subagent--reset-table)
-  (setq yeah-subagent--next-id 0))
+  (setq yeah-subagent--next-id 0
+        yeah-subagent--sessions (make-hash-table :test 'eq :size 8)))
 
 (provide 'yeah-subagent)
 ;;; yeah-subagent.el ends here
