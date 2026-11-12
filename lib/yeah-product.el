@@ -13,6 +13,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-approval)
 (require 'yeah-control)
 (require 'yeah-events)
 (require 'yeah-input)
@@ -218,10 +219,20 @@ Emacs of the person, so the person may answer."
     (cancel-timer timer)
     (setq yeah-product--refresh-timer nil)))
 
-(defun yeah-product-open (&optional project-root transport answerer budget nudges frozen)
+(defun yeah-product--choose-profile ()
+  "Ask the person which permission profile the session runs under.
+The answer is `plan' or `build'; `build' is the default, and it is the
+behaviour of the harness without a profile: the person is asked for
+every tool that changes the world."
+  (let ((answer (read-char-choice "Yeah profile: [p]lan/[b]uild " '(?p ?b))))
+    (if (eq answer ?p) "plan" "build")))
+
+(defun yeah-product-open (&optional project-root transport answerer budget nudges frozen profile)
   "Open or create an interactive Yeah session for PROJECT-ROOT.
 TRANSPORT and ANSWERER are optional kernel inputs used by tests and callers;
-interactive use defaults to gptel and one-key human approvals."
+interactive use defaults to gptel and one-key human approvals.
+PROFILE is the permission profile of the session: `plan' refuses the tools
+that change the world, `build' asks for them."
   (let* ((root (or project-root (yeah-product-project-root)))
          (session-root (yeah-product-session-root root))
          (session (yeah-session-open (yeah-product--session-id root) session-root))
@@ -233,7 +244,9 @@ interactive use defaults to gptel and one-key human approvals."
       (yeah-mode)
       (setq yeah-product--control
             (yeah-control-new session transport
-                              (or answerer #'yeah-product--human-answerer)
+                              (yeah-approval-profile-answerer
+                               profile
+                               (or answerer #'yeah-product--human-answerer))
                               budget nudges frozen))
       (setq yeah-product--refresh-timer
             (run-at-time yeah-product-refresh-interval

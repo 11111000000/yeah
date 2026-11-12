@@ -123,5 +123,32 @@ evaluator raises `user-error'."
     (should err)
     (should (string-prefix-p "ask: " msg))))
 
+(ert-deftest yeah-perm-profile-plan-denies-the-tools-that-change-the-world ()
+  "The plan profile refuses the tools that change the world and says
+nothing about the others."
+  (let ((rules (yeah-perm-profile "plan")))
+    (should (eq 'deny (yeah-perm-effect "edit" "/tmp/x" rules)))
+    (should (eq 'deny (yeah-perm-effect "bash" "/bin/ls" rules)))
+    (should (eq 'ask (yeah-perm-effect "read" "/tmp/x" rules)))))
+
+(ert-deftest yeah-perm-profile-build-asks-for-the-tools-that-change-the-world ()
+  "The build profile asks the person about the tools that change the
+world and says nothing about the others."
+  (let ((rules (yeah-perm-profile "build")))
+    (should (eq 'ask (yeah-perm-effect "edit" "/tmp/x" rules)))
+    (should (eq 'ask (yeah-perm-effect "read" "/tmp/x" rules)))))
+
+(ert-deftest yeah-perm-profile-of-an-unknown-name-is-nil ()
+  "A profile that does not exist is not a profile."
+  (should-not (yeah-perm-profile "rewrite"))
+  (should (member "plan" (yeah-perm-profiles)))
+  (should (member "build" (yeah-perm-profiles))))
+
+(ert-deftest yeah-perm-profile-does-not-change-the-persistent-rules ()
+  "A profile is a mode of work, not a policy of the person."
+  (yeah-perm-rules-reset-for-test)
+  (yeah-perm-profile "plan")
+  (should (null (yeah-perm-rules-list))))
+
 (provide 'test-yeah-perm)
 ;;; test-yeah-perm.el ends here

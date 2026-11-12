@@ -92,6 +92,30 @@ Returns RULE. Signals `user-error' if RULE is malformed."
   "Return all current permission rules in registration order."
   yeah-perm--rules)
 
+(defconst yeah-perm--mutating-tools '("edit" "write" "bash" "job-cancel")
+  "The tools that change the world.
+They are the tools a permission profile has an opinion about; every
+other tool is read-only or harmless.")
+
+(defun yeah-perm-profiles ()
+  "Return the names of the permission profiles."
+  '("plan" "build"))
+
+(defun yeah-perm-profile (name)
+  "Return the rules of the permission profile NAME, or nil.
+
+`plan' denies the tools that change the world: the agent may look, but
+not touch.  `build' asks for them: the person decides each one, and
+the profile decides nothing else.  A profile is a mode of work, not a
+policy of the person, so its rules are not added to the persistent
+ruleset."
+  (pcase name
+    ("plan" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'deny))
+                    yeah-perm--mutating-tools))
+    ("build" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'ask))
+                     yeah-perm--mutating-tools))
+    (_ nil)))
+
 (defun yeah-perm-rules-append (rules rule)
   "Return RULES with RULE appended, without touching the global ruleset.
 RULE must be a valid rule plist.  This is how a run keeps rules of its

@@ -317,6 +317,12 @@ buffers, budgets or terminal states.
 doom-loop detection that permits legitimate repeated reads, and structured
 terminal reasons.
 
+**3.7 Permission profiles (implemented on 2026-11-12).** The session runs
+under a profile: `plan' refuses the tools that change the world before
+anyone is asked, `build' asks the person for them, and the profile decides
+nothing else. A profile is a mode of work, not a policy of the person: the
+persistent ruleset is never changed by it.
+
 ### Exit criteria
 
 The integration scenario “start → steer → cancel → restart Emacs → inspect

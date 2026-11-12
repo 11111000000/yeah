@@ -46,7 +46,8 @@ kernel:
 - undo boundaries, retries/timeouts, calibrated context and asynchronous
   compaction with pruning events and corrupt-tail recovery;
 - queued human control with persistent pending inputs, steering, cancellation,
-  completion nudges, whole-run deadlines and retry backoff;
+  completion nudges, whole-run deadlines and retry backoff, and the Plan
+  and Build permission profiles;
 - an interactive journal mode with `M-x yeah`, ask/steer/cancel/recover,
   withdrawal, diff review and `M-x yeah-doctor`;
 - an ACP v1 agent over newline JSON-RPC on stdio, with real sessions, journal
@@ -60,7 +61,7 @@ kernel:
 - agent presets read from files, and a delegation that runs a child for
   real: its own session, its own permissions, its own journal.
 
-After Stage 7, byte compilation is clean and 230 ERT unit tests pass.
+After Stage 7, byte compilation is clean and 240 ERT unit tests pass.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
 (real Emacs processes serving ACP and MCP over stdio), the placements

@@ -68,6 +68,14 @@
       (yeah-subagent-reset-for-test)
       (yeah-subagent-test--cleanup tmpdir))))
 
+(defun yeah-subagent-test--deferred-transport (table)
+  "Return a transport that waits for the answer of the test.
+TABLE is a hash table; the pending callbacks are collected under the
+key `pending'."
+  (lambda (_prompt callback)
+    (puthash 'pending (cons callback (gethash 'pending table)) table)
+    nil))
+
 (ert-deftest yeah-subagent-child-runs-for-real ()
   "The child runs a turn of its own and writes down what it did."
   (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
@@ -160,6 +168,43 @@
                                    (yeah-session-records parent))))
                 (should (equal (plist-get end :child) (plist-get child-id :id)))
                 (should (equal (plist-get end :summary) "the answer"))))))
+      (yeah-subagent-reset-for-test)
+      (yeah-subagent-test--cleanup tmpdir))))
+
+(ert-deftest yeah-subagent-two-children-run-at-the-same-time ()
+  "Two children spawned before either of them finishes both run, and the
+parent is told about both."
+  (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
+         (parent (yeah-session-open "parallel" tmpdir))
+         (callbacks (make-hash-table :test 'eq)))
+    (unwind-protect
+        (progn
+          (yeah-subagent-reset-for-test)
+          (let* ((first (yeah-subagent-spawn
+                         parent "explore" "One"
+                         :transport (yeah-subagent-test--deferred-transport
+                                     callbacks)))
+                 (second (yeah-subagent-spawn
+                          parent "review" "Two"
+                          :transport (yeah-subagent-test--deferred-transport
+                                      callbacks))))
+            (should (= 2 (length (gethash 'pending callbacks))))
+            (should (not (eq (plist-get first :status) 'completed)))
+            (should (not (eq (plist-get second :status) 'completed)))
+            ;; Both children are answered; each writes its own journal.
+            (dolist (callback (gethash 'pending callbacks))
+              (funcall callback "the answer"))
+            (dolist (record (list first second))
+              (should (eq 'completed (plist-get record :status)))
+              (should (equal (plist-get record :result) "the answer")))
+            (let ((types (mapcar (lambda (event) (plist-get event :type))
+                                 (yeah-session-records parent))))
+              (should (= 2 (length (seq-filter (lambda (type)
+                                                 (equal type "spawn"))
+                                               types))))
+              (should (= 2 (length (seq-filter (lambda (type)
+                                                 (equal type "child-end"))
+                                               types)))))))
       (yeah-subagent-reset-for-test)
       (yeah-subagent-test--cleanup tmpdir))))
 
