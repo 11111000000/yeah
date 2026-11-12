@@ -1,0 +1,19 @@
+{
+  "id": "wave-19",
+  "title": "run supervision: every run ends, and says why",
+  "intent": "The most expensive failure of an agent is not the one that crashes but the one that continues: the run keeps asking the model, the model keeps asking for the same read, and the person's tokens and money go into a loop that nobody declared. This wave is supervision with visible teeth — a bounded number of visible nudges, a whole-run deadline, retries with backoff, and a doom-loop detector that does not punish a legitimate repeated read.",
+  "touches": [ "lib/yeah-turn.el", "lib/yeah-runtime.el", "tests/", "spec.json", "waves/" ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-control.el tests/unit/test-yeah-turn.el",
+    "./scripts/dev check tests/checks/check-runtime-never-blocks.el"
+  ],
+  "claims": [
+    "run-supervision-is-bounded"
+  ],
+  "commitment": [
+    { "claim": "run-supervision-is-bounded", "state": "holds" }
+  ],
+  "objection": "A detector that stops a legitimate repeated read teaches the model that reading twice is forbidden, and the model then reads once and guesses — which is more expensive than the read.",
+  "refuted_by": "A run of legitimate repeated inspection that the detector kills, or a run that exceeds its deadline without a terminal reason in the journal. One of the two is a bug in the supervisor."
+}

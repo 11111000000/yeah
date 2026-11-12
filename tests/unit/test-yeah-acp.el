@@ -1,111 +1,154 @@
-;;; test-yeah-acp.el --- ERT tests for yeah-acp -*- lexical-binding: t; -*-
+;;; test-yeah-acp.el --- ERT tests for the ACP v1 agent -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
-
-;;; Commentary:
-;;
-;; Positive and negative tests for `lib/yeah-acp.el'. The
-;; positive tests exercise the four ACP handlers and the
-;; JSON-RPC dispatcher; the negative tests exercise the closest
-;; plausible failure modes (malformed JSON, missing required
-;; fields, unknown methods).
 
 ;;; Code:
 
 (require 'ert)
+(require 'cl-lib)
 (require 'yeah-acp)
 
-(defun yeah-acp-test--reset-counter ()
-  "Reset `yeah-acp--counter' to 0 for deterministic ids."
-  (setq yeah-acp--counter 0))
+(defun yeah-acp-test--parse (json-string)
+  "Parse JSON-STRING as a plist."
+  (json-parse-string json-string :object-type 'plist :array-type 'list))
 
-(defun yeah-acp-test--parse-response (json-string)
-  "Parse JSON-STRING as a plist for assertion convenience."
-  (json-parse-string json-string :object-type 'plist))
+(defun yeah-acp-test--prompt-request (id session-id text)
+  "Return one valid ACP prompt request string for ID, SESSION-ID and TEXT."
+  (json-serialize
+   (list :jsonrpc "2.0"
+         :id id
+         :method "session/prompt"
+         :params (list :sessionId session-id
+                       :prompt (vector (list :type "text" :text text))))))
 
-;; --- Positive: yeah-acp-initialize ---
+(defun yeah-acp-test--find-response (emitted id)
+  "Return the emitted message answering request ID, or nil."
+  (cl-find-if
+   (lambda (text)
+     (equal id (plist-get (yeah-acp-test--parse text) :id)))
+   emitted))
 
-(ert-deftest yeah-acp-initialize-returns-version ()
-  "A well-formed handshake returns a response with `protocolVersion'."
-  (let* ((handshake (list :protocolVersion "2025-01-01"
-                           :clientInfo         '(:name "zed" :version "0.100")
-                           :clientCapabilities '(:loadSession t :prompt t :cancel t)))
-         (response (yeah-acp-initialize handshake)))
-    (should (plist-member response :protocolVersion))
-    (should (string= "2025-01-01" (plist-get response :protocolVersion)))
-    (should (plist-member response :agentInfo))
-    (should (plist-member response :agentCapabilities))))
+(defun yeah-acp-test--stop-reason (text)
+  "Return the stopReason carried by the response TEXT."
+  (plist-get (plist-get (yeah-acp-test--parse text) :result) :stopReason))
 
-;; --- Negative: yeah-acp-initialize ---
+(defmacro yeah-acp-test--with-server (&rest body)
+  "Run BODY with isolated ACP state, model transport and output."
+  (declare (indent 0))
+  `(let* ((directory (make-temp-file "yeah-acp-test" t))
+          (yeah-data-home directory)
+          (yeah-acp--transport nil)
+          (yeah-acp--answerer nil)
+          (yeah-acp--output-function nil))
+     (unwind-protect
+         (progn
+           (yeah-acp--reset-for-test)
+           ,@body)
+       (yeah-acp--reset-for-test)
+       (ignore-errors (delete-directory directory t t)))))
 
-(ert-deftest yeah-acp-initialize-rejects-missing-protocolVersion ()
-  "A handshake without `protocolVersion' raises `user-error'."
-  (let ((err nil)
-        (bad-handshake (list :clientInfo '(:name "zed"))))
-    (condition-case nil
-        (yeah-acp-initialize bad-handshake)
-      (user-error (setq err t)))
-    (should err)))
+(defun yeah-acp-test--new-session ()
+  "Create a session in the isolated ACP test server and return its id."
+  (plist-get
+   (yeah-acp-session-new (list :cwd (file-truename yeah-data-home)
+                               :mcpServers nil))
+   :sessionId))
 
-;; --- Positive: yeah-acp-session-new ---
+(ert-deftest yeah-acp-initialize-negotiates-protocol-one ()
+  (yeah-acp-test--with-server
+    (let ((response (yeah-acp-initialize
+                     (list :protocolVersion 1 :clientInfo '(:name "zed")))))
+      (should (= 1 (plist-get response :protocolVersion)))
+      (should (equal "yeah" (plist-get (plist-get response :agentInfo) :name)))
+      (should (eq t (plist-get (plist-get response :agentCapabilities)
+                               :loadSession))))))
 
-(ert-deftest yeah-acp-session-new-creates-session ()
-  "A session/new request returns a non-empty string sessionId."
-  (yeah-acp-test--reset-counter)
-  (let ((response (yeah-acp-session-new (list :clientInfo nil))))
-    (should (plist-member response :sessionId))
-    (let ((id (plist-get response :sessionId)))
-      (should (stringp id))
-      (should (> (length id) 0)))))
+(ert-deftest yeah-acp-initialize-rejects-string-protocol-version ()
+  (yeah-acp-test--with-server
+    (should-error (yeah-acp-initialize '(:protocolVersion "1"))
+                  :type 'user-error)))
 
-;; --- Positive: yeah-acp-session-prompt ---
+(ert-deftest yeah-acp-session-new-load-and-updates ()
+  (yeah-acp-test--with-server
+    (let* ((updates nil)
+           (session-id (yeah-acp-test--new-session))
+           (session (plist-get (yeah-acp--session-state session-id) :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text updates)))
+      (yeah-events-write session "assistant-message" :payload "hello")
+      (should (= 1 (length updates)))
+      (let* ((update (yeah-acp-test--parse (car updates)))
+             (params (plist-get update :params)))
+        (should (equal "session/update" (plist-get update :method)))
+        (should (equal session-id (plist-get params :sessionId)))
+        (should (equal "agent_message_chunk"
+                       (plist-get (plist-get params :update) :sessionUpdate))))
+      (let ((loaded (yeah-acp-session-load
+                     (list :sessionId session-id :cwd yeah-data-home
+                           :mcpServers nil))))
+        (should (equal session-id (plist-get loaded :sessionId)))
+        (should (yeah-acp--session-state session-id))))))
 
-(ert-deftest yeah-acp-session-prompt-returns-message-id ()
-  "A session/prompt request returns a `(:messageId ID)' plist."
-  (yeah-acp-test--reset-counter)
-  (let ((response (yeah-acp-session-prompt (list :sessionId "s-1-1"
-                                                  :text      "hello"))))
-    (should (plist-member response :messageId))
-    (let ((id (plist-get response :messageId)))
-      (should (stringp id))
-      (should (> (length id) 0)))))
+(ert-deftest yeah-acp-prompt-answers-with-end-turn-stop-reason ()
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (setq yeah-acp--transport
+            (lambda (_prompt callback) (funcall callback "the answer")))
+      (should-not
+       (yeah-acp-handle-message
+        (yeah-acp-test--prompt-request 7 session-id "hello")))
+      (let ((response (yeah-acp-test--find-response emitted 7)))
+        (should response)
+        (should (equal "end_turn" (yeah-acp-test--stop-reason response))))
+      (should (cl-some (lambda (text)
+                         (string-match-p "agent_message_chunk" text))
+                       emitted)))))
 
-;; --- Positive: yeah-acp-session-cancel ---
+(ert-deftest yeah-acp-cancel-answers-prompt-with-cancelled ()
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (setq yeah-acp--transport (lambda (_prompt _callback) nil))
+      (should-not
+       (yeah-acp-handle-message
+        (yeah-acp-test--prompt-request 9 session-id "wait")))
+      (yeah-acp-handle-message
+       (json-serialize
+        (list :jsonrpc "2.0"
+              :method "session/cancel"
+              :params (list :sessionId session-id))))
+      (let ((response (yeah-acp-test--find-response emitted 9)))
+        (should response)
+        (should (equal "cancelled" (yeah-acp-test--stop-reason response))))
+      (should-not (gethash session-id yeah-acp--active-turns)))))
 
-(ert-deftest yeah-acp-session-cancel-acknowledges ()
-  "A session/cancel request returns `(:status \"cancelled\" :sessionId ID)'."
-  (let ((response (yeah-acp-session-cancel (list :sessionId "s-1-1"))))
-    (should (plist-member response :status))
-    (should (string= "cancelled" (plist-get response :status)))
-    (should (string= "s-1-1" (plist-get response :sessionId)))))
-
-;; --- Positive: dispatcher routing ---
-
-(ert-deftest yeah-acp-handle-message-routes-correctly ()
-  "A full JSON-RPC `initialize' request comes back as a JSON-RPC
-response carrying `result.protocolVersion'."
-  (let ((request (concat "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\","
-                          "\"params\":{\"protocolVersion\":\"2025-01-01\","
-                                          "\"clientInfo\":{\"name\":\"zed\"},"
-                                          "\"clientCapabilities\":{\"prompt\":true}}}"))
-        (response-json nil))
-    (setq response-json (yeah-acp-handle-message request))
-    (let ((response (yeah-acp-test--parse-response response-json)))
-      (should (string= "2.0" (plist-get response :jsonrpc)))
-      (should (= 1 (plist-get response :id)))
-      (let ((result (plist-get response :result)))
-        (should (plist-member result :protocolVersion))
-        (should (string= "2025-01-01" (plist-get result :protocolVersion)))))))
-
-;; --- Negative: dispatcher ---
+(ert-deftest yeah-acp-prompt-rejects-unsupported-content-block ()
+  (yeah-acp-test--with-server
+    (let* ((session-id (yeah-acp-test--new-session))
+           (request
+            (format
+             (concat "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"session/prompt\","
+                     "\"params\":{\"sessionId\":\"%s\",\"prompt\":[{\"type\":\"image\"}]}}")
+             session-id))
+           (response (yeah-acp-test--parse (yeah-acp-handle-message request))))
+      (should (= -32602 (plist-get (plist-get response :error) :code))))))
 
 (ert-deftest yeah-acp-handle-message-rejects-malformed-json ()
-  "Malformed JSON returns a JSON-RPC parse error (-32700)."
-  (let* ((response-json (yeah-acp-handle-message "{not-json"))
-         (response (yeah-acp-test--parse-response response-json)))
-    (should (plist-member response :error))
-    (let ((err (plist-get response :error)))
-      (should (= -32700 (plist-get err :code))))))
+  (yeah-acp-test--with-server
+    (let* ((response (yeah-acp-test--parse
+                      (yeah-acp-handle-message "{not-json"))))
+      (should (= -32700 (plist-get (plist-get response :error) :code))))))
+
+(ert-deftest yeah-acp-handle-message-refuses-unknown-method ()
+  (yeah-acp-test--with-server
+    (let ((response
+           (yeah-acp-test--parse
+            (yeah-acp-handle-message
+             (concat "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"unknown\","
+                     "\"params\":{}}")))))
+      (should (= -32601 (plist-get (plist-get response :error) :code))))))
 
 (provide 'test-yeah-acp)
 ;;; test-yeah-acp.el ends here

@@ -9,8 +9,11 @@
 > self-inspection and a fixed point where Yeah can develop and verify Yeah.
 > These are goals, not assertions about today's prototype.
 >
-> This repository is governed by **math-coding v4**: `spec.json` holds claims,
-> `waves/*.json` holds historical work units and evidence comes from checks.
+> This repository is governed by **math-coding**: `spec.json` holds claims,
+> `waves/*.json` holds the work units and evidence comes from checks.
+> Version 4 of the tool is frozen and version 5 is being developed, so the
+> frozen `map`/`run`/`gate` commands are not to be run: byte compilation, ERT
+> and the direct canaries are the current evidence.
 > `docs/PLAN.md` defines the current target sequence; do not mistake an old
 > wave number or a green module row for a working end-to-end feature.
 
@@ -34,9 +37,27 @@ work item. Never resolve it by silently making documentation more optimistic.
 ## Current warnings for every agent
 
 - This is a kernel prototype, not a usable coding product.
-- REPL, ACP prompt/cancel, MCP handlers and sub-agent execution contain
-  placeholders. Do not build new public behavior on top of them while their
-  stage's prerequisites are unmet.
+- Stage 5 is implemented offline: the ACP agent and the MCP server speak
+  newline JSON-RPC over stdio, the `emacs__*` handlers are real, and the MCP
+  client imports foreign tools. Two limits are not hidden — the stdio server
+  answers one request at a time (a cancel cannot preempt a running prompt),
+  and no third-party client or live provider has driven either server.
+- REPL and sub-agent execution still contain placeholders, and the three
+  placements are not implemented. Do not build new public behavior on top of
+  them while their stage's prerequisites are unmet.
+- Stage 4 is implemented offline: `M-x yeah`, journal commands, doctor and a
+  package-vc bootstrap exist.  Bootstrap and live-provider interactive work
+  are not yet verified, so the public alpha gate remains open.
+- Stage 3 is implemented offline: persistent pending FIFO, frozen inputs,
+  steering at batch boundaries, cancellation, nudges and deadlines have
+  integration tests, including synchronous callback races.
+- Stage 2 is implemented offline: usage calibration, asynchronous compaction,
+  pruning events and corrupt-tail recovery are covered by unit/canary tests.
+  The compatibility `yeah-context-summarize` never waits; real providers use
+  the asynchronous API. Live-provider acceptance remains unverified.
+- Stage 1 is implemented offline: coding tools, tick editing, async jobs,
+  output artifacts and Emacs introspection pass their unit and end-to-end
+  checks. Live-provider acceptance has not been verified.
 - Stage 0.5 is implemented: module comments match current behavior and no
   longer reference nonexistent decisions/Tier/ROADMAP documents. Stage 0.4
   awaits math-coding v5; do not run frozen v4 commands.
@@ -48,8 +69,6 @@ work item. Never resolve it by silently making documentation more optimistic.
 - Stage 0.1 is implemented: gptel requests use a private, version-checked
   adapter without global hooks. Recheck compatibility whenever gptel changes;
   supported pinned versions are declared in `lib/yeah-gptel.el`.
-- `yeah-context-summarize` contains blocking wait behavior targeted for
-  removal; do not copy that pattern.
 - A `holds` claim proves its stated check only, not overall product readiness.
 
 ## The commands

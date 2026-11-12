@@ -1,4 +1,4 @@
-;;; yeah-runtime.el --- the runtime of a run -*- lexical-binding: t; -*-
+;;; yeah-runtime.el --- asynchronous runtime guards -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -9,18 +9,9 @@
 
 ;;; Commentary:
 ;;
-;; An agent that runs without a person has obligations a person does not
-;; have. A call can fail, and failing once is not a reason to stop; a
-;; call can hang, and hanging is not a reason to wait for ever; and a
-;; model can ask for the same thing for ever, which is a way of spending
-;; somebody's money without making any progress.
-;;
-;; So there are three guards: a call is retried, a call is cut, and a run
-;; that repeats itself is stopped.
-;;
-;; And none of the guards holds the main loop: a command runs in a
-;; process, its output arrives at the filter, its end arrives at the
-;; sentinel, and the answer comes to a callback when it comes.
+;; Failing commands are retried with bounded linear backoff, hanging commands
+;; are cut by a timer, and repeated mutating calls are detected as possible
+;; doom loops.  Repeated read-only inspection is explicitly allowed.
 
 ;;; Code:
 
@@ -32,35 +23,36 @@
 (defconst yeah-runtime--default-timeout 120
   "How many seconds a call may take before it is cut.")
 
+(defconst yeah-runtime--default-backoff 0.25
+  "Seconds before the next retry after a transient failure.")
+
 (defconst yeah-runtime--doom-loop-threshold 3
-  "How many times the same call in a row is a loop.")
+  "How many identical mutating calls in a row indicate a possible loop.")
 
 (defun yeah-runtime-doom-loop-p (calls)
-  "Non-nil when CALLS holds the same call three times in a row.
-A model that asks for the same thing for ever is not making progress,
-and the run must be stopped before it spends the money of somebody
-else."
+  "Return non-nil when CALLS repeats one mutating call three times in a row.
+Read, glob and grep calls are inspection, so their repetition is legitimate."
   (let ((run 0)
         (last nil)
         (found nil))
     (dolist (call calls)
-      (if (equal call last)
-          (setq run (1+ run))
-        (setq run 1))
-      (setq last call)
-      (when (>= run yeah-runtime--doom-loop-threshold)
-        (setq found t)))
+      (unless (memq (car call) '(read glob grep))
+        (if (equal call last)
+            (setq run (1+ run))
+          (setq run 1))
+        (setq last call)
+        (when (>= run yeah-runtime--doom-loop-threshold)
+          (setq found t))))
     found))
 
 (defun yeah-runtime--settle (state)
-  "Hand the outcome of one attempt to the callback in STATE.
-STATE is a plist: :command, :callback, :timeout, :attempt, :retries,
-:timed-out, :status and :output."
+  "Hand the outcome of one attempt to the callback in STATE."
   (let ((command (plist-get state :command))
         (callback (plist-get state :callback))
         (timeout (plist-get state :timeout))
         (attempt (plist-get state :attempt))
         (retries (plist-get state :retries))
+        (backoff (plist-get state :backoff))
         (timed-out (plist-get state :timed-out))
         (status (plist-get state :status))
         (output (plist-get state :output)))
@@ -71,14 +63,15 @@ STATE is a plist: :command, :callback, :timeout, :attempt, :retries,
       (funcall callback (list :ok nil :timeout t :attempts attempt
                               :output output)))
      ((> retries 0)
-      (yeah-runtime--attempt command callback timeout (1+ attempt) (1- retries)))
+      (run-at-time backoff nil
+                   (lambda ()
+                     (yeah-runtime--attempt command callback timeout
+                                            (1+ attempt) (1- retries) backoff))))
      (t
       (funcall callback (list :ok nil :attempts attempt :output output))))))
 
-(defun yeah-runtime--attempt (command callback timeout attempt retries)
-  "Run COMMAND once and hand the outcome to CALLBACK.
-TIMEOUT is the number of seconds the call may take, ATTEMPT which
-attempt this is, and RETRIES how many attempts are left after this one."
+(defun yeah-runtime--attempt (command callback timeout attempt retries backoff)
+  "Run COMMAND once and hand its outcome to CALLBACK."
   (let ((output "")
         (answered nil)
         (timed-out nil)
@@ -86,6 +79,7 @@ attempt this is, and RETRIES how many attempts are left after this one."
         (process nil))
     (setq process (make-process :name "yeah-runtime"
                                 :command (list "sh" "-c" command)
+                                :coding '(utf-8 . utf-8)
                                 :noquery t))
     (set-process-filter
      process
@@ -100,12 +94,12 @@ attempt this is, and RETRIES how many attempts are left after this one."
          (setq answered t)
          (yeah-runtime--settle
           (list :command command :callback callback :timeout timeout
-                :attempt attempt :retries retries :timed-out timed-out
+                :attempt attempt :retries retries :backoff backoff
+                :timed-out timed-out
                 :status (process-exit-status proc) :output output)))))
     (setq timer
-          (run-with-timer
-           timeout
-           nil
+          (run-at-time
+           timeout nil
            (lambda ()
              (unless answered
                (setq answered t)
@@ -113,22 +107,18 @@ attempt this is, and RETRIES how many attempts are left after this one."
                (ignore-errors (delete-process process))
                (yeah-runtime--settle
                 (list :command command :callback callback :timeout timeout
-                      :attempt attempt :retries retries :timed-out t
-                      :status 1 :output output))))))))
+                      :attempt attempt :retries retries :backoff backoff
+                      :timed-out t :status 1 :output output))))))))
 
-(cl-defun yeah-runtime-call (command callback &key retries timeout)
-  "Run COMMAND and call CALLBACK with the outcome.
-COMMAND is a shell command. CALLBACK is called with a plist: `:ok',
-`:output', `:attempts', and `:timeout' when the call was cut. A call
-that fails is tried again, up to RETRIES times; a call that takes
-longer than TIMEOUT seconds is cut.
-
-The command runs in a process and the answer arrives at the callback,
-so the main loop is never held."
+(cl-defun yeah-runtime-call (command callback &key retries timeout backoff)
+  "Run COMMAND asynchronously and call CALLBACK with its outcome.
+RETRIES defaults to 2, TIMEOUT to 120 seconds and BACKOFF to 0.25 seconds.
+Only failed attempts are delayed; a hanging attempt is cut without retry."
   (yeah-runtime--attempt command callback
-                      (or timeout yeah-runtime--default-timeout)
-                      1
-                      (or retries yeah-runtime--default-retries)))
+                         (or timeout yeah-runtime--default-timeout)
+                         1
+                         (or retries yeah-runtime--default-retries)
+                         (or backoff yeah-runtime--default-backoff)))
 
 (provide 'yeah-runtime)
 ;;; yeah-runtime.el ends here

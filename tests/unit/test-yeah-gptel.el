@@ -87,7 +87,7 @@
                                         :use-tools gptel-use-tools))
                    nil)))
         (yeah-gptel-request "question" #'ignore))
-      (should (= 1 (length (plist-get captured :tools))))
+      (should (>= (length (plist-get captured :tools)) 1))
       (should (equal "read" (plist-get (car (plist-get captured :tools)) :name)))
       (should (eq t (plist-get captured :use-tools))))))
 

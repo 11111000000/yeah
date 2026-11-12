@@ -1,0 +1,21 @@
+{
+  "id": "wave-17",
+  "title": "context, compaction and the tail of a broken log",
+  "intent": "Long work outlives the context window, and a long session outlives the process that wrote it. Two failures hide here: a compaction that blocks the editor while it waits for a summary, and a session log whose last line was cut in half by a crash — where the easy repair is to silently drop the record and lie about the history. This wave makes compaction asynchronous and honest (an empty or failed summary never replaces the projection) and makes the journal recover what it can and say what it could not.",
+  "touches": [ "lib/yeah-context.el", "lib/yeah-compact.el", "lib/yeah-turn.el", "lib/yeah-events.el", "lib/yeah-session.el", "tests/", "spec.json", "waves/" ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-context.el tests/unit/test-yeah-session.el tests/unit/test-yeah-compact.el",
+    "./scripts/dev check tests/checks/check-turn-compacts-asynchronously.el tests/checks/check-compaction-keeps-sources.el"
+  ],
+  "claims": [
+    "the-context-compacts-without-blocking",
+    "the-session-reports-corrupt-tail"
+  ],
+  "commitment": [
+    { "claim": "the-context-compacts-without-blocking", "state": "holds" },
+    { "claim": "the-session-reports-corrupt-tail", "state": "holds" }
+  ],
+  "objection": "Compaction that is asynchronous is compaction that can fail silently: the run continues with a context that was never compacted, and the budget that was supposed to protect the provider is simply gone.",
+  "refuted_by": "A provider that fails during compaction. If the projection is replaced by an empty summary, or the budget stops being enforced, the asynchronous compaction bought latency with correctness."
+}

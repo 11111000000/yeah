@@ -20,6 +20,7 @@
 (require 'cl-lib)
 (require 'yeah-tools)
 (require 'yeah-perm)
+(require 'yeah-result)
 
 (defgroup yeah-codes nil
   "Experimental Yeah programmatic tool calling."
@@ -227,7 +228,7 @@ before anything runs."
     (unless (eq decision :allow)
       (signal 'user-error
               (list (format "yeah-codes: the rules do not allow %s" name))))
-    (apply #'yeah-tools-call name (list args))))
+    (yeah-result-model-text (apply #'yeah-tools-call name (list args)))))
 
 (defun yeah-codes--tool-bindings ()
   "Return the binding list of the evaluator: the tools are reached through

@@ -1,4 +1,4 @@
-;;; yeah-compact.el --- pure compactor over the session log -*- lexical-binding: t; -*-
+;;; yeah-compact.el --- compaction over the session journal -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -9,15 +9,10 @@
 
 ;;; Commentary:
 ;;
-;; The compactor is a projection over the append-only session log.  It finds
-;; a cut-point from a character target, summarizes records before it and
-;; appends one compaction record through `yeah-session-record-compaction'.
-;; Source records are never modified.
-;;
-;; The default summarizer calls the model through `yeah-context-summarize';
-;; callers can supply another summarizer for tests.  That context function
-;; currently contains blocking wait behavior scheduled for replacement in
-;; Stage 2 of `docs/PLAN.md'.
+;; Compaction appends a summary record; source events are never deleted.
+;; `yeah-compact-run-async' is the production API: the summary arrives through
+;; a callback and only a complete nonblank answer is committed.  The older
+;; `yeah-compact-run' remains useful with synchronous test summarizers.
 
 ;;; Code:
 
@@ -26,91 +21,109 @@
 (require 'yeah-context)
 
 (defgroup yeah-compact nil
-  "Yeah compactor (pure projection over the session log)."
+  "Yeah compaction over the append-only session journal."
   :group 'yeah)
 
 (defun yeah-compact-cut-point (session target-chars)
-  "Return the record id of the first record that crosses TARGET-CHARS.
-Walks SESSION's records oldest to newest, accumulating
-`(length (prin1-to-string record))' per record. Returns the
-:id of the first record whose running total is strictly
-greater than TARGET-CHARS. Returns nil when no record crosses
-the budget (no compaction needed).
-
-Records before the returned id are summarised; records from
-the returned id onwards are preserved verbatim."
+  "Return the first record id whose cumulative printed length crosses TARGET-CHARS.
+Return nil when SESSION fits the target.  TARGET-CHARS must be nonnegative."
   (unless (and (consp session) (plist-get session :records))
-    (signal 'user-error
-            (list (format "yeah-compact-cut-point: not a session %S" session))))
+    (signal 'user-error (list (format "yeah-compact-cut-point: not a session %S"
+                                      session))))
   (unless (and (integerp target-chars) (>= target-chars 0))
     (signal 'user-error
-            (list (format "yeah-compact-cut-point: target must be a non-negative integer, got %S"
+            (list (format "yeah-compact-cut-point: invalid target %S"
                           target-chars))))
   (let ((running 0)
         (result nil))
-    (dolist (r (yeah-session-records session))
-      (setq running (+ running (length (prin1-to-string r)))))
-    (setq running 0)
-    (dolist (r (yeah-session-records session))
-      (setq running (+ running (length (prin1-to-string r))))
+    (dolist (record (yeah-session-records session))
+      (setq running (+ running (length (prin1-to-string record))))
       (when (and (null result) (> running target-chars))
-        (setq result (plist-get r :id))))
+        (setq result (plist-get record :id))))
     result))
 
-(defun yeah-compact--default-summarizer (records)
-  "Summarize RECORDS by asking the model.
-The summary of a run is written by the model, because nothing else
-knows what mattered in the conversation. The records stay on disk; only
-the projection changes."
-  (yeah-context-summarize
-   (mapconcat (lambda (record) (format "%S" record)) records "\n")))
+(defun yeah-compact--before (session cut-point)
+  "Return SESSION records with ids strictly below CUT-POINT."
+  (cl-remove-if-not
+   (lambda (record)
+     (let ((id (plist-get record :id)))
+       (and (integerp id) (< id cut-point))))
+   (yeah-session-records session)))
 
 (defun yeah-compact-summarize (session cut-point &optional summarizer)
-  "Summarise the records before CUT-POINT in SESSION.
-Returns the string produced by SUMMARIZER (a `(lambda (records) -> string)')
-called with the list of records whose id is strictly less than
-CUT-POINT. When SUMMARIZER is nil, uses
-`yeah-compact--default-summarizer'."
-  (unless (and (consp session) (plist-get session :records))
-    (signal 'user-error
-            (list (format "yeah-compact-summarize: not a session %S" session))))
+  "Summarize SESSION records before CUT-POINT with SUMMARIZER.
+The default summarizer is the nonblocking-when-possible compatibility wrapper
+around `yeah-context-summarize'.  Use `yeah-compact-run-async' for gptel."
   (unless (integerp cut-point)
-    (signal 'user-error
-            (list (format "yeah-compact-summarize: cut-point must be an integer, got %S"
-                          cut-point))))
-  (let ((before nil)
-        (summarizer (or summarizer #'yeah-compact--default-summarizer)))
-    (dolist (r (yeah-session-records session))
-      (let ((rid (plist-get r :id)))
-        (when (and (integerp rid) (< rid cut-point))
-          (push r before))))
-    (funcall summarizer (nreverse before))))
+    (signal 'user-error (list "yeah-compact-summarize: invalid cut-point")))
+  (let ((summarizer (or summarizer
+                        (lambda (records)
+                          (yeah-context-summarize
+                           (mapconcat (lambda (record) (format "%S" record))
+                                      records "\n"))))))
+    (funcall summarizer (yeah-compact--before session cut-point))))
+
+(defun yeah-compact--result (session cut summary &optional error)
+  "Return a compaction result for SESSION, CUT, SUMMARY and optional ERROR."
+  (list :cut-point cut
+        :summary summary
+        :error error
+        :projection-count (length (yeah-session-project session))))
 
 (defun yeah-compact-run (session target-chars &optional summarizer)
-  "One-shot compaction entry point.
-Returns a plist `(:cut-point ID :summary STRING :projection-count N)'.
-When the cut-point is nil (budget not exceeded), the session log
-is unchanged and the function returns a no-op plist with the
-total record count as `:projection-count'. Otherwise gathers
-records before the cut-point, summarises them, writes the
-compaction via `yeah-session-record-compaction', and returns
-the plist above."
+  "Compact SESSION synchronously when SUMMARIZER answers immediately.
+This function never pumps the event loop.  If no SUMMARIZER is supplied and
+the model responds asynchronously, it signals `user-error'; use
+`yeah-compact-run-async' in production."
   (let ((cut (yeah-compact-cut-point session target-chars)))
     (if (null cut)
-        (list :cut-point nil
-              :summary nil
-              :projection-count (length (yeah-session-records session)))
-      (let* ((summary (yeah-compact-summarize session cut summarizer))
-             (compaction (list :cut-point cut :summary summary)))
-        (yeah-session-record-compaction session compaction)
-        (list :cut-point cut
-              :summary summary
-              :projection-count (length (yeah-session-project session)))))))
+        (yeah-compact--result session nil nil)
+      (let ((summary (yeah-compact-summarize session cut summarizer)))
+        (unless (and (stringp summary) (not (string-blank-p summary)))
+          (signal 'user-error
+                  (list "yeah-compact-run: summary is empty or asynchronous")))
+        (yeah-session-record-compaction
+         session (list :cut-point cut :summary summary))
+        (yeah-compact--result session cut summary)))))
+
+(defun yeah-compact-run-async (session target-chars transport callback
+                                        &optional live-p)
+  "Compact SESSION with TRANSPORT and deliver the outcome to CALLBACK.
+TRANSPORT may be nil to use gptel or the configured test transport.  CALLBACK
+receives (RESULT INFO).  A failed or blank summary leaves the journal unchanged
+and produces a result with an :error field; no empty summary is committed.
+When optional LIVE-P is non-nil, it is called before committing and can cancel
+late compaction without modifying the journal."
+  (unless (functionp callback)
+    (signal 'user-error (list "yeah-compact-run-async: invalid callback")))
+  (let ((cut (yeah-compact-cut-point session target-chars)))
+    (if (null cut)
+        (funcall callback (yeah-compact--result session nil nil) nil)
+      (yeah-context-summarize-async
+       (mapconcat (lambda (record) (format "%S" record))
+                  (yeah-compact--before session cut) "\n")
+       transport
+       (lambda (summary info)
+         (cond
+          ((and live-p (not (funcall live-p)))
+           (funcall callback
+                    (yeah-compact--result session cut nil "cancelled")
+                    info))
+          ((not summary)
+           (funcall callback
+                    (yeah-compact--result
+                     session cut nil
+                     (format "compaction failed: %S" info))
+                    info))
+          (t
+           (yeah-session-record-compaction
+            session (list :cut-point cut :summary summary))
+           (funcall callback
+                    (yeah-compact--result session cut summary)
+                    info))))))))
 
 (defun yeah-compact-projection-length (session)
-  "Return the record count in the current projection of SESSION.
-A thin wrapper over `yeah-session-project'. Shrinks after a
-compaction; grows again with new appends."
+  "Return the number of records in SESSION's current projection."
   (length (yeah-session-project session)))
 
 (provide 'yeah-compact)

@@ -77,12 +77,14 @@
                                   outcome))))))
 
 (defun yeah-check--loop ()
-  "The same call three times in a row is a loop."
-  (unless (yeah-runtime-doom-loop-p '((read "/x") (read "/x") (read "/x")))
+  "Repeated mutation is a loop; repeated inspection is legitimate."
+  (unless (yeah-runtime-doom-loop-p '((edit "/x") (edit "/x") (edit "/x")))
     (yeah-check--fail "the loop was not seen"))
-  (when (yeah-runtime-doom-loop-p '((read "/x") (read "/y") (read "/x")))
+  (when (yeah-runtime-doom-loop-p '((edit "/x") (edit "/y") (edit "/x")))
     (yeah-check--fail "a run that was not a loop was called a loop"))
-  (unless (null (yeah-runtime-doom-loop-p '((read "/x") (read "/y"))))
+  (when (yeah-runtime-doom-loop-p '((read "/x") (read "/x") (read "/x")))
+    (yeah-check--fail "read-only inspection was called a loop"))
+  (unless (null (yeah-runtime-doom-loop-p '((edit "/x") (edit "/y"))))
     (yeah-check--fail "two calls were called a loop")))
 
 (yeah-check--failing-call)

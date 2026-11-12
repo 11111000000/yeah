@@ -17,18 +17,33 @@
 
 (ert-deftest yeah-emcp-tool-ids-lists-first-wave ()
   "`yeah-emcp-tool-ids' returns the nine first-wave ids in order."
-  (let ((expected '("emacs__eval"
-                    "emacs__buffer_list"
+  (let ((expected '("emacs__buffer_list"
                     "emacs__buffer_read"
                     "emacs__buffer_write"
                     "emacs__magit_status"
                     "emacs__describe_function"
                     "emacs__describe_variable"
                     "emacs__dired_list"
-                    "emacs__project_find_file"))
+                    "emacs__project_find_file"
+                    "emacs__eval"))
         (got (yeah-emcp-tool-ids)))
     (should (= (length got) 9))
     (should (equal got expected))))
+
+(ert-deftest yeah-emcp-published-ids-are-read-only-by-default ()
+  "The published surface carries the read-only tools and nothing else."
+  (let ((published (yeah-emcp-published-ids)))
+    (should (member "emacs__buffer_list" published))
+    (should (member "emacs__buffer_read" published))
+    (should-not (member "emacs__buffer_write" published))
+    (should-not (member "emacs__eval" published))
+    (should (= (length published) 7))))
+
+(ert-deftest yeah-emcp-published-ids-follow-the-operator ()
+  "An operator may widen the published surface with an explicit id."
+  (let ((yeah-emcp-publish-extra-tools '("emacs__buffer_write")))
+    (should (member "emacs__buffer_write" (yeah-emcp-published-ids)))
+    (should (member "emacs__buffer_list" (yeah-emcp-published-ids)))))
 
 (ert-deftest yeah-emcp-tool-spec-known ()
   "`emacs__eval' has the expected `:description'."
@@ -39,6 +54,7 @@
     (should (stringp desc))
     (should (> (length desc) 0))
     (should (equal in '("expr")))
+    (should (equal (plist-get spec :output) "string"))
     (should (functionp (plist-get spec :handler)))))
 
 (ert-deftest yeah-emcp-tool-spec-unknown ()
@@ -47,12 +63,23 @@
   (should-not (yeah-emcp-tool-spec ""))
   (should-not (yeah-emcp-tool-spec "eval")))
 
-(ert-deftest yeah-emcp-handle-call-returns-stub-string ()
-  "Calling a first-wave tool returns a placeholder string that
-starts with the tool's id."
+(ert-deftest yeah-emcp-handle-call-returns-the-evaluated-value ()
+  "Calling `emacs__eval' evaluates the expression for real."
   (let ((result (yeah-emcp-handle-call "emacs__eval" '(:expr "(+ 1 1)"))))
     (should (stringp result))
-    (should (string-prefix-p "emacs__eval:" result))))
+    (should (equal result "2"))))
+
+(ert-deftest yeah-emcp-handle-call-reads-a-live-buffer ()
+  "Calling `emacs__buffer_read' returns the text of a live buffer."
+  (let ((buffer (generate-new-buffer " yeah-emcp-test")))
+    (unwind-protect
+        (progn
+          (with-current-buffer buffer
+            (insert "hello"))
+          (should (equal (yeah-emcp-handle-call
+                          "emacs__buffer_read" (list :name (buffer-name buffer)))
+                         "hello")))
+      (kill-buffer buffer))))
 
 (ert-deftest yeah-emcp-handle-call-unknown-id-errors ()
   "Calling an unknown tool id raises `user-error'."

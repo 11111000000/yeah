@@ -1,4 +1,4 @@
-;;; yeah-acp.el --- ACP v1 agent-side handlers -*- lexical-binding: t; -*-
+;;; yeah-acp.el --- ACP v1 agent over newline JSON-RPC -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -9,212 +9,324 @@
 
 ;;; Commentary:
 ;;
-;; This file provides agent-side Agent Client Protocol v1 (ACP)
-;; handlers and a JSON-RPC 2.0 dispatcher. See
-;; `docs/ARCHITECTURE.md' for the target protocol boundary and
-;; `docs/PLAN.md' for the ACP delivery stage.
-;;
-;; The handlers take plists and return plists. They do not open
-;; subprocesses or perform IO; stdio transport is outside this module.
-;;
-;; The wire keys are kebab-case on both sides (per
-;; ELISP_BEST_PRACTICES.md §5.2 and §8.1). JSON-RPC 2.0
-;; requires `jsonrpc', `id', `result' or `error' at the top
-;; level of the response; we keep those camelCase because they
-;; are the JSON-RPC standard, not ACP.
-;;
-;; The handlers provided here are:
-;;   * yeah-acp-initialize      - handshake
-;;   * yeah-acp-session-new     - generate a session id
-;;   * yeah-acp-session-prompt  - acknowledge a prompt
-;;   * yeah-acp-session-cancel  - acknowledge cancellation
-;;   * yeah-acp-handle-message  - JSON-RPC dispatcher
-;;   * yeah-acp-version         - version probe
-;;
-;; Prompt and cancel are placeholders: they do not execute prompts
-;; or cancel agent runs.
+;; Agent-side ACP v1 over newline-delimited JSON-RPC 2.0.  Sessions are real
+;; Yeah sessions; prompt responses are sent when the run reaches a terminal
+;; state; session/cancel is a notification; journal events become
+;; session/update notifications through `yeah-events-write-functions'.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'json)
+(require 'yeah-control)
+(require 'yeah-events)
+(require 'yeah-product)
+(require 'yeah-turn)
+(require 'yeah-wire)
 
 (defgroup yeah-acp nil
-  "Yeah — ACP v1 agent-side handlers."
+  "Yeah ACP v1 agent."
   :group 'yeah)
 
-(defconst yeah-acp--protocol-version "2025-01-01"
-  "The ACP v1 protocol version Yeah speaks.
-Bump only as part of an ACP wire-protocol transition.")
+(defconst yeah-acp--protocol-version 1
+  "ACP v1 protocol version spoken by Yeah.")
 
-(defconst yeah-acp--agent-name "yeah"
-  "The `agentInfo.name' Yeah reports to ACP clients.")
+(defconst yeah-acp--agent-name "yeah")
+(defconst yeah-acp--agent-version "0.1.0-alpha")
 
-(defconst yeah-acp--agent-version "0.1.0-alpha"
-  "The Yeah version reported to ACP clients on `initialize'.
-Matches `VERSION' at the project root.")
+(defvar yeah-acp--sessions (make-hash-table :test 'equal)
+  "Map ACP session ids to their Yeah session state.")
 
-(defun yeah-acp-version ()
-  "Return the Yeah wire-version string.
-Callers use this to probe the agent without parsing
-`InitializeResponse'. The string matches the `agentInfo.version'
-field on the wire."
-  (declare (pure t) (side-effect-free t))
-  yeah-acp--agent-version)
-
-(defun yeah-acp-initialize (handshake)
-  "Process an ACP `initialize' request and return an `InitializeResponse' plist.
-
-HANDSHAKE is a plist carrying the client's `protocolVersion',
-`clientInfo', and `clientCapabilities'. The response plist
-contains the agent's `protocolVersion', `agentInfo', and
-`agentCapabilities'. Signal `user-error' if HANDSHAKE does not
-carry a `protocolVersion'."
-  (unless (and (consp handshake)
-               (plist-member handshake :protocolVersion))
-    (signal 'user-error
-            (list "yeah-acp-initialize: missing required field :protocolVersion")))
-  (let ((client-version (plist-get handshake :protocolVersion)))
-    (list :protocolVersion yeah-acp--protocol-version
-            :agentInfo (list :name yeah-acp--agent-name
-                             :version yeah-acp--agent-version)
-            :agentCapabilities (list :loadSession t
-                                      :prompt     t
-                                      :cancel     t)
-            :clientProtocolVersion client-version)))
-
-(defun yeah-acp-session-new (_request)
-  "Create a new ACP session id and return a `(:sessionId ID)' plist.
-
-REQUEST is the `SessionNewRequest' plist. The id is generated
-locally; no persistent session state is created."
-  (list :sessionId (yeah-acp--make-session-id)))
-
-(defun yeah-acp-session-prompt (request)
-  "Acknowledge a `session/prompt' request and return a `(:messageId ID)' plist.
-
-REQUEST is a `SessionPromptRequest' plist (`sessionId', `text').
-This handler is a placeholder: it returns a generated message id
-and does not execute the prompt."
-  (unless (and (consp request)
-               (plist-member request :sessionId)
-               (plist-member request :text))
-    (signal 'user-error
-            (list "yeah-acp-session-prompt: missing :sessionId or :text")))
-  (list :messageId (yeah-acp--make-message-id)))
-
-(defun yeah-acp-session-cancel (request)
-  "Acknowledge a `session/cancel' request.
-
-REQUEST is a `SessionCancelRequest' plist (`sessionId'). The
-returned plist has shape `(:status \"cancelled\" :sessionId ID)'.
-This handler is a placeholder: it returns an acknowledgement but
-does not cancel an agent run."
-  (unless (and (consp request)
-               (plist-member request :sessionId))
-    (signal 'user-error
-            (list "yeah-acp-session-cancel: missing :sessionId")))
-  (list :status "cancelled"
-        :sessionId (plist-get request :sessionId)))
-
-(defun yeah-acp-handle-message (json-string)
-  "Parse JSON-STRING as a JSON-RPC 2.0 message and return the response string.
-
-Routes to `yeah-acp-initialize', `yeah-acp-session-new',
-`yeah-acp-session-prompt', or `yeah-acp-session-cancel' based
-on the `method' field. Returns a JSON-RPC 2.0 response object
-serialised as JSON:
-
-  * `result' on success;
-  * `error' (with `code' and `message') on parse failure,
-    invalid request, or unknown method.
-
-Notifications (no `id' field) return the JSON-RPC 204 No Content
-response and have no `result'."
-  (let* ((parsed
-          (condition-case nil
-              (json-parse-string json-string :object-type 'plist)
-            (json-parse-error
-             (list :error (list :code -32700
-                                :message "Parse error")))))
-         (parse-error (plist-get parsed :error)))
-    (if parse-error
-        (yeah-acp--jsonrpc-error-response nil -32700 "Parse error")
-      (let* ((method (plist-get parsed :method))
-             (id     (plist-get parsed :id))
-             (params (or (plist-get parsed :params) '())))
-        (cond
-         ((null method)
-          (yeah-acp--jsonrpc-error-response id -32600 "Invalid Request: no method"))
-         ((not (stringp method))
-          (yeah-acp--jsonrpc-error-response id -32600 "Invalid Request: method must be string"))
-         ((string= method "initialize")
-          (condition-case err
-              (let* ((result (yeah-acp-initialize params))
-                     (response (list :jsonrpc "2.0" :id id :result result)))
-                (json-serialize response))
-            (user-error
-             (yeah-acp--jsonrpc-error-response
-              id -32602
-              (cadr err)))))
-         ((string= method "session/new")
-          (condition-case err
-              (let* ((result (yeah-acp-session-new params))
-                     (response (list :jsonrpc "2.0" :id id :result result)))
-                (json-serialize response))
-            (user-error
-             (yeah-acp--jsonrpc-error-response
-              id -32602
-              (cadr err)))))
-         ((string= method "session/prompt")
-          (condition-case err
-              (let* ((result (yeah-acp-session-prompt params))
-                     (response (list :jsonrpc "2.0" :id id :result result)))
-                (json-serialize response))
-            (user-error
-             (yeah-acp--jsonrpc-error-response
-              id -32602
-              (cadr err)))))
-         ((string= method "session/cancel")
-          (condition-case err
-              (let* ((result (yeah-acp-session-cancel params))
-                     (response (list :jsonrpc "2.0" :id id :result result)))
-                (json-serialize response))
-            (user-error
-             (yeah-acp--jsonrpc-error-response
-              id -32602
-              (cadr err)))))
-         (t
-          (yeah-acp--jsonrpc-error-response
-           id -32601
-           (format "Method not found: %s" method))))))))
-
-(defun yeah-acp--jsonrpc-error-response (id code message)
-  "Build a JSON-RPC 2.0 error response string.
-ID is the request id (or nil for parse errors).
-CODE is the JSON-RPC error code.
-MESSAGE is the human-readable error message."
-  (let ((response (list :jsonrpc "2.0"
-                        :error (list :code code :message message))))
-    (when id (setq response (plist-put response :id id)))
-    (json-serialize response)))
+(defvar yeah-acp--active-turns (make-hash-table :test 'equal)
+  "Map ACP session ids to their active turns.")
 
 (defvar yeah-acp--counter 0
-  "Module-private monotonic counter for session and message id generation.")
+  "Monotonic counter for generated identifiers.")
 
-(defun yeah-acp--next-counter ()
-  "Return a process-unique counter for id generation.
-Used by `yeah-acp--make-session-id' and
-`yeah-acp--make-message-id'."
+(defvar yeah-acp--transport nil
+  "Optional model transport used by the ACP server.")
+
+(defvar yeah-acp--answerer nil
+  "Optional permission answerer used by the ACP server.")
+
+(defvar yeah-acp--output-function #'yeah-acp--print-line
+  "Function receiving one serialized JSON message per call.")
+
+(defun yeah-acp-version ()
+  "Return the ACP protocol version spoken by Yeah."
+  yeah-acp--protocol-version)
+
+(defun yeah-acp--print-line (text)
+  "Write TEXT and a newline to standard output."
+  (princ text)
+  (terpri))
+
+(defun yeah-acp--emit (object)
+  "Serialize OBJECT and pass it to `yeah-acp--output-function'."
+  (funcall yeah-acp--output-function (json-serialize object)))
+
+(defun yeah-acp--response (id result)
+  "Return a JSON-RPC response string for ID and RESULT."
+  (json-serialize (list :jsonrpc "2.0" :id id :result result)))
+
+(defun yeah-acp--error (id code message)
+  "Return a JSON-RPC error response string for ID, CODE and MESSAGE."
+  (json-serialize
+   (list :jsonrpc "2.0" :id id
+         :error (list :code code :message message))))
+
+(defun yeah-acp--fresh-id (prefix)
+  "Return a fresh id beginning with PREFIX."
   (setq yeah-acp--counter (1+ yeah-acp--counter))
-  yeah-acp--counter)
+  (format "%s-%d-%x" prefix yeah-acp--counter (random #x1000000)))
 
-(defun yeah-acp--make-session-id ()
-  "Return a fresh session id of the shape `s-<counter>-<random>'."
-  (format "s-%d-%x" (yeah-acp--next-counter) (random #x1000000)))
+(defun yeah-acp--session-state (session-id &optional required)
+  "Return the ACP state for SESSION-ID, optionally requiring it to exist."
+  (let ((state (gethash session-id yeah-acp--sessions)))
+    (when (and required (null state))
+      (signal 'user-error
+              (list (format "unknown ACP session: %s" session-id))))
+    state))
 
-(defun yeah-acp--make-message-id ()
-  "Return a fresh message id of the shape `m-<counter>-<random>'."
-  (format "m-%d-%x" (yeah-acp--next-counter) (random #x1000000)))
+(defun yeah-acp-initialize (handshake)
+  "Negotiate an ACP HANDSHAKE and return agent capabilities."
+  (unless (and (listp handshake)
+               (integerp (plist-get handshake :protocolVersion)))
+    (signal 'user-error
+            (list "initialize: protocolVersion must be an integer")))
+  (list :protocolVersion yeah-acp--protocol-version
+        :agentInfo (list :name yeah-acp--agent-name
+                         :version yeah-acp--agent-version)
+        :agentCapabilities
+        (list :loadSession t
+              :promptCapabilities (list :image :false
+                                        :audio :false
+                                        :embeddedContext :false)
+              :mcpCapabilities (list :http :false :sse :false))))
+
+(defun yeah-acp--validate-session-request (request &optional load)
+  "Validate a session/new or session/load REQUEST.  LOAD selects its shape."
+  (unless (listp request)
+    (signal 'user-error (list "session request must be an object")))
+  (when load
+    (unless (stringp (plist-get request :sessionId))
+      (signal 'user-error (list "session/load needs sessionId"))))
+  (unless (and (stringp (plist-get request :cwd))
+               (file-name-absolute-p (plist-get request :cwd)))
+    (signal 'user-error (list "session request needs an absolute cwd")))
+  (unless (or (null (plist-get request :mcpServers))
+              (eq (plist-get request :mcpServers) :null)
+              (listp (plist-get request :mcpServers)))
+    (signal 'user-error (list "mcpServers must be an array or null"))))
+
+(defun yeah-acp--send-update (session-id update)
+  "Send a session/update notification for SESSION-ID and UPDATE."
+  (yeah-acp--emit
+   (list :jsonrpc "2.0"
+         :method "session/update"
+         :params (list :sessionId session-id :update update))))
+
+(defun yeah-acp--content-chunk (kind text)
+  "Return an ACP content chunk of KIND containing TEXT."
+  (list :sessionUpdate kind
+        :content (list :type "text" :text (or text ""))))
+
+(defun yeah-acp--tool-call (record-id name status &optional result)
+  "Return a tool_call or tool_call_update ACP update for RECORD-ID."
+  (if (eq status 'started)
+      (list :sessionUpdate "tool_call"
+            :toolCallId (format "tool-%s" record-id)
+            :title name
+            :status "pending")
+    (list :sessionUpdate "tool_call_update"
+          :toolCallId (format "tool-%s" record-id)
+          :status (if result "completed" "failed")
+          :content (list (list :type "text" :text (or result ""))))))
+
+(defun yeah-acp--observe-event (state session type fields id)
+  "Send ACP updates for journal events belonging to STATE's SESSION."
+  (when (eq session (plist-get state :session))
+    (let ((session-id (plist-get state :id)))
+      (pcase type
+        ("user-message"
+         (yeah-acp--send-update
+          session-id (yeah-acp--content-chunk "user_message_chunk"
+                                              (plist-get fields :payload))))
+        ("assistant-message"
+         (yeah-acp--send-update
+          session-id (yeah-acp--content-chunk "agent_message_chunk"
+                                              (plist-get fields :payload))))
+        ("tool-request"
+         (yeah-acp--send-update
+          session-id (yeah-acp--tool-call id (plist-get fields :tool) 'started)))
+        ("tool-end"
+         (yeah-acp--send-update
+          session-id (yeah-acp--tool-call id (plist-get fields :tool) nil
+                                          (plist-get fields :payload))))
+        (_ nil)))))
+
+(defun yeah-acp--register-session (session cwd)
+  "Register SESSION for ACP and return its state plist."
+  (let* ((id (plist-get session :id))
+         (state (list :id id :session session :cwd cwd :listener nil))
+         (listener (lambda (observed-session type fields event-id)
+                     (yeah-acp--observe-event state observed-session type fields event-id))))
+    (plist-put state :listener listener)
+    (add-to-list 'yeah-events-write-functions listener)
+    (puthash id state yeah-acp--sessions)
+    state))
+
+(defun yeah-acp-session-new (request)
+  "Create a real Yeah session for ACP REQUEST and return `(:sessionId ID)'."
+  (yeah-acp--validate-session-request request)
+  (let* ((cwd (file-truename (plist-get request :cwd)))
+         (root (yeah-product-session-root cwd))
+         (session (yeah-session-open (yeah-acp--fresh-id "session") root)))
+    (yeah-acp--register-session session cwd)
+    (list :sessionId (plist-get session :id))))
+
+(defun yeah-acp-session-load (request)
+  "Load an existing session and replay no history, as session/resume semantics."
+  (yeah-acp--validate-session-request request t)
+  (let* ((cwd (file-truename (plist-get request :cwd)))
+         (root (yeah-product-session-root cwd))
+         (session-id (plist-get request :sessionId))
+         (session (yeah-session-open session-id root)))
+    (yeah-acp--register-session session cwd)
+    (list :sessionId (plist-get session :id))))
+
+(defun yeah-acp--prompt-text (blocks)
+  "Return prompt text from ACP content BLOCKS.
+Text and resource_link blocks are supported; every other block is refused."
+  (unless (listp blocks)
+    (signal 'user-error (list "session/prompt needs a prompt array")))
+  (mapconcat
+   (lambda (block)
+     (pcase (plist-get block :type)
+       ("text" (or (plist-get block :text) ""))
+       ("resource_link"
+        (format "[%s](%s)"
+                (or (plist-get block :name) "resource")
+                (or (plist-get block :uri) "")))
+       (_ (signal 'user-error
+                  (list (format "unsupported prompt block: %S"
+                                (plist-get block :type)))))))
+   blocks "\n"))
+
+(defun yeah-acp--stop-reason (turn)
+  "Return the ACP stopReason for terminal TURN."
+  (pcase (yeah-turn-state turn)
+    ('completed "end_turn")
+    ('interrupted "cancelled")
+    (_ "refusal")))
+
+(defun yeah-acp-session-prompt (request id)
+  "Start a prompt for REQUEST and send its response later under request ID."
+  (unless (listp request)
+    (signal 'user-error (list "session/prompt params must be an object")))
+  (let* ((session-id (plist-get request :sessionId))
+         (state (yeah-acp--session-state session-id t))
+         (session (plist-get state :session))
+         (prompt (yeah-acp--prompt-text (plist-get request :prompt)))
+         (frozen (list :kind 'ask :prompt prompt
+                       :frozen (list :cwd (plist-get state :cwd))))
+         (turn
+          (yeah-turn-run
+           session prompt yeah-acp--transport
+           (or yeah-acp--answerer #'yeah-approval-policy-decision)
+           nil nil
+           (lambda (finished)
+             (remhash session-id yeah-acp--active-turns)
+             (yeah-acp--emit
+              (list :jsonrpc "2.0" :id id
+                    :result (list :stopReason
+                                  (yeah-acp--stop-reason finished)))))
+           nil frozen nil)))
+    (puthash session-id turn yeah-acp--active-turns)
+    nil))
+
+(defun yeah-acp-session-cancel (request)
+  "Handle the session/cancel notification REQUEST."
+  (unless (and (listp request) (stringp (plist-get request :sessionId)))
+    (signal 'user-error (list "session/cancel needs sessionId")))
+  (when-let ((turn (gethash (plist-get request :sessionId)
+                            yeah-acp--active-turns)))
+    (yeah-turn-cancel turn "cancelled by ACP client"))
+  nil)
+
+(defun yeah-acp--dispatch (method params id)
+  "Dispatch ACP METHOD with PARAMS and request ID.
+Return a response string for immediate requests, or nil for notifications
+and asynchronously answered prompts."
+  (pcase method
+    ("initialize"
+     (yeah-acp--response id (yeah-acp-initialize params)))
+    ("session/new"
+     (yeah-acp--response id (yeah-acp-session-new params)))
+    ("session/load"
+     (yeah-acp--response id (yeah-acp-session-load params)))
+    ("session/prompt"
+     (yeah-acp-session-prompt params id))
+    ("session/cancel"
+     (yeah-acp-session-cancel params))
+    (_
+     (yeah-acp--error id -32601 (format "Method not found: %s" method)))))
+
+(defun yeah-acp-handle-message (json-string)
+  "Handle one JSON-RPC message string and return a response string or nil."
+  (condition-case nil
+      (let* ((parsed (json-parse-string json-string :object-type 'plist
+                                        :array-type 'list))
+             (method (plist-get parsed :method))
+             (id (plist-get parsed :id))
+             (params (or (plist-get parsed :params) '())))
+        (unless (stringp method)
+          (signal 'user-error (list "Invalid Request: no method")))
+        (condition-case err
+            (yeah-acp--dispatch method params id)
+          (user-error
+           (yeah-acp--error id -32602 (error-message-string err)))))
+    (error
+     (yeah-acp--error nil -32700 "Parse error"))))
+
+(defun yeah-acp--read-line ()
+  "Read one line from standard input, or nil at end of file."
+  (yeah-wire-read-line))
+
+;;;###autoload
+(defun yeah-acp-serve (&optional transport answerer output-function)
+  "Serve ACP over standard input/output until EOF.
+TRANSPORT and ANSWERER configure the agent for this service process.
+OUTPUT-FUNCTION receives serialized JSON messages and defaults to stdout.
+After each request the server lets the work it started settle, so an
+asynchronous prompt answer leaves before the next request is read."
+  (setq yeah-acp--transport transport
+        yeah-acp--answerer answerer
+        yeah-acp--output-function (or output-function #'yeah-acp--print-line))
+  (catch 'eof
+    (while t
+      (let ((line (yeah-acp--read-line)))
+        (unless line
+          (throw 'eof nil))
+        (unless (string-blank-p line)
+          (let ((response (yeah-acp-handle-message line)))
+            (when response
+              (funcall yeah-acp--output-function response)))
+          (yeah-wire-pump-until
+           (lambda () (zerop (hash-table-count yeah-acp--active-turns))))))))
+  nil)
+
+(defun yeah-acp--reset-for-test ()
+  "Clear ACP sessions, listeners and active turns for tests."
+  (maphash
+   (lambda (_id state)
+     (when-let ((listener (plist-get state :listener)))
+       (setq yeah-events-write-functions
+             (delete listener yeah-events-write-functions))))
+   yeah-acp--sessions)
+  (clrhash yeah-acp--sessions)
+  (clrhash yeah-acp--active-turns)
+  (setq yeah-acp--counter 0))
 
 (provide 'yeah-acp)
 ;;; yeah-acp.el ends here

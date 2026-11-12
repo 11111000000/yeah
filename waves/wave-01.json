@@ -18,12 +18,12 @@
   ],
   "claims": [
     "lib-byte-compiles-clean",
-    "fsm-has-twelve-states-and-eighteen-transitions",
+    "fsm-has-twelve-states-and-twenty-transitions",
     "session-log-is-append-only",
     "compaction-is-a-projection-not-a-deletion",
     "tool-call-validates-its-arguments",
     "permission-decides-by-the-last-matching-rule",
-    "acp-dispatcher-handles-the-four-methods",
+    "acp-dispatcher-handles-the-v1-methods",
     "emcp-tool-surface-matches-the-schema",
     "undo-boundary-records-every-tick",
     "gptel-hooks-live-in-one-module-only",
@@ -38,7 +38,7 @@
       "state": "holds"
     },
     {
-      "claim": "fsm-has-twelve-states-and-eighteen-transitions",
+      "claim": "fsm-has-twelve-states-and-twenty-transitions",
       "state": "holds"
     },
     {
@@ -58,7 +58,7 @@
       "state": "holds"
     },
     {
-      "claim": "acp-dispatcher-handles-the-four-methods",
+      "claim": "acp-dispatcher-handles-the-v1-methods",
       "state": "holds"
     },
     {

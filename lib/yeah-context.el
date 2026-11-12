@@ -1,4 +1,4 @@
-;;; yeah-context.el --- the budget of the context -*- lexical-binding: t; -*-
+;;; yeah-context.el --- context budgets and projections -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -9,124 +9,180 @@
 
 ;;; Commentary:
 ;;
-;; A run is a conversation, and a conversation has a size. The size is
-;; counted in tokens, and the count is what decides whether the run may
-;; go on: when the context of the model is nearly full, the run must be
-;; made shorter, and it must be made shorter without losing what
-;; happened.
-;;
-;; There are two ways to make it shorter, and they are not the same:
-;;
-;;   * COMPACTION writes a summary of what was said and keeps the
-;;     records on disk. The summary is written by the model, because
-;;     nothing else knows what mattered.
-;;
-;;   * PRUNING marks the outputs of old tools as no longer to be sent
-;;     to the model. The records stay where they are — the log is
-;;     append-only and a pruned record is still a record — but the model
-;;     stops carrying them around.
-;;
-;; The two are counted separately, because they cost different things:
-;; a compaction costs a model call, a pruning costs nothing.
+;; Provider-reported usage and estimated context size are separate values.
+;; Estimates are CJK-aware and calibrated against actual input usage when it
+;; becomes available.  Pruning is a pure projection; recording it appends an
+;; event and never rewrites source records.  Summarization has an asynchronous
+;; API and never waits on the main event loop or commits an empty summary.
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'yeah-session)
+(require 'yeah-events)
+
+(defgroup yeah-context nil
+  "Yeah context budgets and projections."
+  :group 'yeah)
 
 (defvar yeah-context--transport nil
-  "The transport the summarizer asks the model through.
-It is a variable and not a constant so that a test can put a fake model
-under it. When it is nil, the gptel bridge is used.")
+  "Optional model transport used for summaries and deterministic tests.")
 
-(defconst yeah-context--chars-per-token 4
-  "How many characters of text make one token.
-The number is the same one the reference harnesses use; it is an
-estimate, and an estimate that is honest about being an estimate is
-better than a counter that pretends otherwise.")
+(defcustom yeah-context-default-budget 60000
+  "Default estimated token budget before a run compacts its context."
+  :type 'integer
+  :group 'yeah-context)
 
 (defconst yeah-context--default-budget 60000
-  "The number of tokens of context a run may hold before it is compacted.
-It is a default and not a law: a model with a bigger window may hold
-more, and the number belongs to the model, not to the kernel.")
+  "Compatibility value for callers of the former budget constant.")
+
+(defvar yeah-context-token-calibration 1.0
+  "Multiplicative calibration for estimated tokens, learned from usage.")
+
+(defconst yeah-context--summary-prompt
+  "Summarize this conversation so another agent can continue it accurately.
+Preserve the goal, constraints and preferences, progress, key decisions,
+mistakes and dead ends, important files and technical details, open questions,
+and concrete next steps.  For exploratory discussions preserve narrative flow
+and explicit user instructions.  Return only the summary.\n\n%s"
+  "Prompt used for model-written compaction summaries.")
+
+(defun yeah-context-estimate-tokens (text)
+  "Estimate tokens in TEXT using Latin/CJK-aware character classes."
+  (if (not (stringp text))
+      0
+    (let ((cjk 0))
+      (mapc (lambda (character)
+              (when (or (and (>= character #x3000) (<= character #x9fff))
+                        (and (>= character #xf900) (<= character #xfaff))
+                        (and (>= character #xff00) (<= character #xffef))
+                        (and (>= character #x20000) (<= character #x2fa1f)))
+                (setq cjk (1+ cjk))))
+            text)
+      (max 0 (ceiling (+ (/ (- (length text) cjk) 4.0)
+                         (/ cjk 2.0)))))))
 
 (defun yeah-context-tokens (text)
-  "Return the number of tokens TEXT is worth."
-  (if (or (null text) (not (stringp text)))
-      0
-    (max 0 (ceiling (/ (length text) (float yeah-context--chars-per-token))))))
+  "Return the estimated token count for TEXT."
+  (yeah-context-estimate-tokens text))
 
 (defun yeah-context-record-tokens (record)
-  "Return the number of tokens the RECORD is worth."
-  (let ((text (format "%S" record)))
-    (yeah-context-tokens text)))
+  "Return the estimated token count for RECORD."
+  (yeah-context-estimate-tokens (format "%S" record)))
+
+(defun yeah-context-calibrate (estimated info)
+  "Calibrate ESTIMATED tokens against provider usage in INFO.
+Return the new calibration, clamped to [0.5, 3.0].  Unknown or zero values
+leave the previous calibration unchanged."
+  (let* ((usage (and (listp info) (plist-get info :yeah-usage)))
+         (actual (and usage (plist-get usage :input))))
+    (if (and (numberp actual) (> actual 0)
+             (numberp estimated) (> estimated 0))
+        (setq yeah-context-token-calibration
+              (max 0.5 (min 3.0 (/ (float actual) estimated))))
+      yeah-context-token-calibration)))
 
 (defun yeah-context-usage (records)
-  "Return the number of tokens the RECORDS hold.
-The usage events are counted first, because they are what the provider
-reported; the rest is estimated from the text of the records."
+  "Return reported, estimated and total token usage for RECORDS."
   (let ((reported 0)
         (estimated 0))
     (dolist (record records)
       (if (equal (plist-get record :type) "usage")
           (setq reported (+ reported (or (plist-get record :input) 0)
-                              (or (plist-get record :output) 0)))
+                            (or (plist-get record :output) 0)))
         (setq estimated (+ estimated (yeah-context-record-tokens record)))))
-    (list :reported reported :estimated estimated :total (+ reported estimated))))
+    (let ((calibrated (round (* estimated yeah-context-token-calibration))))
+      (list :reported reported :estimated calibrated
+            :raw-estimated estimated
+            :calibration yeah-context-token-calibration
+            :total (+ reported calibrated)))))
 
 (defun yeah-context-overflow-p (records &optional budget)
-  "Non-nil when the context of RECORDS does not fit into BUDGET tokens.
-BUDGET defaults to `yeah-context--default-budget'."
+  "Return non-nil when RECORDS exceed BUDGET tokens."
   (> (plist-get (yeah-context-usage records) :total)
-     (or budget yeah-context--default-budget)))
+     (or budget yeah-context-default-budget
+         yeah-context--default-budget)))
 
 (defun yeah-context-prune (records &optional keep-chars)
-  "Return the records of the run with the old tool outputs marked.
-A record is marked, not removed: the log is append-only, and what is
-marked is only no longer sent to the model. KEEP-CHARS is the tail of
-the conversation that is kept whole; it defaults to a quarter of the
-budget."
-  (let* ((texts (mapcar (lambda (record) (format "%S" record)) records))
+  "Return a projected copy of RECORDS with old tool outputs marked pruned.
+The input records are not modified.  KEEP-CHARS is the recent suffix retained
+whole, defaulting to one quarter of the default token budget."
+  (let* ((projected (mapcar (lambda (record) (copy-sequence record)) records))
+         (texts (mapcar (lambda (record) (format "%S" record)) projected))
          (total (apply #'+ (mapcar #'length texts)))
-         (keep (or keep-chars (/ yeah-context--default-budget 4)))
-         (drop-from total))
-    (let ((i 0))
-      (while (and (< i (length records)) (> drop-from keep))
-        (let ((record (nth i records)))
+         (keep (or keep-chars (/ yeah-context-default-budget 4)))
+         (remaining total))
+    (let ((index 0))
+      (while (and (< index (length projected)) (> remaining keep))
+        (let ((record (nth index projected)))
           (when (equal (plist-get record :type) "tool-end")
-            (setq drop-from (- drop-from (length (nth i texts))))
-            (setf (nth i records)
-                  (plist-put (plist-put record :pruned t) :pruned-at (format-time-string "%Y-%m-%dT%H:%M:%S%z")))))
-        (setq i (1+ i))))
-    records))
+            (setq remaining (- remaining (length (nth index texts))))
+            (setf (nth index projected)
+                  (plist-put (plist-put record :pruned t)
+                             :pruned-at
+                             (format-time-string "%Y-%m-%dT%H:%M:%S%z")))))
+        (setq index (1+ index))))
+    projected))
+
+(defun yeah-context-prune-session (session &optional keep-chars)
+  "Record a pruning event for SESSION and return its projected records."
+  (let ((keep (or keep-chars (/ yeah-context-default-budget 4))))
+    (yeah-events-write session "pruning" :keep-chars keep)
+    (yeah-context-prune (yeah-session-project session) keep)))
+
+(defun yeah-context-project (session)
+  "Return the current model-facing projection of SESSION."
+  (let* ((records (yeah-session-records session))
+         (latest nil))
+    (dolist (record records)
+      (when (equal (plist-get record :type) "pruning")
+        (setq latest record)))
+    (if latest
+        (yeah-context-prune (yeah-session-project session)
+                            (plist-get latest :keep-chars))
+      (yeah-session-project session))))
+
+(defun yeah-context-summarize-async (text transport callback)
+  "Ask TRANSPORT to summarize TEXT and deliver the result to CALLBACK.
+CALLBACK receives (SUMMARY INFO).  SUMMARY is nil for provider failures,
+non-string responses and blank answers.  The function returns immediately."
+  (unless (functionp callback)
+    (signal 'user-error (list "yeah-context-summarize-async: invalid callback")))
+  (let ((transport (or transport
+                       yeah-context--transport
+                       (and (fboundp 'yeah-gptel-request)
+                            #'yeah-gptel-request))))
+    (unless transport
+      (signal 'user-error (list "yeah-context-summarize-async: no transport")))
+    (funcall transport
+             (format yeah-context--summary-prompt text)
+             (lambda (response &optional info)
+               (funcall callback
+                        (and (stringp response)
+                             (not (string-blank-p response))
+                             response)
+                        info)))))
 
 (defun yeah-context-summarize (text &optional transport)
-  "Ask the model to summarize TEXT and return what it said.
-The model is the only one who knows what mattered in a conversation, so
-the summary of a run is written by the model and by nobody else.
-
-TRANSPORT is a function of (PROMPT CALLBACK) that calls CALLBACK with
-the answer; it defaults to the gptel bridge. The answer arrives on the
-event loop, so the loop is pumped until it comes — this is the one place
-where the main loop is held, and it happens between turns of a run."
-  (let* ((transport (or transport
-                      yeah-context--transport
-                      (and (fboundp 'yeah-gptel-request) #'yeah-gptel-request)))
-         (answer nil))
-    (unless transport
-      (signal 'user-error (list "yeah-context-summarize: no transport")))
-    (funcall transport
-             (format "Summarize this conversation for someone who will continue it. \
-Keep what was asked, what was done, what is open, and which files matter. \
-Answer with the summary and nothing else.\n\n%s" text)
-             (lambda (response &optional _info)
-               (when (stringp response)
-                 (setq answer response))))
-    (let ((waited 0))
-      (while (and (null answer) (< waited 120))
-        (accept-process-output nil 1)
-        (setq waited (1+ waited))))
-    (or answer "")))
+  "Return a summary only when TRANSPORT answers synchronously.
+This compatibility wrapper never waits.  For real asynchronous providers use
+`yeah-context-summarize-async'.  A pending or failed answer signals
+`user-error' instead of producing an empty authoritative summary."
+  (let ((answered nil)
+        (pending nil)
+        (info nil))
+    (yeah-context-summarize-async
+     text transport
+     (lambda (summary request-info)
+       (setq answered summary info request-info pending t)))
+    (cond
+     (answered answered)
+     (pending
+      (signal 'user-error
+              (list (format "yeah-context-summarize: no summary: %S" info))))
+     (t
+      (signal 'user-error
+              (list "yeah-context-summarize: response is asynchronous; use the async API"))))))
 
 (provide 'yeah-context)
 ;;; yeah-context.el ends here

@@ -119,8 +119,8 @@
       "attestations": []
     },
     {
-      "id": "acp-dispatcher-handles-the-four-methods",
-      "subject": "the ACP dispatcher answers initialize, session/new, session/prompt and session/cancel, and refuses a method it does not know",
+      "id": "acp-dispatcher-handles-the-v1-methods",
+      "subject": "the ACP dispatcher answers initialize, session/new, session/load, session/prompt and session/cancel, answers a prompt with a stop reason, and refuses a method it does not know",
       "scope": [
         "lib/yeah-acp.el", "schemas/acp-v1.json",
         "tests/unit/test-yeah-acp.el",
@@ -136,15 +136,15 @@
           "spec": "./scripts/dev check tests/checks/check-acp-dispatcher-routes-every-method.el"
         }
       ],
-      "falsifier": "one of the four methods is unrouted, or an unknown method is answered instead of refused",
+      "falsifier": "one of the methods is unrouted, a prompt is answered without a stop reason, or an unknown method is answered instead of refused",
       "register": "fact",
       "accepted": null,
-      "control": "sed -i 's/\"cancelled\"/\"canceled\"/' lib/yeah-acp.el",
+      "control": "sed -i 's/\"end_turn\"/\"endturn\"/' lib/yeah-acp.el",
       "attestations": []
     },
     {
       "id": "emcp-tool-surface-matches-the-schema",
-      "subject": "the emcp registry and schemas/emcp-v1.json name the same tools, and a duplicate id is refused",
+      "subject": "the emcp registry and schemas/emcp-v1.json name the same tools, describe them the same way, publish the same read-only set, and a duplicate id is refused",
       "scope": [
         "lib/yeah-emcp.el", "schemas/emcp-v1.json",
         "tests/checks/check-emcp-registry-matches-schema.el",
@@ -154,9 +154,13 @@
         {
           "kind": "verifier",
           "spec": "./scripts/dev check tests/checks/check-emcp-registry-matches-schema.el"
+        },
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-emcp.el"
         }
       ],
-      "falsifier": "the registry and the schema name different tools, or a duplicate id is accepted",
+      "falsifier": "the registry and the schema name, describe or publish different tools, or a duplicate id is accepted",
       "register": "fact",
       "accepted": null,
       "control": "sed -i 's/(list \"emacs__dired_list\"/(list \"emacs__dired_list_renamed\"/' lib/yeah-emcp.el",
@@ -298,18 +302,21 @@
     },
     {
       "id": "the-acp-agent-speaks-over-stdio",
-      "subject": "the ACP agent speaks JSON-RPC over stdio: a client can open the process and exchange an initialize request and its answer",
-      "scope": [ "lib/yeah-wire.el" ],
+      "subject": "the ACP agent speaks JSON-RPC over stdio: a client can open the process and exchange an initialize request, a session/new request and their answers",
+      "scope": [
+        "lib/yeah-acp.el", "lib/yeah-wire.el",
+        "tests/checks/check-wire-speaks-over-stdio.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-acp-stdio-round-trip.el"
+          "spec": "./scripts/dev check tests/checks/check-wire-speaks-over-stdio.el"
         }
       ],
       "falsifier": "a client cannot exchange a JSON-RPC message with the agent over stdio",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(defconst yeah-acp--protocol-version 1$/(defconst yeah-acp--protocol-version 2/' lib/yeah-acp.el",
       "attestations": []
     },
     {
@@ -464,18 +471,40 @@
     },
     {
       "id": "the-mcp-server-speaks-over-stdio",
-      "subject": "the emacs tool namespace is served over stdio, and the tools it publishes are the ones the registry holds",
-      "scope": [ "lib/yeah-mcp.el" ],
+      "subject": "the emacs tool namespace is served over stdio: a client can initialize, list the published tools and call one of them, and the published set is the read-only set of the registry",
+      "scope": [
+        "lib/yeah-mcp.el", "lib/yeah-emcp.el",
+        "tests/checks/check-wire-speaks-over-stdio.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-mcp-speaks-over-stdio.el"
+          "spec": "./scripts/dev check tests/checks/check-wire-speaks-over-stdio.el"
         }
       ],
       "falsifier": "a client cannot list or call the published tools, or the published set drifts from the registry",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/\"2025-06-18\"/\"2024-01-01\"/' lib/yeah-mcp.el",
+      "attestations": []
+    },
+    {
+      "id": "yeah-imports-foreign-mcp-tools",
+      "subject": "Yeah connects to a foreign MCP server over stdio, lists its tools, imports them into its own registry under a namespaced name, and calls them through the same permission system as local tools",
+      "scope": [
+        "lib/yeah-mcp-client.el",
+        "tests/unit/test-yeah-mcp-client.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-mcp-client.el"
+        }
+      ],
+      "falsifier": "a foreign tool is not imported into the registry, or it is imported under a name that does not carry the server, or the call does not reach the foreign server",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(format \"mcp--%s--%s\"/(format \"mcp-%s-%s\"/' lib/yeah-mcp-client.el",
       "attestations": []
     },
     {
@@ -512,18 +541,16 @@
     },
     {
       "id": "the-product-installs-serves-and-documents",
-      "subject": "the harness installs, serves and explains itself: an installation path, a server mode, and documentation written for a person",
-      "scope": [ "lib/yeah-product.el" ],
+      "subject": "the package exposes M-x yeah, M-x yeah-ask and M-x yeah-doctor, declares supported Emacs/gptel versions, and provides a package-vc bootstrap with no development-tool dependency",
+      "scope": [ "yeah.el", "lib/yeah-product.el", "install/yeah-bootstrap.el", "tests/unit/test-yeah-product.el", "tests/checks/check-product-installs.el" ],
       "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-product-installs.el"
-        }
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-product.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -L . -l tests/checks/check-product-installs.el" }
       ],
-      "falsifier": "the harness cannot be installed, cannot be served, or can only be used by an agent that reads the source",
+      "falsifier": "a product entry point is missing, package requirements are absent, or the bootstrap depends on mathc/Nix",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/;; Package-Requires.*//' yeah.el",
       "attestations": []
     },
     {
@@ -579,6 +606,73 @@
       "register": "fact",
       "accepted": null,
       "control": "sed -i 's/(list :yeah-error \"Error: tool produced no result\")/nil/' lib/yeah-scheduler.el",
+      "attestations": []
+    },
+    {
+      "id": "the-coding-toolset-is-usable",
+      "subject": "the built-in coding tools perform an end-to-end project scenario: read/glob/grep, tick-guarded edit, Elisp validation, async bash and introspection",
+      "scope": [ "lib/yeah-builtins.el", "lib/yeah-files.el", "lib/yeah-edit.el", "lib/yeah-process.el", "lib/yeah-emacs.el", "lib/yeah-result.el", "tests/checks/check-coding-tools-end-to-end.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-coding-tools-end-to-end.el" }
+      ],
+      "falsifier": "a built-in tool is missing, a guarded edit fails, a stale tick mutates a buffer, bash does not settle, or the final Elisp is unreadable",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(and tick (\/= tick current-tick))/nil/' lib/yeah-edit.el",
+      "attestations": []
+    },
+    {
+      "id": "the-context-compacts-without-blocking",
+      "subject": "context overflow enters compacting and continues only after a nonblank asynchronous summary is committed; sources and pruning events remain in the append-only journal",
+      "scope": [ "lib/yeah-context.el", "lib/yeah-compact.el", "lib/yeah-turn.el", "lib/yeah-events.el", "tests/unit/test-yeah-context.el", "tests/checks/check-turn-compacts-asynchronously.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-context.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-compacts-asynchronously.el" }
+      ],
+      "falsifier": "the turn waits for the summary, skips compacting, commits an empty summary, or deletes source events",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/(yeah-turn--tick turn 'budget-overflow)/(yeah-turn--tick turn 'budget-ok)/\" lib/yeah-turn.el",
+      "attestations": []
+    },
+    {
+      "id": "the-session-reports-corrupt-tail",
+      "subject": "opening a session with a malformed or unterminated JSONL tail preserves valid records and exposes recovery metadata instead of silently discarding corruption",
+      "scope": [ "lib/yeah-session.el", "tests/unit/test-yeah-session.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-session.el" }
+      ],
+      "falsifier": "a malformed line has no recovery metadata or warning, or opening the session rewrites the damaged log",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/(display-warning 'yeah-session message :warning)/nil/\" lib/yeah-session.el",
+      "attestations": []
+    },
+    {
+      "id": "human-control-is-queued-and-cancellable",
+      "subject": "frozen inputs form a persistent bounded FIFO, steering is delivered at tool-batch boundaries, cancellation stops managed processes and late callbacks, and restart recovery is explicit",
+      "scope": [ "lib/yeah-control.el", "lib/yeah-input.el", "lib/yeah-turn.el", "lib/yeah-process.el", "lib/yeah-events.el", "tests/unit/test-yeah-control.el", "tests/unit/test-yeah-input.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-control.el tests/unit/test-yeah-input.el" }
+      ],
+      "falsifier": "steering arrives between tools, a late callback changes a terminal run, pending work auto-executes after restart, or a managed process stays live after cancellation",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(funcall (yeah-turn-steer-source turn) turn)/nil/' lib/yeah-turn.el",
+      "attestations": []
+    },
+    {
+      "id": "run-supervision-is-bounded",
+      "subject": "completion nudges are visible and bounded, a whole-run deadline cancels the run, retries use backoff, and repeated read-only inspection is not a doom loop",
+      "scope": [ "lib/yeah-turn.el", "lib/yeah-runtime.el", "tests/unit/test-yeah-control.el", "tests/checks/check-runtime-never-blocks.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-control.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-runtime-never-blocks.el" }
+      ],
+      "falsifier": "nudges exceed their budget or are hidden, a deadline does not stop the run, retries are immediate, or repeated reads are treated as a loop",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))/nil/' lib/yeah-turn.el",
       "attestations": []
     }
   ]

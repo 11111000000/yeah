@@ -1,0 +1,25 @@
+{
+  "id": "wave-15",
+  "title": "the four ways a turn must not break",
+  "intent": "A turn that hangs is worse than a turn that fails: the person sits in front of an Emacs that no longer answers, and the journal stops telling them anything. Four classes of failure were reachable — a malformed argument container, a handler that signals, a callback that arrives twice, and a handler that returns nothing — and each of them could leave the run without a terminal state. This wave is the discipline of settling: every call reaches exactly one terminal result, every result the model sees is a string or a structured error, and every one of those four classes has a test that goes red when the guard is removed.",
+  "touches": [ "lib/yeah-turn.el", "lib/yeah-scheduler.el", "lib/yeah-tools.el", "tests/", "spec.json", "waves/" ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-scheduler.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-turn.el",
+    "./scripts/dev check tests/checks/check-turn-handles-tool-failures.el"
+  ],
+  "claims": [
+    "turn-survives-malformed-tool-args",
+    "turn-settles-after-handler-exception",
+    "turn-first-result-wins",
+    "tool-result-is-provider-safe"
+  ],
+  "commitment": [
+    { "claim": "turn-survives-malformed-tool-args", "state": "holds" },
+    { "claim": "turn-settles-after-handler-exception", "state": "holds" },
+    { "claim": "turn-first-result-wins", "state": "holds" },
+    { "claim": "tool-result-is-provider-safe", "state": "holds" }
+  ],
+  "objection": "Guards that catch everything catch nothing. A scheduler that normalises every failure into the same string has made the failure invisible, and the person reading the journal learns less than before.",
+  "refuted_by": "A tool that returns nil, a handler that signals, and a callback that fires twice — all three in one batch. If the journal does not show three distinct terminal results, the guards are decoration."
+}

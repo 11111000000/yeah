@@ -97,26 +97,57 @@ If the file does not exist, it is created with a single
 memory; the in-memory state is the source of truth for the
 returned session object. Idempotent.
 
+Malformed nonempty lines are omitted from the readable records and reported
+in a `:recovery' plist with `:malformed-lines', `:partial-tail' and
+`:message'.  A partial tail is an unterminated malformed final nonempty
+line.  Corruption emits a warning, but never rewrites the log or appends a
+recovery event.  Clean logs have no `:recovery' metadata and emit no warning.
+
 Returns a plist of shape:
-  (:id ID :path PATH :records LIST :next-id N)"
+  (:id ID :path PATH :records LIST :next-id N [:recovery RECOVERY])"
   (unless (and (stringp session-id) (> (length session-id) 0))
     (signal 'user-error
             (list (format "yeah-session-open: bad session id %S" session-id))))
   (let* ((path (yeah-session--path-for session-id root))
          (exists (file-exists-p path))
          (records nil)
-         (next-id 0))
+         (next-id 0)
+         (recovery nil))
     (if exists
         (progn
           (let* ((text (yeah-session--read-file path))
-                 (lines (yeah-session--lines text)))
-            (dolist (line lines)
-              (let ((rec (yeah-session--parse-line line)))
-                (when rec
-                  (push rec records)
-                  (let ((rid (plist-get rec :id)))
-                    (when (and (integerp rid) (> rid next-id))
-                      (setq next-id rid)))))))
+                 (lines (yeah-session--lines text))
+                 (last-line-index (1- (length lines)))
+                 (unterminated (and (> (length text) 0)
+                                    (not (string-suffix-p "\n" text))))
+                 (malformed-lines 0)
+                 (partial-tail nil))
+            (cl-loop for line in lines
+                     for line-index from 0
+                     do (let ((rec (yeah-session--parse-line line)))
+                          (if rec
+                              (progn
+                                (push rec records)
+                                (let ((rid (plist-get rec :id)))
+                                  (when (and (integerp rid) (> rid next-id))
+                                    (setq next-id rid))))
+                            (setq malformed-lines (1+ malformed-lines))
+                            (when (and unterminated
+                                       (= line-index last-line-index))
+                              (setq partial-tail t)))))
+            (when (> malformed-lines 0)
+              (let ((message
+                     (format
+                      "Session log %s contains %d malformed nonempty JSONL line%s%s. Valid records remain readable; the file was not modified."
+                      path malformed-lines
+                      (if (= malformed-lines 1) "" "s")
+                      (if partial-tail
+                          ", including an unterminated final line that may be truncated"
+                        ""))))
+                (setq recovery (list :malformed-lines malformed-lines
+                                     :partial-tail partial-tail
+                                     :message message))
+                (display-warning 'yeah-session message :warning))))
           (setq records (nreverse records)))
       (let* ((header (list :type "header"
                            :id 0
@@ -126,7 +157,10 @@ Returns a plist of shape:
         (yeah-session--write-line path serialized)
         (setq records (list header)
               next-id 0)))
-    (list :id session-id :path path :records records :next-id (1+ next-id))))
+    (append (list :id session-id :path path :records records
+                  :next-id (1+ next-id))
+            (when recovery
+              (list :recovery recovery)))))
 
 (defun yeah-session-close (session)
   "Close SESSION, releasing any file handle. No record mutation."
@@ -168,7 +202,7 @@ Writes one JSONL line, appends the parsed record (with a fresh
   "Return the list of all records in SESSION, in append order.
 Read-only: the returned list is the live cell structure of
 the session, but `yeah-session' only ever appends to it."
-  (unless (and (consp session) (plist-get session :records))
+  (unless (and (consp session) (plist-get session :path))
     (signal 'user-error
             (list (format "yeah-session-records: not a session %S" session))))
   (plist-get session :records))

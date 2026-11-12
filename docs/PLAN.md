@@ -12,24 +12,23 @@
 
 ## 1. Current baseline
 
-Verified on 2026-11-10 in this checkout:
+Verified on 2026-11-12 in this checkout:
 
-- all 21 `lib/` modules byte-compile without warnings;
-- 104/104 ERT unit tests pass;
-- the existing canary command exits successfully;
+- all 33 `lib/` modules byte-compile without warnings;
+- 198/198 ERT unit tests pass;
+- all 23 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
 - the installed `mathc` does not accept the `--root` invocation used by
   `scripts/dev`, so the map/gate needs a compatible pinned tool;
 - live provider behavior was not verified during that review.
 
-The code contains useful kernel pieces, but not a usable complete agent:
+The code contains a working kernel and a working wire, but not yet a usable
+product:
 
 - `yeah-shell.el` echoes a stub rather than running a turn;
-- ACP prompt/cancel and sub-agent execution are placeholders;
-- EMCP handlers are placeholders;
-- the only built-in registry tool is `read`, and it ignores offset/limit;
-- `yeah-context-summarize` waits on the event loop and can return an empty
-  summary;
-- the turn does not yet connect context overflow to compaction;
+- sub-agent execution is a placeholder, and the three placements are not
+  implemented;
+- the stdio server answers one request at a time, so a cancel cannot preempt
+  a running prompt;
 - global registries/rules and incomplete event correlation obstruct isolated
   concurrent runs;
 - the PTC whitelist was experimentally bypassed with a permitted higher-order
@@ -164,6 +163,14 @@ pass; map/gate either works with the pinned tool or is honestly blocked.
 
 Complete real coding tasks through the existing registry and permissions.
 
+**Status: implemented offline on 2026-11-10.** The registry now includes
+Read/Glob/Grep, tick-guarded Edit/Write, async Bash with maximum and idle
+timeouts, job controls, output artifacts, Introspect, Buffer Read, Elisp Check
+and Flymake diagnostics. Structured results retain truncation/artifact
+metadata. The end-to-end coding canary passes, and process output no longer
+includes Emacs sentinel noise. Live-provider acceptance remains unverified;
+this is not yet a claim of model-driven task completion.
+
 ### Work items
 
 **1.1 Complete the common tool result.** Structured success/error content,
@@ -224,6 +231,14 @@ canary fail. No tool returns placeholder success.
 
 Long tasks remain responsive, bounded and recoverable.
 
+**Status: implemented offline on 2026-11-10.** Token estimates are CJK-aware
+and calibrated by real usage, usage is logged, and overflow drives asynchronous
+compaction through the run FSM.  Empty/failed summaries do not commit.  Pruning
+is a pure projection with a journal event, compaction/pruning are in the event
+vocabulary, and malformed JSONL tails produce explicit recovery metadata and a
+warning without rewriting history.  A timer-delayed compaction canary passes;
+no live provider outage test has been performed.
+
 ### Work items
 
 **2.1 Introduce model capabilities and budgets.** Context window, reserve,
@@ -263,6 +278,14 @@ happened.
 
 A person can guide, interrupt and recover work without hidden state.
 
+**Status: implemented offline on 2026-11-11.** `yeah-control` queues frozen
+inputs in a persistent bounded FIFO (8 entries/256 KiB), starts the next ask
+after completion/cancel, and recovers only explicitly.  Steering is logged and
+delivered at batch boundaries.  Cancellation marks the run terminal before
+stopping managed processes, so late callbacks are ignored.  Visible nudges,
+whole-run deadlines, retry backoff and read-only-aware doom-loop detection are
+implemented.  Synchronous and asynchronous race cases have ERT coverage.
+
 ### Work items
 
 **3.1 Freeze accepted input.** Backend, model, instructions and editor context
@@ -298,6 +321,15 @@ a terminal run; no hidden infinite nudge/retry loop exists.
 
 A person can install and use Yeah without reading source or developer docs.
 
+**Status: implemented offline on 2026-11-11.** `yeah.el` declares package
+requirements and exposes `M-x yeah`, `M-x yeah-ask` and `M-x yeah-doctor`.
+The journal buffer renders events from the journal, supports ask/steer/
+cancel/recover/withdraw/diff and refreshes without blocking.  Sessions and
+pending input use private project-scoped data directories.  `install/
+yeah-bootstrap.el` documents the clean-Emacs package-vc path.  The public
+alpha gate remains open because bootstrap has not been network-tested and a
+live-provider interactive task has not been run.
+
 ### Work items
 
 **4.1 Product entry.** Add the package header/autoloads and `M-x yeah` with
@@ -332,6 +364,26 @@ credentials appear in logs. Unit/canary/integration suites pass.
 
 Expose the working kernel to programs without creating a second agent.
 
+**Status: implemented offline on 2026-11-12.** `lib/yeah-wire.el` carries the
+newline-delimited JSON-RPC framing shared by both protocols. `lib/yeah-acp.el`
+speaks ACP v1: `initialize`, `session/new`, `session/load`, `session/prompt`
+(answered with a stop reason), `session/cancel` (a notification) and
+`session/update` notifications fed by the journal events. Sessions are real
+Yeah sessions, so the journal semantics are the same as in interactive use.
+`lib/yeah-mcp.el` serves the `emacs__*` surface over stdio with real
+handlers, and `lib/yeah-mcp-client.el` connects to a foreign server, lists its
+tools and imports them into the registry as `mcp--<server>--<tool>`, where the
+ordinary permission rules apply. The published MCP surface is read-only by
+default; widening it is an explicit operator decision
+(`yeah-emcp-publish-extra-tools`). A canary starts real Emacs processes and
+exchanges JSON-RPC lines with both servers.
+
+**Two limitations are not hidden.** The stdio server answers one request at a
+time, so a cancel that arrives during a prompt is read after that prompt
+reaches a terminal state: preemption is not implemented. And no third-party
+client or editor has driven either server yet; the wire checks use Yeah's own
+processes.
+
 ### Work items
 
 - JSON-RPC stdio framing using the project's chosen `jsonrpc` adapter;
@@ -351,6 +403,9 @@ not as runtime dependencies.
 A real ACP editor completes the Stage 1 scenario, including streaming and
 cancel. An external MCP client lists and calls explicitly published Emacs
 capabilities. The same canonical journal semantics hold as in interactive use.
+
+The first two criteria are **open**: they need a third-party client and a
+live provider, neither of which was available in this environment.
 
 ## 9. Stage 6 — attached, service and batch placements
 

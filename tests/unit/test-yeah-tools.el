@@ -147,8 +147,9 @@ and to `yeah-tools-names'."
     (unwind-protect
         (setq result (yeah-tools-call "read" (list tmpfile)))
       (delete-file tmpfile))
-    (should (stringp result))
-    (should (string= result content))))
+    (should (listp result))
+    (should (eq t (plist-get result :ok)))
+    (should (string= (plist-get result :content) content))))
 
 (provide 'test-yeah-tools)
 ;;; test-yeah-tools.el ends here

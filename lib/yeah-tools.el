@@ -21,13 +21,14 @@
 ;; and the same handler function serves both sides.
 ;;
 ;; Public operations register/unregister/lookup tools and validate and
-;; dispatch calls.  The current built-in `read' returns a whole file; real
-;; offset/limit handling and the rest of the coding tool set belong to
-;; Stage 1 of `docs/PLAN.md'.
+;; dispatch calls.  Built-in specifications are collected in
+;; `lib/yeah-builtins.el'; handlers return structured results from
+;; `lib/yeah-result.el' or legacy values accepted at the boundary.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-builtins)
 
 (defgroup yeah-tools nil
   "The Yeah in-process tool registry."
@@ -218,18 +219,8 @@ is wrong, or if any arg fails the type check."
 (defun yeah-tools--ensure-built-ins ()
   "Populate the registry with the built-in tools, idempotently."
   (unless yeah-tools--built-in-p
-    (let ((read-spec
-           (list :name "read"
-                 :description "Read a file's content."
-                 :input (list
-                         (list :name "path"   :type 'string)
-                         (list :name "offset" :type 'integer :optional t)
-                         (list :name "limit"  :type 'integer :optional t))
-                 :handler (lambda (path &optional _offset _limit)
-                            (with-temp-buffer
-                              (insert-file-contents-literally path)
-                              (buffer-string))))))
-      (yeah-tools-register read-spec))
+    (dolist (spec (yeah-builtins-specs))
+      (yeah-tools-register spec))
     (setq yeah-tools--built-in-p t)))
 
 (defun yeah-tools-reset-for-test ()

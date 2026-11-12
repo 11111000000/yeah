@@ -59,5 +59,18 @@
      (lambda (settled) (setq results settled)))
     (should (equal "42" (aref results 0)))))
 
+(ert-deftest yeah-scheduler-preserves-structured-result-metadata ()
+  (let (results)
+    (yeah-scheduler-run
+     (list (list :name "structured" :args nil :mode 'shared
+                 :handler (lambda (_args)
+                            (list :ok t :content "excerpt" :error nil
+                                  :truncated t :artifacts '("/tmp/out")
+                                  :metadata '(:count 1)))))
+     (lambda (settled) (setq results settled)))
+    (should (eq t (plist-get (aref results 0) :truncated)))
+    (should (equal '("/tmp/out") (plist-get (aref results 0) :artifacts)))
+    (should (equal "excerpt" (plist-get (aref results 0) :content)))))
+
 (provide 'test-yeah-scheduler)
 ;;; test-yeah-scheduler.el ends here
