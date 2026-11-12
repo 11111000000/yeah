@@ -37,6 +37,11 @@ work item. Never resolve it by silently making documentation more optimistic.
 ## Current warnings for every agent
 
 - This is a kernel prototype, not a usable coding product.
+- Stage 7 is implemented offline: an agent preset is a file (a Markdown or
+  Org header and a body), and a child runs for real in its own session with
+  only the tools it was granted. Parallel children, the cheaper child
+  model, the Org projection and the fixed-point demonstration are not
+  implemented yet.
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
@@ -48,9 +53,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   client imports foreign tools. Two limits are not hidden — the stdio server
   answers one request at a time (a cancel cannot preempt a running prompt),
   and no third-party client or live provider has driven either server.
-- REPL and sub-agent execution still contain placeholders. Do not build new
-  public behavior on top of them while their stage's prerequisites are
-  unmet.
+- REPL still contains placeholders. Do not build new public behavior on
+  top of it while its stage's prerequisites are unmet.
 - Stage 4 is implemented offline: `M-x yeah`, journal commands, doctor and a
   package-vc bootstrap exist.  Bootstrap and live-provider interactive work
   are not yet verified, so the public alpha gate remains open.

@@ -32,7 +32,7 @@ feature already claimed.
 
 ## What exists today
 
-The repository contains 36 focused Elisp modules implementing pieces of the
+The repository contains 37 focused Elisp modules implementing pieces of the
 kernel:
 
 - a defined run state machine and model-turn orchestration;
@@ -56,9 +56,11 @@ kernel:
 - a run context that owns the session, the transport, the answerer and the
   rules of one run, and three placements: attached, service and batch;
 - an emacsclient bridge to the live buffers of an attached Emacs, approved
-  separately and off by default.
+  separately and off by default;
+- agent presets read from files, and a delegation that runs a child for
+  real: its own session, its own permissions, its own journal.
 
-After Stage 6, byte compilation is clean and 221 ERT unit tests pass.
+After Stage 7, byte compilation is clean and 230 ERT unit tests pass.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
 (real Emacs processes serving ACP and MCP over stdio) and the placements
@@ -76,7 +78,9 @@ Do not infer a working product from the presence of a module:
   client or editor, and no live provider was involved in the wire checks;
 - the bridge to the buffers of an attached Emacs was checked against a stub
   program, never against a live Emacs server;
-- sub-agent execution is still a stub;
+- the delegation runs one child at a time: parallel children, a cheaper
+  child model, the Org projection and the fixed-point demonstration are not
+  implemented yet;
 - global state and incomplete event correlation still limit concurrent runs;
 - PTC is disabled by default and remains **experimental, not a security
   boundary**; its demonstrated higher-order-function bypasses are covered by

@@ -313,3 +313,33 @@ success, and a waived claim is never read as a passing one.
   in-memory result or the journal.
 - **Convention:** the journal is a public artefact: what a client reads
   from it must be what the field means.
+
+### §11.9 — `string-match-p` does not update the match data
+
+- **Date:** 2026-11-12 (the agent presets)
+- **Symptom:** a function that looks for a header with `string-match-p` and
+  then reads `match-end 0` returns a position that belongs to an earlier
+  match — or to nothing at all. The first call works and the second one
+  does not, which looks like state in the wrong place.
+- **Cause:** `string-match-p` returns the position of the match and leaves
+  the match data as it was. `match-end 0` then answers about the previous
+  match, not about the one that just happened.
+- **Fix:** use `string-match` when the match data is needed, and prefer
+  `string-prefix-p` when only the beginning of a string is in question.
+- **Convention:** a position that a function computes must come from the
+  call that computed it, never from the match data of another call.
+
+### §11.10 — `plist-put` mutates the plist it is given
+
+- **Date:** 2026-11-12 (the agent presets)
+- **Symptom:** a function that builds a plist with `plist-put` returns the
+  values of an earlier call: the name of the first preset is the name of
+  every preset.
+- **Cause:** `plist-put` changes the list it is given when the property is
+  already in it. A literal list in the source is a constant shared by every
+  call, so the first call writes into it and every later call reads it.
+- **Fix:** build the empty plist with `list`, not with a literal, and
+  assign one property at a time: a `setq` with several pairs does not
+  promise that the next pair sees the previous one.
+- **Convention:** a value that a function returns must be built by that
+  call; a constant in the source is not a scratch pad.

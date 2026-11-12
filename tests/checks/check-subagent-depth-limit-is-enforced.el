@@ -30,11 +30,25 @@
         (condition-case nil
             (progn
               (yeah-subagent-spawn parent "explore" "too deep"
-                                   (1- (yeah-subagent-depth-limit)))
+                                   :depth (1- (yeah-subagent-depth-limit))
+                                   :transport (lambda (_prompt callback)
+                                                (funcall callback "the answer")))
               (setq outcome 'accepted))
           (user-error (setq outcome 'refused)))
         (unless (eq outcome 'refused)
           (setq failure "the depth limit was not enforced: the spawn was accepted"))
+        ;; A spawn within the limit is accepted: the limit must bound the
+        ;; tree and not forbid it.
+        (condition-case nil
+            (progn
+              (yeah-subagent-spawn parent "explore" "deep enough"
+                                   :depth (- (yeah-subagent-depth-limit) 2)
+                                   :transport (lambda (_prompt callback)
+                                                (funcall callback "the answer")))
+              (setq outcome 'accepted))
+          (user-error (setq outcome 'refused)))
+        (unless (eq outcome 'accepted)
+          (setq failure "a spawn within the depth limit was refused"))
         (yeah-subagent-reset-for-test))
     (ignore-errors (delete-directory tmpdir t t)))
   (when failure

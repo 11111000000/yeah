@@ -464,6 +464,25 @@ server.
 
 Implement the Y in Yeah: bounded, inspectable recursive work.
 
+**Status: implemented offline on 2026-11-12.** `lib/yeah-agent.el` reads an
+agent preset from a file: a header with a name, a description, a model, the
+tools it may use and a depth, and a body that is the prompt. Both the
+Markdown header (`---` … `---`) and the Org header (`#+NAME:` …) are
+understood. Listing the presets reads the headers only; the body is read
+when a preset is used. `lib/yeah-subagent.el` is no longer a stub: a child
+runs a real turn in its own session, with its own context and its own
+permissions, and a tool it was not granted is refused by the rules of the
+child — the refusal is in the child journal, where the parent can read it.
+The lineage is in the names (`<parent>.sub-<n>`), the parent is told what
+happened (`spawn` and `child-end` events in the parent journal), the depth
+is bounded, and a child can be cancelled together with everything it
+spawned.
+
+**Not yet done:** the fixed-point demonstration (Yeah diagnoses and repairs
+a Yeah canary), Org TODO projection and session export, parallel
+independent children, and the cheaper child model. The preset carries a
+model name, but nothing selects it yet.
+
 ### Work items
 
 - Markdown/Org agent presets with name, description, model, tools and prompt;
@@ -480,6 +499,12 @@ Implement the Y in Yeah: bounded, inspectable recursive work.
 A parent can delegate two independent tasks, inspect their actual work,
 cancel the subtree and recover within budget. A child cannot exceed its
 granted capabilities or spawn beyond its declared depth.
+
+The capabilities and the depth are **closed by the tests**: a child may only
+use what it was granted, and a spawn past the depth limit is refused. The
+two independent tasks, the cancellation of a whole subtree and the recovery
+within budget are **partly open**: the cancellation of a child is tested,
+the cancellation of a subtree and the budget of a parent are not.
 
 ## 11. Continuous quality and 1.0 release gates
 

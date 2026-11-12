@@ -4,26 +4,22 @@
 
 ;;; Commentary:
 ;;
-;; Positive and negative tests for `lib/yeah-subagent.el'.
-;; Seven required cases:
-;;
-;;   * yeah-subagent-spawn-returns-completed
-;;   * yeah-subagent-spawn-creates-child-session
-;;   * yeah-subagent-wait-returns-result
-;;   * yeah-subagent-fork-summary-includes-id
-;;   * yeah-subagent-depth-limit-default-3
-;;   * yeah-subagent-depth-limit-overridable
-;;   * yeah-subagent-spawn-with-zero-depth-allowed
+;; A sub-agent is a run of its own.  The tests below ask the delegation
+;; for what it promises: the child runs for real, in its own session, with
+;; only the tools it was granted; the parent is told what happened; the
+;; depth is bounded; and the summary of a child is backed by the journal
+;; of the child.
 
 ;;; Code:
 
 (require 'ert)
+(require 'cl-lib)
 (require 'yeah-subagent)
 (require 'yeah-session)
+(require 'yeah-tools)
 
 (defun yeah-subagent-test--make-tmpdir ()
-  "Create a fresh temp directory; return its absolute path.
-Caller is responsible for `delete-directory' cleanup."
+  "Create a fresh temp directory; return its absolute path."
   (file-name-as-directory
    (make-temp-file "yeah-subagent-" t)))
 
@@ -31,139 +27,214 @@ Caller is responsible for `delete-directory' cleanup."
   "Best-effort cleanup of DIR, ignoring errors."
   (ignore-errors (delete-directory dir t t)))
 
-(ert-deftest yeah-subagent-spawn-returns-completed ()
-  "`yeah-subagent-spawn' returns a result plist with `:status completed'."
-  (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
-         (parent (yeah-session-open "spawn-returns-completed" tmpdir)))
-    (unwind-protect
-        (progn
-          (yeah-subagent-reset-for-test)
-          (let* ((record (yeah-subagent-spawn parent "explore"
-                                              "Look at the README"))
-                 (status (plist-get record :status))
-                 (result (plist-get record :result))
-                 (depth  (plist-get record :depth)))
-            (should (eq status 'completed))
-            (should (stringp result))
-            (should (> (length result) 0))
-            (should (string-match-p "stub:" result))
-            (should (= depth 1)))
-          (yeah-subagent-reset-for-test))
-      (yeah-subagent-test--cleanup tmpdir))))
+(defun yeah-subagent-test--register-probe ()
+  "Register the tool `probe', which answers with what it was given."
+  (unless (yeah-tools-get "probe")
+    (yeah-tools-register
+     (list :name "probe"
+           :description "A tool that records that it ran."
+           :input (list (list :name "path" :type 'string))
+           :handler (lambda (path) (format "probe saw %s" path))))))
+
+(defun yeah-subagent-test--answering-transport (tool)
+  "Return a transport that asks for TOOL and then answers."
+  (lambda (_prompt callback)
+    (funcall callback
+             (list 'tool-call
+                   (list (list :name tool)
+                         (list "/tmp/probe-target")
+                         (lambda (value)
+                           (funcall callback (format "done: %s" value))))))))
+
+(defun yeah-subagent-test--answer-transport ()
+  "Return a transport that answers with text and asks for nothing."
+  (lambda (_prompt callback)
+    (funcall callback "the answer")))
 
 (ert-deftest yeah-subagent-spawn-creates-child-session ()
-  "`yeah-subagent-spawn' creates a new child session under the
-parent's root directory."
+  "The child of a parent has its own session, and its id carries the lineage."
   (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
-         (parent (yeah-session-open "spawn-creates-child" tmpdir))
-         (record nil)
-         (child-session nil))
+         (parent (yeah-session-open "spawn-creates-child" tmpdir)))
     (unwind-protect
         (progn
           (yeah-subagent-reset-for-test)
-          (setq record (yeah-subagent-spawn parent "review"
-                                             "Check the diff"))
-          (setq child-session (plist-get record :child-session))
-          (should (consp child-session))
-          (should (stringp (plist-get child-session :id)))
-          (should (string-match-p "spawn-creates-child\\.sub-"
-                                  (plist-get child-session :id)))
-          (should (stringp (plist-get child-session :path)))
-          (should (string-suffix-p ".jsonl" (plist-get child-session :path)))
-          (should (file-exists-p (plist-get child-session :path)))
-          (let ((records (yeah-session-records child-session)))
-            (should (= (length records) 1))
-            (should (string= (plist-get (nth 0 records) :type) "header"))))
+          (let* ((record (yeah-subagent-spawn parent "review" "Check the diff"
+                                              :transport (yeah-subagent-test--answer-transport)))
+                 (child-session (plist-get record :child-session)))
+            (should (consp child-session))
+            (should (string-match-p "spawn-creates-child\\.sub-"
+                                    (plist-get child-session :id)))
+            (should (file-exists-p (plist-get child-session :path)))))
       (yeah-subagent-reset-for-test)
       (yeah-subagent-test--cleanup tmpdir))))
 
-(ert-deftest yeah-subagent-wait-returns-result ()
-  "`yeah-subagent-wait' returns the same plist `spawn' returned."
+(ert-deftest yeah-subagent-child-runs-for-real ()
+  "The child runs a turn of its own and writes down what it did."
   (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
-         (parent (yeah-session-open "wait-returns" tmpdir))
-         (spawn-record nil)
-         (wait-record nil))
+         (parent (yeah-session-open "child-runs" tmpdir)))
     (unwind-protect
         (progn
           (yeah-subagent-reset-for-test)
-          (setq spawn-record (yeah-subagent-spawn parent "worker"
-                                                  "Do the work"))
-          (let ((id (plist-get spawn-record :id)))
-            (setq wait-record (yeah-subagent-wait id))
-            (should (eq (plist-get wait-record :status) 'completed))
-            (should (string= (plist-get wait-record :result)
-                             (plist-get spawn-record :result)))
-            (should (string= (plist-get wait-record :prompt)
-                             (plist-get spawn-record :prompt)))))
+          (let* ((record (yeah-subagent-spawn parent "explore" "Find the thing"
+                                                 :transport (yeah-subagent-test--answer-transport)))
+                 (child-session (plist-get record :child-session)))
+            (yeah-subagent-wait (plist-get record :id))
+            (should (eq (plist-get record :status) 'completed))
+            (should (equal (plist-get record :result) "the answer"))
+            (let ((types (mapcar (lambda (event) (plist-get event :type))
+                                 (yeah-session-records child-session))))
+              (should (member "user-message" types))
+              (should (member "assistant-message" types)))))
       (yeah-subagent-reset-for-test)
       (yeah-subagent-test--cleanup tmpdir))))
 
-(ert-deftest yeah-subagent-fork-summary-includes-id ()
-  "`yeah-subagent-fork-summary' returns a string containing
-the child id and the result text."
+(ert-deftest yeah-subagent-child-may-only-use-the-tools-it-was-granted ()
+  "A tool the child was not granted is refused, and the refusal is written down."
   (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
-         (parent (yeah-session-open "fork-summary" tmpdir))
-         (record nil)
-         (child-session nil)
-         (summary nil))
+         (parent (yeah-session-open "child-tools" tmpdir)))
     (unwind-protect
         (progn
           (yeah-subagent-reset-for-test)
-          (setq record (yeah-subagent-spawn parent "explore"
-                                             "Find bugs"))
-          (setq child-session (plist-get record :child-session))
-          (setq summary (yeah-subagent-fork-summary parent child-session))
-          (should (stringp summary))
-          (should (string-match-p "sub-agent" summary))
-          (let* ((id-str (number-to-string (plist-get record :id)))
-                 (result-str (plist-get record :result)))
-            (should (string-match-p id-str summary))
-            (should (string-match-p result-str summary))))
+          (yeah-subagent-test--register-probe)
+          (let* ((record (yeah-subagent-spawn
+                          parent "explore" "Use the probe"
+                          :transport (yeah-subagent-test--answering-transport "probe")
+                          :tools '("read")))
+                 (child-session (plist-get record :child-session)))
+            (yeah-subagent-wait (plist-get record :id))
+            (let ((decisions (seq-filter
+                              (lambda (event)
+                                (equal (plist-get event :type) "permission-decision"))
+                              (yeah-session-records child-session))))
+              (should (= 1 (length decisions)))
+              (should (equal (plist-get (car decisions) :effect) "deny")))
+            (let ((ends (seq-filter
+                         (lambda (event)
+                           (equal (plist-get event :type) "tool-end"))
+                         (yeah-session-records child-session))))
+              (should (= 1 (length ends)))
+              (should-not (yeah-events-boolean-p (plist-get (car ends) :ok))))))
+      (yeah-subagent-reset-for-test)
+      (yeah-subagent-test--cleanup tmpdir))))
+
+(ert-deftest yeah-subagent-child-may-use-a-granted-tool ()
+  "A tool the child was granted runs."
+  (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
+         (parent (yeah-session-open "child-granted" tmpdir)))
+    (unwind-protect
+        (progn
+          (yeah-subagent-reset-for-test)
+          (yeah-subagent-test--register-probe)
+          (let* ((record (yeah-subagent-spawn
+                          parent "explore" "Use the probe"
+                          :transport (yeah-subagent-test--answering-transport "probe")
+                          :tools '("probe")))
+                 (child-session (plist-get record :child-session)))
+            (yeah-subagent-wait (plist-get record :id))
+            (let ((ends (seq-filter
+                         (lambda (event)
+                           (equal (plist-get event :type) "tool-end"))
+                         (yeah-session-records child-session))))
+              (should (= 1 (length ends)))
+              (should (yeah-events-boolean-p (plist-get (car ends) :ok))))))
+      (yeah-subagent-reset-for-test)
+      (yeah-subagent-test--cleanup tmpdir))))
+
+(ert-deftest yeah-subagent-parent-is-told-what-happened ()
+  "The journal of the parent carries the spawn and the end of the child."
+  (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
+         (parent (yeah-session-open "parent-told" tmpdir)))
+    (unwind-protect
+        (progn
+          (yeah-subagent-reset-for-test)
+          (let* ((record (yeah-subagent-spawn parent "explore" "Find the thing"
+                                                 :transport (yeah-subagent-test--answer-transport)))
+                 (child-id (plist-get record :child-session)))
+            (yeah-subagent-wait (plist-get record :id))
+            (let ((types (mapcar (lambda (event) (plist-get event :type))
+                                 (yeah-session-records parent))))
+              (should (member "spawn" types))
+              (should (member "child-end" types))
+              (let ((end (seq-find (lambda (event)
+                                     (equal (plist-get event :type) "child-end"))
+                                   (yeah-session-records parent))))
+                (should (equal (plist-get end :child) (plist-get child-id :id)))
+                (should (equal (plist-get end :summary) "the answer"))))))
+      (yeah-subagent-reset-for-test)
+      (yeah-subagent-test--cleanup tmpdir))))
+
+(ert-deftest yeah-subagent-depth-limit-is-enforced ()
+  "A child beyond the depth limit is refused."
+  (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
+         (parent (yeah-session-open "depth-limit" tmpdir))
+         (saved yeah-subagent--max-depth))
+    (unwind-protect
+        (progn
+          (yeah-subagent-reset-for-test)
+          (setq yeah-subagent--max-depth 2)
+          (should-error
+           (yeah-subagent-spawn parent "explore" "Too deep" :depth 2
+                                :transport (yeah-subagent-test--answer-transport))
+           :type 'user-error)
+          (should (= 2 (yeah-subagent-depth-limit))))
+      (setq yeah-subagent--max-depth saved)
       (yeah-subagent-reset-for-test)
       (yeah-subagent-test--cleanup tmpdir))))
 
 (ert-deftest yeah-subagent-depth-limit-default-3 ()
-  "`yeah-subagent-depth-limit' returns 3 by default."
-  (let ((saved yeah-subagent--max-depth))
-    (unwind-protect
-        (progn
-          (setq yeah-subagent--max-depth 3)
-          (should (= 3 (yeah-subagent-depth-limit))))
-      (setq yeah-subagent--max-depth saved))))
+  "The depth limit is three by default."
+  (should (= 3 (yeah-subagent-depth-limit))))
 
-(ert-deftest yeah-subagent-depth-limit-overridable ()
-  "`yeah-subagent-depth-limit' reads the dynamic `yeah-subagent--max-depth'
-so tests can override the value with `setq'."
-  (let ((saved yeah-subagent--max-depth))
-    (unwind-protect
-        (progn
-          (setq yeah-subagent--max-depth 7)
-          (should (= 7 (yeah-subagent-depth-limit)))
-          (setq yeah-subagent--max-depth 1)
-          (should (= 1 (yeah-subagent-depth-limit))))
-      (setq yeah-subagent--max-depth saved))))
-
-(ert-deftest yeah-subagent-spawn-with-zero-depth-allowed ()
-  "`yeah-subagent-spawn' with DEPTH=0 succeeds (the top-level
-loop case) and produces a child at depth 1."
+(ert-deftest yeah-subagent-fork-summary-is-backed-by-the-journal ()
+  "The summary of a child says what the child answered."
   (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
-         (parent (yeah-session-open "spawn-zero-depth" tmpdir))
-         (saved  yeah-subagent--max-depth)
-         (record nil)
-         (err    nil))
+         (parent (yeah-session-open "fork-summary" tmpdir)))
     (unwind-protect
         (progn
           (yeah-subagent-reset-for-test)
-          (setq yeah-subagent--max-depth 3)
-          (condition-case nil
-              (setq record (yeah-subagent-spawn parent "explore"
-                                                 "Top-level prompt" 0))
-            (user-error (setq err t)))
-          (should-not err)
-          (should record)
-          (should (eq (plist-get record :status) 'completed))
-          (should (= (plist-get record :depth) 1)))
-      (setq yeah-subagent--max-depth saved)
+          (let* ((record (yeah-subagent-spawn parent "explore" "Find bugs"
+                                                 :transport (yeah-subagent-test--answer-transport)))
+                 (child-session (plist-get record :child-session)))
+            (yeah-subagent-wait (plist-get record :id))
+            (let ((summary (yeah-subagent-fork-summary parent child-session)))
+              (should (stringp summary))
+              (should (string-match-p "sub-agent" summary))
+              (should (string-match-p "the answer" summary)))))
+      (yeah-subagent-reset-for-test)
+      (yeah-subagent-test--cleanup tmpdir))))
+
+(ert-deftest yeah-subagent-cancel-stops-the-child ()
+  "A child that is cancelled says so, and its work stops."
+  (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
+         (parent (yeah-session-open "cancel" tmpdir)))
+    (unwind-protect
+        (progn
+          (yeah-subagent-reset-for-test)
+          (let* ((record (yeah-subagent-spawn parent "explore" "Wait forever"
+                                                 :transport (lambda (_prompt _callback) nil)))
+                 (child-id (plist-get record :id)))
+            (should (yeah-subagent-cancel child-id "the parent changed its mind"))
+            (should (eq 'interrupted (yeah-turn-state (plist-get record :turn))))
+            (should (eq 'failed (plist-get record :status)))))
+      (yeah-subagent-reset-for-test)
+      (yeah-subagent-test--cleanup tmpdir))))
+
+(ert-deftest yeah-subagent-children-are-listed ()
+  "The children of a session are the children it spawned."
+  (let* ((tmpdir (yeah-subagent-test--make-tmpdir))
+         (parent (yeah-session-open "children" tmpdir)))
+    (unwind-protect
+        (progn
+          (yeah-subagent-reset-for-test)
+          (yeah-subagent-spawn parent "explore" "One"
+                               :transport (yeah-subagent-test--answer-transport))
+          (yeah-subagent-spawn parent "review" "Two"
+                               :transport (yeah-subagent-test--answer-transport))
+          (let ((children (yeah-subagent-children parent)))
+            (should (= 2 (length children)))
+            (should (equal (mapcar (lambda (child) (plist-get child :role))
+                                    children)
+                           '("explore" "review")))))
       (yeah-subagent-reset-for-test)
       (yeah-subagent-test--cleanup tmpdir))))
 
