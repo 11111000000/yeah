@@ -45,6 +45,7 @@
     (:type "cancel"             :fields (:payload))
     (:type "spawn"              :fields (:child :role :depth))
     (:type "child-end"          :fields (:child :role :ok :summary))
+    (:type "input-withdrawn"    :fields (:kind :reason))
     (:type "usage"              :fields (:input :output))
     (:type "error"              :fields (:payload)))
   "The vocabulary of the event log.

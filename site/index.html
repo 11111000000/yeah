@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Yeah — Y-combinator, Emacs Agent Harness</title>
+<meta name="description" content="Yeah is an Emacs Lisp agent harness: the agent runs inside Emacs itself. Model traffic goes through gptel, tools go through a permissioned registry, and the session journal stays append-only.">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#ffffff">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Yeah — Y-combinator, Emacs Agent Harness">
+<meta property="og:description" content="The agent runs inside Emacs. Emacs is not a client to an agent — it is the agent's runtime.">
+<meta property="og:image" content="assets/logo.svg">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.classList.add("js");</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<header class="topbar">
+  <div class="shell topbar__inner">
+    <a class="brand" href="#top" aria-label="Yeah — home">
+      <svg class="brand__mark" viewBox="0 0 48 48" role="img" aria-hidden="true" focusable="false">
+        <path d="M8 9 L24 27 L40 9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="24" cy="27" r="4.6" fill="none" stroke="currentColor" stroke-width="2.4"/>
+        <path d="M24 31.6 L24 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="8" cy="9" r="2.6" fill="currentColor"/>
+        <circle cx="40" cy="9" r="2.6" fill="currentColor"/>
+      </svg>
+      <span class="brand__word">Yeah</span>
+    </a>
+
+    <nav class="nav" aria-label="Sections">
+      <a href="#what">What</a>
+      <a href="#why">Why Emacs</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#stages">Stages</a>
+      <a href="#status">Status</a>
+      <a href="#install">Install</a>
+    </nav>
+
+    <a class="btn btn--ghost topbar__cta" href="https://github.com/11111000000/yeah">GitHub</a>
+  </div>
+</header>
+
+<main id="main">
+  <span id="top"></span>
+
+  <!-- ─────────────────────────────  hero  ───────────────────────────── -->
+  <section class="hero">
+    <div class="shell hero__inner">
+      <p class="eyebrow reveal">v0.1.0-alpha · kernel prototype, not yet a product</p>
+
+      <h1 class="hero__title reveal">
+        <span class="hero__word">Yeah</span>
+        <span class="hero__sub">Y-combinator, Emacs Agent Harness</span>
+      </h1>
+
+      <p class="hero__lead reveal">
+        The agent runs <em>inside</em> Emacs. Emacs is not a client to an agent
+        living somewhere else — the harness itself is Emacs Lisp, your session is
+        its runtime, and your editor stays yours.
+      </p>
+
+      <div class="hero__actions reveal">
+        <a class="btn" href="#install">Install</a>
+        <a class="btn btn--ghost" href="https://github.com/11111000000/yeah/blob/main/docs/PLAN.md">Read the plan</a>
+        <a class="btn btn--quiet" href="https://github.com/11111000000/yeah">Source</a>
+      </div>
+
+      <dl class="facts reveal">
+        <div class="fact">
+          <dt>Model gateway</dt>
+          <dd>gptel, behind a private version-checked adapter</dd>
+        </div>
+        <div class="fact">
+          <dt>Tools</dt>
+          <dd>typed registry, last-matching permission rule</dd>
+        </div>
+        <div class="fact">
+          <dt>History</dt>
+          <dd>append-only JSONL journal, never rewritten</dd>
+        </div>
+        <div class="fact">
+          <dt>Kernel</dt>
+          <dd>37 focused Elisp modules, byte-compile clean</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  what  ───────────────────────────── -->
+  <section class="section" id="what">
+    <div class="shell">
+      <p class="eyebrow reveal">What it is</p>
+      <h2 class="section__title reveal">Three commitments, and the architecture that keeps them</h2>
+      <p class="section__lead reveal">
+        A claim on a website is cheap. These three are structural: they are
+        enforced by the kernel, and each one has a check that fails when it is
+        broken.
+      </p>
+
+      <div class="cards">
+        <article class="card reveal">
+          <p class="card__index">01</p>
+          <h3 class="card__title">The kernel is Elisp</h3>
+          <p class="card__body">
+            There is no hidden sidecar process and no second implementation in
+            another language. The run controller, the tool registry, the policy
+            engine and the journal are all in <code>lib/</code>.
+          </p>
+        </article>
+
+        <article class="card reveal">
+          <p class="card__index">02</p>
+          <h3 class="card__title">One model gateway</h3>
+          <p class="card__body">
+            Every call reaches the model through one private gptel adapter.
+            Backend, model, tools and instructions are frozen when the input is
+            accepted; supported gptel versions are pinned and checked against
+            real contracts.
+          </p>
+        </article>
+
+        <article class="card reveal">
+          <p class="card__index">03</p>
+          <h3 class="card__title">The journal is the truth</h3>
+          <p class="card__body">
+            Context, UI state, cost, approvals and recovery are projections of
+            an append-only event log. Compaction creates new events; it never
+            deletes an acknowledged record.
+          </p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  why  ───────────────────────────── -->
+  <section class="section section--tint" id="why">
+    <div class="shell">
+      <p class="eyebrow reveal">Why Emacs</p>
+      <h2 class="section__title reveal">A shell-only harness cannot see the editor you work in</h2>
+      <p class="section__lead reveal">
+        Yeah is designed to see the actual programming environment — not a
+        transcript of it. That is the difference between a harness that shells
+        out and a harness that lives where the work happens.
+      </p>
+
+      <ul class="capabilities">
+        <li class="capability reveal"><span class="capability__dot" aria-hidden="true"></span>Live buffers, including unsaved edits</li>
+        <li class="capability reveal"><span class="capability__dot" aria-hidden="true"></span>Editor documentation, source and introspection as agent context</li>
+        <li class="capability reveal"><span class="capability__dot" aria-hidden="true"></span>Buffer-native edits with modification-tick checks and native undo</li>
+        <li class="capability reveal"><span class="capability__dot" aria-hidden="true"></span>Eglot and Flymake diagnostics without a second build system</li>
+        <li class="capability reveal"><span class="capability__dot" aria-hidden="true"></span>Magit, Org, project.el, Dired and TRAMP as native capabilities</li>
+        <li class="capability reveal"><span class="capability__dot" aria-hidden="true"></span>Reproducible Elisp checks through byte compilation and ERT</li>
+        <li class="capability reveal"><span class="capability__dot" aria-hidden="true"></span>emacsclient as an explicit bridge to an attached session</li>
+      </ul>
+
+      <p class="aside reveal">
+        Parity with mature harnesses such as opencode and pi is a goal to
+        measure, not a feature to advertise. The measure is verified task
+        success — not the length of a feature list.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  architecture  ───────────────────────────── -->
+  <section class="section" id="architecture">
+    <div class="shell">
+      <p class="eyebrow reveal">Architecture</p>
+      <h2 class="section__title reveal">One controller, one journal, three drivers</h2>
+      <p class="section__lead reveal">
+        Human, ACP, MCP and batch drivers submit commands to the same run
+        controller and write the same events for the same task. The placement
+        may change who owns the process and who answers approvals; it may not
+        change the sequence of semantic events.
+      </p>
+
+      <figure class="diagram reveal">
+        <svg viewBox="0 0 900 330" role="img" aria-labelledby="diagram-title diagram-desc">
+          <defs>
+            <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 1 L7 4 L0 7 z" fill="var(--c-grey50)"/>
+            </marker>
+          </defs>
+          <title id="diagram-title">Yeah architecture</title>
+          <desc id="diagram-desc">Drivers — human, ACP, MCP and batch — feed a session API and run controller. The controller drives a model adapter, a tool registry and a policy engine. These feed an execution scheduler, which writes an append-only event journal. The journal feeds model context, read models and the session index, which reach the attached, service and batch placements.</desc>
+
+          <g class="d-grid">
+            <rect x="20"  y="30"  width="180" height="44" rx="3"/>
+            <rect x="20"  y="90"  width="180" height="44" rx="3"/>
+            <rect x="20"  y="150" width="180" height="44" rx="3"/>
+            <rect x="20"  y="210" width="180" height="44" rx="3"/>
+          </g>
+          <g class="d-label d-label--left">
+            <text x="110" y="57"  text-anchor="middle">Human · M-x yeah</text>
+            <text x="110" y="117" text-anchor="middle">ACP client</text>
+            <text x="110" y="177" text-anchor="middle">MCP client</text>
+            <text x="110" y="237" text-anchor="middle">Batch</text>
+          </g>
+
+          <g class="d-arrow">
+            <path d="M200 52  C 230 52, 230 92, 262 92"/>
+            <path d="M200 112 L 262 112"/>
+            <path d="M200 172 C 230 172, 230 132, 262 132"/>
+            <path d="M200 232 C 230 232, 230 152, 262 152"/>
+          </g>
+
+          <rect class="d-strong" x="262" y="74" width="210" height="96" rx="3"/>
+          <g class="d-label">
+            <text x="367" y="112" text-anchor="middle">Session API</text>
+            <text x="367" y="136" text-anchor="middle">Run Controller</text>
+          </g>
+
+          <g class="d-arrow">
+            <path d="M472 96  L 520 96"/>
+            <path d="M472 122 L 520 122"/>
+            <path d="M472 148 L 520 148"/>
+          </g>
+
+          <g class="d-grid">
+            <rect x="520" y="74" width="180" height="34" rx="3"/>
+            <rect x="520" y="112" width="180" height="34" rx="3"/>
+            <rect x="520" y="150" width="180" height="34" rx="3"/>
+          </g>
+          <g class="d-label">
+            <text x="610" y="96"  text-anchor="middle">Model adapter (gptel)</text>
+            <text x="610" y="134" text-anchor="middle">Tool registry</text>
+            <text x="610" y="172" text-anchor="middle">Policy &amp; approvals</text>
+          </g>
+
+          <g class="d-arrow">
+            <path d="M610 184 L 610 214"/>
+          </g>
+
+          <rect class="d-strong" x="500" y="214" width="220" height="40" rx="3"/>
+          <text class="d-label" x="610" y="239" text-anchor="middle">Execution scheduler</text>
+
+          <g class="d-arrow">
+            <path d="M500 234 L 452 234"/>
+          </g>
+
+          <rect class="d-accent" x="258" y="212" width="194" height="44" rx="3"/>
+          <text class="d-label" x="355" y="239" text-anchor="middle">Append-only journal</text>
+
+          <g class="d-arrow">
+            <path d="M300 256 L 300 292"/>
+            <path d="M355 256 L 355 292"/>
+            <path d="M410 256 L 410 292"/>
+          </g>
+
+          <g class="d-grid">
+            <rect x="228" y="292" width="144" height="32" rx="3"/>
+            <rect x="283" y="292" width="144" height="32" rx="3"/>
+            <rect x="338" y="292" width="144" height="32" rx="3"/>
+          </g>
+          <g class="d-label d-label--small">
+            <text x="300" y="313" text-anchor="middle">Model context</text>
+            <text x="355" y="313" text-anchor="middle">Read models</text>
+            <text x="410" y="313" text-anchor="middle">Session index</text>
+          </g>
+
+          <g class="d-arrow">
+            <path d="M800 96  C 830 96, 830 234, 800 234"/>
+            <path d="M800 234 L 748 234"/>
+          </g>
+          <rect class="d-grid" x="748" y="212" width="132" height="44" rx="3"/>
+          <text class="d-label d-label--small" x="814" y="232" text-anchor="middle">attached</text>
+          <text class="d-label d-label--small" x="814" y="248" text-anchor="middle">service · batch</text>
+        </svg>
+      </figure>
+
+      <h3 class="subhead reveal">Ten decisions that hold the shape</h3>
+      <ol class="decisions">
+        <li class="decision reveal"><b>D1</b> The journal is the source of truth</li>
+        <li class="decision reveal"><b>D2</b> Yeah owns its execution state machine</li>
+        <li class="decision reveal"><b>D3</b> gptel is a narrow, private model adapter</li>
+        <li class="decision reveal"><b>D4</b> Typed tools are central; evaluation is an explicit option</li>
+        <li class="decision reveal"><b>D5</b> Buffer edits use optimistic concurrency</li>
+        <li class="decision reveal"><b>D6</b> Large output becomes an artifact; context is calibrated</li>
+        <li class="decision reveal"><b>D7</b> The human is an asynchronous master</li>
+        <li class="decision reveal"><b>D8</b> Agents and skills are declarative</li>
+        <li class="decision reveal"><b>D9</b> Plan and Build are permission profiles</li>
+        <li class="decision reveal"><b>D10</b> Design rationale and verified facts live together</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  stages  ───────────────────────────── -->
+  <section class="section section--tint" id="stages">
+    <div class="shell">
+      <p class="eyebrow reveal">The road</p>
+      <h2 class="section__title reveal">Eight stages, in dependency order</h2>
+      <p class="section__lead reveal">
+        ACP, service mode and sub-agents come late on purpose: they must
+        transport a working kernel, not conceal missing execution behind
+        protocol handlers.
+      </p>
+
+      <ol class="stages">
+        <li class="stage reveal"><span class="stage__num">0</span><span class="stage__name">Honesty and safety</span><span class="stage__note">done — contracts pinned, PTC quarantined, failures bounded</span></li>
+        <li class="stage reveal"><span class="stage__num">1</span><span class="stage__name">Coding tools</span><span class="stage__note">done — read, edit, write, process, diagnostics</span></li>
+        <li class="stage reveal"><span class="stage__num">2</span><span class="stage__name">Context and compaction</span><span class="stage__note">done — calibration, asynchronous compaction, pruning</span></li>
+        <li class="stage reveal"><span class="stage__num">3</span><span class="stage__name">Human control</span><span class="stage__note">done — queued input, steering, cancellation, deadlines</span></li>
+        <li class="stage reveal"><span class="stage__num">4</span><span class="stage__name">Installable interactive product</span><span class="stage__note">public alpha — gate still open</span></li>
+        <li class="stage reveal"><span class="stage__num">5</span><span class="stage__name">ACP and MCP wire</span><span class="stage__note">stdio servers real; cancel cannot preempt a prompt</span></li>
+        <li class="stage reveal"><span class="stage__num">6</span><span class="stage__name">Placements</span><span class="stage__note">attached, service and batch share one event stream</span></li>
+        <li class="stage reveal"><span class="stage__num">7</span><span class="stage__name">Delegation and ecosystem</span><span class="stage__note">agent presets are files; parallel children pending</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  status  ───────────────────────────── -->
+  <section class="section" id="status">
+    <div class="shell">
+      <p class="eyebrow reveal">Status</p>
+      <h2 class="section__title reveal">What is true today, and what is not</h2>
+      <p class="section__lead reveal">
+        A green module is not a working feature. Everything below is stated at
+        the level the evidence supports.
+      </p>
+
+      <div class="status-grid">
+        <section class="status status--yes reveal">
+          <h3 class="status__title">Verified offline in this checkout</h3>
+          <ul class="status__list">
+            <li>All <code>lib/</code> modules byte-compile clean, without warnings</li>
+            <li><strong>230 / 230</strong> ERT unit tests pass</li>
+            <li>Direct canaries pass for transport, scheduling, tool failures, real coding, compaction and installation entry points</li>
+            <li>Append-only JSONL journal, typed event vocabulary, projections and session index</li>
+            <li>Tool registry with validated arguments, last-matching permission rules, structured failures</li>
+            <li>Queued human control: persistent pending input, steering at batch boundaries, cancellation, nudges, deadlines</li>
+            <li>Offline agent presets: a preset is a Markdown or Org file, and a child runs in its own session with only its granted tools</li>
+          </ul>
+        </section>
+
+        <section class="status status--no reveal">
+          <h3 class="status__title">Not verified yet — please do not assume</h3>
+          <ul class="status__list">
+            <li>Live-provider behaviour: no real model call has been accepted as evidence</li>
+            <li>Bootstrap installation is not network-tested on a clean machine; the public alpha gate stays open</li>
+            <li>PTC evaluation is experimental and off by default — <strong>not</strong> a security boundary</li>
+            <li>The stdio servers answer one request at a time, so a cancel cannot preempt a running prompt</li>
+            <li>Parallel children, the cheaper child model and the Org projection are not implemented</li>
+            <li>The bridge to the buffers of an attached Emacs is off until the operator turns it on</li>
+            <li>Math-coding v4 map/run/gate results are frozen and are not current evidence</li>
+          </ul>
+        </section>
+      </div>
+
+      <p class="aside reveal">
+        The machine-checked truth lives in <code>spec.json</code> and
+        <code>./scripts/dev map</code>. Documentation never substitutes for that
+        evidence — this page included.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  install  ───────────────────────────── -->
+  <section class="section section--tint" id="install">
+    <div class="shell">
+      <p class="eyebrow reveal">Install</p>
+      <h2 class="section__title reveal">Two documented actions</h2>
+      <p class="section__lead reveal">
+        Tested target: Emacs 30.2 with <code>gptel</code> and a configured model
+        backend. Then run <code>M-x yeah-doctor</code>, then <code>M-x yeah</code>.
+      </p>
+
+      <div class="snippets">
+        <div class="snippet reveal">
+          <div class="snippet__head">
+            <p class="snippet__label">Through package-vc</p>
+            <button class="copy" type="button" data-copy-target="install-vc">Copy</button>
+          </div>
+          <pre class="code"><code id="install-vc">(require 'package-vc)
+(package-vc-install "https://github.com/11111000000/yeah.git" nil nil 'yeah)</code></pre>
+        </div>
+
+        <div class="snippet reveal">
+          <div class="snippet__head">
+            <p class="snippet__label">Clean-Emacs bootstrap</p>
+            <button class="copy" type="button" data-copy-target="install-sh">Copy</button>
+          </div>
+          <pre class="code"><code id="install-sh">emacs -Q --batch -l install/yeah-bootstrap.el</code></pre>
+        </div>
+      </div>
+
+      <p class="aside reveal">
+        The bootstrap pulls gptel from MELPA when needed and installs Yeah
+        through package-vc. It is intentionally not exercised in CI — please
+        report a failure before treating installation as supported.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  development  ───────────────────────────── -->
+  <section class="section" id="development">
+    <div class="shell">
+      <p class="eyebrow reveal">Development</p>
+      <h2 class="section__title reveal">Checks that can fail</h2>
+      <p class="section__lead reveal">
+        Every claim in this repository carries a control: a command that breaks
+        the subject and must fail with it. A check that cannot fail is a
+        comment, and unknown is never pass.
+      </p>
+
+      <div class="table-wrap reveal">
+        <table class="table">
+          <thead>
+            <tr><th scope="col">Command</th><th scope="col">What it proves</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>./scripts/dev byte-compile-all</code></td><td>the kernel compiles clean, with no warnings</td></tr>
+            <tr><td><code>./scripts/dev ert tests/unit/*.el</code></td><td>unit-level behaviour of every module</td></tr>
+            <tr><td><code>./scripts/dev check tests/checks/*</code></td><td>canaries bound to specific claims</td></tr>
+            <tr><td><code>./scripts/dev map</code></td><td>claims, states and uncovered surface</td></tr>
+            <tr><td><code>./scripts/dev run</code></td><td>executes checks and binds evidence to content</td></tr>
+            <tr><td><code>./scripts/dev gate</code></td><td>run, then map; the exit code is the verdict</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="aside reveal">
+        <code>scripts/dev</code> needs Emacs on <code>PATH</code> (or in
+        <code>EMACS</code>). Method commands also need a compatible math-coding
+        binary; a CLI or version mismatch is blocked tooling, not a passing
+        check.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─────────────────────────────  non-goals  ───────────────────────────── -->
+  <section class="section section--tint" id="non-goals">
+    <div class="shell">
+      <p class="eyebrow reveal">Non-goals</p>
+      <h2 class="section__title reveal">What Yeah deliberately does not do</h2>
+      <ul class="non-goals">
+        <li class="reveal">A second kernel written in another language</li>
+        <li class="reveal">A terminal or web UI before the interactive slice works</li>
+        <li class="reveal">Advice-based modification of gptel internals as an architecture</li>
+        <li class="reveal">Destructive compaction or snapshots replacing the journal</li>
+        <li class="reveal">Unrestricted evaluation presented as safe</li>
+        <li class="reveal">A plugin ecosystem duplicating the tool and skill registries</li>
+        <li class="reveal">Telemetry, provider lock-in or mandatory cloud-only operation</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="shell footer__inner">
+    <div class="footer__brand">
+      <svg class="brand__mark brand__mark--small" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <path d="M8 9 L24 27 L40 9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="24" cy="27" r="4.6" fill="none" stroke="currentColor" stroke-width="2.4"/>
+        <path d="M24 31.6 L24 40" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="8" cy="9" r="2.6" fill="currentColor"/>
+        <circle cx="40" cy="9" r="2.6" fill="currentColor"/>
+      </svg>
+      <p class="footer__name">Yeah</p>
+      <p class="footer__note">Y-combinator, Emacs Agent Harness</p>
+    </div>
+
+    <nav class="footer__links" aria-label="Documents">
+      <a href="https://github.com/11111000000/yeah/blob/main/README.md">README</a>
+      <a href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md">Architecture</a>
+      <a href="https://github.com/11111000000/yeah/blob/main/docs/PLAN.md">Plan</a>
+      <a href="https://github.com/11111000000/yeah/blob/main/docs/ENGINEERING.md">Engineering</a>
+      <a href="https://github.com/11111000000/yeah/blob/main/spec.json">spec.json</a>
+      <a href="https://github.com/11111000000/yeah/blob/main/waves">waves</a>
+    </nav>
+
+    <div class="footer__meta">
+      <p><span class="label">Author</span> Petr Kosov</p>
+      <p><span class="label">License</span> Apache-2.0</p>
+      <p><span class="label">Version</span> 0.1.0-alpha</p>
+    </div>
+  </div>
+</footer>
+
+<script src="script.js" defer></script>
+</body>
+</html>
