@@ -32,9 +32,13 @@ boundary is recorded in both cases, so the person can revert."
   "Save BUFFER when `yeah-edit-save-after-edit' is non-nil, and return
 non-nil when the buffer was saved.  Saving writes the buffer to the file
 it visits; it never discards the person's unsaved changes, because those
-changes live in the buffer, not in the file."
+changes live in the buffer, not in the file.  When the file changed on
+disk since the buffer was read, saving is refused cleanly instead of
+asking a question that a batch Emacs cannot answer."
   (with-current-buffer buffer
     (when yeah-edit-save-after-edit
+      (unless (verify-visited-file-modtime buffer)
+        (user-error "edit: the file changed on disk; not saving"))
       (let ((require-final-newline nil))
         (save-buffer))
       t)))
@@ -80,6 +84,10 @@ all matches or exactly one match are accepted."
       (unless (file-exists-p expanded)
         (user-error "edit: file does not exist: %s" expanded))
       (setq buffer (find-file-noselect expanded)))
+    (with-current-buffer buffer
+      (unless (verify-visited-file-modtime buffer)
+        (user-error "edit: %s changed on disk; read fresh state before retrying"
+                    expanded)))
     (with-current-buffer buffer
       (let ((current-tick (buffer-chars-modified-tick)))
         (if (and tick (/= tick current-tick))

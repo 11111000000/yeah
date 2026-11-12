@@ -43,6 +43,13 @@
   "Yeah sub-agent delegation."
   :group 'yeah)
 
+(defcustom yeah-subagent-max-nudges 0
+  "Completion nudges a child is given by default.
+A child that narrates a plan instead of acting must be asked to act; a
+child that is left alone stops after one answer."
+  :type 'integer
+  :group 'yeah-subagent)
+
 (defvar yeah-subagent--max-depth 3
   "Maximum sub-agent depth. The top-level loop is at depth 0.
 A child whose depth would be equal to or greater than this limit is refused.")
@@ -178,6 +185,7 @@ Signals `user-error' when the depth of the child would reach
                       :answerer answerer
                       :rules (yeah-subagent--rules tools)
                       :budget budget
+                      :max-nudges yeah-subagent-max-nudges
                       :on-done (lambda (turn)
                                  (yeah-subagent--finish child-id turn)))))
         (setf (plist-get record :turn)
