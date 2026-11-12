@@ -55,8 +55,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   and no third-party client or live provider has driven either server.
 - REPL still contains placeholders. Do not build new public behavior on
   top of it while its stage's prerequisites are unmet.
-- Stage 4 is implemented offline: `M-x yeah`, journal commands, doctor and a
-  package-vc bootstrap exist.  Bootstrap and live-provider interactive work
+- Stage 4 is implemented offline: `M-x yeah`, journal commands, the Org
+  export, doctor and a package-vc bootstrap exist.  Bootstrap and live-provider interactive work
   are not yet verified, so the public alpha gate remains open.
 - Stage 3 is implemented offline: the Plan and Build permission profiles,
   a persistent pending FIFO, frozen inputs,

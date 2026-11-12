@@ -17,6 +17,7 @@
 (require 'yeah-control)
 (require 'yeah-events)
 (require 'yeah-input)
+(require 'yeah-org)
 (require 'yeah-result)
 (require 'yeah-tools)
 (require 'yeah-gptel)
@@ -201,6 +202,7 @@ Emacs of the person, so the person may answer."
     (define-key map (kbd "r") #'yeah-product-recover-next)
     (define-key map (kbd "w") #'yeah-product-withdraw)
     (define-key map (kbd "d") #'yeah-product-diff)
+    (define-key map (kbd "e") #'yeah-product-export)
     (define-key map (kbd "g") #'yeah-product-refresh)
     (define-key map (kbd "q") #'bury-buffer)
     map)
@@ -307,6 +309,21 @@ that change the world, `build' asks for them."
                        choices)))))
   (yeah-control-withdraw (yeah-product--current-control) id)
   (yeah-product-refresh))
+
+(defun yeah-product-export-directory ()
+  "Return the directory the Org exports are written to."
+  (expand-file-name "exports/" yeah-data-home))
+
+(defun yeah-product-export ()
+  "Export the current Yeah session as an Org file and open it.
+The journal is written for the machine; this is the same truth for the
+person, in the format the person already reads."
+  (interactive)
+  (let* ((control (yeah-product--current-control))
+         (session (yeah-control-session control))
+         (file (yeah-org-export-file session
+                                     (yeah-product-export-directory))))
+    (find-file file)))
 
 (defun yeah-product-diff (path)
   "Show the difference between visiting PATH's buffer and its saved file."

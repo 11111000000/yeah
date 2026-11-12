@@ -58,16 +58,6 @@ The identifiers and the timestamps are not part of what the run did.")
   "Return the names of the placements."
   yeah-placement--placements)
 
-(defun yeah-placement--fields (record)
-  "Return the fields of RECORD without the pair that names its type."
-  (let ((rest record)
-        (fields nil))
-    (while rest
-      (when (eq (car rest) :type)
-        (setq fields (cddr rest)))
-      (setq rest (cddr rest)))
-    fields))
-
 (defun yeah-placement--canonical-fields (fields)
   "Return the FIELDS of a record without the volatile ones, sorted by name."
   (let ((pairs nil)
@@ -92,7 +82,7 @@ checked against."
   (mapcar
    (lambda (record)
      (cons (plist-get record :type)
-           (yeah-placement--canonical-fields (yeah-placement--fields record))))
+           (yeah-placement--canonical-fields (yeah-session-record-fields record))))
    (seq-remove (lambda (record) (equal (plist-get record :type) "header"))
                (yeah-session-records session))))
 

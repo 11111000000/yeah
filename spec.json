@@ -598,6 +598,25 @@
       "attestations": []
     },
     {
+      "id": "a-session-can-be-read-as-an-org-file",
+      "subject": "a session can be read as an Org file: one heading per event, the fields of the event as properties, and the text of the event in a block that Org cannot mistake for syntax",
+      "scope": [
+        "lib/yeah-org.el", "lib/yeah-product.el",
+        "tests/checks/check-session-exports-to-org.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-session-exports-to-org.el"
+        }
+      ],
+      "falsifier": "the export loses an event, or the text of an event can be read as Org syntax, or the file on disk is not the text of the export",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(yeah-org--property-name key)/(format \"%s\" key)/' lib/yeah-org.el",
+      "attestations": []
+    },
+    {
       "id": "the-product-installs-serves-and-documents",
       "subject": "the package exposes M-x yeah, M-x yeah-ask and M-x yeah-doctor, declares supported Emacs/gptel versions, and provides a package-vc bootstrap with no development-tool dependency",
       "scope": [ "yeah.el", "lib/yeah-product.el", "install/yeah-bootstrap.el", "tests/unit/test-yeah-product.el", "tests/checks/check-product-installs.el" ],
