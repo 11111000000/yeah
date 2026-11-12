@@ -365,6 +365,12 @@ path; XDG-compatible data/config locations; no mathc/Nix runtime dependency.
 **4.5 Operability and documentation.** `M-x yeah-doctor`, concise quick start,
 current limitations, privacy/security guidance and troubleshooting.
 
+**4.6 The session as an Org file (implemented on 2026-11-12).** The journal is
+written for the machine; `M-x yeah-export` writes the same truth for the
+person: one heading per event, the fields of the event as properties, and the
+text of the event in a block that Org cannot mistake for syntax. The export
+is a projection — nothing is lost from the journal, nothing is added to it.
+
 ### Alpha release gate
 
 On a clean supported Emacs, one documented installation action and backend

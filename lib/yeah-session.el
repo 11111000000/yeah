@@ -216,6 +216,17 @@ RECORDS is the in-memory record list in append order."
         (setq latest r)))
     latest))
 
+(defun yeah-session-record-fields (record)
+  "Return the fields of the journal RECORD without the pair that names its type.
+The record is the one the journal holds: `(:type TYPE . FIELDS)'."
+  (let ((rest record)
+        (fields nil))
+    (while rest
+      (when (eq (car rest) :type)
+        (setq fields (cddr rest)))
+      (setq rest (cddr rest)))
+    fields))
+
 (defun yeah-session-project (session)
   "Return the compacted projection of SESSION.
 If no `compaction' record exists, the projection is the full

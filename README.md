@@ -35,7 +35,7 @@ feature already claimed.
 
 ## What exists today
 
-The repository contains 37 focused Elisp modules implementing pieces of the
+The repository contains 38 focused Elisp modules implementing pieces of the
 kernel:
 
 - a defined run state machine and model-turn orchestration;
@@ -52,7 +52,7 @@ kernel:
   completion nudges, whole-run deadlines and retry backoff, and the Plan
   and Build permission profiles;
 - an interactive journal mode with `M-x yeah`, ask/steer/cancel/recover,
-  withdrawal, diff review and `M-x yeah-doctor`;
+  withdrawal, diff review, Org export and `M-x yeah-doctor`;
 - an ACP v1 agent over newline JSON-RPC on stdio, with real sessions, journal
   updates, streaming tool calls and cancellation;
 - an MCP server publishing the read-only `emacs__*` surface, and an MCP client
