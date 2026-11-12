@@ -65,7 +65,8 @@ kernel:
 - agent presets read from files, and a delegation that runs a child for
   real: its own session, its own permissions, its own journal.
 
-After Stage 7, byte compilation is clean and 240 ERT unit tests pass.
+After Stage 7, byte compilation is clean and 240 ERT unit tests pass, and
+the fixed-point demonstration is verified with a real model.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
 (real Emacs processes serving ACP and MCP over stdio), the placements
@@ -88,9 +89,9 @@ Do not infer a working product from the presence of a module:
   client or editor, and no live provider was involved in the wire checks;
 - the bridge to the buffers of an attached Emacs was checked against a stub
   program, never against a live Emacs server;
-- the delegation runs one child at a time: parallel children, a cheaper
-  child model, the Org projection and the fixed-point demonstration are not
-  implemented yet;
+- the fixed-point demonstration is verified with a real model: a child of
+  Yeah repairs a Yeah canary (with retries, because a multi-step repair is
+  not always reliable on the first attempt);
 - global state and incomplete event correlation still limit concurrent runs;
 - PTC is disabled by default and remains **experimental, not a security
   boundary**; its demonstrated higher-order-function bypasses are covered by

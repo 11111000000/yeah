@@ -2,18 +2,38 @@
   "id": "wave-13",
   "title": "sub-agents: a child session, not a stub",
   "intent": "The delegation API exists, the depth limit is enforced, and the child returns a string that says it is a stub. The reference harnesses give a child its own session, its own context and a restricted set of permissions, and the result comes back to the parent. This wave is that, with the restriction that a child may not spawn a child unless it is told it may. The child of Yeah is described by a file: a name, a description, a model, the tools it may use and the prompt it is given, so that a person can write one and a parent can hand the work to it.",
-  "touches": [ "lib/", "tests/", "scripts/", "spec.json", "waves/" ],
+  "touches": [
+    "lib/",
+    "tests/",
+    "scripts/",
+    "spec.json",
+    "waves/"
+  ],
   "checks": [
     "./scripts/dev byte-compile-all",
     "./scripts/dev ert tests/unit/test-yeah-subagent.el tests/unit/test-yeah-agent.el",
     "./scripts/dev check tests/checks/check-subagent-depth-limit-is-enforced.el"
   ],
-  "claims": [ "a-subagent-runs-its-own-session", "an-agent-preset-is-a-file" ],
+  "claims": [
+    "a-subagent-runs-its-own-session",
+    "an-agent-preset-is-a-file",
+    "yeah-repairs-a-yeah-canary"
+  ],
   "commitment": [
-    { "claim": "a-subagent-runs-its-own-session", "state": "holds" },
-    { "claim": "an-agent-preset-is-a-file", "state": "holds" }
+    {
+      "claim": "a-subagent-runs-its-own-session",
+      "state": "holds"
+    },
+    {
+      "claim": "an-agent-preset-is-a-file",
+      "state": "holds"
+    },
+    {
+      "claim": "yeah-repairs-a-yeah-canary",
+      "state": "holds"
+    }
   ],
   "objection": "A child with its own context is a second agent that can disagree, and a disagreement that nobody can see is a failure that looks like a success.",
   "refuted_by": "A child whose result reaches the parent but whose intermediate steps do not, so that the parent believes a conclusion it cannot check.",
-  "note": "The child writes down everything it did in its own journal, and the parent is told when the child was spawned and what it answered. A tool the child was not granted is refused by the rules of the child, and the refusal is in the child journal where the parent can read it. The presets are read as files: the header when the presets are listed, the body when a preset is used."
+  "note": "The child writes down everything it did in its own journal, and the parent is told when the child was spawned and what it answered. A tool the child was not granted is refused by the rules of the child, and the refusal is in the child journal where the parent can read it. The presets are read as files: the header when the presets are listed, the body when a preset is used. The Y is verified with a real model: a child of Yeah repairs a Yeah canary (with retries, because the model is not always reliable in a multi-step repair).  The child has its own nudge budget, and the read tool no longer opens a file just to get a tick."
 }

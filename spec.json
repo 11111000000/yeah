@@ -566,6 +566,26 @@
       "attestations": []
     },
     {
+      "id": "yeah-repairs-a-yeah-canary",
+      "subject": "the Y of Yeah: a child of Yeah repairs a Yeah canary — it runs the tests, finds the broken source, fixes it with a guarded edit, runs the tests again, and the canary passes",
+      "scope": [
+        "lib/yeah-subagent.el", "lib/yeah-run.el", "lib/yeah-tools.el",
+        "lib/yeah-edit.el", "lib/yeah-files.el",
+        "tests/live/live-fixed-point.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M3 emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-fixed-point.el"
+        }
+      ],
+      "falsifier": "the child cannot fix a broken canary with its own tools, or the journal writer crashes when a file is visited by a stale buffer, or the source is not fixed",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(defcustom yeah-edit-save-after-edit t/(defcustom yeah-edit-save-after-edit nil/' lib/yeah-edit.el",
+      "attestations": []
+    },
+    {
       "id": "a-subagent-runs-its-own-session",
       "subject": "a sub-agent runs in its own session with its own context and its own permissions: a tool it was not granted is refused, the refusal is in its own journal, its result comes back to the parent, and two children of one parent run at the same time",
       "scope": [ "lib/yeah-subagent.el", "lib/yeah-run.el", "tests/unit/test-yeah-subagent.el" ],

@@ -119,8 +119,10 @@
              (let* ((end (point))
                     (truncated (< end (point-max)))
                     (content (buffer-substring-no-properties start end))
-                    (tick (with-current-buffer (find-file-noselect canonical)
-                            (buffer-chars-modified-tick)))
+                    (tick (let ((buffer (find-buffer-visiting canonical)))
+                            (and buffer
+                                 (with-current-buffer buffer
+                                   (buffer-chars-modified-tick)))))
                     (metadata (list :path canonical
                                     :offset actual-offset
                                     :limit actual-limit

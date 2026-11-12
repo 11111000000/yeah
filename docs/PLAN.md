@@ -14,31 +14,27 @@
 
 Verified on 2026-11-12 in this checkout:
 
-- all 33 `lib/` modules byte-compile without warnings;
-- 198/198 ERT unit tests pass;
-- all 23 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
+- all 38 `lib/` modules byte-compile without warnings;
+- 240/240 ERT unit tests pass;
+- all 26 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
 - the installed `mathc` does not accept the `--root` invocation used by
   `scripts/dev`, so the map/gate needs a compatible pinned tool;
 - live provider behavior is verified on 2026-11-12: the live coding task
   (MiniMax-M2.7) reads the project, edits the file with a guarded edit,
-  saves it, and the test of the project passes.  The interactive UI path
-  against a live provider is still not verified.
+  saves it, and the test of the project passes, and the interactive UI
+  path (journal, cancel, quit, restart, resume, recover) works against a
+  live provider.  The clean-Emacs install path is not network-tested yet.
 
 The code contains a working kernel and a working wire, but not yet a usable
 product:
 
-- `yeah-shell.el` echoes a stub rather than running a turn;
-- sub-agent execution is a placeholder, and the three placements are not
-  implemented;
 - the stdio server answers one request at a time, so a cancel cannot preempt
   a running prompt;
-- global registries/rules and incomplete event correlation obstruct isolated
-  concurrent runs;
+- the emacsclient bridge was checked against a stub program, never against
+  a live Emacs server;
+- global state and incomplete event correlation still limit concurrent runs;
 - the PTC whitelist was experimentally bypassed with a permitted higher-order
   function and a quoted `delete-file` symbol. It is not a safe boundary.
-
-The first stages therefore prioritize truth, security and a vertical slice,
-not additional protocols.
 
 ## 2. Stage map and dependencies
 
@@ -56,10 +52,25 @@ Benchmarks and documentation run continuously; 1.0 requires stages 0–7 and
 release gates from §11.
 ```
 
-ACP and service mode are delayed deliberately: they must transport a working
-kernel, not conceal missing execution behind protocol handlers. Minimal
-Emacs-native UI and installation come before them because they validate the
-actual user experience.
+ACP and service mode come after the interactive slice deliberately: they
+must transport a working kernel, not conceal missing execution behind
+protocol handlers.  Minimal Emacs-native UI and installation come before
+them because they validate the actual user experience.
+
+**Primary deployment path (decided 2026-11-12).**  The practical main use
+of Yeah is the service placement: a dedicated Emacs process runs the
+harness, because the person's editing Emacs is single-threaded and an
+in-editor agent would block editing.  The editor reaches the harness
+through the emacsclient bridge; external clients and orchestrators (an
+ACP client such as agent-shell, or an orchestrator such as Paseo) speak
+ACP or MCP to the same service.  The attached `M-x yeah` placement
+remains the demo, development and fallback path.
+
+This decision does not reorder the stages; it re-prices their exit
+criteria.  A cancel that preempts a running prompt on the wire, a bridge
+verified against a live Emacs server, concurrent sessions in one service
+Emacs and bounded CPU work inside the agent process are release-relevant
+items of stages 5 and 6, not post-alpha extras.
 
 ## 3. Stage 0 — honesty, compatibility and safety
 
@@ -345,8 +356,8 @@ The journal buffer renders events from the journal, supports ask/steer/
 cancel/recover/withdraw/diff and refreshes without blocking.  Sessions and
 pending input use private project-scoped data directories.  `install/
 yeah-bootstrap.el` documents the clean-Emacs package-vc path.  The public
-alpha gate remains open because bootstrap has not been network-tested and a
-live-provider interactive task has not been run.
+alpha gate remains open because the bootstrap has not been network-tested
+on a clean machine.
 
 ### Work items
 
@@ -422,6 +433,16 @@ processes.
   results;
 - MCP client with namespaced imported tools and independent permission rules;
 - backpressure, malformed-message handling, shutdown and cancellation;
+- **concurrent requests on the wire, or at minimum a cancel that preempts
+  a running prompt.**  On the primary deployment path (§2) a cancel that
+  waits for the prompt's terminal state is a broken user experience, not
+  a minor limitation.  The check drives a real prompt, sends
+  `session/cancel` mid-run and observes the run stop before the prompt
+  would have finished;
+- **a third-party client driving the wire end to end.**  An ACP client
+  that is not Yeah (agent-shell, or an orchestrator such as Paseo)
+  completes the Stage 1 scenario, including streaming and cancel.  Yeah's
+  own processes acting as the client do not close this item;
 - protocol redaction and trust documentation.
 
 Use `../emacs-agents-research/acp.el/` and the ACP specification as references,
@@ -474,6 +495,21 @@ registry, not that the bridge works against a running Emacs.
 - service placement in a dedicated Emacs with lifecycle management;
 - batch entry for CI/benchmarks with explicit headless allowlists;
 - emacsclient bridge to a person's buffers as a separately approved tool;
+- **the bridge verified against a live Emacs server.**  On the primary
+  deployment path the bridge is how the agent reaches the person's actual
+  buffers, so a stub program does not close this item: the check starts a
+  real `emacs --daemon` (or server) and reads and edits a live buffer
+  through the bridge, with the operator's approval;
+- **concurrent sessions in one service Emacs.**  An orchestrator will not
+  queue its whole fleet behind one session.  Independent sessions run on
+  independent run contexts — no shared registry, policy or cancellation
+  state — and the check runs two sessions at once and compares their
+  journals for cross-talk;
+- **bounded CPU work inside the agent Emacs.**  The service Emacs is as
+  single-threaded as the editor it serves: token estimation, journal
+  scans, JSON encoding of large tool output and Org export must be
+  chunked with timers or moved into subprocesses, so streaming updates
+  and cancel handling stay responsive during a long run;
 - canonical event comparison across placements, excluding timestamps/random
   ids and explicitly transport-specific metadata.
 
@@ -529,6 +565,11 @@ A parent can delegate two independent tasks, inspect their actual work,
 cancel the subtree and recover within budget. A child cannot exceed its
 granted capabilities or spawn beyond its declared depth.
 
+**Verified on 2026-11-12:** two children run at the same time, the parent is
+told what they did, a child may only use the tools it was granted, and a
+spawn past the depth limit is refused.  The fixed-point demonstration is
+verified with a real model (with retries).
+
 The capabilities and the depth are **closed by the tests**: a child may only
 use what it was granted, and a spawn past the depth limit is refused. The
 two independent tasks, the cancellation of a whole subtree and the recovery
@@ -553,6 +594,9 @@ the cancellation of a subtree and the budget of a parent are not.
 - stages 0–7 closed by current claims and controls;
 - clean installation and the interactive vertical slice passing on every
   supported Emacs/gptel combination;
+- the primary deployment path (§2) working end to end: a service Emacs
+  driven through ACP by a third-party client, with a preempting cancel,
+  concurrent sessions and a live bridge to the person's attached Emacs;
 - no known security-boundary bypass or public placeholder path;
 - durable recovery and cancellation integration tests passing;
 - benchmark results published with methodology, including losses;
