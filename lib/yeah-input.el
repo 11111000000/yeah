@@ -265,6 +265,45 @@ Return nil when ID is absent.  A removal is persisted before returning."
       (yeah-input--write-queue session-id (nreverse remaining)))
     found))
 
+(defun yeah-input-take (session kind)
+  "Remove and return the oldest input of KIND in SESSION, or nil.
+KIND is `ask' or `steering'.  The other inputs keep their order."
+  (unless (memq kind '(ask steering))
+    (user-error "yeah-input: KIND must be `ask' or `steering'"))
+  (let* ((session-id (yeah-input--session-id session))
+         (queue (yeah-input--read-queue
+                 (yeah-input--path session-id) session-id))
+         (taken nil)
+         (remaining nil))
+    (dolist (entry queue)
+      (if (and (null taken) (eq kind (plist-get entry :kind)))
+          (setq taken entry)
+        (push entry remaining)))
+    (when taken
+      (yeah-input--write-queue session-id (nreverse remaining)))
+    taken))
+
+(defun yeah-input-rekind (session id kind)
+  "Change the kind of the pending input ID in SESSION to KIND.
+KIND is `ask' or `steering'.  Return the changed input, or nil when
+there is no such input.  The change is persisted before returning."
+  (unless (and (stringp id) (> (length id) 0))
+    (user-error "yeah-input: ID must be a nonempty string"))
+  (unless (memq kind '(ask steering))
+    (user-error "yeah-input: KIND must be `ask' or `steering'"))
+  (let* ((session-id (yeah-input--session-id session))
+         (queue (yeah-input--read-queue
+                 (yeah-input--path session-id) session-id))
+         (changed nil)
+         (remaining nil))
+    (dolist (entry queue)
+      (if (and (null changed) (string= id (plist-get entry :id)))
+          (setq changed (plist-put (copy-tree entry) :kind kind))
+        (push entry remaining)))
+    (when changed
+      (yeah-input--write-queue session-id (nreverse remaining)))
+    changed))
+
 (defun yeah-input-count (session)
   "Return the number of pending inputs in SESSION."
   (length (yeah-input-pending session)))

@@ -286,6 +286,14 @@ stopping managed processes, so late callbacks are ignored.  Visible nudges,
 whole-run deadlines, retry backoff and read-only-aware doom-loop detection are
 implemented.  Synchronous and asynchronous race cases have ERT coverage.
 
+**The journey of a person is checked end to end** (2026-11-12), with a fake
+model and without a network: ask, watch the work, steer, quit, restart, look
+at what is left, withdraw what is not wanted, recover what is, and cancel a
+run that must stop.  Two rules were fixed by that check: a steering belongs
+to one run, so a run that ends without delivering it withdraws the steering
+and writes the withdrawal into the journal; and a steering is not a task, so
+it is never started on its own.
+
 ### Work items
 
 **3.1 Freeze accepted input.** Backend, model, instructions and editor context

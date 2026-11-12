@@ -60,7 +60,9 @@ work item. Never resolve it by silently making documentation more optimistic.
   are not yet verified, so the public alpha gate remains open.
 - Stage 3 is implemented offline: persistent pending FIFO, frozen inputs,
   steering at batch boundaries, cancellation, nudges and deadlines have
-  integration tests, including synchronous callback races.
+  integration tests, including synchronous callback races. The journey of a
+  person — ask, steer, quit, restart, withdraw, recover, cancel — is checked
+  end to end with a fake model.
 - Stage 2 is implemented offline: usage calibration, asynchronous compaction,
   pruning events and corrupt-tail recovery are covered by unit/canary tests.
   The compatibility `yeah-context-summarize` never waits; real providers use

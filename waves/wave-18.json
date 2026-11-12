@@ -2,18 +2,36 @@
   "id": "wave-18",
   "title": "human control: the person is in the loop, not beside it",
   "intent": "An agent that runs for minutes is an agent that will meet a mistake, and the only honest way to meet it is to let the person say something in the middle of it. This wave is that channel: frozen inputs queued in a bounded persistent FIFO, steering delivered at the boundaries where a tool batch ends, cancellation that stops the managed processes and ignores the callbacks that arrive after it, and a recovery path that is explicit instead of automatic.",
-  "touches": [ "lib/yeah-control.el", "lib/yeah-input.el", "lib/yeah-turn.el", "lib/yeah-process.el", "lib/yeah-events.el", "tests/", "spec.json", "waves/" ],
+  "touches": [
+    "lib/yeah-control.el",
+    "lib/yeah-input.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-process.el",
+    "lib/yeah-events.el",
+    "tests/",
+    "spec.json",
+    "waves/"
+  ],
   "checks": [
     "./scripts/dev byte-compile-all",
-    "./scripts/dev ert tests/unit/test-yeah-control.el tests/unit/test-yeah-input.el tests/unit/test-yeah-turn.el",
-    "./scripts/dev check tests/checks/check-tools-run-in-parallel.el tests/checks/check-turn-handles-tool-failures.el"
+    "./scripts/dev ert tests/unit/test-yeah-control.el tests/unit/test-yeah-input.el",
+    "./scripts/dev check tests/checks/check-interactive-journey.el"
   ],
   "claims": [
-    "human-control-is-queued-and-cancellable"
+    "human-control-is-queued-and-cancellable",
+    "the-journey-of-a-person-works-end-to-end"
   ],
   "commitment": [
-    { "claim": "human-control-is-queued-and-cancellable", "state": "holds" }
+    {
+      "claim": "human-control-is-queued-and-cancellable",
+      "state": "holds"
+    },
+    {
+      "claim": "the-journey-of-a-person-works-end-to-end",
+      "state": "holds"
+    }
   ],
   "objection": "A queue is a promise to deliver, and a promise to deliver steering at a boundary the run may never reach is a promise the person cannot count on.",
-  "refuted_by": "A cancel followed by a late callback that still writes to the journal, or a steering input that is accepted, reported as pending, and never delivered. Either one makes the channel decorative."
+  "refuted_by": "A cancel followed by a late callback that still writes to the journal, or a steering input that is accepted, reported as pending, and never delivered. Either one makes the channel decorative.",
+  "note": "The journey is checked with a fake model: the same path a person walks — ask, steer, quit, restart, withdraw, recover, cancel — without a network. A steering is addressed to one run: when that run ends without delivering it, the steering is withdrawn and the withdrawal is written into the journal, so that the person can see that their words were not used."
 }

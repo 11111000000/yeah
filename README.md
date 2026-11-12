@@ -63,8 +63,9 @@ kernel:
 After Stage 7, byte compilation is clean and 230 ERT unit tests pass.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
-(real Emacs processes serving ACP and MCP over stdio) and the placements
-(the same task in three real processes, compared event by event).  Frozen
+(real Emacs processes serving ACP and MCP over stdio), the placements
+(the same task in three real processes, compared event by event) and the
+journey of a person (ask, steer, quit, restart, withdraw, recover, cancel).  Frozen
 math-coding v4 map/run/gate results are not treated as current evidence.
 Live-provider task completion is unverified.
 

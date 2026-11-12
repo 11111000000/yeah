@@ -707,6 +707,26 @@
       "attestations": []
     },
     {
+      "id": "the-journey-of-a-person-works-end-to-end",
+      "subject": "the journey of a person works end to end: ask, watch the work, steer, quit, restart, look at what is left, withdraw what is not wanted, recover what is, and cancel a run that must stop",
+      "scope": [
+        "lib/yeah-control.el", "lib/yeah-input.el", "lib/yeah-product.el",
+        "lib/yeah-ui.el",
+        "tests/checks/check-interactive-journey.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-interactive-journey.el"
+        }
+      ],
+      "falsifier": "a pending input does not survive a restart, or a restart runs it by itself, or a steering is delivered to a run it was not addressed to, or a cancel does not stop the run",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(yeah-control--release-steering control)/(ignore control)/' lib/yeah-control.el",
+      "attestations": []
+    },
+    {
       "id": "human-control-is-queued-and-cancellable",
       "subject": "frozen inputs form a persistent bounded FIFO, steering is delivered at tool-batch boundaries, cancellation stops managed processes and late callbacks, and restart recovery is explicit",
       "scope": [ "lib/yeah-control.el", "lib/yeah-input.el", "lib/yeah-turn.el", "lib/yeah-process.el", "lib/yeah-events.el", "tests/unit/test-yeah-control.el", "tests/unit/test-yeah-input.el" ],

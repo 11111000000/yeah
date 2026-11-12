@@ -15,6 +15,7 @@
 
 (require 'cl-lib)
 (require 'yeah-turn)
+(require 'yeah-events)
 (require 'yeah-input)
 
 (cl-defstruct (yeah-control (:constructor yeah-control--make))
@@ -61,13 +62,27 @@ Ordinary asks retain their FIFO positions."
               inputs)))
     (nreverse inputs)))
 
+(defun yeah-control--release-steering (control)
+  "Withdraw the steering that the run which just ended never delivered.
+A steering is addressed to one run.  When that run is over, the
+steering is not handed to the next one: it is withdrawn, and the
+withdrawal is written into the journal, so that the person can see
+that their words were not used."
+  (dolist (input (yeah-control--steering-batch control))
+    (yeah-events-write (yeah-control-session control) "input-withdrawn"
+                       :kind (format "%s" (or (plist-get input :kind) 'steering))
+                       :reason "the run it was addressed to ended"))
+  nil)
+
 (defun yeah-control--start-next (control)
-  "Start the oldest pending input in CONTROL when no turn is active.
-Return the active turn or nil when the queue is empty."
+  "Start the oldest pending ask in CONTROL when no turn is active.
+A steering is not a task: it belongs to a run, and it is delivered at
+a tool-batch boundary, never started on its own.
+Return the active turn or nil when the queue holds no ask."
   (let ((active (yeah-control-active-turn control)))
     (when (and active (not (yeah-turn-done active)))
       (user-error "yeah-control: a turn is already active"))
-    (let ((input (yeah-input-pop (yeah-control-session control))))
+    (let ((input (yeah-input-take (yeah-control-session control) 'ask)))
       (when input
         (let ((turn
                (yeah-turn-run
@@ -81,6 +96,7 @@ Return the active turn or nil when the queue is empty."
                     (yeah-control-max-nudges control))
                 (lambda (_turn)
                   (setf (yeah-control-active-turn control) nil)
+                  (yeah-control--release-steering control)
                   (yeah-control--start-next control))
                 (lambda (_turn)
                   (yeah-control--steering-batch control))
