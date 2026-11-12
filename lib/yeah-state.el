@@ -19,7 +19,7 @@
 (require 'cl-lib)
 
 (defgroup yeah nil
-  "Yeah — Y-combinator, Emacs Agent Harness."
+  "Yeah — Emacs Agent Harness."
   :group 'tools)
 
 ;; Order is exposed for diagnostics but is not load-bearing for transitions.

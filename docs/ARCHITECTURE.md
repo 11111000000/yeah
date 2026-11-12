@@ -1,4 +1,4 @@
-# ARCHITECTURE — Yeah, the Y-combinator Emacs Agent Harness
+# ARCHITECTURE — Yeah, the Emacs Agent Harness
 
 > **Document status: normative target.** This file describes the system Yeah
 > is being built to become. It is not evidence that the system already works.
@@ -10,7 +10,8 @@
 
 ## 1. Identity and purpose
 
-**Yeah** means **Y-combinator, Emacs Agent Harness**.
+**Yeah** means **Yeah, Emacs Agent Harness**: a recursive acronym, the **Y**
+is the Y-combinator.
 
 The Y-combinator gives recursion without requiring a name. Yeah takes three
 consequences from that idea:

@@ -1,4 +1,4 @@
-;;; yeah.el --- Yeah, the Y-combinator Emacs Agent Harness -*- lexical-binding: t; -*-
+;;; yeah.el --- Yeah, the Emacs Agent Harness -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -27,7 +27,12 @@
 The session runs under a permission profile: `plan' refuses the tools
 that change the world, `build' asks for them."
   (interactive)
-  (yeah-product-open nil nil nil nil nil nil (yeah-product--choose-profile)))
+  (let ((latest (yeah-product-latest-session-id (yeah-product-project-root))))
+    (yeah-product-open nil nil nil nil nil nil
+                       (yeah-product--choose-profile)
+                       (and latest
+                            (yes-or-no-p (format "Resume the last session (%s)? " latest))
+                            latest))))
 
 ;;;###autoload
 (defun yeah-ask (prompt)

@@ -1,6 +1,7 @@
 # AGENTS.md — the entry point to this repository
 
-> **Yeah** means **Y-combinator, Emacs Agent Harness**. The harness itself is
+> **Yeah** means **Yeah, Emacs Agent Harness**: a recursive acronym, the
+> **Y** is the Y-combinator. The harness itself is
 > Emacs Lisp; Emacs is not merely a client to an external agent. The model is
 > reached through gptel, effects go through the tool registry and permission
 > system, and session history is append-only JSONL.
