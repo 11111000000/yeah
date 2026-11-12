@@ -25,12 +25,17 @@
 ;;   YEAH_TEST_HOST   the API host, for example api.minimax.io
 ;;   YEAH_TEST_MODEL  the model, for example MiniMax-M3.1-Flash
 ;;
+;; The gptel on the load path must be a version Yeah supports: see
+;; `yeah-gptel--supported-versions'.  The OpenAI backend lives in
+;; `gptel-openai' since gptel 0.9.8, and it is required here.
+;;
 ;; Exit codes: 0 — an answer came back, or there was no key to ask with;
 ;; 1 — the model did not answer.
 
 ;;; Code:
 
 (require 'gptel)
+(require 'gptel-openai)
 (require 'yeah-gptel)
 
 (let ((key (getenv "YEAH_TEST_KEY"))

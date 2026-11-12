@@ -191,6 +191,36 @@ checked here, and nowhere else."
         (when done (funcall done result))
         result))))
 
+(defun yeah-tools--normalize-value (value)
+  "Return VALUE with the JSON booleans and null turned into the Elisp ones.
+A model sends JSON: its `false' arrives as the symbol `:json-false', and a
+tool that declares a boolean argument has to accept it."
+  (if (memq value '(:json-false :json-true :json-null :false :null))
+      (if (memq value '(:json-true :true)) t nil)
+    value))
+
+(defun yeah-tools-normalize-args (name args)
+  "Return the arguments ARGS of the tool NAME in the order the tool declared.
+
+A model names the arguments of a tool; the registry of Yeah expects them
+in the order the tool declared.  An argument the model did not give keeps
+its place as nil, so that the arguments after it do not move.  Arguments
+that are already positional are returned as they are."
+  (let ((spec (yeah-tools-get name)))
+    (if (or (null spec)
+            (not (listp args))
+            (null (car args))
+            (not (keywordp (car args))))
+        args
+      (let ((values nil))
+        (dolist (param (plist-get spec :input))
+          (let ((key (intern (format ":%s" (plist-get param :name)))))
+            (setq values
+                  (append values
+                          (list (yeah-tools--normalize-value
+                                 (plist-get args key)))))))
+        values))))
+
 (defun yeah-tools-call (name args)
   "Dispatch a tool call: look up NAME, validate ARGS, call handler.
 

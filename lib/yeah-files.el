@@ -119,10 +119,13 @@
              (let* ((end (point))
                     (truncated (< end (point-max)))
                     (content (buffer-substring-no-properties start end))
+                    (tick (with-current-buffer (find-file-noselect canonical)
+                            (buffer-chars-modified-tick)))
                     (metadata (list :path canonical
                                     :offset actual-offset
                                     :limit actual-limit
                                     :total-lines total-lines
+                                    :tick tick
                                     :truncated truncated)))
                (yeah-result-ok content metadata truncated)))))))))
 

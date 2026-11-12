@@ -71,7 +71,9 @@ asynchronous compaction, product installation entry points, the wire
 (the same task in three real processes, compared event by event) and the
 journey of a person (ask, steer, quit, restart, withdraw, recover, cancel).  Frozen
 math-coding v4 map/run/gate results are not treated as current evidence.
-Live-provider task completion is unverified.
+A real model (MiniMax-M2.7) finishes the Stage 1 coding task: it reads the
+project, edits the file with a guarded edit, saves it, and the test of the
+project passes.  The interactive UI path is not yet verified.
 
 ## What is not finished
 
@@ -91,7 +93,8 @@ Do not infer a working product from the presence of a module:
   boundary**; its demonstrated higher-order-function bypasses are covered by
   regression tests, but no general isolation is claimed;
 - bootstrap installation exists but has not been network-tested on a clean
-  machine; the public alpha gate remains open.
+  machine; the public alpha gate remains open because the interactive UI
+  path has not been exercised against a live provider.
 
 The design also removes any assumption that a gptel hook is real merely
 because a unit test names it: the adapter must be checked against pinned,
@@ -159,11 +162,20 @@ before treating installation as supported.
 compatible math-coding binary on `PATH` or in `MATHC`. If the installed tool
 does not support the CLI used by the script, the result is blocked — not pass.
 
-A real provider test exists separately and requires environment credentials:
+Real provider tests exist separately and require environment credentials:
 
 ```sh
-emacs -Q --batch -L lib -l tests/live/live-model-call.el
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 \
+  emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-model-call.el
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 \
+  emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-coding-task.el
 ```
+
+The second one runs a real coding task against a real provider: the harness
+reads the project, edits the file with a guarded edit, saves it, and the
+project's test passes.  The model's reasoning is kept in the conversation by
+default (`yeah-gptel-include-reasoning`), and named arguments and JSON
+booleans are normalized at the tool boundary.
 
 No key belongs in the repository, session log or documentation.
 

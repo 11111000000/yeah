@@ -87,7 +87,7 @@ ERROR holds the reason when the run stopped for a reason of its own."
 (declare-function gptel-fsm-info "gptel-request" (fsm))
 
 (defcustom yeah-turn-nudge-message
-  "Review the original request and verify that every completion criterion is satisfied. If anything is unverified or incomplete, continue with the necessary tool calls; otherwise finish normally."
+  "Continue the work you were doing: call the tools you still need. Do not start the task over. When the work is done, say what you did and stop."
   "Prompt sent as a visible completion nudge when enabled for a run."
   :type 'string
   :group 'yeah)
@@ -181,7 +181,7 @@ and :refused is the reason the call may not run, or nil.
 The log says what happened: the model asked for the tool, the rules
 were asked, and the rules answered."
   (let* ((name (yeah-turn--tool-name (nth 0 call)))
-         (args (nth 1 call))
+         (args (yeah-tools-normalize-args name (nth 1 call)))
          (spec (yeah-tools-get name))
          (resource (yeah-turn--resource args)))
     (let ((decision (yeah-turn--decide answerer spec name resource)))
