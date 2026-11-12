@@ -56,11 +56,12 @@ work item. Never resolve it by silently making documentation more optimistic.
   and no third-party client or live provider has driven either server.
 - REPL still contains placeholders. Do not build new public behavior on
   top of it while its stage's prerequisites are unmet.
-- Stage 4 is implemented offline: `M-x yeah`, journal commands, the Org
-  export, doctor and a package-vc bootstrap exist.  A real model
-  (MiniMax-M2.7) finishes the Stage 1 coding task; the interactive UI path
-  against a live provider is not verified yet, so the public alpha gate
-  remains open.
+- Stage 4 is implemented offline and verified against a live provider:
+  `M-x yeah`, journal commands, the Org export, doctor and a package-vc
+  bootstrap exist.  A real model (MiniMax-M2.7) finishes the Stage 1 coding
+  task, and the interactive path works against a live provider.  The
+  clean-Emacs install path is not network-tested yet, so the public alpha
+  gate remains open.
 - Stage 3 is implemented offline: the Plan and Build permission profiles,
   a persistent pending FIFO, frozen inputs,
   steering at batch boundaries, cancellation, nudges and deadlines have

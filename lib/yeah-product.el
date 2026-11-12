@@ -79,6 +79,17 @@
     (set-file-modes directory #o700)
     directory))
 
+(defun yeah-product-latest-session-id (root)
+  "Return the id of the most recent session of ROOT, or nil.
+A session is resumed by its file, so a person can quit and come back."
+  (let ((directory (expand-file-name "sessions" (yeah-product-session-root root))))
+    (when (file-directory-p directory)
+      (let ((files (sort (directory-files directory t "\\.jsonl\\'")
+                         (lambda (left right)
+                           (string< (car left) (car right))))))
+        (and files
+             (file-name-base (car files)))))))
+
 (defun yeah-product--session-id (root)
   "Return a readable unique session id for project ROOT."
   (format "%s-%s"
@@ -229,15 +240,28 @@ every tool that changes the world."
   (let ((answer (read-char-choice "Yeah profile: [p]lan/[b]uild " '(?p ?b))))
     (if (eq answer ?p) "plan" "build")))
 
-(defun yeah-product-open (&optional project-root transport answerer budget nudges frozen profile)
+(defun yeah-product--system-prompt (root)
+  "Return the system prompt of a session in the project ROOT.
+The model is told where it works, because a model that does not know
+the directory acts in a directory it guesses."
+  (concat yeah-gptel-prelude
+          (format "
+You are working in the directory %s.
+" root)))
+
+(defun yeah-product-open (&optional project-root transport answerer budget nudges frozen profile session-id)
   "Open or create an interactive Yeah session for PROJECT-ROOT.
 TRANSPORT and ANSWERER are optional kernel inputs used by tests and callers;
 interactive use defaults to gptel and one-key human approvals.
 PROFILE is the permission profile of the session: `plan' refuses the tools
-that change the world, `build' asks for them."
-  (let* ((root (or project-root (yeah-product-project-root)))
+that change the world, `build' asks for them.  SESSION-ID, when given,
+resumes an existing session of the project instead of starting a new one."
+  (let* ((nudges (or nudges 2))
+         (root (or project-root (yeah-product-project-root)))
          (session-root (yeah-product-session-root root))
-         (session (yeah-session-open (yeah-product--session-id root) session-root))
+         (session (yeah-session-open (or session-id
+                                         (yeah-product--session-id root))
+                                     session-root))
          (buffer (generate-new-buffer
                   (format "*Yeah: %s*"
                           (file-name-nondirectory (directory-file-name root))))))
@@ -245,7 +269,12 @@ that change the world, `build' asks for them."
     (with-current-buffer buffer
       (yeah-mode)
       (setq yeah-product--control
-            (yeah-control-new session transport
+            (yeah-control-new session
+                              (or transport
+                                  (lambda (prompt callback)
+                                    (yeah-gptel-request
+                                     prompt callback
+                                     :system (yeah-product--system-prompt root))))
                               (yeah-approval-profile-answerer
                                profile
                                (or answerer #'yeah-product--human-answerer))

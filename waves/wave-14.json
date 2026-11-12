@@ -17,7 +17,8 @@
   "claims": [
     "the-product-installs-serves-and-documents",
     "a-session-can-be-read-as-an-org-file",
-    "a-real-model-finishes-a-coding-task"
+    "a-real-model-finishes-a-coding-task",
+    "the-interactive-path-works-with-a-live-model"
   ],
   "commitment": [
     {
@@ -31,9 +32,13 @@
     {
       "claim": "a-real-model-finishes-a-coding-task",
       "state": "holds"
+    },
+    {
+      "claim": "the-interactive-path-works-with-a-live-model",
+      "state": "holds"
     }
   ],
   "objection": "The bootstrap is the part that does not travel, and the installation is where it shows: a package manager on a phone is a worse user experience than a shell that is already there.",
   "refuted_by": "The same task through Emacs Lisp and through shell on a phone, with the Emacs arm needing a package manager. If that is the bottleneck every time, the architecture is wrong and the kernel should not have been Elisp.",
-  "note": "The session is written for the machine and exported for the person: `M-x yeah-export' writes the journal as an Org file, one heading per event, with the text of the event in a block that Org cannot mistake for syntax. The live coding task is checked against a real provider (MiniMax-M2.7): the harness reads the project, edits the file with a guarded edit, saves it and the test passes. The interactive UI path is not tested."
+  "note": "The session is written for the machine and exported for the person: `M-x yeah-export' writes the journal as an Org file, one heading per event, with the text of the event in a block that Org cannot mistake for syntax. The live coding task is checked against a real provider (MiniMax-M2.7): the harness reads the project, edits the file with a guarded edit, saves it and the test passes. The interactive UI path is not tested. The interactive path is verified against a live provider: the journal mode, the cancel, the quit and the restart, the resume of the session, and the recovery of a pending input all work.  The product default gives two completion nudges, and the read tool returns the tick that a guarded edit needs."
 }

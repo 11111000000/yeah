@@ -338,7 +338,8 @@ a terminal run; no hidden infinite nudge/retry loop exists.
 
 A person can install and use Yeah without reading source or developer docs.
 
-**Status: implemented offline on 2026-11-11.** `yeah.el` declares package
+**Status: implemented offline on 2026-11-11, verified against a live
+provider on 2026-11-12.** `yeah.el` declares package
 requirements and exposes `M-x yeah`, `M-x yeah-ask` and `M-x yeah-doctor`.
 The journal buffer renders events from the journal, supports ask/steer/
 cancel/recover/withdraw/diff and refreshes without blocking.  Sessions and
@@ -381,8 +382,10 @@ configuration lead to the Stage 1 coding task in the interactive UI. The user
 can approve, steer, cancel, inspect the diff, quit, restart and resume. No
 credentials appear in logs. Unit/canary/integration suites pass.
 
-**Partly verified on 2026-11-12:** the coding task itself is verified against
-a real provider (MiniMax-M2.7).  The interactive UI path is not verified yet.
+**Partly verified on 2026-11-12:** the coding task itself is verified
+against a real provider (MiniMax-M2.7), and the interactive UI path is
+verified against a live provider (journal, cancel, quit, restart, resume,
+recover).  The clean-Emacs install path is not network-tested yet.
 
 ## 8. Stage 5 — ACP and MCP wire
 

@@ -398,3 +398,29 @@ success, and a waived claim is never read as a passing one.
   omit it to skip the guard.
 - **Convention:** optimistic concurrency is only useful when the reader
   can see the version it is supposed to compare against.
+
+### §11.15 — the tick must be visible to the model, not only to the edit tool
+
+- **Date:** 2026-11-12 (the live interactive path)
+- **Symptom:** the model's guarded edit is refused with "stale tick",
+  because the model passed 0.
+- **Cause:** the read tool returned the tick in its metadata, but the
+  model's view of the result (`yeah-result-model-text') did not include
+  the metadata, so the model never saw the tick.
+- **Fix:** the model's view of a result carries the tick as `[tick: N]`
+  when the result has one.
+- **Convention:** a value the model must pass to a guarded edit must be in
+  the model's view, not only in the result's metadata.
+
+### §11.16 — a session that cannot be resumed cannot be quit
+
+- **Date:** 2026-11-12 (the live interactive path)
+- **Symptom:** `M-x yeah' after a restart opens a new session, and the
+  pending inputs of the old one are not found.
+- **Cause:** the product created a new timestamped session id on every
+  open; the restart had no way to resume the previous session.
+- **Fix:** `yeah-product-open' accepts a session id to resume, and
+  `yeah-product-latest-session-id' finds the most recent session of the
+  project, so a person can quit and come back.
+- **Convention:** a quit is not a delete.  A restart must find the
+  previous session, or the pending work is lost.
