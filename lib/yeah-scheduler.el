@@ -44,9 +44,15 @@ whether that has happened."
 
 (defun yeah-scheduler--normalize-result (result)
   "Return a provider-safe representation of one tool RESULT.
-A nil result is a failure.  Existing `(:yeah-error ...)' values retain
-their identity; other non-string values are printed."
+A nil result is a failure.  Structured Yeah results retain their metadata;
+legacy `(:yeah-error ...)' values retain their identity; other non-string
+values are printed."
   (cond
+   ((and (listp result)
+         (booleanp (plist-get result :ok))
+         (or (plist-member result :content)
+             (plist-member result :error)))
+    result)
    ((null result)
     (list :yeah-error "Error: tool produced no result"))
    ((and (consp result) (plist-get result :yeah-error)) result)

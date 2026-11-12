@@ -38,6 +38,11 @@
     (:type "permission-request" :fields (:action :resource))
     (:type "permission-decision" :fields (:action :resource :effect))
     (:type "tool-end"           :fields (:tool :ok :payload))
+    (:type "compaction"         :fields (:cut_point :summary :timestamp))
+    (:type "pruning"            :fields (:keep-chars))
+    (:type "steering"           :fields (:payload))
+    (:type "nudge"              :fields (:payload))
+    (:type "cancel"             :fields (:payload))
     (:type "usage"              :fields (:input :output))
     (:type "error"              :fields (:payload)))
   "The vocabulary of the event log.
@@ -81,13 +86,24 @@ FIELDS is a plist of keyword pairs."
               (list (format "yeah-events: the event %S declares %S and was given %S"
                             type declared given))))))
 
+(defvar yeah-events-write-functions nil
+  "Functions called with (SESSION TYPE FIELDS ID) after a validated append.
+Observers are observational: errors are reported and do not stop other
+listeners or the write.")
+
 ;;;###autoload
 (defun yeah-events-write (session type &rest fields)
   "Append an event of TYPE with FIELDS to the log of SESSION.
 FIELDS are keyword pairs and must be exactly the fields TYPE declares.
 Return the identifier of the new record."
   (yeah-events--check type fields)
-  (yeah-session-append session (cons :type (cons type fields))))
+  (let ((id (yeah-session-append session (cons :type (cons type fields)))))
+    (dolist (listener yeah-events-write-functions)
+      (condition-case err
+          (funcall listener session type fields id)
+        (error
+         (message "yeah-events listener failed: %s" (error-message-string err)))))
+    id))
 
 (provide 'yeah-events)
 ;;; yeah-events.el ends here

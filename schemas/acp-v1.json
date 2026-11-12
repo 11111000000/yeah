@@ -2,133 +2,109 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "yeah/acp-v1.json",
   "title": "ACP v1 — Yeah subset",
-  "description": "The subset of the Agent Client Protocol v1 wire surface that Yeah v0.0.0-alpha implements on the agent side. This schema is documentation; we do not validate against it at runtime.",
+  "description": "The subset of the Agent Client Protocol v1 that Yeah speaks on the agent side over newline-delimited JSON-RPC 2.0. Method names and field names follow the protocol; the transport is stdio.",
   "definitions": {
+    "RequestId": {
+      "type": ["integer", "string"]
+    },
     "InitializeRequest": {
       "type": "object",
-      "additionalProperties": false,
       "required": ["protocolVersion"],
       "properties": {
-        "protocolVersion": { "type": "string", "description": "ACP wire version the client speaks." },
-        "clientInfo": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "name":    { "type": "string" },
-            "version": { "type": "string" }
-          }
-        },
-        "clientCapabilities": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "loadSession": { "type": "boolean" },
-            "prompt":      { "type": "boolean" },
-            "cancel":      { "type": "boolean" }
-          }
-        }
+        "protocolVersion": { "type": "integer", "description": "ACP wire version the client speaks." },
+        "clientInfo": { "type": "object", "additionalProperties": true },
+        "clientCapabilities": { "type": "object", "additionalProperties": true }
       }
     },
     "InitializeResponse": {
       "type": "object",
-      "additionalProperties": false,
       "required": ["protocolVersion", "agentInfo"],
       "properties": {
-        "protocolVersion": { "type": "string" },
+        "protocolVersion": { "type": "integer" },
         "agentInfo": {
           "type": "object",
-          "additionalProperties": true,
           "required": ["name"],
           "properties": {
-            "name":    { "type": "string" },
+            "name": { "type": "string" },
             "version": { "type": "string" }
           }
         },
-        "agentCapabilities": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "loadSession": { "type": "boolean" },
-            "prompt":      { "type": "boolean" },
-            "cancel":      { "type": "boolean" }
-          }
-        }
+        "agentCapabilities": { "type": "object", "additionalProperties": true }
       }
     },
-    "SessionNewRequest": {
+    "NewSessionRequest": {
       "type": "object",
-      "additionalProperties": true,
+      "required": ["cwd", "mcpServers"],
       "properties": {
-        "clientInfo": { "$ref": "#/definitions/InitializeRequest/properties/clientInfo" }
+        "cwd": { "type": "string", "description": "Absolute working directory of the session." },
+        "mcpServers": { "type": ["array", "null"] },
+        "additionalDirectories": { "type": ["array", "null"] }
       }
     },
-    "SessionNewResponse": {
+    "NewSessionResponse": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["sessionId"],
-      "properties": {
-        "sessionId": { "type": "string", "description": "Opaque session identifier." }
-      }
-    },
-    "SessionPromptRequest": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["sessionId", "text"],
-      "properties": {
-        "sessionId": { "type": "string" },
-        "text":      { "type": "string" }
-      }
-    },
-    "SessionPromptResponse": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["messageId"],
-      "properties": {
-        "messageId": { "type": "string" }
-      }
-    },
-    "SessionCancelRequest": {
-      "type": "object",
-      "additionalProperties": false,
       "required": ["sessionId"],
       "properties": {
         "sessionId": { "type": "string" }
       }
     },
-    "ToolCall": {
+    "PromptRequest": {
       "type": "object",
-      "additionalProperties": false,
-      "required": ["name"],
+      "required": ["sessionId", "prompt"],
       "properties": {
-        "name":    { "type": "string" },
-        "input":   { "type": "object", "additionalProperties": true },
-        "callId":  { "type": "string" }
-      }
-    },
-    "ToolResult": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["content"],
-      "properties": {
-        "callId":  { "type": "string" },
-        "isError": { "type": "boolean" },
-        "content": {
+        "sessionId": { "type": "string" },
+        "prompt": {
           "type": "array",
           "items": { "$ref": "#/definitions/ContentBlock" }
         }
       }
     },
+    "PromptResponse": {
+      "type": "object",
+      "required": ["stopReason"],
+      "properties": {
+        "stopReason": {
+          "type": "string",
+          "enum": ["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"]
+        }
+      }
+    },
+    "CancelNotification": {
+      "type": "object",
+      "required": ["sessionId"],
+      "properties": {
+        "sessionId": { "type": "string" }
+      }
+    },
     "ContentBlock": {
       "type": "object",
-      "additionalProperties": false,
       "required": ["type"],
       "properties": {
-        "type": { "type": "string", "enum": ["text", "code", "image", "json"] },
+        "type": { "type": "string", "enum": ["text", "resource_link"] },
         "text": { "type": "string" },
-        "language": { "type": "string" },
-        "data": { "type": "string" },
-        "mimeType": { "type": "string" },
-        "value": {}
+        "name": { "type": "string" },
+        "uri": { "type": "string" }
+      }
+    },
+    "SessionUpdateNotification": {
+      "type": "object",
+      "required": ["sessionId", "update"],
+      "properties": {
+        "sessionId": { "type": "string" },
+        "update": {
+          "type": "object",
+          "required": ["sessionUpdate"],
+          "properties": {
+            "sessionUpdate": {
+              "type": "string",
+              "enum": ["user_message_chunk", "agent_message_chunk", "tool_call", "tool_call_update"]
+            },
+            "content": { "type": "array" },
+            "toolCallId": { "type": "string" },
+            "title": { "type": "string" },
+            "status": { "type": "string" }
+          }
+        }
       }
     }
   }

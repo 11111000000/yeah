@@ -1,0 +1,19 @@
+{
+  "id": "wave-16",
+  "title": "the coding toolset: what the model can actually do to a project",
+  "intent": "The registry had one tool, and it ignored its own arguments. An agent that cannot read a file, find a file, change a line safely, run a command and hear what the command said is a chat window, not a harness. This wave is the vertical slice of a coding agent: real file discovery, real guarded editing, real asynchronous processes with bounded output, real Emacs introspection — all through the same registry and the same permission rules, so that the model never gets a capability the person does not have.",
+  "touches": [ "lib/yeah-builtins.el", "lib/yeah-files.el", "lib/yeah-edit.el", "lib/yeah-process.el", "lib/yeah-emacs.el", "lib/yeah-result.el", "lib/yeah-tools.el", "lib/yeah-undo.el", "tests/", "spec.json", "waves/" ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-result.el tests/unit/test-yeah-files.el tests/unit/test-yeah-edit.el tests/unit/test-yeah-process.el tests/unit/test-yeah-emacs.el tests/unit/test-yeah-tools.el tests/unit/test-yeah-undo.el",
+    "./scripts/dev check tests/checks/check-coding-tools-end-to-end.el"
+  ],
+  "claims": [
+    "the-coding-toolset-is-usable"
+  ],
+  "commitment": [
+    { "claim": "the-coding-toolset-is-usable", "state": "holds" }
+  ],
+  "objection": "A tool set that works when the agent is driven by a test is not a tool set that works when the agent is driven by a model: the model writes arguments it did not read twice, and a guarded edit that rejects everything is a wall, not a guard.",
+  "refuted_by": "A model-driven task — read a small project, reproduce a failing test, edit it, rerun the test — that stops at the first refusal. The guard then costs more than the unguarded edit would have."
+}

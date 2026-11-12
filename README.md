@@ -32,35 +32,51 @@ feature already claimed.
 
 ## What exists today
 
-The repository contains 21 focused Elisp modules implementing pieces of the
+The repository contains 33 focused Elisp modules implementing pieces of the
 kernel:
 
 - a defined run state machine and model-turn orchestration;
 - a typed tool registry and last-match permission rules;
 - shared/exclusive scheduling with once-only settlement and structured tool
   failure handling;
+- built-in file, guarded edit/write, async process/job, output artifact,
+  introspection, Elisp-check and diagnostics tools;
 - an append-only JSONL session store and typed event vocabulary;
 - event-derived view models and session projections;
-- undo boundaries, retries/timeouts and context/compaction primitives;
-- initial ACP/EMCP data structures and test fakes.
+- undo boundaries, retries/timeouts, calibrated context and asynchronous
+  compaction with pruning events and corrupt-tail recovery;
+- queued human control with persistent pending inputs, steering, cancellation,
+  completion nudges, whole-run deadlines and retry backoff;
+- an interactive journal mode with `M-x yeah`, ask/steer/cancel/recover,
+  withdrawal, diff review and `M-x yeah-doctor`;
+- an ACP v1 agent over newline JSON-RPC on stdio, with real sessions, journal
+  updates, streaming tool calls and cancellation;
+- an MCP server publishing the read-only `emacs__*` surface, and an MCP client
+  that imports the tools of a foreign server under a namespaced name.
 
-After Stage 0.3, byte compilation is clean and 118 ERT unit tests pass.
-Direct canaries cover transport, scheduling and tool failures.  Frozen
-math-coding v4 map/run/gate results are not treated as current evidence.
+After Stage 5, byte compilation is clean and 198 ERT unit tests pass.
+Direct canaries cover transport, scheduling, tool failures, real coding,
+asynchronous compaction, product installation entry points and the wire:
+real Emacs processes serving ACP and MCP over stdio.  Frozen math-coding v4
+map/run/gate results are not treated as current evidence.
+Live-provider task completion is unverified.
 
 ## What is not finished
 
 Do not infer a working product from the presence of a module:
 
-- the REPL currently echoes a stub;
-- ACP prompt/cancel, MCP handlers and sub-agent execution are incomplete;
-- the built-in coding tool set is not implemented beyond a limited reader;
-- compaction is not yet fully asynchronous or integrated into the run;
+- the stdio server answers one request at a time: a cancel that arrives while
+  a prompt is running is read after that prompt reaches a terminal state;
+- the ACP agent and the MCP server have never been driven by a third-party
+  client or editor, and no live provider was involved in the wire checks;
+- sub-agent execution is still a stub, and the three placements are not
+  implemented;
 - global state and incomplete event correlation still limit concurrent runs;
 - PTC is disabled by default and remains **experimental, not a security
   boundary**; its demonstrated higher-order-function bypasses are covered by
   regression tests, but no general isolation is claimed;
-- there is no supported one-step user installation yet.
+- bootstrap installation exists but has not been network-tested on a clean
+  machine; the public alpha gate remains open.
 
 The design also removes any assumption that a gptel hook is real merely
 because a unit test names it: the adapter must be checked against pinned,
@@ -89,6 +105,28 @@ honesty and safety → coding tools → context/compaction → human control
 
 The public alpha gate is a clean-Emacs installation followed by a real coding
 task with approval, diff review, steering, cancellation and restart/resume.
+
+## Installation
+
+On Emacs 30.2 with `package-vc`:
+
+```elisp
+(require 'package-vc)
+(package-vc-install "https://github.com/11111000000/yeah.git" nil nil 'yeah)
+```
+
+Then configure the gptel backend/model and key through your normal Emacs
+mechanism, run `M-x yeah-doctor`, and start with `M-x yeah`.
+
+A clean-Emacs bootstrap is also provided:
+
+```sh
+emacs -Q --batch -l install/yeah-bootstrap.el
+```
+
+It installs gptel from MELPA when needed and Yeah through package-vc.  This
+path is intentionally not network-tested in CI; report any bootstrap failure
+before treating installation as supported.
 
 ## Development commands
 
