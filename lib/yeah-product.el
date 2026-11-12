@@ -14,6 +14,7 @@
 
 (require 'cl-lib)
 (require 'yeah-control)
+(require 'yeah-events)
 (require 'yeah-input)
 (require 'yeah-result)
 (require 'yeah-tools)
@@ -97,6 +98,13 @@
           (_ (list :effect :deny :reply :reject
                    :reason "rejected by user")))))))
 
+;;;###autoload
+(defun yeah-product-human-answerer (request)
+  "Answer REQUEST through a one-key approval of the person.
+This is the answerer of the attached placement: the run lives in the
+Emacs of the person, so the person may answer."
+  (yeah-product--human-answerer request))
+
 (defun yeah-product--format-event (record)
   "Return one display block for journal RECORD."
   (pcase (plist-get record :type)
@@ -117,7 +125,9 @@
     ("tool-end"
      (format "* Tool result: %s (%s)\n%s\n"
              (plist-get record :tool)
-             (if (plist-get record :ok) "ok" "error")
+             (if (yeah-events-boolean-p (plist-get record :ok))
+                 "ok"
+               "error")
              (plist-get record :payload)))
     ("usage"
      (format "* Usage: input %s, output %s\n"

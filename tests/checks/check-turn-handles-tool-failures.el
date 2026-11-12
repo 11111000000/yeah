@@ -11,6 +11,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-events)
 (require 'yeah-turn)
 (require 'yeah-tools)
 (require 'yeah-perm)
@@ -66,7 +67,7 @@ Return the completed turn, its records and model continuation observations."
          (end (yeah-check-failures--tool-end outcome)))
     (unless (eq 'completed (yeah-turn-state (plist-get outcome :turn)))
       (push "U1 left the turn incomplete" failures))
-    (when (plist-get end :ok)
+    (when (yeah-events-boolean-p (plist-get end :ok))
       (push "U1 was logged as a success" failures))
     (unless (stringp (plist-get outcome :value))
       (push "U1 did not give the model a string" failures)))
@@ -80,7 +81,7 @@ Return the completed turn, its records and model continuation observations."
          (end (yeah-check-failures--tool-end outcome)))
     (unless (eq 'completed (yeah-turn-state (plist-get outcome :turn)))
       (push "U2 left the turn incomplete" failures))
-    (when (plist-get end :ok)
+    (when (yeah-events-boolean-p (plist-get end :ok))
       (push "U2 was logged as a success" failures))
     (unless (equal "Error: boom" (plist-get outcome :value))
       (push (format "U2 returned the wrong error: %S" outcome) failures)))
@@ -110,7 +111,7 @@ Return the completed turn, its records and model continuation observations."
                  :handler (lambda () nil))
            nil))
          (end (yeah-check-failures--tool-end outcome)))
-    (when (plist-get end :ok)
+    (when (yeah-events-boolean-p (plist-get end :ok))
       (push "U4 was logged as a success" failures))
     (unless (equal "Error: tool produced no result"
                    (plist-get outcome :value))

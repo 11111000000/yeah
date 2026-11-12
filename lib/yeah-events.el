@@ -86,6 +86,13 @@ FIELDS is a plist of keyword pairs."
               (list (format "yeah-events: the event %S declares %S and was given %S"
                             type declared given))))))
 
+(defun yeah-events-boolean-p (value)
+  "Return non-nil when VALUE is a true boolean of a journal record.
+The journal writes a failure as JSON `false', which reads back as the
+symbol `:false'; an older record wrote it as an empty object, which
+reads back as nil.  Both mean the same thing: not true."
+  (and value (not (eq value :false))))
+
 (defvar yeah-events-write-functions nil
   "Functions called with (SESSION TYPE FIELDS ID) after a validated append.
 Observers are observational: errors are reported and do not stop other

@@ -509,18 +509,60 @@
     },
     {
       "id": "the-kernel-runs-in-three-placements",
-      "subject": "the same kernel runs attached to a session, in its own Emacs as a service, and in batch, and the placement changes nothing but the answer to a question",
-      "scope": [ "lib/yeah-placement.el" ],
+      "subject": "the same kernel runs attached to a session, in its own Emacs as a service, and in batch, and the placement changes nothing but the answer to a question: the same task writes the same events in all three",
+      "scope": [
+        "lib/yeah-placement.el", "lib/yeah-run.el",
+        "tests/checks/check-three-placements.el",
+        "tests/support/scenario.el"
+      ],
       "requirements": [
         {
           "kind": "verifier",
           "spec": "./scripts/dev check tests/checks/check-three-placements.el"
         }
       ],
-      "falsifier": "the kernel behaves differently depending on where it runs, or a run in a service cannot reach the buffers of a person",
+      "falsifier": "a placement changes what the run wrote down, or the service cannot be started, or the batch placement has no exit code",
       "register": "fact",
       "accepted": null,
-      "control": null,
+      "control": "sed -i 's/(yeah-placement-batch prompt/(yeah-placement-batch (concat prompt \" and something else\")/' lib/yeah-placement.el",
+      "attestations": []
+    },
+    {
+      "id": "a-run-owns-its-rules",
+      "subject": "a run owns its permission rules: two runs in one Emacs do not share one truth, and the rules of a run decide before the person is asked",
+      "scope": [
+        "lib/yeah-run.el", "lib/yeah-perm.el",
+        "tests/unit/test-yeah-run.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-run.el"
+        }
+      ],
+      "falsifier": "the rules of a run are the global rules, or a rule added by a run changes the rules of another run, or a request the rules do not decide is answered without the person",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(or rules (copy-sequence yeah-perm--rules))/yeah-perm--rules/' lib/yeah-run.el",
+      "attestations": []
+    },
+    {
+      "id": "the-bridge-reaches-the-buffers-of-a-person",
+      "subject": "the bridge reaches the live buffers of an attached Emacs through emacsclient, and the tools it offers are approved separately: nothing enters the registry until the operator asks for it",
+      "scope": [
+        "lib/yeah-bridge.el",
+        "tests/unit/test-yeah-emacs-bridge.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-emacs-bridge.el"
+        }
+      ],
+      "falsifier": "the bridge calls the attached Emacs through a shell, or it hangs when the attached Emacs does not answer, or the bridge tools are in the registry before the operator asks for them",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(executable-find program))/(executable-find \"emacsclient\"))/' lib/yeah-bridge.el",
       "attestations": []
     },
     {

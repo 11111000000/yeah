@@ -20,8 +20,11 @@
 ;; runtime decision.  An allow/always answer adds a persistent rule.  Other
 ;; decisions use `yeah-perm--session-log-fn' when installed; without that
 ;; hook the current implementation returns the decision plist unchanged.
-;; Run-scoped rather than global rules are a later placement-stage item in
-;; `docs/PLAN.md'.
+;;
+;; The global ruleset is the persistent policy of the person.  A run may
+;; carry its own rules — `yeah-run-context' in `lib/yeah-run.el' does — and
+;; `yeah-perm-effect' and `yeah-perm-evaluate' accept them as an argument,
+;; so two runs in one Emacs do not share one truth.
 
 ;;; Code:
 
@@ -89,6 +92,16 @@ Returns RULE. Signals `user-error' if RULE is malformed."
   "Return all current permission rules in registration order."
   yeah-perm--rules)
 
+(defun yeah-perm-rules-append (rules rule)
+  "Return RULES with RULE appended, without touching the global ruleset.
+RULE must be a valid rule plist.  This is how a run keeps rules of its
+own: the run asks with its own list, the person answers with the
+global one."
+  (unless (yeah-perm--rule-p rule)
+    (signal 'user-error
+            (list (format "yeah-perm-rules-append: malformed rule %S" rule))))
+  (append rules (list rule)))
+
 (defun yeah-perm-rules-reset-for-test ()
   "Drop every rule; for tests only.
 Not exported; documented here so test authors can find it.
@@ -106,35 +119,46 @@ resource is exactly RESOURCE **or** the literal wildcard
        (or (string= resource (plist-get rule :resource))
            (string= "*" (plist-get rule :resource)))))
 
-(defun yeah-perm-evaluate (action resource)
+(defun yeah-perm-effect (action resource &optional rules)
+  "Return the effect RULES give for `(ACTION RESOURCE)'.
+
+RULES defaults to the current global ruleset.  The effect is one of
+`:allow', `:deny' or `:ask'.  The last matching rule wins, and no match
+means `:ask'.  This is the query without the signal: a caller that has
+somewhere else to ask asks there."
+  (let ((last-match nil)
+        (rule nil)
+        (rest (or rules yeah-perm--rules)))
+    (while rest
+      (setq rule (car rest))
+      (when (yeah-perm--rule-matches-p rule action resource)
+        (setq last-match rule))
+      (setq rest (cdr rest)))
+    (if last-match
+        (plist-get last-match :effect)
+      'ask)))
+
+(defun yeah-perm-evaluate (action resource &optional rules)
   "Evaluate `(ACTION RESOURCE)' against the current ruleset.
-Scans the rule list in registration order; the **last**
+RULES may name another ruleset; the current global one is used when it
+is nil.  Scans the rule list in registration order; the **last**
 matching rule wins. Returns `:allow' on the happy path.
 On `:deny', raises `(user-error \"deny: <action> on <resource>\")'.
 On `:ask', raises `(user-error \"ask: <action> on <resource>\")'.
 When no rule matches, the default effect is `:ask'.
 
 The matching algorithm is documented at the top of this file."
-  (let ((last-match nil)
-        (rule nil)
-        (rest nil))
-    (setq rest yeah-perm--rules)
-    (while rest
-      (setq rule (car rest))
-      (when (yeah-perm--rule-matches-p rule action resource)
-        (setq last-match rule))
-      (setq rest (cdr rest)))
-    (let ((effect (if last-match
-                      (plist-get last-match :effect)
-                    'ask)))
-      (pcase effect
-        ('allow :allow)
-        ('deny
-         (signal 'user-error
-                 (list (format "deny: %s on %s" action resource))))
-        ('ask
-         (signal 'user-error
-                 (list (format "ask: %s on %s" action resource))))))))
+  (pcase (yeah-perm-effect action resource rules)
+    ('allow :allow)
+    ('deny
+     (signal 'user-error
+             (list (format "deny: %s on %s" action resource))))
+    ('ask
+     (signal 'user-error
+             (list (format "ask: %s on %s" action resource))))
+    (_
+     (signal 'user-error
+             (list (format "the rules say %s on %s" action resource))))))
 
 (defun yeah-perm-record-decision (action resource reply save)
   "Record a runtime decision for `(ACTION RESOURCE)'.

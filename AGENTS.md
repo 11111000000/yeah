@@ -37,14 +37,20 @@ work item. Never resolve it by silently making documentation more optimistic.
 ## Current warnings for every agent
 
 - This is a kernel prototype, not a usable coding product.
+- Stage 6 is implemented offline: the run context owns the session, the
+  transport, the answerer and the rules of one run, and the three
+  placements — attached, service, batch — write the same events for the
+  same task. The bridge to the buffers of an attached Emacs is off until
+  the operator turns it on, and it was checked against a stub program,
+  never against a live Emacs server.
 - Stage 5 is implemented offline: the ACP agent and the MCP server speak
   newline JSON-RPC over stdio, the `emacs__*` handlers are real, and the MCP
   client imports foreign tools. Two limits are not hidden — the stdio server
   answers one request at a time (a cancel cannot preempt a running prompt),
   and no third-party client or live provider has driven either server.
-- REPL and sub-agent execution still contain placeholders, and the three
-  placements are not implemented. Do not build new public behavior on top of
-  them while their stage's prerequisites are unmet.
+- REPL and sub-agent execution still contain placeholders. Do not build new
+  public behavior on top of them while their stage's prerequisites are
+  unmet.
 - Stage 4 is implemented offline: `M-x yeah`, journal commands, doctor and a
   package-vc bootstrap exist.  Bootstrap and live-provider interactive work
   are not yet verified, so the public alpha gate remains open.

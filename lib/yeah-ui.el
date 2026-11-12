@@ -51,7 +51,7 @@ rules refused it, and `done' otherwise."
         (setq outcome (nth i records))))
     (cond
      ((null outcome) 'running)
-     ((not (plist-get outcome :ok)) 'refused)
+     ((not (yeah-events-boolean-p (plist-get outcome :ok))) 'refused)
      (t 'done))))
 
 (defun yeah-ui-view (records)

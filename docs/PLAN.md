@@ -413,6 +413,30 @@ live provider, neither of which was available in this environment.
 
 One kernel, three operational forms, no hidden global run state.
 
+**Status: implemented offline on 2026-11-12.** `lib/yeah-run.el` is the run
+context: the session, the transport, the answerer, the rules, the budget and
+the deadline of one run, and the rules of a run are its own — two runs in one
+Emacs do not share one truth. `lib/yeah-perm.el` gained `yeah-perm-effect`
+(the query without the signal) and `yeah-perm-rules-append` (a ruleset of the
+run's own). `lib/yeah-placement.el` holds the three placements: attached (in
+the Emacs of the person, who may answer), service (in an Emacs of its own,
+where nobody answers) and batch (one task, a headless allowlist, an exit
+code). A child placement receives its task on the command line, because the
+environment of a person is not something a placement may change. The canary
+runs the same scripted task in three real processes and compares the
+canonical projection of the three journals: the same events, in the same
+order, with the identifiers and the timestamps left out.
+`lib/yeah-bridge.el` is the one capability a service placement does not have
+by default: it reaches the live buffers of an attached Emacs through
+`emacsclient`, and its tools enter the registry only when the operator asks
+for them, under their own names, so the permission system approves them
+separately.
+
+**One limit is stated, not hidden.** The service placement reaches the
+person's buffers only through the bridge, and the bridge is off until the
+operator turns it on: the check proves the bridge tools are absent from the
+registry, not that the bridge works against a running Emacs.
+
 ### Work items
 
 - Move session registry, policy, cancellation and configuration into run
@@ -429,6 +453,10 @@ One kernel, three operational forms, no hidden global run state.
 The same scripted task produces equivalent semantic events in all three
 placements. Service cannot access attached buffers without the bridge
 capability. Batch returns a useful exit code and durable journal.
+
+The first two are **closed by the check**; the third is **partly open**: the
+bridge is checked against a stub program, never against a live Emacs
+server.
 
 ## 10. Stage 7 — declarative delegation and ecosystem
 

@@ -278,3 +278,38 @@ success, and a waived claim is never read as a passing one.
   make the check red.
 - **Convention:** when registering a hook in a program you do not own,
   assert that the variable exists, and record that assertion as a claim.
+
+### §11.7 — `defun` with `&key` does not bind keyword arguments in this Emacs
+
+- **Date:** 2026-11-12 (the run context of Stage 6)
+- **Symptom:** a function defined with `(defun f (&key a b) …)` called as
+  `(f :a 1 :b 2)` binds `a` to `1` and `b` to `:b`: the keywords are
+  taken as positional arguments. The byte compiler also warns
+  "`f' called with 4 arguments, but accepts only 3", and the call fails
+  at runtime with "wrong number of arguments" as soon as more than half
+  of the declared keywords are passed.
+- **Cause:** in the Emacs 30.2 this project is built against, the
+  interpreter and the byte compiler compute the arity of a `&key`
+  function as if the keys were ordinary required arguments, so the
+  keyword convention is never applied. The same lambda list written
+  with `cl-defun` works: cl-lib binds the keywords itself.
+- **Fix:** write a function with keyword arguments as `cl-defun`, as
+  `lib/yeah-runtime.el` and `lib/yeah-gptel.el` already do.
+- **Convention:** `cl-defun` replaces the docstring with a generated
+  one, so the keyword arguments of a `cl-defun` are documented in the
+  comment above it, not only in the docstring.
+
+### §11.8 — `json-serialize` writes `nil` as `{}`, not as `null`
+
+- **Date:** 2026-11-12 (the canonical projection of the placements)
+- **Symptom:** a boolean field of the journal reads `{"ok":{}}` where a
+  reader expects `true` or `false`, and a reader that tests the value
+  with `(if (plist-get record :ok) …)` sees a failure as a success.
+- **Cause:** `json-serialize` treats `nil` as an empty object, because
+  `nil` is an empty alist. The symbol `:false` is the JSON false, and
+  `:null` is the JSON null.
+- **Fix:** write booleans as `t` and `:false`, and read them back as
+  `(memq value '(nil :false))` when the value may come from either the
+  in-memory result or the journal.
+- **Convention:** the journal is a public artefact: what a client reads
+  from it must be what the field means.
