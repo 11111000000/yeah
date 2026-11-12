@@ -72,9 +72,11 @@ asynchronous compaction, product installation entry points, the wire
 (the same task in three real processes, compared event by event) and the
 journey of a person (ask, steer, quit, restart, withdraw, recover, cancel).  Frozen
 math-coding v4 map/run/gate results are not treated as current evidence.
-A real model (MiniMax-M2.7) finishes the Stage 1 coding task: it reads the
-project, edits the file with a guarded edit, saves it, and the test of the
-project passes.  The interactive UI path is not yet verified.
+A real model (MiniMax-M2.7) finishes the Stage 1 coding task, and the
+interactive path works against a live provider: the journal mode, the cancel,
+the quit and the restart, the resume of the session, and the recovery of a
+pending input.  The clean-Emacs install path is the only part of the alpha
+release gate that is not yet network-tested.
 
 ## What is not finished
 
@@ -94,8 +96,9 @@ Do not infer a working product from the presence of a module:
   boundary**; its demonstrated higher-order-function bypasses are covered by
   regression tests, but no general isolation is claimed;
 - bootstrap installation exists but has not been network-tested on a clean
-  machine; the public alpha gate remains open because the interactive UI
-  path has not been exercised against a live provider.
+  machine; the interactive UI path is verified against a live provider, and
+  the clean-Emacs install path is the only part of the alpha release gate
+  that is not yet network-tested.
 
 The design also removes any assumption that a gptel hook is real merely
 because a unit test names it: the adapter must be checked against pinned,

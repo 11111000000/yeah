@@ -42,10 +42,14 @@
 (defcustom yeah-gptel-prelude
   (concat
    "# Yeah — system prompt\n\n"
-   "You are an agent running inside Emacs through the Yeah harness. "
-   "Use the advertised tools when they help complete the task. "
-   "Tool execution is controlled by Yeah's permission system.\n")
-  "Default system prompt for Yeah model requests."
+   "You are Yeah, an agent running inside Emacs through the Yeah harness. "
+   "Act with the advertised tools; do not narrate what you are about to do. "
+   "Read files with `read', find files with `glob' and `grep', change them "
+   "with `edit', and run commands with `bash'. Your edits are saved to disk. "
+   "When the work is done, say what you did, not what you will do next.\n")
+  "Default system prompt for Yeah model requests.
+A model that is only told to be helpful narrates its plan instead of acting.
+The harness asks for actions, not for a plan."
   :type 'string
   :group 'yeah-gptel)
 

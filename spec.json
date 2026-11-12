@@ -636,6 +636,26 @@
       "attestations": []
     },
     {
+      "id": "the-interactive-path-works-with-a-live-model",
+      "subject": "the interactive path works with a live model: a person opens a session in the journal mode, asks a real task, watches the work, cancels a run, quits, restarts, resumes the session, withdraws a pending input and recovers another",
+      "scope": [
+        "lib/yeah-product.el", "lib/yeah-control.el", "lib/yeah-turn.el",
+        "lib/yeah-result.el",
+        "tests/live/live-interactive-path.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-interactive-path.el"
+        }
+      ],
+      "falsifier": "the session is not resumed, or a pending input does not survive the restart, or a restart runs it by itself, or the model cannot pass the tick of a read to a guarded edit",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(defcustom yeah-edit-save-after-edit t/(defcustom yeah-edit-save-after-edit nil/' lib/yeah-edit.el",
+      "attestations": []
+    },
+    {
       "id": "the-product-installs-serves-and-documents",
       "subject": "the package exposes M-x yeah, M-x yeah-ask and M-x yeah-doctor, declares supported Emacs/gptel versions, and provides a package-vc bootstrap with no development-tool dependency",
       "scope": [ "yeah.el", "lib/yeah-product.el", "install/yeah-bootstrap.el", "tests/unit/test-yeah-product.el", "tests/checks/check-product-installs.el" ],
