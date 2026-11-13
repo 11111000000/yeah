@@ -1,4 +1,4 @@
-;;; test-yeah-product.el --- interactive product layer tests -*- lexical-binding: t; -*-
+;;; test-yeah-product.el --- interactive product layer tests -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

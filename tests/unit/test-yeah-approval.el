@@ -1,4 +1,4 @@
-;;; test-yeah-approval.el --- ERT tests for the approvals -*- lexical-binding: t; -*-
+;;; test-yeah-approval.el --- ERT tests for the approvals -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

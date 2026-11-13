@@ -13,6 +13,13 @@ not inside a separate agent process with Emacs acting as a client. The model
 is reached through **gptel**; tools are permissioned Elisp functions; session
 history is an **append-only JSONL journal**.
 
+The primary deployment is a **service Emacs**: a dedicated Emacs process runs
+the harness, because the editor Emacs is single-threaded and an in-editor
+agent would block editing. The editor joins through the explicitly approved
+emacsclient bridge; external clients and orchestrators speak ACP or MCP to
+the same service Emacs. `M-x yeah` inside the user's own Emacs remains the
+demo, development and fallback path.
+
 The name is a recursive acronym — **Yeah**, Emacs Agent Harness — and the
 **Y** stands for the Y-combinator, which expresses the long-term design:
 bounded recursive delegation, self-inspection and a fixed point at which Yeah
@@ -34,9 +41,27 @@ The target is a complete harness competitive with opencode and pi, with
 additional Emacs-native capabilities. That parity is a goal to measure, not a
 feature already claimed.
 
+## Placements
+
+The same harness runs in three placements; all three write the same events
+for the same task.
+
+- **Service (primary).** A dedicated Emacs process owns the harness. The
+  user's editor reaches it through the emacsclient bridge; external clients
+  and orchestrators (agent-shell, Paseo) speak ACP or MCP to the same
+  service Emacs. This is the deployment the product is aimed at, because the
+  editing Emacs is single-threaded and an in-editor agent would block
+  editing.
+- **Attached (demo, development, fallback).** `M-x yeah` runs the harness
+  inside the user's own Emacs. Useful for demos, development and light
+  tasks; not the primary path, because a long agent turn shares the editor's
+  single thread.
+- **Batch (CI and benchmarks).** The harness runs headless for scripted
+  checks and measurements, with no editor attached.
+
 ## What exists today
 
-The repository contains 38 focused Elisp modules implementing pieces of the
+The repository contains 40 focused Elisp modules implementing pieces of the
 kernel:
 
 - a defined run state machine and model-turn orchestration;
@@ -44,7 +69,7 @@ kernel:
 - shared/exclusive scheduling with once-only settlement and structured tool
   failure handling;
 - built-in file, guarded edit/write, async process/job, output artifact,
-  introspection, Elisp-check and diagnostics tools;
+  introspection, Elisp-check, diagnostics, todo and git tools;
 - an append-only JSONL session store and typed event vocabulary;
 - event-derived view models and session projections;
 - undo boundaries, retries/timeouts, calibrated context and asynchronous
@@ -52,52 +77,82 @@ kernel:
 - queued human control with persistent pending inputs, steering, cancellation,
   completion nudges, whole-run deadlines and retry backoff, and the Plan
   and Build permission profiles;
+- completion supervision that tells the difference between a plan and a
+  result: "I'll read the file" is nudged into the action (the nudge names
+  the tools the run has not called yet), while "I fixed it, the test passes"
+  ends the run; a run that is supervised ends through the `finish' tool,
+  not through talk; and a model that answers while the harness is still
+  waiting for a tool no longer breaks the state machine;
 - an interactive journal mode with `M-x yeah`, ask/steer/cancel/recover,
   withdrawal, diff review, Org export and `M-x yeah-doctor`;
 - an ACP v1 agent over newline JSON-RPC on stdio, with real sessions, journal
-  updates, streaming tool calls and cancellation;
+  updates, streaming tool calls and cancellation — and over a local socket,
+  where a cancel is handled while the prompt is still running;
 - an MCP server publishing the read-only `emacs__*` surface, and an MCP client
   that imports the tools of a foreign server under a namespaced name;
 - a run context that owns the session, the transport, the answerer and the
   rules of one run, and three placements: attached, service and batch;
+- a service lifecycle: a dedicated Emacs is started, connected to and
+  stopped as a service, serving ACP over a local socket in a user-private
+  directory — and the editor side of it: an ACP client that connects,
+  matches answers to requests, answers the service's permission requests
+  (`session/request_permission') and sees the streamed updates; `M-x
+  yeah-service' opens a buffer that drives such a service, the person
+  grants that service its standing permissions when it starts, and what
+  the rules do not name is asked of the person over the wire; with
+  `yeah-service-init-file' the service starts clean and loads only that
+  file (the gptel configuration) instead of the person's full init;
 - an emacsclient bridge to the live buffers of an attached Emacs, approved
   separately and off by default;
 - agent presets read from files, and a delegation that runs a child for
   real: its own session, its own permissions, its own journal.
 
-After Stage 7, byte compilation is clean and 240 ERT unit tests pass, and
+After Stage 7, byte compilation is clean and 255 ERT unit tests pass, and
 the fixed-point demonstration is verified with a real model.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
-(real Emacs processes serving ACP and MCP over stdio), the placements
+(real Emacs processes serving ACP and MCP over stdio, and ACP over a local
+socket, where a cancel preempts a running prompt), the placements
 (the same task in three real processes, compared event by event) and the
 journey of a person (ask, steer, quit, restart, withdraw, recover, cancel).  Frozen
 math-coding v4 map/run/gate results are not treated as current evidence.
-A real model (MiniMax-M2.7) finishes the Stage 1 coding task, and the
+A real model (MiniMax-M3.1-Flash) finishes the Stage 1 coding task, and the
 interactive path works against a live provider: the journal mode, the cancel,
 the quit and the restart, the resume of the session, and the recovery of a
-pending input.  The clean-Emacs install path is the only part of the alpha
-release gate that is not yet network-tested.
+pending input.  The fixed point passes with a live model too: a child agent
+repairs a Yeah canary and the canary passes afterwards.  The clean-Emacs
+install path is the only part of the alpha release gate that is not yet
+network-tested.
 
 ## What is not finished
 
 Do not infer a working product from the presence of a module:
 
-- the stdio server answers one request at a time: a cancel that arrives while
-  a prompt is running is read after that prompt reaches a terminal state;
-- the ACP agent and the MCP server have never been driven by a third-party
-  client or editor, and no live provider was involved in the wire checks;
-- the bridge to the buffers of an attached Emacs was checked against a stub
-  program, never against a live Emacs server;
+- the stdio wire server answers one request at a time: a cancel that arrives
+  while a prompt is running is read after that prompt reaches a terminal
+  state.  The socket transport (`lib/yeah-wire-socket.el`) does not have
+  this limit — a cancel is handled while the prompt is still running;
+- the ACP agent and the MCP server are driven by a third-party client
+  (xenodium/acp.el) with a fake model, but not yet by a real editor
+  (agent-shell) against a live provider;
+- the bridge to the buffers of an attached Emacs is verified against a live
+  Emacs server (a real daemon), but not yet against a person's Emacs in
+  day-to-day use;
 - the fixed-point demonstration is verified with a real model: a child of
   Yeah repairs a Yeah canary (with retries, because a multi-step repair is
   not always reliable on the first attempt);
-- global state and incomplete event correlation still limit concurrent runs;
+- concurrent sessions in one Emacs are isolated per run context (sessions,
+  permissions, cancellation, budgets and advertised tools are the run's own),
+  checked for cross-talk;
 - PTC is disabled by default and remains **experimental, not a security
   boundary**; its demonstrated higher-order-function bypasses are covered by
   regression tests, but no general isolation is claimed;
-- bootstrap installation exists but has not been network-tested on a clean
-  machine; the interactive UI path is verified against a live provider, and
+- bootstrap installation exists and is network-tested in a clean Emacs HOME
+  against a local clone (`tests/live/live-clean-install.el`); the published
+  repository still needs the package-layout fix pushed.  The bootstrap
+  installs gptel pinned to the supported revision — the current MELPA
+  snapshot of gptel does not byte-compile cleanly on a clean Emacs.  The
+  interactive UI path is verified against a live provider, and
   the clean-Emacs install path is the only part of the alpha release gate
   that is not yet network-tested.
 
@@ -135,7 +190,8 @@ On Emacs 30.2 with `package-vc`:
 
 ```elisp
 (require 'package-vc)
-(package-vc-install "https://github.com/11111000000/yeah.git" nil nil 'yeah)
+(package-vc-install
+ '(yeah :url "https://github.com/11111000000/yeah.git" :lisp-dir "lib"))
 ```
 
 Then configure the gptel backend/model and key through your normal Emacs
@@ -170,15 +226,25 @@ does not support the CLI used by the script, the result is blocked — not pass.
 Real provider tests exist separately and require environment credentials:
 
 ```sh
-YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 \
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
   emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-model-call.el
-YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 \
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
   emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-coding-task.el
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
+  emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-fixed-point.el
 ```
+
+`YEAH_TEST_KEY` is the provider key, `YEAH_TEST_HOST` and `YEAH_TEST_MODEL`
+choose the endpoint and the model, and `EMACS` names the Emacs that runs the
+project's own tests.  No key belongs in this repository, in a session log
+or in the documentation; keep the credentials in the environment (a private
+file outside the checkout is enough).
 
 The second one runs a real coding task against a real provider: the harness
 reads the project, edits the file with a guarded edit, saves it, and the
-project's test passes.  The model's reasoning is kept in the conversation by
+project's test passes.  The third one is the fixed point: a child agent
+repairs a Yeah canary, and the canary passes afterwards.  The model's
+reasoning is kept in the conversation by
 default (`yeah-gptel-include-reasoning`), and named arguments and JSON
 booleans are normalized at the tool boundary.
 

@@ -1,4 +1,4 @@
-;;; scenario.el --- the scripted model of the placement check -*- lexical-binding: t; -*-
+;;; scenario.el --- the scripted model of the placement check -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

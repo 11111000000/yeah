@@ -1,4 +1,4 @@
-;;; live-interactive-path.el --- the interactive path with a live model -*- lexical-binding: t; -*-
+;;; live-interactive-path.el --- the interactive path with a live model -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

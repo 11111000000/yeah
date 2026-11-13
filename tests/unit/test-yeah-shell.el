@@ -1,4 +1,4 @@
-;;; test-yeah-shell.el --- ERT tests for yeah-shell -*- lexical-binding: t; -*-
+;;; test-yeah-shell.el --- ERT tests for yeah-shell -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

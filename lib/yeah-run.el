@@ -48,7 +48,9 @@ decide.  RULES are the permission rules of this run.  BUDGET is the
 context budget.  DEADLINE is a whole-run timeout in seconds.
 INPUT is the frozen input captured at submission.  STEER-SOURCE returns
 the pending inputs of the person.  ON-DONE is called once at a terminal
-state.  MAX-NUDGES bounds completion supervision."
+state.  MAX-NUDGES bounds completion supervision.
+TOOLS-REGISTRY is the registry snapshot of this run: a tool one run
+registers does not appear in another."
   (id nil)
   (placement nil)
   (session nil)
@@ -62,7 +64,8 @@ state.  MAX-NUDGES bounds completion supervision."
   (on-done nil)
   (max-nudges nil)
   (turn nil)
-  (cancelled nil))
+  (cancelled nil)
+  (tools-registry nil))
 
 (defvar yeah-run--counter 0
   "Monotonic suffix for run identifiers.")
@@ -95,7 +98,8 @@ rest of what the run needs."
                   :input input
                   :steer-source steer-source
                   :on-done on-done
-                  :max-nudges max-nudges)))
+                  :max-nudges max-nudges
+                  :tools-registry (yeah-tools-snapshot))))
     (unless (memq placement '(attached service batch))
       (signal 'user-error
               (list (format "yeah-run-context-create: unknown placement %S"
@@ -156,7 +160,8 @@ the rest."
                    (funcall done finished)))
                (yeah-run-context-steer-source context)
                (yeah-run-context-input context)
-               (yeah-run-context-deadline context))))
+               (yeah-run-context-deadline context)
+               (yeah-run-context-tools-registry context))))
     (setf (yeah-run-context-turn context) turn)
     turn))
 

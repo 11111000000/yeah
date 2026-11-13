@@ -1,4 +1,4 @@
-;;; test-yeah-input.el --- ERT tests for yeah-input -*- lexical-binding: t; -*-
+;;; test-yeah-input.el --- ERT tests for yeah-input -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

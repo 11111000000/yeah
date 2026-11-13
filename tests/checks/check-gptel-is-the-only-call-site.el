@@ -1,4 +1,4 @@
-;;; check-gptel-is-the-only-call-site.el --- canary for the model call -*- lexical-binding: t; -*-
+;;; check-gptel-is-the-only-call-site.el --- canary for the model call -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

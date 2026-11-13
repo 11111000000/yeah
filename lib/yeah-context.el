@@ -47,18 +47,23 @@ and concrete next steps.  For exploratory discussions preserve narrative flow
 and explicit user instructions.  Return only the summary.\n\n%s"
   "Prompt used for model-written compaction summaries.")
 
+(defconst yeah-context--cjk-regexp
+  (concat "[" (string #x3000) "-" (string #x9fff)
+          (string #xf900) "-" (string #xfaff)
+          (string #xff00) "-" (string #xffef)
+          (string #x20000) "-" (string #x2fa1f) "]")
+  "Regexp matching one CJK character, for token estimation.
+The count is measured with `how-many', which is C speed, so the estimate
+does not walk the text character by character in Lisp.")
+
 (defun yeah-context-estimate-tokens (text)
   "Estimate tokens in TEXT using Latin/CJK-aware character classes."
   (if (not (stringp text))
       0
-    (let ((cjk 0))
-      (mapc (lambda (character)
-              (when (or (and (>= character #x3000) (<= character #x9fff))
-                        (and (>= character #xf900) (<= character #xfaff))
-                        (and (>= character #xff00) (<= character #xffef))
-                        (and (>= character #x20000) (<= character #x2fa1f)))
-                (setq cjk (1+ cjk))))
-            text)
+    (let ((cjk (with-temp-buffer
+                 (insert text)
+                 (goto-char (point-min))
+                 (how-many yeah-context--cjk-regexp))))
       (max 0 (ceiling (+ (/ (- (length text) cjk) 4.0)
                          (/ cjk 2.0)))))))
 

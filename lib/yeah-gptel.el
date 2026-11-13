@@ -46,7 +46,9 @@
    "Act with the advertised tools; do not narrate what you are about to do. "
    "Read files with `read', find files with `glob' and `grep', change them "
    "with `edit', and run commands with `bash'. Your edits are saved to disk. "
-   "When the work is done, say what you did, not what you will do next.\n")
+   "When the work is done and verified, call the `finish' tool with a summary. "
+   "A text answer that only describes what you will do is not a completion: "
+   "it is answered with a nudge naming the tools you have not called yet.\n")
   "Default system prompt for Yeah model requests.
 A model that is only told to be helpful narrates its plan instead of acting.
 The harness asks for actions, not for a plan."

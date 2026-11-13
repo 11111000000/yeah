@@ -1,4 +1,4 @@
-;;; test-yeah-mcp-client.el --- MCP client round trip -*- lexical-binding: t; -*-
+;;; test-yeah-mcp-client.el --- MCP client round trip -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

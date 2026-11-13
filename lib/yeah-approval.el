@@ -39,9 +39,13 @@
 (defconst yeah-approval--replies '(once always reject)
   "The answers a person may give to a request for permission.")
 
-(defun yeah-approval-request (action resource)
-  "Return a request for permission to run ACTION on RESOURCE."
-  (list :action action :resource resource))
+(defun yeah-approval-request (action resource &optional args)
+  "Return a request for permission to run ACTION on RESOURCE.
+ARGS, when given, are the arguments the tool would run with: the wire
+carries them so the person sees the change, not only its target."
+  (if args
+      (list :action action :resource resource :args args)
+    (list :action action :resource resource)))
 
 (defun yeah-approval-reply-p (reply)
   "Non-nil when REPLY is one of the answers a person may give."

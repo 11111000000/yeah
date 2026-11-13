@@ -1,4 +1,4 @@
-;;; test-yeah-loop.el --- ERT tests for yeah-loop -*- lexical-binding: t; -*-
+;;; test-yeah-loop.el --- ERT tests for yeah-loop -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

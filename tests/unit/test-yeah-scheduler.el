@@ -1,4 +1,4 @@
-;;; test-yeah-scheduler.el --- scheduler failure and settlement tests -*- lexical-binding: t; -*-
+;;; test-yeah-scheduler.el --- scheduler failure and settlement tests -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

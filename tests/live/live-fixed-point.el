@@ -1,4 +1,4 @@
-;;; live-fixed-point.el --- the Y of Yeah: Yeah repairs a Yeah canary -*- lexical-binding: t; -*-
+;;; live-fixed-point.el --- the Y of Yeah: Yeah repairs a Yeah canary -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -65,14 +65,15 @@
    "double.el and a canary double-check.el.  The canary fails because double "
    "returns its argument instead of doubling it.\n"
    "Do these things, in this order, with the tools:\n"
-   "1. Run the canary with bash to see it fail: emacs -Q --batch -L . "
+   (format "1. Run the canary with bash to see it fail: %s -Q --batch -L . "
+            (or (getenv "EMACS") "emacs"))
    "-l double-check.el -f ert-run-tests-batch-and-exit\n"
    "2. Read double.el with the read tool; note its tick in the result.\n"
    "3. Use the edit tool on double.el to replace exactly the text `  n)' "
    "with `  (* 2 n))', passing the tick from the read result.\n"
    "4. Run the canary again with bash to see it pass.\n"
    "5. End by saying the command you ran and the diff of what you changed.\n"
-   "Act with the tools; do not narrate what you are about to do.\n"))
+   "Act with the tools; do not narrate what you are about to do. When the work is done and the canary passes, call the finish tool.\n"))
 
 (defun yeah-live-fp--wait (child &optional timeout)
   "Wait for the child CHILD to finish and return its record."
@@ -125,7 +126,7 @@
       (unless failure
         (let* ((control (make-process :name "yeah-fp-check"
                                        :buffer (generate-new-buffer " *fp*")
-                                       :command (list "emacs" "-Q" "--batch"
+                                       :command (list (or (getenv "EMACS") "emacs") "-Q" "--batch"
                                                       "-L" directory
                                                       "-l" "double-check.el"
                                                       "-f" "ert-run-tests-batch-and-exit")
@@ -150,17 +151,16 @@
 
 (let ((attempts 3)
       (failure nil))
-  (while (and (> attempts 0) (null failure))
+  (while (> attempts 0)
     (setq attempts (1- attempts))
     (setq failure (yeah-live-fp--run))
-    (when failure
-      (message "live fp: attempt failed: %s" failure)
-      (setq failure nil)))
-  (when (and failure (message "live fp: the child repaired the canary"))
-    nil)
+    (if failure
+        (message "live fp: attempt failed: %s" failure)
+      (setq attempts 0)))
   (when failure
     (message "live fp: %s" failure)
     (kill-emacs 1))
+  (message "live fp: the child repaired the canary")
   (kill-emacs 0))
 
 ;;; live-fixed-point.el ends here

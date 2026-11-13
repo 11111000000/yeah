@@ -19,6 +19,7 @@
 (require 'json)
 (require 'yeah-emcp)
 (require 'yeah-wire)
+(require 'yeah-wire-socket)
 
 (defgroup yeah-mcp nil
   "Yeah MCP server."
@@ -185,6 +186,19 @@ without waiting for the next request."
               (funcall yeah-mcp--output-function response)))
           (yeah-wire-pump-until (lambda () t) 0.05)))))
   nil)
+
+;;;###autoload
+(defun yeah-mcp-serve-socket (service &optional family)
+  "Serve MCP on the local socket SERVICE until the server stops.
+FAMILY is `local' for a Unix socket and `ipv4' for a loopback TCP port.
+Each connection is answered on its own connection."
+  (yeah-wire-socket-serve
+   service
+   (lambda (line respond)
+     (let ((response (yeah-mcp-handle-message line)))
+       (when response
+         (funcall respond response))))
+   family))
 
 (provide 'yeah-mcp)
 ;;; yeah-mcp.el ends here

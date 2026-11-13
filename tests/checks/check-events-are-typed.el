@@ -1,4 +1,4 @@
-;;; check-events-are-typed.el --- canary for the event vocabulary -*- lexical-binding: t; -*-
+;;; check-events-are-typed.el --- canary for the event vocabulary -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -17,6 +17,8 @@
 ;; The check runs a turn against a fake model and then reads the log: the
 ;; vocabulary and the writer are compared against each other, and an
 ;; event of an unknown type, or with the wrong fields, must be refused.
+;; The task list of a run is one of the declared events: a `todo' event
+;; carries the tasks it changes and the operation that changed them.
 ;;
 ;; Exit codes: 0 — the vocabulary and the log agree; 1 — they do not.
 
@@ -114,7 +116,35 @@
           (progn
             (yeah-events-write session "user-message" :payload "x" :extra "y")
             (push "an event with fields it does not declare was accepted" failures))
-        (user-error nil)))
+        (user-error nil))
+      ;; The task list of a run is a declared event: the tasks it carries
+      ;; and the operation that changed them are its fields.
+      (let ((spec (yeah-events-spec "todo")))
+        (unless spec
+          (push "the vocabulary has no todo event" failures))
+        (when spec
+          (unless (equal (sort (copy-sequence (plist-get spec :fields)) #'string<)
+                         '(:items :operation))
+            (push (format "the todo event declares %S" (plist-get spec :fields))
+                  failures)))
+        ;; A todo event with the fields it declares is accepted.
+        (condition-case err
+            (yeah-events-write session "todo"
+                               :items (vector (list :id "1" :text "write it"
+                                                    :status "pending"))
+                               :operation "add")
+          (user-error
+           (push (format "the todo event was refused: %s"
+                         (error-message-string err))
+                 failures)))
+        ;; A todo event with fields it does not declare is refused.
+        (condition-case nil
+            (progn
+              (yeah-events-write session "todo" :items nil :operation "add"
+                                 :extra "y")
+              (push "a todo event with fields it does not declare was accepted"
+                    failures))
+          (user-error nil))))
     (ignore-errors (delete-directory root t t)))
 
   (dolist (failure failures)

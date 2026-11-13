@@ -1,4 +1,4 @@
-;;; check-compaction-is-a-model-call.el --- canary for the context -*- lexical-binding: t; -*-
+;;; check-compaction-is-a-model-call.el --- canary for the context -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

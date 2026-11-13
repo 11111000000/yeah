@@ -275,14 +275,36 @@ Magit, Eglot, Org add-ons or a particular completion framework.
 Emacs threads may coordinate waiting; they are not an isolation boundary.
 Heavy, unattended or untrusted work belongs in a separate Emacs process.
 
-- **Attached:** the default interactive placement. The agent works with live
-  buffers and must not block editing.
-- **Service:** a dedicated Emacs for protocol clients or unattended work.
-  Access to a person's buffers through emacsclient is an explicit capability.
+**Primary deployment (decided 2026-11-12): the service placement.** A
+dedicated Emacs process runs the harness, because the person's editing
+Emacs is single-threaded and an in-editor agent would block editing. The
+editing Emacs reaches the harness through the emacsclient bridge; external
+clients and orchestrators speak ACP or MCP to the same service Emacs.
+
+- **Service:** the primary placement. A dedicated Emacs runs the harness;
+  orchestrators and protocol clients connect over ACP/MCP. The person's
+  editing Emacs reaches live buffers only through the emacsclient bridge,
+  which is an explicitly approved capability. The wire is stdio or a local
+  socket; on the socket a connection is a process, the event loop keeps
+  running while the server waits, and a cancel is handled while a prompt
+  is still running — stdio cannot do that (a blocking read stops the event
+  loop, and a reader thread holds the interpreter lock).
+- **Attached:** the development, demo and fallback placement. The agent
+  shares the person's process, works with live buffers and must never
+  block editing. Heavy or unattended work does not belong here.
 - **Batch:** one process and one task, suitable for CI and benchmarks.
 
 The placement may change process ownership and who answers approvals. It may
 not change the canonical sequence of semantic events.
+
+This revises the earlier "attached is the default interactive placement"
+wording, per D10: decision changes are recorded explicitly with their
+document update. The identity invariant still holds — there is no agent
+runtime in another language; in the service deployment both sides are
+Emacs, so "Emacs is not a client to an agent living somewhere else" remains
+true. The honest limits stand: the bridge has so far been checked only
+against a stub program, and the stdio wire server answers one request at a
+time.
 
 ## 8. Security model
 
@@ -302,7 +324,9 @@ process boundary and its own adversarial verification.
 
 ## 9. Product and interface
 
-`M-x yeah` is the primary interactive entry point. The interface renders the
+`M-x yeah` is the primary interactive entry point of the attached
+placement; the primary deployment is driven through ACP/MCP clients and
+orchestrators against a service Emacs. The interface renders the
 journal: streamed text, reasoning visibility, tool calls and results,
 approvals, diffs, usage, errors, child work and cancellation state.
 

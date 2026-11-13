@@ -1,4 +1,4 @@
-;;; test-yeah-files.el --- ERT tests for yeah-files -*- lexical-binding: t; -*-
+;;; test-yeah-files.el --- ERT tests for yeah-files -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 
@@ -176,6 +176,21 @@
               "grep" "needle" (expand-file-name "missing" root))))
     (should (yeah-files-test--error-p
              (yeah-files-test--call "grep" "needle" root 0)))))
+
+(ert-deftest yeah-files-read-shows-the-tick-to-the-model ()
+  "A read of a file open in a buffer gives the model the modification tick."
+  (let* ((root (make-temp-file "yeah-tick" t))
+         (file (expand-file-name "a.el" root))
+         (buffer nil))
+    (unwind-protect
+        (progn
+          (with-temp-file file (insert "(print 1)\n"))
+          (setq buffer (find-file-noselect file))
+          (let* ((result (yeah-tools-call "read" (list file 1 10)))
+                 (text (yeah-result-model-text result)))
+            (should (string-match-p "tick" text))))
+      (when (buffer-live-p buffer) (kill-buffer buffer))
+      (ignore-errors (delete-directory root t t)))))
 
 (provide 'test-yeah-files)
 ;;; test-yeah-files.el ends here

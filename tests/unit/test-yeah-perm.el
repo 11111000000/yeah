@@ -1,4 +1,4 @@
-;;; test-yeah-perm.el --- ERT tests for yeah-perm -*- lexical-binding: t; -*-
+;;; test-yeah-perm.el --- ERT tests for yeah-perm -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

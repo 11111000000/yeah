@@ -1,4 +1,4 @@
-;;; test-yeah-mcp.el --- tests for the MCP server and the emacs__* tools -*- lexical-binding: t; -*-
+;;; test-yeah-mcp.el --- tests for the MCP server and the emacs__* tools -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

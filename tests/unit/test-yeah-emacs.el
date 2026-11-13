@@ -1,4 +1,4 @@
-;;; test-yeah-emacs.el --- tests for Emacs-native tools -*- lexical-binding: t; -*-
+;;; test-yeah-emacs.el --- tests for Emacs-native tools -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

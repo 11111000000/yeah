@@ -1,4 +1,4 @@
-;;; test-yeah-undo.el --- ERT tests for yeah-undo -*- lexical-binding: t; -*-
+;;; test-yeah-undo.el --- ERT tests for yeah-undo -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

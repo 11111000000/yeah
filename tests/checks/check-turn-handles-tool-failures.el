@@ -1,4 +1,4 @@
-;;; check-turn-handles-tool-failures.el --- U1-U4 turn failure canaries -*- lexical-binding: t; -*-
+;;; check-turn-handles-tool-failures.el --- U1-U4 turn failure canaries -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

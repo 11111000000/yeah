@@ -1,4 +1,4 @@
-;;; test-yeah-edit.el --- ERT tests for yeah-edit -*- lexical-binding: t; -*-
+;;; test-yeah-edit.el --- ERT tests for yeah-edit -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

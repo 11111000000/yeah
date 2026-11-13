@@ -187,23 +187,23 @@ start a language server."
   "Return the built-in Emacs capability tool specifications."
   (list
    (list :name "introspect"
-         :description "Read Emacs documentation, source or matching symbols without returning variable values."
+         :description "Look up the Emacs documentation, source or matching symbols for a symbol; no variable values are returned."
          :input (list (list :name "symbol" :type 'string)
                       (list :name "kind" :type 'string :optional t))
          :handler #'yeah-emacs-introspect)
    (list :name "buffer-read"
-         :description "Read lines from a live Emacs buffer and return its modification tick."
+         :description "Read the content of a live Emacs buffer by its buffer name, from a 1-based line offset, up to a line limit. Use it for a buffer that is open in this Emacs."
          :input (list (list :name "name" :type 'string)
                       (list :name "offset" :type 'integer :optional t)
                       (list :name "limit" :type 'integer :optional t)
                       (list :name "widen" :type 'boolean :optional t))
          :handler #'yeah-emacs-buffer-read)
    (list :name "elisp-check"
-         :description "Check Elisp reader syntax and balanced parentheses without evaluating code."
+         :description "Check that an Elisp source parses: reader syntax and balanced parentheses, without evaluating any form."
          :input (list (list :name "path" :type 'string))
          :handler #'yeah-emacs-elisp-check)
    (list :name "diagnostics"
-         :description "Return Flymake/Eglot diagnostics for an existing buffer."
+         :description "Return the Flymake/Eglot diagnostics of a buffer that visits a path, or of the current buffer; it returns the diagnostics, not the content of the buffer."
          :input (list (list :name "path" :type 'string :optional t))
          :handler #'yeah-emacs-diagnostics)))
 

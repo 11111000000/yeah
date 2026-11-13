@@ -1,4 +1,4 @@
-;;; check-interface-renders-events.el --- canary for the interface -*- lexical-binding: t; -*-
+;;; check-interface-renders-events.el --- canary for the interface -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

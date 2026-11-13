@@ -1,4 +1,4 @@
-;;; check-subagent-depth-limit-is-enforced.el --- canary for the depth limit -*- lexical-binding: t; -*-
+;;; check-subagent-depth-limit-is-enforced.el --- canary for the depth limit -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

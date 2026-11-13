@@ -187,7 +187,7 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
   (list
    (list :name "edit"
          :description
-         "Replace exact text in a visiting buffer or a file opened in a buffer. old_str must be nonempty and match exactly once unless replace_all is true. When supplied, tick guards against stale buffer state; pass the tick from the result of the read tool, or omit it to skip the guard. The edit is one undo step and the buffer is saved (see `yeah-edit-save-after-edit'). After any rejection, read fresh state before retrying with a fresh tick."
+         "Replace exact text in a file, guarded by an optional modification tick. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: when it is given it must equal the modification tick of the file, and the edit is refused if the file changed since that tick was taken; the refusal reports the current tick, so you can retry with it. Omit tick to edit without the guard. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
          :input (list (list :name "path" :type 'string)
                       (list :name "old_str" :type 'string)
                       (list :name "new_str" :type 'string)
@@ -197,7 +197,7 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
          :concurrency 'exclusive)
    (list :name "write"
          :description
-         "Write UTF-8 content to a new file. Existing files are refused unless overwrite is true; edit changes buffers but this is the tool that writes files."
+         "Write UTF-8 content to a new file, creating it. An existing file is refused unless overwrite is true; to change part of a file that already exists, use the edit tool instead."
          :input (list (list :name "path" :type 'string)
                       (list :name "content" :type 'string)
                       (list :name "overwrite" :type 'boolean :optional t))

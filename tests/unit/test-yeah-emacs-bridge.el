@@ -1,4 +1,4 @@
-;;; test-yeah-emacs-bridge.el --- ERT tests for yeah-bridge -*- lexical-binding: t; -*-
+;;; test-yeah-emacs-bridge.el --- ERT tests for yeah-bridge -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

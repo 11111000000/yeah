@@ -1,4 +1,4 @@
-;;; check-coding-tools-end-to-end.el --- real coding tool scenario -*- lexical-binding: t; -*-
+;;; check-coding-tools-end-to-end.el --- real coding tool scenario -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 
