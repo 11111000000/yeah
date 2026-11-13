@@ -64,8 +64,9 @@ work item. Never resolve it by silently making documentation more optimistic.
   `M-x yeah`, journal commands, the Org export, doctor and a package-vc
   bootstrap exist.  A real model (MiniMax-M2.7) finishes the Stage 1 coding
   task, and the interactive path works against a live provider.  The
-  clean-Emacs install path is not network-tested yet, so the public alpha
-  gate remains open.
+  clean-Emacs install path is network-tested against the published
+  repository (tests/live/live-clean-install.el): the public alpha gate is
+  closed and v0.1.0 is the public alpha.
 - Stage 3 is implemented offline: the Plan and Build permission profiles,
   a persistent pending FIFO, frozen inputs,
   steering at batch boundaries, cancellation, nudges and deadlines have
@@ -141,7 +142,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-9 claim(s).
+43 claim(s).
 
 ```sh
 mathc run

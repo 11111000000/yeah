@@ -1,6 +1,6 @@
 # Yeah — Emacs Agent Harness
 
-> **Status: v0.1.0-alpha; a kernel prototype, not yet a usable product.**
+> **Status: v0.1.0, the public alpha; a kernel, not yet a complete product.**
 > Read `docs/PLAN.md` for the current baseline and the road to a public
 > alpha. `spec.json` and `./scripts/dev map` are the machine-checked source
 > of truth; documentation never substitutes for that evidence.
@@ -138,8 +138,8 @@ interactive path works against a live provider: the journal mode, the cancel,
 the quit and the restart, the resume of the session, and the recovery of a
 pending input.  The fixed point passes with a live model too: a child agent
 repairs a Yeah canary and the canary passes afterwards.  The clean-Emacs
-install path is the only part of the alpha release gate that is not yet
-network-tested.
+install path is network-tested against the published repository by
+`tests/live/live-clean-install.el`, which closes the public alpha gate.
 
 ## What is not finished
 
@@ -164,14 +164,11 @@ Do not infer a working product from the presence of a module:
 - PTC is disabled by default and remains **experimental, not a security
   boundary**; its demonstrated higher-order-function bypasses are covered by
   regression tests, but no general isolation is claimed;
-- bootstrap installation exists and is network-tested in a clean Emacs HOME
-  against a local clone (`tests/live/live-clean-install.el`); the published
-  repository still needs the package-layout fix pushed.  The bootstrap
-  installs gptel pinned to the supported revision — the current MELPA
-  snapshot of gptel does not byte-compile cleanly on a clean Emacs.  The
-  interactive UI path is verified against a live provider, and
-  the clean-Emacs install path is the only part of the alpha release gate
-  that is not yet network-tested.
+- bootstrap installation is network-tested in a clean Emacs HOME against
+  the published repository (`tests/live/live-clean-install.el`).  The
+  bootstrap installs gptel pinned to the supported revision — the current
+  MELPA snapshot of gptel does not byte-compile cleanly on a clean Emacs.
+  The interactive UI path is verified against a live provider.
 
 The design also removes any assumption that a gptel hook is real merely
 because a unit test names it: the adapter must be checked against pinned,
@@ -181,6 +178,8 @@ actual gptel contracts.
 
 Read in this order:
 
+0. `docs/VISION.md` — why Yeah exists: the environment people invested
+   themselves in, surviving the era of agents as a participant;
 1. `docs/ARCHITECTURE.md` — the purpose, ten design decisions, component
    contracts, security model and non-goals;
 2. `docs/PLAN.md` — eight detailed stages from the present prototype to 1.0,
@@ -220,9 +219,10 @@ A clean-Emacs bootstrap is also provided:
 emacs -Q --batch -l install/yeah-bootstrap.el
 ```
 
-It installs gptel from MELPA when needed and Yeah through package-vc.  This
-path is intentionally not network-tested in CI; report any bootstrap failure
-before treating installation as supported.
+It installs gptel from MELPA when needed and Yeah through package-vc.  The
+path is network-tested by `tests/live/live-clean-install.el` against the
+published repository; it does not run in CI, so report any bootstrap
+failure.
 
 ## Development commands
 

@@ -11,7 +11,8 @@
 ## 1. Identity and purpose
 
 **Yeah** means **Yeah, Emacs Agent Harness**: a recursive acronym, the **Y**
-is the Y-combinator.
+is the Y-combinator.  `docs/VISION.md` states the whole reason in one
+piece; this section fixes the identity it implies.
 
 The Y-combinator gives recursion without requiring a name. Yeah takes three
 consequences from that idea:
