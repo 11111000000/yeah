@@ -56,6 +56,17 @@
       (should (equal (mapcar #'car projection) '("user-message")))
       (should (equal (cdr (car projection)) '(:payload "hello"))))))
 
+(ert-deftest yeah-placement-canonical-events-drops-correlation-fields ()
+  "Run/session correlation metadata does not make placements disagree."
+  (let ((session (yeah-placement-test--session)))
+    (yeah-session-append
+     session
+     '(:type "user-message" :payload "hello"
+       :session_id "other-session" :run_id "run-1" :turn_id "run-1-turn-1"
+       :tool_call_id "run-1-call-1" :parent_event_id 41))
+    (should (equal (yeah-placement-canonical-events session)
+                   '(("user-message" :payload "hello"))))))
+
 (ert-deftest yeah-placement-batch-runs-a-task-and-writes-the-journal ()
   "The batch placement runs the task and leaves the journal behind."
   (let* ((root (make-temp-file "yeah-placement-project" t))
