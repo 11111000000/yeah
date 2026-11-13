@@ -1,4 +1,4 @@
-;;; test-yeah-state.el --- ERT tests for yeah-state -*- lexical-binding: t; -*-
+;;; test-yeah-state.el --- ERT tests for yeah-state -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

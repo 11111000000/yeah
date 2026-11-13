@@ -1,4 +1,4 @@
-;;; check-acp-dispatcher-routes-every-method.el --- canary for the ACP wire -*- lexical-binding: t; -*-
+;;; check-acp-dispatcher-routes-every-method.el --- canary for the ACP wire -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

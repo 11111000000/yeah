@@ -1,0 +1,854 @@
+{
+  "goal": {
+    "text": "Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only",
+    "scope": [
+      "lib/", "tests/", "scripts/", "schemas/", "docs/", "AGENTS.md",
+      "README.md", "ELISP_BEST_PRACTICES.md"
+    ],
+    "by": "p.b.kosov@yandex.ru",
+    "at": "1794244514"
+  },
+  "uncertainty_budget": 3,
+  "closed_waves": [
+    "wave-01", "wave-02", "wave-03", "wave-04", "wave-05", "wave-06",
+    "wave-07", "wave-08", "wave-09", "wave-10"
+  ],
+  "claims": [
+    {
+      "id": "lib-byte-compiles-clean",
+      "subject": "every file under lib/ byte-compiles without errors and without warnings",
+      "scope": [ "lib/", "scripts/dev" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev byte-compile-all" }
+      ],
+      "falsifier": "the byte-compilation of lib/ fails, or reports a warning",
+      "register": "fact",
+      "accepted": null,
+      "control": "printf '(error \"negative control\")\\n' >> lib/yeah-state.el",
+      "attestations": []
+    },
+    {
+      "id": "fsm-has-twelve-states-and-twenty-transitions",
+      "subject": "the agent loop is a finite state machine with exactly twelve states and twenty transitions: the machine can run one model turn and be asked again, and it can record a turn that failed",
+      "scope": [
+        "lib/yeah-state.el", "lib/yeah-loop.el",
+        "tests/unit/test-yeah-state.el", "tests/unit/test-yeah-loop.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-state.el tests/unit/test-yeah-loop.el"
+        }
+      ],
+      "falsifier": "the state list or the transition table has a different length, a transition is missing, or the machine cannot return to the model",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/^    interrupted$/    completed-tmp/; s/^    completed$/    interrupted/; s/^    completed-tmp$/    completed/' lib/yeah-state.el",
+      "attestations": []
+    },
+    {
+      "id": "session-log-is-append-only",
+      "subject": "the session log is append-only: a record that has been written is never rewritten and never removed",
+      "scope": [
+        "lib/yeah-session.el",
+        "tests/checks/check-session-log-append-only.el",
+        "tests/unit/test-yeah-session.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-session-log-append-only.el"
+        }
+      ],
+      "falsifier": "an earlier record is missing from the file after a later append",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/'append 'no-message)/nil 'no-message)/\" lib/yeah-session.el",
+      "attestations": []
+    },
+    {
+      "id": "compaction-is-a-projection-not-a-deletion",
+      "subject": "compaction is a projection: the source records stay on disk and the compaction record joins them",
+      "scope": [
+        "lib/yeah-compact.el", "lib/yeah-session.el",
+        "tests/checks/check-compaction-keeps-sources.el",
+        "tests/unit/test-yeah-compact.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-compaction-keeps-sources.el"
+        }
+      ],
+      "falsifier": "a source record disappears from the log when the compaction runs",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/'append 'no-message)/nil 'no-message)/\" lib/yeah-session.el",
+      "attestations": []
+    },
+    {
+      "id": "tool-call-validates-its-arguments",
+      "subject": "a tool call is refused when the number of arguments, or the type of one of them, does not match the tool's declared input",
+      "scope": [ "lib/yeah-tools.el", "tests/unit/test-yeah-tools.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-tools.el"
+        }
+      ],
+      "falsifier": "a call with the wrong number of arguments, or with an argument of the wrong type, is accepted",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(<= (length args) max)/(<= (length args) 100)/' lib/yeah-tools.el",
+      "attestations": []
+    },
+    {
+      "id": "permission-decides-by-the-last-matching-rule",
+      "subject": "the permission system decides by the last matching rule, and asks when nothing matches",
+      "scope": [ "lib/yeah-perm.el", "tests/unit/test-yeah-perm.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-perm.el"
+        }
+      ],
+      "falsifier": "an earlier matching rule overrides a later one, or the default stops being ask",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(setq last-match rule)/(unless last-match (setq last-match rule))/' lib/yeah-perm.el",
+      "attestations": []
+    },
+    {
+      "id": "acp-dispatcher-handles-the-v1-methods",
+      "subject": "the ACP dispatcher answers initialize, session/new, session/load, session/prompt and session/cancel, answers a prompt with a stop reason, and refuses a method it does not know",
+      "scope": [
+        "lib/yeah-acp.el", "schemas/acp-v1.json",
+        "tests/unit/test-yeah-acp.el",
+        "tests/checks/check-acp-dispatcher-routes-every-method.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-acp.el"
+        },
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-acp-dispatcher-routes-every-method.el"
+        }
+      ],
+      "falsifier": "one of the methods is unrouted, a prompt is answered without a stop reason, or an unknown method is answered instead of refused",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/\"end_turn\"/\"endturn\"/' lib/yeah-acp.el",
+      "attestations": []
+    },
+    {
+      "id": "emcp-tool-surface-matches-the-schema",
+      "subject": "the emcp registry and schemas/emcp-v1.json name the same tools, describe them the same way, publish the same read-only set, and a duplicate id is refused",
+      "scope": [
+        "lib/yeah-emcp.el", "schemas/emcp-v1.json",
+        "tests/checks/check-emcp-registry-matches-schema.el",
+        "tests/unit/test-yeah-emcp.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-emcp-registry-matches-schema.el"
+        },
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-emcp.el"
+        }
+      ],
+      "falsifier": "the registry and the schema name, describe or publish different tools, or a duplicate id is accepted",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(list \"emacs__dired_list\"/(list \"emacs__dired_list_renamed\"/' lib/yeah-emcp.el",
+      "attestations": []
+    },
+    {
+      "id": "undo-boundary-records-every-tick",
+      "subject": "every tick's changes can be undone: an undo boundary is taken around the buffer or the file the tick touched",
+      "scope": [ "lib/yeah-undo.el", "tests/unit/test-yeah-undo.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-undo.el"
+        }
+      ],
+      "falsifier": "a change made inside the boundary is not recorded in the undo list",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(funcall thunk)/(ignore thunk)/' lib/yeah-undo.el",
+      "attestations": []
+    },
+    {
+      "id": "gptel-hooks-live-in-one-module-only",
+      "subject": "no module installs global gptel hooks; lib/yeah-gptel.el configures each request privately without changing global gptel state",
+      "scope": [
+        "lib/yeah-gptel.el", "lib/",
+        "tests/checks/check-gptel-hooks-live-in-one-module.sh",
+        "tests/unit/test-yeah-gptel.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-gptel-hooks-live-in-one-module.sh"
+        }
+      ],
+      "falsifier": "any module installs or removes a global gptel hook instead of passing private request options",
+      "register": "fact",
+      "accepted": null,
+      "control": "printf \"(add-hook 'gptel-prompt-transform-functions (lambda (p) p))\\n\" >> lib/yeah-state.el",
+      "attestations": []
+    },
+    {
+      "id": "subagent-spawns-a-child-within-the-depth-limit",
+      "subject": "a sub-agent spawns a child session, waits for it, and a spawn past the depth limit is refused",
+      "scope": [
+        "lib/yeah-subagent.el",
+        "tests/checks/check-subagent-depth-limit-is-enforced.el",
+        "tests/unit/test-yeah-subagent.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-subagent-depth-limit-is-enforced.el"
+        }
+      ],
+      "falsifier": "the child session is not created, or the depth limit is not enforced",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(>= child-depth limit)/(>= child-depth 999)/' lib/yeah-subagent.el",
+      "attestations": []
+    },
+    {
+      "id": "yeah-shell-keeps-a-bounded-history",
+      "subject": "the Yeah shell keeps a bounded history of what was sent to it, and creates its REPL buffer",
+      "scope": [ "lib/yeah-shell.el", "tests/unit/test-yeah-shell.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-shell.el"
+        }
+      ],
+      "falsifier": "the history is unbounded, or the REPL buffer is not created",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(ring-insert yeah-shell--history input)/(setq yeah-shell--history (make-ring 200))/' lib/yeah-shell.el",
+      "attestations": []
+    },
+    {
+      "id": "the-agent-loop-is-wired",
+      "subject": "the tick, the permission system, the tool registry and the session log are wired into one loop: each is called from outside its own module",
+      "scope": [
+        "lib/yeah-loop.el", "lib/yeah-perm.el", "lib/yeah-tools.el",
+        "lib/yeah-session.el", "tests/checks/check-agent-loop-wired.sh",
+        "lib/yeah-turn.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-agent-loop-wired.sh"
+        }
+      ],
+      "falsifier": "a module of the loop is called only from inside itself",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/yeah-loop-tick/yeah-loop-tick-off/g' lib/*.el",
+      "attestations": []
+    },
+    {
+      "id": "ptc-sandbox-restricts-model-code",
+      "subject": "experimental PTC is disabled by default and is not a security boundary; when explicitly enabled for trusted code, direct and higher-order calls outside its restricted core are refused before evaluation",
+      "scope": [
+        "lib/yeah-codes.el", "tests/checks/check-ptc-sandbox-restricts.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-ptc-sandbox-restricts.el"
+        }
+      ],
+      "falsifier": "disabled PTC evaluates a form, a normal enabled registry tool is rejected, or a forbidden direct/higher-order form executes an outside effect",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(unless (yeah-codes--permitted-p body)/(unless t (yeah-codes--permitted-p body)/' lib/yeah-codes.el",
+      "attestations": []
+    },
+    {
+      "id": "the-model-is-called-through-the-gptel-hook-surface",
+      "subject": "the model is called through the private gptel adapter and nowhere else: one function in one module is the whole of the transport, and it speaks gptel's supported request shape",
+      "scope": [
+        "lib/yeah-gptel.el",
+        "tests/checks/check-gptel-is-the-only-call-site.el",
+        "tests/checks/check-gptel-request-shape.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-gptel-is-the-only-call-site.el"
+        },
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-gptel-request-shape.el"
+        }
+      ],
+      "falsifier": "a second module calls the model directly, the call site does not exist, or the transport does not reach gptel with the prompt and the callback",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(cl-defun yeah-gptel-request/(cl-defun yeah-gptel-request-disabled/' lib/yeah-gptel.el",
+      "attestations": []
+    },
+    {
+      "id": "the-acp-agent-speaks-over-stdio",
+      "subject": "the ACP agent speaks JSON-RPC over stdio: a client can open the process and exchange an initialize request, a session/new request and their answers",
+      "scope": [
+        "lib/yeah-acp.el", "lib/yeah-wire.el",
+        "tests/checks/check-wire-speaks-over-stdio.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-wire-speaks-over-stdio.el"
+        }
+      ],
+      "falsifier": "a client cannot exchange a JSON-RPC message with the agent over stdio",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(defconst yeah-acp--protocol-version 1$/(defconst yeah-acp--protocol-version 2/' lib/yeah-acp.el",
+      "attestations": []
+    },
+    {
+      "id": "the-model-turn-runs-and-parses-tool-calls",
+      "subject": "one turn asks the model, dispatches the tool calls the model asked for through the permission system and the registry, writes what happened into the log, and asks the model again until it asks for nothing",
+      "scope": [
+        "lib/yeah-turn.el", "tests/checks/check-model-turn-runs.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-model-turn-runs.el"
+        }
+      ],
+      "falsifier": "a tool call the model asked for is not dispatched, or is dispatched without the rules deciding, or the results do not reach the log",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(apply (plist-get spec :handler) args)/(list :refused)/' lib/yeah-tools.el",
+      "attestations": []
+    },
+    {
+      "id": "tools-from-one-turn-run-in-parallel",
+      "subject": "the tool calls of one answer of the model run together: a shared tool may run alongside the other shared tools, an exclusive tool runs alone, and the batch settles only when every call has settled",
+      "scope": [
+        "lib/yeah-scheduler.el", "lib/yeah-turn.el",
+        "tests/checks/check-tools-run-in-parallel.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-tools-run-in-parallel.el"
+        }
+      ],
+      "falsifier": "two shared calls of one answer run one after the other, an exclusive call runs while another is running, or the batch continues before its last call has settled",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/^          (yeah-scheduler--advance batch)$/          (unless (yeah-batch-running batch) (yeah-scheduler--advance batch))/' lib/yeah-scheduler.el",
+      "attestations": []
+    },
+    {
+      "id": "the-session-log-is-a-typed-event-stream",
+      "subject": "every step of a run is a typed record of the log: what the model asked, what the rules answered, what the tool did, and what the model said, and a record carries the fields its type declares",
+      "scope": [
+        "lib/yeah-events.el", "lib/yeah-turn.el",
+        "tests/checks/check-events-are-typed.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-events-are-typed.el"
+        }
+      ],
+      "falsifier": "the log holds a record of an unknown type, a record whose fields are not the ones its type declares, or a step of the run that leaves no record",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(unless (yeah-events--same-fields-p declared given)/(unless t (yeah-events--same-fields-p declared given)/' lib/yeah-events.el",
+      "attestations": []
+    },
+    {
+      "id": "the-interface-renders-the-event-stream",
+      "subject": "the interface reads the event stream and nothing else: it shows the transcript, the tool calls and their state, the approvals that are still waiting, and what the run has cost",
+      "scope": [
+        "lib/yeah-ui.el", "lib/yeah-events.el",
+        "tests/checks/check-interface-renders-events.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-interface-renders-events.el"
+        }
+      ],
+      "falsifier": "the view cannot be built from the log, or it shows a run that differs from what the log says",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/:role \"user\"/:role \"nobody\"/' lib/yeah-ui.el",
+      "attestations": []
+    },
+    {
+      "id": "approvals-have-reply-kinds-and-a-headless-policy",
+      "subject": "an approval is answered once, always or reject, and a run with nobody at the keyboard answers by the policy: the rules allow what they name and refuse everything else",
+      "scope": [
+        "lib/yeah-approval.el", "lib/yeah-perm.el",
+        "tests/checks/check-approvals-have-reply-kinds.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-approvals-have-reply-kinds.el"
+        }
+      ],
+      "falsifier": "an answer that is not one of the three is accepted, an answer of always is not written into the rules, or a run with nobody at the keyboard asks a question it cannot answer",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/'allow))/'deny))/\" lib/yeah-approval.el",
+      "attestations": []
+    },
+    {
+      "id": "compaction-is-a-model-call-and-old-outputs-are-pruned",
+      "subject": "the context of a run is counted, an overflow is seen, the summary is written by the model and not by a placeholder, and the outputs of old tools are pruned without leaving the log",
+      "scope": [
+        "lib/yeah-context.el", "lib/yeah-compact.el",
+        "tests/checks/check-compaction-is-a-model-call.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-compaction-is-a-model-call.el"
+        }
+      ],
+      "falsifier": "the summary is not the one the model wrote, an overflow is not seen, or a pruned record is no longer a record",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(or answer \"\")/(or \"a placeholder\")/' lib/yeah-context.el",
+      "attestations": []
+    },
+    {
+      "id": "sessions-have-an-index-a-tree-and-a-cost",
+      "subject": "the sessions of a project can be listed, every one of them says what it cost, and a run can be continued from a point that is not the end without the rest of the line disappearing",
+      "scope": [
+        "lib/yeah-sessions.el", "lib/yeah-session.el",
+        "tests/checks/check-sessions-have-a-tree.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-sessions-have-a-tree.el"
+        }
+      ],
+      "falsifier": "the index does not name the sessions, the cost of a run is unknown, or the branch loses the path that was abandoned",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(push record abandoned)/(push record path)/' lib/yeah-sessions.el",
+      "attestations": []
+    },
+    {
+      "id": "the-runtime-retries-times-out-and-never-blocks",
+      "subject": "a call that fails is tried again, a call that hangs is cut, a run that repeats itself is stopped, and none of it holds the main loop",
+      "scope": [
+        "lib/yeah-runtime.el", "tests/checks/check-runtime-never-blocks.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-runtime-never-blocks.el"
+        }
+      ],
+      "falsifier": "a failing call is not tried again, a hanging call is not cut, a repeated call is not seen, or the call waits in the main loop",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(> retries 0)/(> 1000)/' lib/yeah-runtime.el",
+      "attestations": []
+    },
+    {
+      "id": "the-mcp-server-speaks-over-stdio",
+      "subject": "the emacs tool namespace is served over stdio: a client can initialize, list the published tools and call one of them, and the published set is the read-only set of the registry",
+      "scope": [
+        "lib/yeah-mcp.el", "lib/yeah-emcp.el",
+        "tests/checks/check-wire-speaks-over-stdio.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-wire-speaks-over-stdio.el"
+        }
+      ],
+      "falsifier": "a client cannot list or call the published tools, or the published set drifts from the registry",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/\"2025-06-18\"/\"2024-01-01\"/' lib/yeah-mcp.el",
+      "attestations": []
+    },
+    {
+      "id": "yeah-imports-foreign-mcp-tools",
+      "subject": "Yeah connects to a foreign MCP server over stdio, lists its tools, imports them into its own registry under a namespaced name, and calls them through the same permission system as local tools",
+      "scope": [
+        "lib/yeah-mcp-client.el",
+        "tests/unit/test-yeah-mcp-client.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-mcp-client.el"
+        }
+      ],
+      "falsifier": "a foreign tool is not imported into the registry, or it is imported under a name that does not carry the server, or the call does not reach the foreign server",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(format \"mcp--%s--%s\"/(format \"mcp-%s-%s\"/' lib/yeah-mcp-client.el",
+      "attestations": []
+    },
+    {
+      "id": "the-kernel-runs-in-three-placements",
+      "subject": "the same kernel runs attached to a session, in its own Emacs as a service, and in batch, and the placement changes nothing but the answer to a question: the same task writes the same events in all three",
+      "scope": [
+        "lib/yeah-placement.el", "lib/yeah-run.el",
+        "tests/checks/check-three-placements.el",
+        "tests/support/scenario.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-three-placements.el"
+        }
+      ],
+      "falsifier": "a placement changes what the run wrote down, or the service cannot be started, or the batch placement has no exit code",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(yeah-placement-batch prompt/(yeah-placement-batch (concat prompt \" and something else\")/' lib/yeah-placement.el",
+      "attestations": []
+    },
+    {
+      "id": "a-run-owns-its-rules",
+      "subject": "a run owns its permission rules: two runs in one Emacs do not share one truth, and the rules of a run decide before the person is asked",
+      "scope": [
+        "lib/yeah-run.el", "lib/yeah-perm.el",
+        "tests/unit/test-yeah-run.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-run.el"
+        }
+      ],
+      "falsifier": "the rules of a run are the global rules, or a rule added by a run changes the rules of another run, or a request the rules do not decide is answered without the person",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(or rules (copy-sequence yeah-perm--rules))/yeah-perm--rules/' lib/yeah-run.el",
+      "attestations": []
+    },
+    {
+      "id": "the-bridge-reaches-the-buffers-of-a-person",
+      "subject": "the bridge reaches the live buffers of an attached Emacs through emacsclient, and the tools it offers are approved separately: nothing enters the registry until the operator asks for it",
+      "scope": [
+        "lib/yeah-bridge.el",
+        "tests/unit/test-yeah-emacs-bridge.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-emacs-bridge.el"
+        }
+      ],
+      "falsifier": "the bridge calls the attached Emacs through a shell, or it hangs when the attached Emacs does not answer, or the bridge tools are in the registry before the operator asks for them",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(executable-find program))/(executable-find \"emacsclient\"))/' lib/yeah-bridge.el",
+      "attestations": []
+    },
+    {
+      "id": "yeah-repairs-a-yeah-canary",
+      "subject": "the Y of Yeah: a child of Yeah repairs a Yeah canary — it runs the tests, finds the broken source, fixes it with a guarded edit, runs the tests again, and the canary passes",
+      "scope": [
+        "lib/yeah-subagent.el", "lib/yeah-run.el", "lib/yeah-tools.el",
+        "lib/yeah-edit.el", "lib/yeah-files.el",
+        "tests/live/live-fixed-point.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M3 emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-fixed-point.el"
+        }
+      ],
+      "falsifier": "the child cannot fix a broken canary with its own tools, or the journal writer crashes when a file is visited by a stale buffer, or the source is not fixed",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(defcustom yeah-edit-save-after-edit t/(defcustom yeah-edit-save-after-edit nil/' lib/yeah-edit.el",
+      "attestations": []
+    },
+    {
+      "id": "a-subagent-runs-its-own-session",
+      "subject": "a sub-agent runs in its own session with its own context and its own permissions: a tool it was not granted is refused, the refusal is in its own journal, its result comes back to the parent, and two children of one parent run at the same time",
+      "scope": [ "lib/yeah-subagent.el", "lib/yeah-run.el", "tests/unit/test-yeah-subagent.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-subagent.el"
+        }
+      ],
+      "falsifier": "a sub-agent shares the session of its parent, or it may use a tool it was not granted, or its result is lost, or a second child waits for the first",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(format \"%s.sub-%d\" parent-id child-id)/(format \"%s\" parent-id)/' lib/yeah-subagent.el",
+      "attestations": []
+    },
+    {
+      "id": "an-agent-preset-is-a-file",
+      "subject": "an agent preset is a file, not code: a header with a name, a description, a model and the tools it may use, and a body that is the prompt",
+      "scope": [ "lib/yeah-agent.el", "tests/unit/test-yeah-agent.el" ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-agent.el"
+        }
+      ],
+      "falsifier": "a preset cannot be found, or its header is not read, or its body is read when the preset is only listed",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(string-prefix-p \"---\" text)/(string-prefix-p \"+++\" text)/' lib/yeah-agent.el",
+      "attestations": []
+    },
+    {
+      "id": "a-session-can-be-read-as-an-org-file",
+      "subject": "a session can be read as an Org file: one heading per event, the fields of the event as properties, and the text of the event in a block that Org cannot mistake for syntax",
+      "scope": [
+        "lib/yeah-org.el", "lib/yeah-product.el",
+        "tests/checks/check-session-exports-to-org.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-session-exports-to-org.el"
+        }
+      ],
+      "falsifier": "the export loses an event, or the text of an event can be read as Org syntax, or the file on disk is not the text of the export",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(yeah-org--property-name key)/(format \"%s\" key)/' lib/yeah-org.el",
+      "attestations": []
+    },
+    {
+      "id": "a-real-model-finishes-a-coding-task",
+      "subject": "a real model finishes a coding task: it reads the project, edits the file with a guarded edit, saves it, and the test of the project passes — with the arguments the model actually sends (named arguments, JSON booleans) and with the reasoning kept in the conversation",
+      "scope": [
+        "lib/yeah-gptel.el", "lib/yeah-tools.el", "lib/yeah-files.el",
+        "lib/yeah-edit.el", "tests/live/live-coding-task.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-coding-task.el"
+        }
+      ],
+      "falsifier": "the model's named arguments are refused, or JSON false is refused, or the edit is not saved, or the model restarts the task because its plan was dropped",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(defcustom yeah-edit-save-after-edit t/(defcustom yeah-edit-save-after-edit nil/' lib/yeah-edit.el",
+      "attestations": []
+    },
+    {
+      "id": "the-interactive-path-works-with-a-live-model",
+      "subject": "the interactive path works with a live model: a person opens a session in the journal mode, asks a real task, watches the work, cancels a run, quits, restarts, resumes the session, withdraws a pending input and recovers another",
+      "scope": [
+        "lib/yeah-product.el", "lib/yeah-control.el", "lib/yeah-turn.el",
+        "lib/yeah-result.el",
+        "tests/live/live-interactive-path.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-interactive-path.el"
+        }
+      ],
+      "falsifier": "the session is not resumed, or a pending input does not survive the restart, or a restart runs it by itself, or the model cannot pass the tick of a read to a guarded edit",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(defcustom yeah-edit-save-after-edit t/(defcustom yeah-edit-save-after-edit nil/' lib/yeah-edit.el",
+      "attestations": []
+    },
+    {
+      "id": "the-product-installs-serves-and-documents",
+      "subject": "the package exposes M-x yeah, M-x yeah-ask and M-x yeah-doctor, declares supported Emacs/gptel versions, and provides a package-vc bootstrap with no development-tool dependency",
+      "scope": [ "yeah.el", "lib/yeah-product.el", "install/yeah-bootstrap.el", "tests/unit/test-yeah-product.el", "tests/checks/check-product-installs.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-product.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -L . -l tests/checks/check-product-installs.el" }
+      ],
+      "falsifier": "a product entry point is missing, package requirements are absent, or the bootstrap depends on mathc/Nix",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/;; Package-Requires.*//' yeah.el",
+      "attestations": []
+    },
+    {
+      "id": "turn-survives-malformed-tool-args",
+      "subject": "malformed tool argument containers become a bounded tool failure and the turn completes",
+      "scope": [ "lib/yeah-turn.el", "lib/yeah-scheduler.el", "tests/checks/check-turn-handles-tool-failures.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-handles-tool-failures.el" }
+      ],
+      "falsifier": "malformed args escape as an error, hang the turn, or produce a successful tool-end",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(listp args)/(not (listp args))/' lib/yeah-turn.el",
+      "attestations": []
+    },
+    {
+      "id": "turn-settles-after-handler-exception",
+      "subject": "a synchronous or asynchronous tool handler exception becomes a structured failure and the batch settles",
+      "scope": [ "lib/yeah-scheduler.el", "tests/unit/test-yeah-scheduler.el", "tests/checks/check-turn-handles-tool-failures.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-scheduler.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-handles-tool-failures.el" }
+      ],
+      "falsifier": "a handler exception escapes the scheduler or leaves a pending call",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(yeah-scheduler--error-result err)/(error err)/' lib/yeah-scheduler.el",
+      "attestations": []
+    },
+    {
+      "id": "turn-first-result-wins",
+      "subject": "every tool call settles at most once: a duplicate asynchronous callback is a no-op",
+      "scope": [ "lib/yeah-scheduler.el", "tests/unit/test-yeah-scheduler.el", "tests/checks/check-turn-handles-tool-failures.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-scheduler.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-handles-tool-failures.el" }
+      ],
+      "falsifier": "a duplicate callback replaces the first result, decrements pending twice, or emits another tool-end",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(unless (aref (yeah-batch-settled-calls batch) index)/(when t/' lib/yeah-scheduler.el",
+      "attestations": []
+    },
+    {
+      "id": "tool-result-is-provider-safe",
+      "subject": "every model-facing tool result is a string or a structured error; nil and non-string results are normalized before logging and continuation",
+      "scope": [ "lib/yeah-scheduler.el", "lib/yeah-turn.el", "tests/unit/test-yeah-scheduler.el", "tests/checks/check-turn-handles-tool-failures.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-scheduler.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-handles-tool-failures.el" }
+      ],
+      "falsifier": "a nil or non-string result reaches the model, or a missing result is logged as success",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(list :yeah-error \"Error: tool produced no result\")/nil/' lib/yeah-scheduler.el",
+      "attestations": []
+    },
+    {
+      "id": "the-coding-toolset-is-usable",
+      "subject": "the built-in coding tools perform an end-to-end project scenario: read/glob/grep, tick-guarded edit, Elisp validation, async bash and introspection",
+      "scope": [ "lib/yeah-builtins.el", "lib/yeah-files.el", "lib/yeah-edit.el", "lib/yeah-process.el", "lib/yeah-emacs.el", "lib/yeah-result.el", "tests/checks/check-coding-tools-end-to-end.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-coding-tools-end-to-end.el" }
+      ],
+      "falsifier": "a built-in tool is missing, a guarded edit fails, a stale tick mutates a buffer, bash does not settle, or the final Elisp is unreadable",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(and tick (\/= tick current-tick))/nil/' lib/yeah-edit.el",
+      "attestations": []
+    },
+    {
+      "id": "the-context-compacts-without-blocking",
+      "subject": "context overflow enters compacting and continues only after a nonblank asynchronous summary is committed; sources and pruning events remain in the append-only journal",
+      "scope": [ "lib/yeah-context.el", "lib/yeah-compact.el", "lib/yeah-turn.el", "lib/yeah-events.el", "tests/unit/test-yeah-context.el", "tests/checks/check-turn-compacts-asynchronously.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-context.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-turn-compacts-asynchronously.el" }
+      ],
+      "falsifier": "the turn waits for the summary, skips compacting, commits an empty summary, or deletes source events",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/(yeah-turn--tick turn 'budget-overflow)/(yeah-turn--tick turn 'budget-ok)/\" lib/yeah-turn.el",
+      "attestations": []
+    },
+    {
+      "id": "the-session-reports-corrupt-tail",
+      "subject": "opening a session with a malformed or unterminated JSONL tail preserves valid records and exposes recovery metadata instead of silently discarding corruption",
+      "scope": [ "lib/yeah-session.el", "tests/unit/test-yeah-session.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-session.el" }
+      ],
+      "falsifier": "a malformed line has no recovery metadata or warning, or opening the session rewrites the damaged log",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/(display-warning 'yeah-session message :warning)/nil/\" lib/yeah-session.el",
+      "attestations": []
+    },
+    {
+      "id": "the-journey-of-a-person-works-end-to-end",
+      "subject": "the journey of a person works end to end: ask, watch the work, steer, quit, restart, look at what is left, withdraw what is not wanted, recover what is, and cancel a run that must stop",
+      "scope": [
+        "lib/yeah-control.el", "lib/yeah-input.el", "lib/yeah-product.el",
+        "lib/yeah-ui.el",
+        "tests/checks/check-interactive-journey.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-interactive-journey.el"
+        }
+      ],
+      "falsifier": "a pending input does not survive a restart, or a restart runs it by itself, or a steering is delivered to a run it was not addressed to, or a cancel does not stop the run",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(yeah-control--release-steering control)/(ignore control)/' lib/yeah-control.el",
+      "attestations": []
+    },
+    {
+      "id": "the-permission-profiles-are-plan-and-build",
+      "subject": "the permission profiles are Plan and Build: Plan refuses the tools that change the world before anyone is asked, Build asks the person for them, and a profile never changes the persistent rules of the person",
+      "scope": [
+        "lib/yeah-perm.el", "lib/yeah-approval.el", "lib/yeah-product.el",
+        "tests/unit/test-yeah-perm.el", "tests/unit/test-yeah-approval.el"
+      ],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-perm.el tests/unit/test-yeah-approval.el"
+        }
+      ],
+      "falsifier": "the plan profile lets a tool that changes the world through, or the build profile refuses it without asking, or a profile changes the rules of the person",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i \"s/'deny)/'ask)/\" lib/yeah-perm.el",
+      "attestations": []
+    },
+    {
+      "id": "human-control-is-queued-and-cancellable",
+      "subject": "frozen inputs form a persistent bounded FIFO, steering is delivered at tool-batch boundaries, cancellation stops managed processes and late callbacks, and restart recovery is explicit",
+      "scope": [ "lib/yeah-control.el", "lib/yeah-input.el", "lib/yeah-turn.el", "lib/yeah-process.el", "lib/yeah-events.el", "tests/unit/test-yeah-control.el", "tests/unit/test-yeah-input.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-control.el tests/unit/test-yeah-input.el" }
+      ],
+      "falsifier": "steering arrives between tools, a late callback changes a terminal run, pending work auto-executes after restart, or a managed process stays live after cancellation",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(funcall (yeah-turn-steer-source turn) turn)/nil/' lib/yeah-turn.el",
+      "attestations": []
+    },
+    {
+      "id": "run-supervision-is-bounded",
+      "subject": "completion nudges are visible and bounded, a whole-run deadline cancels the run, retries use backoff, and repeated read-only inspection is not a doom loop",
+      "scope": [ "lib/yeah-turn.el", "lib/yeah-runtime.el", "tests/unit/test-yeah-control.el", "tests/checks/check-runtime-never-blocks.el" ],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-control.el" },
+        { "kind": "verifier", "spec": "emacs -Q --batch -L lib -l tests/checks/check-runtime-never-blocks.el" }
+      ],
+      "falsifier": "nudges exceed their budget or are hidden, a deadline does not stop the run, retries are immediate, or repeated reads are treated as a loop",
+      "register": "fact",
+      "accepted": null,
+      "control": "sed -i 's/(< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))/nil/' lib/yeah-turn.el",
+      "attestations": []
+    }
+  ]
+}

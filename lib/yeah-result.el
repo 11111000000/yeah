@@ -108,7 +108,10 @@ legacy strings and scheduler error plists are accepted for compatibility."
                    (or (plist-get value :error) "Error: tool failed")))
            (artifacts (plist-get value :artifacts))
            (truncated (plist-get value :truncated))
-           (tick (plist-get value :tick)))
+           (metadata (plist-get value :metadata))
+           (tick (or (plist-get value :tick)
+                     (and (listp metadata)
+                          (plist-get metadata :tick)))))
       (concat base
               (when (and tick (integerp tick))
                 (format "\n[tick: %d]" tick))

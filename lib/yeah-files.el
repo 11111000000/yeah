@@ -229,19 +229,19 @@ Return at most LIMIT path:line:text matches."
   "Return read, glob, and grep tool specifications for Yeah's registry."
   (list
    (list :name "read"
-         :description "Read a UTF-8 file by 1-based line offset and line limit."
+         :description "Read a file from disk by its path, from a 1-based line offset, up to a line limit. Use it for source code and for any file stored on disk."
          :input (list (list :name "path" :type 'string)
                       (list :name "offset" :type 'integer :optional t)
                       (list :name "limit" :type 'integer :optional t))
          :handler #'yeah-files--read)
    (list :name "glob"
-         :description "List relative file paths matching an Emacs regexp."
+         :description "List the relative paths of the files that match an Emacs regexp; it returns the paths, not their contents."
          :input (list (list :name "pattern" :type 'string)
                       (list :name "directory" :type 'string :optional t)
                       (list :name "limit" :type 'integer :optional t))
          :handler #'yeah-files--glob)
    (list :name "grep"
-         :description "Search text files for an Emacs regexp without subprocesses."
+         :description "Search the text files below a directory for an Emacs regexp and return path:line:text matches; it returns the matches, not the whole file."
          :input (list (list :name "pattern" :type 'string)
                       (list :name "directory" :type 'string :optional t)
                       (list :name "limit" :type 'integer :optional t))

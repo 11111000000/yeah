@@ -1,4 +1,4 @@
-;;; check-compaction-keeps-sources.el --- canary for compaction -*- lexical-binding: t; -*-
+;;; check-compaction-keeps-sources.el --- canary for compaction -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

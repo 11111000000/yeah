@@ -1,4 +1,4 @@
-;;; check-ptc-sandbox-restricts.el --- PTC quarantine and exploit regressions -*- lexical-binding: t; -*-
+;;; check-ptc-sandbox-restricts.el --- PTC quarantine and exploit regressions -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

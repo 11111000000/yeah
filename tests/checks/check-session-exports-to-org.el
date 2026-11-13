@@ -1,4 +1,4 @@
-;;; check-session-exports-to-org.el --- canary for the Org export -*- lexical-binding: t; -*-
+;;; check-session-exports-to-org.el --- canary for the Org export -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

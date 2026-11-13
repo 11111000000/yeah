@@ -1,4 +1,4 @@
-;;; test-yeah-subagent.el --- ERT tests for yeah-subagent -*- lexical-binding: t; -*-
+;;; test-yeah-subagent.el --- ERT tests for yeah-subagent -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

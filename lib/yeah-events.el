@@ -24,6 +24,10 @@
 ;; The log is still append-only, and it is still a log of what happened
 ;; rather than a story about it: the order of the records is the order of
 ;; the events.
+;;
+;; The task list of a run is a part of this vocabulary: a `todo' event
+;; carries the tasks that were added or changed, so that the list of the
+;; run is what the log says when it is read from the beginning.
 
 ;;; Code:
 
@@ -47,7 +51,9 @@
     (:type "child-end"          :fields (:child :role :ok :summary))
     (:type "input-withdrawn"    :fields (:kind :reason))
     (:type "usage"              :fields (:input :output))
-    (:type "error"              :fields (:payload)))
+    (:type "todo"               :fields (:items :operation))
+    (:type "error"              :fields (:payload))
+    (:type "finish"             :fields (:summary)))
   "The vocabulary of the event log.
 
 Every record of the log is one of these, and it carries the fields its

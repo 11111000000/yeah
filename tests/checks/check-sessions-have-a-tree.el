@@ -1,4 +1,4 @@
-;;; check-sessions-have-a-tree.el --- canary for the sessions -*- lexical-binding: t; -*-
+;;; check-sessions-have-a-tree.el --- canary for the sessions -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

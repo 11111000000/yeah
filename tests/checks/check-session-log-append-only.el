@@ -1,4 +1,4 @@
-;;; check-session-log-append-only.el --- canary for the session log -*- lexical-binding: t; -*-
+;;; check-session-log-append-only.el --- canary for the session log -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

@@ -424,3 +424,21 @@ success, and a waived claim is never read as a passing one.
   project, so a person can quit and come back.
 - **Convention:** a quit is not a delete.  A restart must find the
   previous session, or the pending work is lost.
+
+### §11.17 — the tick is still in the metadata, so the model cannot guard
+
+- **Date:** 2026-11-13 (the tool descriptions)
+- **Symptom:** a guarded edit is refused as stale, because the model
+  passes a tick it cannot know: the reader keeps the tick in the result
+  metadata, and the model's view of the result does not carry it.
+- **Cause:** `yeah-result-model-text' renders a tick that sits at the
+  top level of the result (`(plist-get value :tick)'), but the reader
+  tools put theirs in `:metadata'; no tool produces a top-level `:tick',
+  so the `[tick: N]' line never appears.  A read of a file that no
+  buffer visits has no tick at all.
+- **Fix:** not fixed here.  The tool descriptions no longer promise the
+  model a tick it cannot see, and the `edit' description says that the
+  refusal reports the current tick, which is true.
+- **Convention:** a value the model must pass to another tool belongs in
+  the model's view of the result.  A renderer that supports a value no
+  producer emits is not a fix (see §11.15, which claims this is done).

@@ -1,4 +1,4 @@
-;;; test-yeah-gptel.el --- ERT tests for yeah-gptel -*- lexical-binding: t; -*-
+;;; test-yeah-gptel.el --- ERT tests for yeah-gptel -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

@@ -1,4 +1,4 @@
-;;; test-yeah-placement.el --- ERT tests for the placements -*- lexical-binding: t; -*-
+;;; test-yeah-placement.el --- ERT tests for the placements -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

@@ -63,7 +63,9 @@ SESSION is the session the run writes into. STATE is the state of the
 machine. STATES is the list of states the run has been in, in order.
 CALLS is the number of tool calls dispatched. TURNS is the number of
 times the model was asked. DONE says whether the model has finished.
-ERROR holds the reason when the run stopped for a reason of its own."
+ERROR holds the reason when the run stopped for a reason of its own.
+TOOLS-REGISTRY is the registry snapshot of this run, or nil for the
+shared one."
   (session nil)
   (state 'idle)
   (states nil)
@@ -81,7 +83,13 @@ ERROR holds the reason when the run stopped for a reason of its own."
   (max-nudges 0)
   (model-fsm nil)
   (input nil)
-  (deadline-timer nil))
+  (deadline-timer nil)
+  (tools-registry nil)
+  (tools-used nil)
+  (transport nil)
+  (answerer nil)
+  (pending-answer nil)
+  (pending-permissions nil))
 
 (declare-function gptel-abort "gptel-request" (buffer))
 (declare-function gptel-fsm-info "gptel-request" (fsm))
@@ -93,7 +101,12 @@ ERROR holds the reason when the run stopped for a reason of its own."
   :group 'yeah)
 
 (defcustom yeah-turn-default-max-nudges 0
-  "Default completion nudge budget; zero keeps ordinary runs uninterrupted."
+  "Default completion nudge budget.
+Zero keeps ordinary runs uninterrupted: the run ends as soon as the model
+answers with text.  A run that asks for supervision (a non-zero budget)
+is nudged when the model describes its next step instead of taking it, or
+when it reports a result that no tool backs; the nudge names the tools the
+run has not called yet."
   :type 'integer
   :group 'yeah)
 
@@ -158,19 +171,35 @@ bug in the turn, and the run stops with that reason."
     (yeah-events-write (yeah-turn-session turn) "error" :payload reason))
   reason)
 
-(defun yeah-turn--decide (answerer spec name resource)
-  "Ask the ANSWERER whether the tool NAME may act on RESOURCE.
-Return (EFFECT . REFUSED): EFFECT is \"allow\" or \"deny\", and
+(defun yeah-turn-resume-permission (turn request-id decision)
+  "Answer the deferred permission request REQUEST-ID of TURN with DECISION.
+The wire layer calls this when the client's answer arrives."
+  (when-let ((resume (gethash request-id (yeah-turn-pending-permissions turn))))
+    (remhash request-id (yeah-turn-pending-permissions turn))
+    (funcall resume decision)))
+
+(defun yeah-turn--decide (answerer spec name resource args)
+  "Ask the ANSWERER whether the tool NAME may act on RESOURCE with ARGS.
+Return (EFFECT . REFUSED): EFFECT is \"allow\", \"deny\" or \"defer\", and
 REFUSED is the reason the call may not run, or nil when it may.
 The answerer is either the rules or a person; the kernel does not
-know which."
-  (if (null spec)
-      (cons "deny" (format "there is no tool named %s" name))
-    (let ((decision (funcall answerer (yeah-approval-request name resource))))
-      (if (eq (plist-get decision :effect) :allow)
-          (cons "allow" nil)
-        (cons "deny" (or (plist-get decision :reason)
-                          (format "the rules say %s" name)))))))
+know which.  `finish' is always allowed: it is a control signal, not
+an effect on the world."
+  (cond
+   ((null spec)
+    (cons "deny" (format "there is no tool named %s" name)))
+   ((equal name "finish")
+    (cons "allow" nil))
+   (t
+    (let ((decision (funcall answerer
+                             (yeah-approval-request name resource args))))
+      (if (plist-get decision :defer)
+          ;; The answerer asks the person over the wire; the call waits.
+          (cons "defer" (plist-get decision :defer))
+        (if (eq (plist-get decision :effect) :allow)
+            (cons "allow" nil)
+          (cons "deny" (or (plist-get decision :reason)
+                            (format "the rules say %s" name)))))))))
 
 (defun yeah-turn--prepare (turn answerer index call)
   "Prepare the tool CALL at INDEX of TURN for the batch.
@@ -184,7 +213,7 @@ were asked, and the rules answered."
          (args (yeah-tools-normalize-args name (nth 1 call)))
          (spec (yeah-tools-get name))
          (resource (yeah-turn--resource args)))
-    (let ((decision (yeah-turn--decide answerer spec name resource)))
+    (let ((decision (yeah-turn--decide answerer spec name resource args)))
       (yeah-events-write (yeah-turn-session turn) "tool-request"
                          :tool name :args (format "%S" args))
       (yeah-events-write (yeah-turn-session turn) "permission-request"
@@ -193,7 +222,8 @@ were asked, and the rules answered."
                          :action name :resource resource
                          :effect (car decision))
       (list :index index :name name :args args :spec spec
-            :refused (cdr decision)))))
+            :refused (and (not (equal "defer" (car decision))) (cdr decision))
+            :deferred (and (equal "defer" (car decision)) (cdr decision))))))
 
 (defun yeah-turn--continue-batch (turn calls results)
   "Continue TURN after tool CALLS and RESULTS, compacting first if needed.
@@ -208,6 +238,15 @@ Steering is delivered only after the entire batch has settled."
         ('accumulating (yeah-turn--tick turn 'budget-ok))
         ('compacting (yeah-turn--tick turn 'compact-done)))
       (yeah-turn--tick turn 'continue)
+      (let ((pending (yeah-turn-pending-answer turn)))
+        (when pending
+          ;; The model already said its last word while the tools were
+          ;; running.  That answer ends the run now; asking again would
+          ;; only repeat it.
+          (setf (yeah-turn-pending-answer turn) nil)
+          (yeah-turn--answer-text
+           turn pending (yeah-turn-transport turn) (yeah-turn-answerer turn))
+          (setq calls nil)))
       (let ((index 0)
             (clarification
              (mapconcat (lambda (input)
@@ -243,7 +282,8 @@ Steering is delivered only after the entire batch has settled."
 
 (defun yeah-turn--dispatch-batch (turn answerer calls &optional transport)
   "Dispatch CALLS together, and continue the turn when they have settled."
-  (let* ((prepared (mapcar (lambda (index)
+  (yeah-tools-with-registry (yeah-turn-tools-registry turn)
+   (let* ((prepared (mapcar (lambda (index)
                               (yeah-turn--prepare turn answerer index
                                                  (nth index calls)))
                             (number-sequence 0 (1- (length calls)))))
@@ -251,13 +291,22 @@ Steering is delivered only after the entire batch has settled."
          (refused (make-vector (length calls) nil))
          (runnable nil))
     (dolist (slot prepared)
-      (if (plist-get slot :refused)
-          (progn
-            (aset refused (plist-get slot :index) t)
-            (aset results (plist-get slot :index) (plist-get slot :refused)))
-        (push slot runnable)))
+      (cond
+       ((plist-get slot :refused)
+        (progn
+          (aset refused (plist-get slot :index) t)
+          (aset results (plist-get slot :index) (plist-get slot :refused))))
+       ((plist-get slot :deferred)
+        ;; the call waits for the client's answer: the answerer deferred it
+        (push slot runnable))
+       (t
+        (push slot runnable))))
     (setf runnable (nreverse runnable))
     (cl-incf (yeah-turn-calls turn) (length calls))
+    (dolist (slot runnable)
+      (let ((name (plist-get slot :name)))
+        (unless (member name (yeah-turn-tools-used turn))
+          (push name (yeah-turn-tools-used turn)))))
     (let ((yeah-process--current-run-id (yeah-turn-id turn)))
       (yeah-scheduler-run
        (mapcar (lambda (slot)
@@ -265,9 +314,23 @@ Steering is delivered only after the entire batch has settled."
                  (list :name (plist-get slot :name)
                        :args (plist-get slot :args)
                        :handler (lambda (args &optional done)
-                                  (yeah-tools-dispatch (plist-get slot :name)
-                                                       args done))
-                       :async (plist-get spec :async)
+                                  (if (plist-get slot :deferred)
+                                      ;; the call waits for the client's answer:
+                                      ;; the wire layer calls the resume callback
+                                      ;; when the answer arrives
+                                      (let ((request-id (plist-get slot :deferred)))
+                                        (puthash request-id
+                                                 (lambda (decision)
+                                                   (if (eq (plist-get decision :effect) :allow)
+                                                       (yeah-tools-dispatch (plist-get slot :name) args done)
+                                                     (funcall done
+                                                              (yeah-result-error
+                                                               (or (plist-get decision :reason)
+                                                                   "the person refused")))))
+                                                 (yeah-turn-pending-permissions turn)))
+                                    (yeah-tools-dispatch (plist-get slot :name)
+                                                         args done)))
+                       :async (or (plist-get slot :deferred) (plist-get spec :async))
                        :mode (yeah-tools-concurrency spec))))
              runnable)
      (lambda (settled)
@@ -290,8 +353,50 @@ Steering is delivered only after the entire batch has settled."
                   :false)
               :payload (yeah-result-model-text result)))
            (setq i (1+ i))))
-       (yeah-turn--tick turn 'tool-end)
-       (yeah-turn--maybe-compact turn transport calls results))))))
+       (let ((finish nil))
+         (let ((i 0))
+           (dolist (call calls)
+             (when (equal "finish" (yeah-turn--tool-name (nth 0 call)))
+               (setq finish (aref results i)))
+             (setq i (1+ i))))
+         (if finish
+             (progn
+               ;; `finish' is the model's completion signal: the run ends
+               ;; with the summary, the model is not asked again.
+               (yeah-events-write (yeah-turn-session turn) "finish"
+                                  :summary (yeah-result-model-text finish))
+               (yeah-turn--tick turn 'tool-end)
+               (yeah-turn--tick turn 'budget-ok)
+               (yeah-turn--tick turn 'no-tool-calls)
+               (yeah-turn--mark-done turn))
+           (unless (yeah-turn-done turn)
+             (yeah-turn--tick turn 'tool-end))
+           (yeah-turn--maybe-compact turn transport calls results)))))))))
+
+(defun yeah-turn--answer-text (turn answer transport answerer)
+  "Handle a text ANSWER from the model: record it, nudge it or end the run.
+A plan, and a result that no tool backs, are nudged into the action; a
+result that a tool backs ends the run."
+  (yeah-turn--tick turn 'stream-end)
+  (yeah-turn--tick turn 'no-tool-calls)
+  (yeah-events-write (yeah-turn-session turn) "assistant-message"
+                     :payload answer)
+  (if (and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))
+            (or (yeah-turn--plan-p answer)
+                ;; A result that no tool backs is premature: the run
+                ;; has not touched anything yet.  And a run that is
+                ;; supervised ends through `finish', not through talk.
+                (null (yeah-turn-tools-used turn))))
+      (progn
+        (cl-incf (yeah-turn-nudges turn))
+        (let ((nudge (yeah-turn--nudge-text turn)))
+          (yeah-events-write (yeah-turn-session turn) "nudge"
+                             :payload nudge)
+          (setf (yeah-turn-state turn) 'deciding)
+          (setf (yeah-turn-states turn)
+                (append (yeah-turn-states turn) (list 'deciding)))
+          (yeah-turn--ask turn nudge transport answerer)))
+    (yeah-turn--mark-done turn)))
 
 (defun yeah-turn--answer (turn answer answerer &optional transport info)
   "Handle the model's ANSWER in TURN. The ANSWERER answers requests."
@@ -312,20 +417,13 @@ Steering is delivered only after the entire batch has settled."
            info))))
     (cond
      ((stringp answer)
-      (yeah-turn--tick turn 'stream-end)
-      (yeah-turn--tick turn 'no-tool-calls)
-      (yeah-events-write (yeah-turn-session turn) "assistant-message"
-                         :payload answer)
-      (if (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))
-          (progn
-            (cl-incf (yeah-turn-nudges turn))
-            (yeah-events-write (yeah-turn-session turn) "nudge"
-                               :payload yeah-turn-nudge-message)
-            (setf (yeah-turn-state turn) 'deciding)
-            (setf (yeah-turn-states turn)
-                  (append (yeah-turn-states turn) (list 'deciding)))
-            (yeah-turn--ask turn yeah-turn-nudge-message transport answerer))
-        (yeah-turn--mark-done turn)))
+      (if (yeah-loop-transition-p (yeah-turn-state turn) 'stream-end)
+          (yeah-turn--answer-text turn answer transport answerer)
+        ;; A late answer: the machine is waiting for tools, and this text
+        ;; does not belong to the state it is in.  It waits for the tools
+        ;; to settle and ends the run then, instead of breaking it.
+        (setf (yeah-turn-pending-answer turn) answer)
+        nil))
      ((and (consp answer) (memq (car answer) '(reasoning tool-result)))
       ;; Not the answer: the model is still thinking, or the tools were
       ;; run and their results are on their way. The answer comes later.
@@ -339,19 +437,63 @@ Steering is delivered only after the entire batch has settled."
      (t
       (yeah-turn--fail turn (format "the model answered with %S" answer))))))
 
+(defcustom yeah-turn-plan-regexp
+  "\\b\\(I'll\\|I will\\|Let me\\|Now I'll\\|Next I\\|I'm going to\\|I am going to\\)"
+  "Regexp matching an answer that only announces the next step.
+A model that says `I'll read the file' has not done anything yet.  Such
+an answer is a plan, not a result: the run nudges it into the action.
+An answer that reports what was done is not a plan and ends the run."
+  :type 'string
+  :group 'yeah-turn)
+
+(defun yeah-turn--plan-p (answer)
+  "Return non-nil when ANSWER only announces the next step."
+  (and (stringp answer)
+       (not (string-blank-p answer))
+       (string-match-p yeah-turn-plan-regexp answer)))
+
+(defun yeah-turn--unused-tools (turn)
+  "Return the tools of TURN's registry that this run has not called yet."
+  (let* ((registry (yeah-turn-tools-registry turn))
+         (names (if registry
+                    (yeah-tools-with-registry registry (yeah-tools-names))
+                  (yeah-tools-names)))
+         (used (yeah-turn-tools-used turn)))
+    (seq-remove (lambda (name) (member name used)) names)))
+
+(defun yeah-turn--nudge-text (turn)
+  "Return the nudge text for TURN.
+The nudge names the tools the run has not called yet: a model that
+describes its next step instead of taking it is answered with the step
+itself, not with a reminder to continue."
+  (let ((unused (yeah-turn--unused-tools turn)))
+    (if (null unused)
+        yeah-turn-nudge-message
+      (format (concat "%s\n\nYou have not called these tools yet: %s. "
+                      "Call one of them now, with the arguments it needs, "
+                      "or call `finish' with a summary when the task is done "
+                      "and verified. "
+                      "Do not describe what you are about to do instead of "
+                      "doing it.")
+              yeah-turn-nudge-message
+              (string-join unused ", ")))))
+
 (defun yeah-turn--ask (turn prompt transport answerer)
   "Ask the model PROMPT with TRANSPORT, and continue TURN when it answers.
 The ANSWERER is what answers a request for permission."
   (unless (yeah-turn-done turn)
+    (setf (yeah-turn-transport turn) transport
+          (yeah-turn-answerer turn) answerer)
     (when (eq (yeah-turn-state turn) 'idle)
       (yeah-turn--tick turn 'user-prompt))
     (cl-incf (yeah-turn-turns turn))
     (yeah-events-write (yeah-turn-session turn) "user-message"
                        :payload prompt)
     (setf (yeah-turn-model-fsm turn)
-          (funcall transport prompt
-                   (lambda (answer &optional info)
-                     (yeah-turn--answer turn answer answerer transport info))))))
+          (yeah-tools-with-registry (yeah-turn-tools-registry turn)
+            (funcall transport prompt
+                     (lambda (answer &optional info)
+                       (yeah-turn--answer turn answer answerer transport info)))))))
 
 ;;;###autoload
 (defun yeah-turn-cancel (turn &optional reason)
@@ -382,12 +524,15 @@ completed effects or guarantee termination of process descendants."
 
 ;;;###autoload
 (defun yeah-turn-run (session prompt &optional transport answerer budget
-                              max-nudges on-done steer-source input deadline)
+                              max-nudges on-done steer-source input deadline
+                              registry)
   "Run the agent loop over SESSION with PROMPT and optional context BUDGET.
 MAX-NUDGES bounds completion supervision.  ON-DONE is called once at a
 terminal state.  STEER-SOURCE returns pending steering inputs for a batch.
 INPUT is the frozen input plist captured at submission.  DEADLINE is an
-optional whole-run timeout in seconds and is cancelled at terminal states."
+optional whole-run timeout in seconds and is cancelled at terminal states.
+REGISTRY is the registry snapshot of this run (from `yeah-tools-snapshot');
+nil uses the shared registry."
   (let ((transport (or transport
                       (and (fboundp 'yeah-gptel-request) #'yeah-gptel-request)))
         (answerer (or answerer #'yeah-approval-policy-decision)))
@@ -402,7 +547,9 @@ transport was given")))
                  :max-nudges (or max-nudges yeah-turn-default-max-nudges)
                  :on-done on-done
                  :steer-source steer-source
-                 :input input)))
+                 :input input
+                 :tools-registry registry
+                 :pending-permissions (make-hash-table :test 'equal))))
       (when deadline
         (unless (and (numberp deadline) (> deadline 0))
           (signal 'user-error

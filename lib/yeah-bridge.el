@@ -35,6 +35,14 @@ executable found on `exec-path' or the path of an executable file."
   :type 'string
   :group 'yeah-bridge)
 
+(defcustom yeah-bridge-server nil
+  "Name of the Emacs server the bridge connects to.
+When nil, `emacsclient' connects to the default server.  A service
+placement reaches a specific attached Emacs, so the name is a
+capability: the operator names which Emacs the bridge may reach."
+  :type '(choice (const nil) string)
+  :group 'yeah-bridge)
+
 (defconst yeah-bridge--timeout 2
   "Seconds a bridge call may take before its process is killed.")
 
@@ -131,7 +139,11 @@ Return a plist with the keys `:ok' (non-nil when the program
 answered successfully), `:status' (the exit status), `:output' (the
 standard output without trailing newlines) and `:message' (why the
 call failed, or nil)."
-  (let ((path (yeah-bridge--program-path)))
+  (let ((path (yeah-bridge--program-path))
+        (args (append (when (and (stringp yeah-bridge-server)
+                                 (> (length yeah-bridge-server) 0))
+                        (list "-s" yeah-bridge-server))
+                      args)))
     (if (null path)
         (list :ok nil
               :status nil
@@ -173,6 +185,17 @@ evaluation itself fails; the message says which of the two happened."
                                             "unknown error"))
                               "the bridge is unavailable")))))))
 
+(defun yeah-bridge--decode (output)
+  "Return the string OUTPUT holds, decoding its printed form.
+`emacsclient --eval' prints the value of the evaluation: a string
+arrives quoted, as its printed form.  When OUTPUT looks like a printed
+string it is read back; anything else is returned unchanged."
+  (if (and (stringp output)
+           (> (length output) 1)
+           (eq (aref output 0) ?\"))
+      (condition-case nil (read output) (error output))
+    output))
+
 (defun yeah-bridge-buffer-read (name)
   "Return the text of the live buffer NAME of the attached Emacs.
 NAME is the name of a buffer in the attached Emacs.  The result is
@@ -191,7 +214,7 @@ happened."
                   name))
          (result (yeah-bridge--run (list "--eval" expression))))
     (if (plist-get result :ok)
-        (plist-get result :output)
+        (yeah-bridge--decode (plist-get result :output))
       (signal 'user-error
               (list (format "yeah-bridge-buffer-read: %s"
                             (if (yeah-bridge-available-p)

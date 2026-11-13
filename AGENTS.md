@@ -10,11 +10,11 @@
 > self-inspection and a fixed point where Yeah can develop and verify Yeah.
 > These are goals, not assertions about today's prototype.
 >
-> This repository is governed by **math-coding**: `spec.json` holds claims,
-> `waves/*.json` holds the work units and evidence comes from checks.
-> Version 4 of the tool is frozen and version 5 is being developed, so the
-> frozen `map`/`run`/`gate` commands are not to be run: byte compilation, ERT
-> and the direct canaries are the current evidence.
+> This repository is governed by **math-coding v5**: `spec.json` holds the
+> standing specification (`schema_version: 5`) and the claims, `waves/*.json`
+> holds the historical work units, and evidence comes from checks bound by
+> `mathc run`.  Version 4 is frozen and archived at `waves/spec-v4.json`;
+> its evidence is not current.
 > `docs/PLAN.md` defines the current target sequence; do not mistake an old
 > wave number or a green module row for a working end-to-end feature.
 
@@ -47,13 +47,17 @@ work item. Never resolve it by silently making documentation more optimistic.
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
   same task. The bridge to the buffers of an attached Emacs is off until
-  the operator turns it on, and it was checked against a stub program,
-  never against a live Emacs server.
+  the operator turns it on; it is checked against a live Emacs server
+  (a real daemon) by tests/checks/check-bridge-live-server.el.
 - Stage 5 is implemented offline: the ACP agent and the MCP server speak
-  newline JSON-RPC over stdio, the `emacs__*` handlers are real, and the MCP
-  client imports foreign tools. Two limits are not hidden — the stdio server
-  answers one request at a time (a cancel cannot preempt a running prompt),
-  and no third-party client or live provider has driven either server.
+  newline JSON-RPC over stdio and over a local socket, the `emacs__*`
+  handlers are real, and the MCP client imports foreign tools. The wire is
+  now driven by a third-party client (xenodium/acp.el) with a fake model;
+  what is still not proven is a real editor against a live provider.  Two
+  limits are not hidden — the stdio server answers one request at a time
+  (a blocking stdin read stops the event loop, so a cancel cannot preempt
+  a running prompt there; the socket transport can), and a live provider
+  has not driven either server.
 - REPL still contains placeholders. Do not build new public behavior on
   top of it while its stage's prerequisites are unmet.
 - Stage 4 is implemented offline and verified against a live provider:
@@ -77,7 +81,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   checks. Live-provider acceptance has not been verified.
 - Stage 0.5 is implemented: module comments match current behavior and no
   longer reference nonexistent decisions/Tier/ROADMAP documents. Stage 0.4
-  awaits math-coding v5; do not run frozen v4 commands.
+  is implemented: the project migrated to math-coding v5; `mathc run`, `map`
+  and `gate` work with the installed v5 binary.
 - Stage 0.3 is implemented: tool failures are bounded, model-facing results
   are strings, and duplicate async callbacks cannot settle a call twice.
 - Stage 0.2 is implemented: PTC is disabled by default and the demonstrated
@@ -134,47 +139,15 @@ function or module.
 <!-- math-coding:begin -->
 ## math-coding in this project
 
-This block is written by `mathc install` and by nothing else.
-Everything outside it belongs to the project and is never touched.
-Re-run `mathc install` after the specification changes;
-`mathc doctor` says whether this block is current.
+Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-### The aim
-
-Yeah is an Emacs Lisp agent harness: the user's Emacs session is itself the runtime of the agent; every call to the model goes through gptel, every tool goes through the registry and the permission system, and the session log stays append-only
-
-Stated by p.b.kosov@yandex.ru, over lib/, tests/, scripts/, schemas/, docs/, AGENTS.md, README.md, ELISP_BEST_PRACTICES.md.
-
-### The next step
+9 claim(s).
 
 ```sh
-mathc --root . next
+mathc run
 ```
 
-### What is declared
-
-28 claim(s): 22 holds, 6 not established.
-
-The full list, and what is not covered: `mathc --root . map`.
-
-### If you are an agent here
-
-```sh
-mathc map      # what is claimed, what is known, what is not covered
-mathc run      # run the checks, bind every proof to the content it ran against
-mathc route    # what needs a person, and why
-mathc next     # the next work, one item
-mathc add ID "SUBJECT" SCOPE "WHAT WOULD REFUTE IT" fact \
-   --requirement verifier:CMD --control CMD
-```
-
-The control is the command that breaks the subject and must fail with it:
-a check that cannot fail proves nothing.
-
-For an agent the machine surface is cheaper: `mathc --root . mcp` speaks
-JSON-RPC and returns the next step with every method.
-
-Every verb: mathc - · mathc init · mathc goal · mathc add · mathc accept · mathc control · mathc budget · mathc map · mathc route · mathc run · mathc record · mathc next · mathc wave · mathc close · mathc draft · mathc install · mathc mcp · mathc propose · mathc doctor.
+Every verb: mathc help mathc init mathc goal mathc add mathc run mathc map mathc next mathc context mathc waive mathc record mathc install mathc doctor mathc adopt mathc import-adr mathc import-junit mathc authorize mathc re-evaluate mathc review-source mathc mcp
 <!-- math-coding:end -->
 
 ## Working rules

@@ -73,7 +73,7 @@ need_mathc() {
 # yesterday's code instead of today's. The bytecode is a build artifact, not
 # a part of the tree: it is removed before anything is loaded.
 clean_bytecode() {
-  rm -f lib/*.elc yeah.elc
+  rm -f lib/*.elc
 }
 
 case "$cmd" in
@@ -83,7 +83,7 @@ scripts/dev — Yeah development wrapper
 
 Subcommands:
   smoke                 — print "yeah-dev ok" and exit 0
-  byte-compile-all      — byte-compile lib/*.el and yeah.el, with no warnings
+  byte-compile-all      — byte-compile lib/*.el (including lib/yeah.el), no warnings
   ert FILE...           — run ERT test files (tests/unit/*.el)
   map                   — the standing specification: claims, states, uncovered
   run                   — execute the checks, bind the evidence, write the trail
@@ -116,7 +116,7 @@ EOF
       echo "scripts/dev byte-compile-all: lib/ does not exist" >&2
       exit 3
     fi
-    out="$("$emacs_bin" -Q --batch -L lib -L . -f batch-byte-compile lib/*.el yeah.el 2>&1)"
+    out="$("$emacs_bin" -Q --batch -L lib -f batch-byte-compile lib/*.el 2>&1)"
     rc=$?
     clean_bytecode
     printf '%s\n' "$out"

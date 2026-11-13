@@ -1,4 +1,4 @@
-;;; check-runtime-never-blocks.el --- canary for the runtime -*- lexical-binding: t; -*-
+;;; check-runtime-never-blocks.el --- canary for the runtime -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

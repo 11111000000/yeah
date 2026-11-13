@@ -1,4 +1,4 @@
-;;; check-interactive-journey.el --- canary for the journey of a person -*- lexical-binding: t; -*-
+;;; check-interactive-journey.el --- canary for the journey of a person -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

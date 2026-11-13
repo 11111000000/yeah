@@ -1,4 +1,4 @@
-;;; check-approvals-have-reply-kinds.el --- canary for the approvals -*- lexical-binding: t; -*-
+;;; check-approvals-have-reply-kinds.el --- canary for the approvals -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

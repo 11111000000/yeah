@@ -1,4 +1,4 @@
-;;; test-yeah-control.el --- queued human control tests -*- lexical-binding: t; -*-
+;;; test-yeah-control.el --- queued human control tests -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 
@@ -176,7 +176,7 @@
                  session "start"
                  (lambda (_prompt callback)
                    (setq calls (1+ calls))
-                   (funcall callback "done"))
+                   (funcall callback "I'll read the file next."))
                  nil 60000 2))
           (should (yeah-turn-done turn))
           (should (= 3 calls))
@@ -186,6 +186,161 @@
                           (equal "nudge" (plist-get record :type)))
                         (yeah-session-records session)))))
       (ignore-errors (delete-directory root t t)))))
+
+(ert-deftest yeah-turn-a-result-ends-the-run-when-no-supervision-is-asked ()
+  "Without supervision, the first answer ends the run."
+  (let* ((root (make-temp-file "yeah-result" t))
+         (session (yeah-session-open "result" root))
+         (calls 0))
+    (unwind-protect
+        (progn
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq calls (1+ calls))
+                          (funcall callback "I fixed the bug; the test passes."))
+                        nil 60000 0)))
+            (should (yeah-turn-done turn))
+            (should (= 1 calls))
+            (should (= 0 (yeah-turn-nudges turn)))))
+      (ignore-errors (delete-directory root t t)))))
+
+(ert-deftest yeah-turn-a-result-that-no-tool-backs-is-nudged ()
+  "With supervision, a result without a tool is premature: the run nudges it."
+  (let* ((root (make-temp-file "yeah-early" t))
+         (session (yeah-session-open "early" root))
+         (calls 0))
+    (unwind-protect
+        (progn
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq calls (1+ calls))
+                          (funcall callback "I fixed the bug; the test passes."))
+                        nil 60000 2)))
+            (should (yeah-turn-done turn))
+            (should (= 3 calls))
+            (should (= 2 (yeah-turn-nudges turn)))
+            (should (= 2 (cl-count-if
+                           (lambda (record)
+                             (equal "nudge" (plist-get record :type)))
+                           (yeah-session-records session))))))
+      (ignore-errors (delete-directory root t t)))))
+
+(defvar yeah-turn-test--late-callback nil
+  "The answer callback of the model, captured while a tool runs.")
+
+(ert-deftest yeah-turn-a-late-answer-does-not-break-the-run ()
+  "An answer that arrives while the harness waits for a tool waits for it."
+  (let* ((root (make-temp-file "yeah-late" t))
+         (session (yeah-session-open "late" root)))
+    (unwind-protect
+        (progn
+          (yeah-perm-rules-add (yeah-perm-rule-make "late-probe" "*" 'allow))
+          (yeah-tools-register
+           (list :name "late-probe"
+                 :description "A probe that lets the model answer while it runs."
+                 :input nil
+                 :handler (lambda ()
+                            (when yeah-turn-test--late-callback
+                              (funcall yeah-turn-test--late-callback
+                                       "the work is done")))))
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq yeah-turn-test--late-callback callback)
+                          (funcall callback
+                                   (list 'tool-call
+                                         (list (list :name "late-probe")
+                                               (list)
+                                               (lambda (_value) nil)))))
+                        nil 60000 0)))
+            (let ((deadline (+ (float-time) 5)))
+              (while (and (not (yeah-turn-done turn))
+                          (< (float-time) deadline))
+                (accept-process-output nil 0.05)))
+            (should (yeah-turn-done turn))
+            (should (eq 'completed (yeah-turn-state turn)))
+            (should (cl-find-if
+                     (lambda (record)
+                       (equal "the work is done" (plist-get record :payload)))
+                     (yeah-session-records session)))))
+      (yeah-tools-unregister "late-probe")
+      (setq yeah-turn-test--late-callback nil)
+      (ignore-errors (delete-directory root t t)))))
+
+(ert-deftest yeah-turn-finish-ends-the-run-with-the-summary ()
+  "The model ends the run by calling the finish tool, not by talk."
+  (let* ((root (make-temp-file "yeah-finish" t))
+         (session (yeah-session-open "finish" root)))
+    (unwind-protect
+        (progn
+          (yeah-tools-register
+           (list :name "probe"
+                 :description "A tool the run may use."
+                 :input nil
+                 :handler (lambda () "x")))
+          (yeah-perm-rules-add (yeah-perm-rule-make "probe" "*" 'allow))
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (funcall callback
+                                   (list 'tool-call
+                                         (list (list :name "finish")
+                                               (list "the work is done")
+                                               (lambda (_value) nil)))))
+                        nil 60000 2)))
+            (let ((deadline (+ (float-time) 5)))
+              (while (and (not (yeah-turn-done turn))
+                          (< (float-time) deadline))
+                (accept-process-output nil 0.05)))
+            (should (yeah-turn-done turn))
+            (should (eq 'completed (yeah-turn-state turn)))
+            (should (cl-find-if
+                     (lambda (record)
+                       (equal "finish" (plist-get record :type)))
+                     (yeah-session-records session)))))
+      (yeah-tools-unregister "probe")
+      (ignore-errors (delete-directory root t t)))))
+
+(ert-deftest yeah-turn-a-cancelled-run-is-not-revived-by-a-late-answer ()
+  "A cancelled run stays interrupted: an answer that waits for the tools
+does not bring it back."
+  (let* ((root (make-temp-file "yeah-late-cancel" t))
+         (session (yeah-session-open "late-cancel" root)))
+    (unwind-protect
+        (progn
+          (yeah-tools-register
+           (list :name "slow-probe"
+                 :description "A tool that never answers."
+                 :input nil
+                 :async t
+                 :handler (lambda (_args done) (ignore done)))))
+          (yeah-perm-rules-add (yeah-perm-rule-make "slow-probe" "*" 'allow))
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq yeah-turn-test--late-callback callback)
+                          (funcall callback
+                                   (list 'tool-call
+                                         (list (list :name "slow-probe")
+                                               (list)
+                                               (lambda (_value) nil)))))
+                        nil 60000 0)))
+            (let ((deadline (+ (float-time) 5)))
+              (while (and (not (eq 'awaiting-tool (yeah-turn-state turn)))
+                          (< (float-time) deadline))
+                (accept-process-output nil 0.05)))
+            (when (eq (yeah-turn-state turn) 'awaiting-tool)
+              ;; the model answers while the tool is running
+              (funcall yeah-turn-test--late-callback "done")
+              ;; and the run is cancelled before the tools settle
+              (yeah-turn-cancel turn "stop"))
+            (should (eq 'interrupted (yeah-turn-state turn)))
+            (should-not (eq 'completed (yeah-turn-state turn)))))
+      (yeah-tools-unregister "slow-probe")
+      (setq yeah-turn-test--late-callback nil)
+      (ignore-errors (delete-directory root t t))))
 
 (ert-deftest yeah-turn-deadline-cancels-run ()
   (let* ((root (make-temp-file "yeah-deadline" t))

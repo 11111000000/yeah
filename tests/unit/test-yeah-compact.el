@@ -1,4 +1,4 @@
-;;; test-yeah-compact.el --- ERT tests for yeah-compact -*- lexical-binding: t; -*-
+;;; test-yeah-compact.el --- ERT tests for yeah-compact -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

@@ -66,6 +66,12 @@ triggered by LABEL, or nil if no such transition exists."
                  (eq (nth 1 cell) label))
         (throw 'found (nthcdr 2 cell))))))
 
+(defun yeah-loop-transition-p (from label)
+  "Return non-nil when FROM has a transition on LABEL."
+  (and (yeah-state-p from)
+       (symbolp label)
+       (yeah-loop--find-transition from label)))
+
 (defun yeah-loop-tick (from label)
   "One step of the agent loop.
 

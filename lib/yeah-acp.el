@@ -3,9 +3,6 @@
 ;; Copyright (C) 2026  Petr Kosov
 ;;
 ;; This file is part of Yeah.
-;;
-;; Yeah is free software: you can redistribute it and/or modify
-;; it under the terms of the Apache License, Version 2.0.
 
 ;;; Commentary:
 ;;
@@ -13,6 +10,14 @@
 ;; Yeah sessions; prompt responses are sent when the run reaches a terminal
 ;; state; session/cancel is a notification; journal events become
 ;; session/update notifications through `yeah-events-write-functions'.
+;;
+;; The protocol is spoken over two transports.  On stdio the server reads
+;; standard input with a blocking read, so a notification that arrives
+;; while a prompt is running is read only after the prompt settled.  On a
+;; socket the connection is a process, the data arrives in a filter and the
+;; event loop keeps running, so a cancellation is handled while the prompt
+;; is still running.  `yeah-acp-serve-socket' is the transport of the
+;; primary deployment.
 
 ;;; Code:
 
@@ -23,6 +28,7 @@
 (require 'yeah-product)
 (require 'yeah-turn)
 (require 'yeah-wire)
+(require 'yeah-wire-socket)
 
 (defgroup yeah-acp nil
   "Yeah ACP v1 agent."
@@ -40,17 +46,72 @@
 (defvar yeah-acp--active-turns (make-hash-table :test 'equal)
   "Map ACP session ids to their active turns.")
 
+(defvar yeah-acp--pending-permissions (make-hash-table :test 'equal)
+  "Map permission request ids to the session they belong to.")
+
+(defun yeah-acp--jsonable-args (args)
+  "Return ARGS as a JSON value: an array when every element serializes,
+the printed form otherwise."
+  (condition-case nil
+      (let ((array (apply #'vector args)))
+        (ignore (json-serialize array))
+        array)
+    (error (format "%S" args))))
+
+(defun yeah-acp--client-answerer (session-id output)
+  "Return the answerer of SESSION-ID that asks the client over the wire.
+The rules decide first; what they do not name is asked of the client as a
+`session/request_permission', and the call waits for the answer."
+  (lambda (request)
+    (let ((effect (yeah-perm-effect (plist-get request :action)
+                                    (plist-get request :resource))))
+      (pcase effect
+        ('allow (list :effect :allow :reply :once))
+        ('deny (list :effect :deny :reply :reject
+                     :reason (format "the rules deny %s on %s"
+                                     (plist-get request :action)
+                                     (plist-get request :resource))))
+        (_
+         (let* ((request-id (yeah-acp--fresh-id "perm"))
+                (params (list :sessionId session-id
+                              :toolCall (list :toolCallId request-id
+                                              :title (format "%s on %s"
+                                                             (plist-get request :action)
+                                                             (plist-get request :resource))
+                                              :rawInput
+                                              (yeah-acp--jsonable-args
+                                               (plist-get request :args)))
+                              :options (vector
+                                          (list :optionId "allow-once" :name "Allow once" :kind "allow_once")
+                                          (list :optionId "reject-once" :name "Reject" :kind "reject_once")))))
+           (puthash request-id session-id yeah-acp--pending-permissions)
+           (funcall output (json-serialize
+                            (list :jsonrpc "2.0" :id request-id
+                                  :method "session/request_permission"
+                                  :params params)))
+           (list :defer request-id)))))))
+
 (defvar yeah-acp--counter 0
   "Monotonic counter for generated identifiers.")
 
 (defvar yeah-acp--transport nil
   "Optional model transport used by the ACP server.")
 
+(defvar yeah-acp-default-transport nil
+  "Model transport of the service when none is passed at start.
+A service init file (`yeah-service-init-file') sets this; nil falls back
+to the gptel transport of the service's own configuration.")
+
 (defvar yeah-acp--answerer nil
   "Optional permission answerer used by the ACP server.")
 
 (defvar yeah-acp--output-function #'yeah-acp--print-line
   "Function receiving one serialized JSON message per call.")
+
+(defvar yeah-acp--output nil
+  "Output function of the connection being served, or nil for standard output.
+This variable is bound dynamically while a connection is served, so the
+messages of one connection do not reach another one.")
 
 (defun yeah-acp-version ()
   "Return the ACP protocol version spoken by Yeah."
@@ -62,8 +123,10 @@
   (terpri))
 
 (defun yeah-acp--emit (object)
-  "Serialize OBJECT and pass it to `yeah-acp--output-function'."
-  (funcall yeah-acp--output-function (json-serialize object)))
+  "Serialize OBJECT and pass it to the output function of this connection."
+  (funcall (or yeah-acp--output yeah-acp--output-function
+               #'yeah-acp--print-line)
+           (json-serialize object)))
 
 (defun yeah-acp--response (id result)
   "Return a JSON-RPC response string for ID and RESULT."
@@ -119,12 +182,14 @@
               (listp (plist-get request :mcpServers)))
     (signal 'user-error (list "mcpServers must be an array or null"))))
 
-(defun yeah-acp--send-update (session-id update)
-  "Send a session/update notification for SESSION-ID and UPDATE."
-  (yeah-acp--emit
-   (list :jsonrpc "2.0"
-         :method "session/update"
-         :params (list :sessionId session-id :update update))))
+(defun yeah-acp--send-update (session-id update &optional output)
+  "Send a session/update notification for SESSION-ID and UPDATE.
+OUTPUT receives the serialized message and defaults to standard output."
+  (funcall (or output yeah-acp--output-function #'yeah-acp--print-line)
+           (json-serialize
+            (list :jsonrpc "2.0"
+                  :method "session/update"
+                  :params (list :sessionId session-id :update update)))))
 
 (defun yeah-acp--content-chunk (kind text)
   "Return an ACP content chunk of KIND containing TEXT."
@@ -146,29 +211,44 @@
 (defun yeah-acp--observe-event (state session type fields id)
   "Send ACP updates for journal events belonging to STATE's SESSION."
   (when (eq session (plist-get state :session))
-    (let ((session-id (plist-get state :id)))
+    (let ((session-id (plist-get state :id))
+          (output (yeah-acp--output-for state)))
       (pcase type
         ("user-message"
          (yeah-acp--send-update
           session-id (yeah-acp--content-chunk "user_message_chunk"
-                                              (plist-get fields :payload))))
+                                              (plist-get fields :payload))
+          output))
         ("assistant-message"
          (yeah-acp--send-update
           session-id (yeah-acp--content-chunk "agent_message_chunk"
-                                              (plist-get fields :payload))))
+                                              (plist-get fields :payload))
+          output))
         ("tool-request"
          (yeah-acp--send-update
-          session-id (yeah-acp--tool-call id (plist-get fields :tool) 'started)))
+          session-id (yeah-acp--tool-call id (plist-get fields :tool) 'started)
+          output))
         ("tool-end"
          (yeah-acp--send-update
           session-id (yeah-acp--tool-call id (plist-get fields :tool) nil
-                                          (plist-get fields :payload))))
+                                          (plist-get fields :payload))
+          output))
         (_ nil)))))
 
+(defun yeah-acp--output-for (state)
+  "Return the output function of STATE: its connection's, or the global one."
+  (or (plist-get state :output) yeah-acp--output-function
+      #'yeah-acp--print-line))
+
 (defun yeah-acp--register-session (session cwd)
-  "Register SESSION for ACP and return its state plist."
+  "Register SESSION for ACP and return its state plist.
+The state carries the output function of the connection the session was
+created on, so its notifications reach that connection; when the session
+was created without a connection the current output function is used."
   (let* ((id (plist-get session :id))
-         (state (list :id id :session session :cwd cwd :listener nil))
+         (state (list :id id :session session :cwd cwd :listener nil
+                      :output yeah-acp--output
+                      :registry (yeah-tools-snapshot)))
          (listener (lambda (observed-session type fields event-id)
                      (yeah-acp--observe-event state observed-session type fields event-id))))
     (plist-put state :listener listener)
@@ -227,22 +307,28 @@ Text and resource_link blocks are supported; every other block is refused."
   (let* ((session-id (plist-get request :sessionId))
          (state (yeah-acp--session-state session-id t))
          (session (plist-get state :session))
+         (output (yeah-acp--output-for state))
          (prompt (yeah-acp--prompt-text (plist-get request :prompt)))
          (frozen (list :kind 'ask :prompt prompt
                        :frozen (list :cwd (plist-get state :cwd))))
          (turn
           (yeah-turn-run
            session prompt yeah-acp--transport
-           (or yeah-acp--answerer #'yeah-approval-policy-decision)
+           (or yeah-acp--answerer
+               (yeah-acp--client-answerer session-id output))
            nil nil
            (lambda (finished)
              (remhash session-id yeah-acp--active-turns)
-             (yeah-acp--emit
-              (list :jsonrpc "2.0" :id id
-                    :result (list :stopReason
-                                  (yeah-acp--stop-reason finished)))))
-           nil frozen nil)))
-    (puthash session-id turn yeah-acp--active-turns)
+             (funcall
+              output
+              (json-serialize
+               (list :jsonrpc "2.0" :id id
+                     :result (list :stopReason
+                                   (yeah-acp--stop-reason finished))))))
+           nil frozen nil
+           (plist-get state :registry))))
+    (unless (yeah-turn-done turn)
+      (puthash session-id turn yeah-acp--active-turns))
     nil))
 
 (defun yeah-acp-session-cancel (request)
@@ -253,6 +339,24 @@ Text and resource_link blocks are supported; every other block is refused."
                             yeah-acp--active-turns)))
     (yeah-turn-cancel turn "cancelled by ACP client"))
   nil)
+
+(defun yeah-acp--route-response (message)
+  "Route a client RESPONSE (a message with an id and no method) to the
+permission it answers.  Return non-nil when it was a response."
+  (let ((id (plist-get message :id)))
+    (when (and id (null (plist-get message :method)))
+      (when-let ((session-id (gethash id yeah-acp--pending-permissions)))
+        (remhash id yeah-acp--pending-permissions)
+        (when-let ((turn (gethash session-id yeah-acp--active-turns)))
+          (let* ((outcome (plist-get (plist-get message :result) :outcome))
+                 (cancelled (equal (plist-get outcome :outcome) "cancelled"))
+                 (option (plist-get outcome :optionId))
+                 (decision (if (or cancelled (equal option "reject-once"))
+                               (list :effect :deny
+                                     :reason (if cancelled "cancelled" "the person refused"))
+                             (list :effect :allow :reply :once))))
+            (yeah-turn-resume-permission turn id decision)))
+        t))))
 
 (defun yeah-acp--dispatch (method params id)
   "Dispatch ACP METHOD with PARAMS and request ID.
@@ -280,12 +384,13 @@ and asynchronously answered prompts."
              (method (plist-get parsed :method))
              (id (plist-get parsed :id))
              (params (or (plist-get parsed :params) '())))
-        (unless (stringp method)
-          (signal 'user-error (list "Invalid Request: no method")))
-        (condition-case err
-            (yeah-acp--dispatch method params id)
-          (user-error
-           (yeah-acp--error id -32602 (error-message-string err)))))
+        (if (null method)
+            (when (yeah-acp--route-response parsed)
+              nil)
+          (condition-case err
+              (yeah-acp--dispatch method params id)
+            (user-error
+             (yeah-acp--error id -32602 (error-message-string err))))))
     (error
      (yeah-acp--error nil -32700 "Parse error"))))
 
@@ -299,22 +404,46 @@ and asynchronously answered prompts."
 TRANSPORT and ANSWERER configure the agent for this service process.
 OUTPUT-FUNCTION receives serialized JSON messages and defaults to stdout.
 After each request the server lets the work it started settle, so an
-asynchronous prompt answer leaves before the next request is read."
+asynchronous prompt answer leaves before the next request is read.
+A cancellation that arrives while a prompt runs is therefore read only
+after that prompt settled; `yeah-acp-serve-socket' does not have this
+limit."
   (setq yeah-acp--transport transport
         yeah-acp--answerer answerer
         yeah-acp--output-function (or output-function #'yeah-acp--print-line))
-  (catch 'eof
-    (while t
-      (let ((line (yeah-acp--read-line)))
-        (unless line
-          (throw 'eof nil))
-        (unless (string-blank-p line)
-          (let ((response (yeah-acp-handle-message line)))
-            (when response
-              (funcall yeah-acp--output-function response)))
-          (yeah-wire-pump-until
-           (lambda () (zerop (hash-table-count yeah-acp--active-turns))))))))
+  (let ((yeah-acp--output yeah-acp--output-function))
+    (catch 'eof
+      (while t
+        (let ((line (yeah-acp--read-line)))
+          (unless line
+            (throw 'eof nil))
+          (unless (string-blank-p line)
+            (let ((response (yeah-acp-handle-message line)))
+              (when response
+                (funcall yeah-acp--output-function response)))
+            (yeah-wire-pump-until
+             (lambda () (zerop (hash-table-count yeah-acp--active-turns)))))))))
   nil)
+
+;;;###autoload
+(defun yeah-acp-serve-socket (service &optional transport answerer family)
+  "Serve ACP on the local socket SERVICE until the server stops.
+TRANSPORT and ANSWERER configure the agent for this service process.
+FAMILY is `local' for a Unix socket and `ipv4' for a loopback TCP port.
+The connection is a process, so the event loop keeps running while the
+server waits: a `session/cancel' that arrives during a running prompt is
+handled while that prompt is still running, and two connections are
+served at the same time."
+  (setq yeah-acp--transport transport
+        yeah-acp--answerer answerer)
+  (yeah-wire-socket-serve
+   service
+   (lambda (line respond)
+     (let ((yeah-acp--output respond))
+       (let ((response (yeah-acp-handle-message line)))
+         (when response
+           (funcall respond response)))))
+   family))
 
 (defun yeah-acp--reset-for-test ()
   "Clear ACP sessions, listeners and active turns for tests."

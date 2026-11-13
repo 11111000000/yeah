@@ -1,4 +1,4 @@
-;;; test-yeah-session.el --- ERT tests for yeah-session -*- lexical-binding: t; -*-
+;;; test-yeah-session.el --- ERT tests for yeah-session -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

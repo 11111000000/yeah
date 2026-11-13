@@ -1,4 +1,4 @@
-;;; check-turn-compacts-asynchronously.el --- overflow drives async compaction -*- lexical-binding: t; -*-
+;;; check-turn-compacts-asynchronously.el --- overflow drives async compaction -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

@@ -1,4 +1,4 @@
-;;; test-yeah-result.el --- structured result and artifact tests -*- lexical-binding: t; -*-
+;;; test-yeah-result.el --- structured result and artifact tests -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

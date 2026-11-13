@@ -1,4 +1,4 @@
-;;; test-yeah-run.el --- ERT tests for the run context -*- lexical-binding: t; -*-
+;;; test-yeah-run.el --- ERT tests for the run context -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

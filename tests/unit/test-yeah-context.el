@@ -1,4 +1,4 @@
-;;; test-yeah-context.el --- context budget and compaction tests -*- lexical-binding: t; -*-
+;;; test-yeah-context.el --- context budget and compaction tests -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

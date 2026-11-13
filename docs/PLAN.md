@@ -14,25 +14,32 @@
 
 Verified on 2026-11-12 in this checkout:
 
-- all 38 `lib/` modules byte-compile without warnings;
-- 240/240 ERT unit tests pass;
-- all 26 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
+- all 45 Elisp files under `lib/` byte-compile without warnings;
+- 255/255 ERT unit tests pass;
+- all 40 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
 - the installed `mathc` does not accept the `--root` invocation used by
   `scripts/dev`, so the map/gate needs a compatible pinned tool;
 - live provider behavior is verified on 2026-11-12: the live coding task
   (MiniMax-M2.7) reads the project, edits the file with a guarded edit,
   saves it, and the test of the project passes, and the interactive UI
   path (journal, cancel, quit, restart, resume, recover) works against a
-  live provider.  The clean-Emacs install path is not network-tested yet.
+  live provider.  The clean-Emacs install path is network-tested against a
+  local clone (`tests/live/live-clean-install.el`); the published-repository
+  variant still needs the layout fix pushed.
 
 The code contains a working kernel and a working wire, but not yet a usable
 product:
 
-- the stdio server answers one request at a time, so a cancel cannot preempt
-  a running prompt;
-- the emacsclient bridge was checked against a stub program, never against
-  a live Emacs server;
-- global state and incomplete event correlation still limit concurrent runs;
+- the stdio wire server answers one request at a time: a cancel that
+  arrives while a prompt runs is read after that prompt settles.  The
+  socket transport (`lib/yeah-wire-socket.el`) does not have this limit —
+  a cancel arrives while the prompt is still running;
+- the emacsclient bridge was checked against a live Emacs server (a real
+  daemon) by `tests/checks/check-bridge-live-server.el`, but not yet against
+  a person's Emacs in day-to-day use;
+- concurrent sessions in one Emacs are isolated per run context: sessions,
+  permissions, cancellation, budgets and the advertised tools are the run's
+  own, and two sessions in one Emacs are checked for cross-talk;
 - the PTC whitelist was experimentally bypassed with a permitted higher-order
   function and a quoted `delete-file` symbol. It is not a safe boundary.
 
@@ -128,10 +135,15 @@ full suite has 118 ERT tests.
 - Files: `lib/yeah-turn.el`, `lib/yeah-scheduler.el`, `lib/yeah-tools.el`,
   `tests/checks/`.
 
-**0.4 Make the evidence toolchain reliable.** **Status: deferred pending the
-math-coding v5 migration.** v4 is frozen; its map/run/gate commands were not
-run during Stages 0.1–0.3. Ordinary byte compilation, ERT and direct canary
-execution remain the active local checks.
+**0.4 Make the evidence toolchain reliable.** **Status: migrated to v5 on
+2026-11-12.** The installed `mathc` is v5, and the project specification is
+re-stated in it (`spec.json`, `schema_version: 5`): the aim is the
+service-first placement, and the focused claim set covers compilation, the
+unit suite, the wire (stdio, socket cancel, third-party client), the live
+bridge, concurrent sessions, responsiveness and the product install — each
+with a control shown to bite by `mathc run`.  The v4 specification is
+archived at `waves/spec-v4.json`; the v4 map/run/gate evidence is frozen
+and is not current.  `mathc install` writes the AGENTS.md block.
 
 - Pin a compatible mathc build or adjust `scripts/dev` to its supported CLI.
 - Ensure map/gate exit codes distinguish pass, fail, blocked and unknown.
@@ -308,6 +320,35 @@ to one run, so a run that ends without delivering it withdraws the steering
 and writes the withdrawal into the journal; and a steering is not a task, so
 it is never started on its own.
 
+**Completion supervision tells a plan from a result** (2026-11-12, found by
+running the live coding task against a real model).  A model that answered
+"I will read the file next" was taken for a finished run; the run stopped
+with nothing done.  Now an answer that only announces the next step is a
+plan: the run nudges it into the action, and the nudge names the tools the
+run has not called yet ("you have not called these tools yet: edit, write,
+…  call one of them now").  An answer that reports what was done ("I fixed
+it, the test passes") is a result and ends the run — unless no tool backs
+it, which means the run has not touched anything yet and is nudged too.
+Supervision is off by default; a run asks for it with a non-zero nudge
+budget.  With that, the live coding task passes repeatedly and the fixed
+point — a child agent repairing a Yeah canary — passes with a real model.
+
+**A supervised run ends through `finish'** (2026-11-13).  A text answer is
+not a completion: when the run is supervised, the model ends the run by
+calling the `finish' tool with a summary, and the `finish' call is the only
+path to `completed'.  Without supervision the contract stays: a text answer
+ends the run.  A result no tool backs is nudged, so the model cannot claim
+to have done work it did not do.
+
+**A late answer no longer breaks the machine** (2026-11-12).  With a
+streaming provider the model sometimes answers while the harness is still
+waiting for a tool; the state machine had no transition for that and the
+run failed with "no transition from awaiting-tool on stream-end".  The
+answer now waits for the tools to settle and ends the run then.  A late
+TOOL CALL is different: it is a protocol violation the machine refuses —
+the tests of the subagent flow depend on that strictness, and it is
+documented here rather than silently tolerated.
+
 ### Work items
 
 **3.1 Freeze accepted input.** Backend, model, instructions and editor context
@@ -355,9 +396,13 @@ requirements and exposes `M-x yeah`, `M-x yeah-ask` and `M-x yeah-doctor`.
 The journal buffer renders events from the journal, supports ask/steer/
 cancel/recover/withdraw/diff and refreshes without blocking.  Sessions and
 pending input use private project-scoped data directories.  `install/
-yeah-bootstrap.el` documents the clean-Emacs package-vc path.  The public
-alpha gate remains open because the bootstrap has not been network-tested
-on a clean machine.
+yeah-bootstrap.el` documents the clean-Emacs package-vc path; it installs
+gptel pinned to the supported revision (the current MELPA snapshot of
+gptel does not byte-compile cleanly on a clean Emacs) and Yeah with
+`:lisp-dir "lib"`.  The path is network-tested in a clean Emacs HOME
+against a local clone by `tests/live/live-clean-install.el`; the
+published-repository variant closes the gate once the layout fix is
+pushed.
 
 ### Work items
 
@@ -418,11 +463,14 @@ default; widening it is an explicit operator decision
 (`yeah-emcp-publish-extra-tools`). A canary starts real Emacs processes and
 exchanges JSON-RPC lines with both servers.
 
-**Two limitations are not hidden.** The stdio server answers one request at a
-time, so a cancel that arrives during a prompt is read after that prompt
-reaches a terminal state: preemption is not implemented. And no third-party
-client or editor has driven either server yet; the wire checks use Yeah's own
-processes.
+**Two limitations are not hidden.** The stdio server answers one request at
+a time, because a blocking stdin read stops the event loop of Emacs — a
+cancel that arrives during a prompt is read after that prompt settles.
+That limit is the reason the socket transport exists: on
+`lib/yeah-wire-socket.el` a connection is a process, the data arrives in a
+filter and the event loop keeps running, so a cancel is handled while the
+prompt is still running.  And no third-party client or editor has driven
+either server yet; the wire checks use Yeah's own processes.
 
 ### Work items
 
@@ -436,13 +484,25 @@ processes.
 - **concurrent requests on the wire, or at minimum a cancel that preempts
   a running prompt.**  On the primary deployment path (§2) a cancel that
   waits for the prompt's terminal state is a broken user experience, not
-  a minor limitation.  The check drives a real prompt, sends
-  `session/cancel` mid-run and observes the run stop before the prompt
-  would have finished;
-- **a third-party client driving the wire end to end.**  An ACP client
-  that is not Yeah (agent-shell, or an orchestrator such as Paseo)
-  completes the Stage 1 scenario, including streaming and cancel.  Yeah's
-  own processes acting as the client do not close this item;
+  a minor limitation.  **Implemented on 2026-11-12 via the socket
+  transport:** `lib/yeah-wire-socket.el` serves connections as processes,
+  so the event loop keeps running while the server waits and a
+  `session/cancel' that arrives during a running prompt is handled while
+  that prompt is still running; `tests/checks/check-wire-cancel-preempts.el'
+  drives a real prompt over the socket, cancels it mid-run, observes the
+  cancelled stop reason and the journal event, and proves the server still
+  answers afterwards.  The stdio transport keeps its documented limit: a
+  blocking stdin read stops the event loop, and a reader thread does not
+  help (a thread blocked in `read-string' holds the interpreter lock);
+- **a third-party client driving the wire end to end.**  **Partly
+  implemented on 2026-11-12:** `tests/checks/check-acp-third-party-client.el'
+  drives the ACP server with xenodium/acp.el — a client that is not Yeah —
+  through the handshake, session creation, a prompt with streamed updates
+  and the end_turn stop reason.  This found and fixed a real defect: a turn
+  that finished synchronously was registered as active after its completion,
+  so the stdio loop never settled the prompt.  What remains open is the
+  stronger criterion below: a real ACP editor (agent-shell) against a live
+  provider;
 - protocol redaction and trust documentation.
 
 Use `../emacs-agents-research/acp.el/` and the ACP specification as references,
@@ -454,8 +514,10 @@ A real ACP editor completes the Stage 1 scenario, including streaming and
 cancel. An external MCP client lists and calls explicitly published Emacs
 capabilities. The same canonical journal semantics hold as in interactive use.
 
-The first two criteria are **open**: they need a third-party client and a
-live provider, neither of which was available in this environment.
+The first is **partly closed**: the third-party client acp.el drives the
+wire end to end with a fake model; a real editor and a live provider are
+still open.  The second criterion is **open**: it needs an external MCP
+client.
 
 ## 9. Stage 6 — attached, service and batch placements
 
@@ -480,12 +542,32 @@ order, with the identifiers and the timestamps left out.
 by default: it reaches the live buffers of an attached Emacs through
 `emacsclient`, and its tools enter the registry only when the operator asks
 for them, under their own names, so the permission system approves them
-separately.
+separately.  `lib/yeah-service.el` is the service lifecycle: a dedicated
+Emacs is started, connected to and stopped as a service, and a prompt over
+its socket is answered and written to its journal
+(`tests/checks/check-service-lifecycle.el`).  A headless service cannot
+ask the person for permission, so the editor grants it standing
+permissions when it starts the service: the plan profile denies the tools
+that change the world, and the `allow' profile grants edit, write and
+bash (`tests/checks/check-service-permissions.el`).  `lib/yeah-client.el`
+is the editor side of that path: an ACP client that connects to the
+service, matches answers to requests and hands the session/update stream
+to the caller (`tests/checks/check-client-drives-service.el`).
+`lib/yeah-service-ui.el` is the product wiring: `M-x yeah-service' starts
+or connects to a service that inherits the user's configuration, and a
+buffer drives it — the question, the streamed answer and the stop reason
+are rendered (`tests/checks/check-service-ui.el`).
 
 **One limit is stated, not hidden.** The service placement reaches the
 person's buffers only through the bridge, and the bridge is off until the
 operator turns it on: the check proves the bridge tools are absent from the
-registry, not that the bridge works against a running Emacs.
+registry until they are asked for.  The bridge itself is verified against a
+live Emacs server by `tests/checks/check-bridge-live-server.el` (a real
+daemon, a live buffer read including an edit made after the first read, an
+evaluation, the unavailable-server case, and the registry round trip).  The
+channel question is answered there: `emacsclient --eval` request/answer is
+sufficient for what the bridge does today; a persistent connection would
+only matter for streaming live buffer state, which the bridge does not do.
 
 ### Work items
 
@@ -495,21 +577,38 @@ registry, not that the bridge works against a running Emacs.
 - service placement in a dedicated Emacs with lifecycle management;
 - batch entry for CI/benchmarks with explicit headless allowlists;
 - emacsclient bridge to a person's buffers as a separately approved tool;
-- **the bridge verified against a live Emacs server.**  On the primary
-  deployment path the bridge is how the agent reaches the person's actual
-  buffers, so a stub program does not close this item: the check starts a
-  real `emacs --daemon` (or server) and reads and edits a live buffer
-  through the bridge, with the operator's approval;
-- **concurrent sessions in one service Emacs.**  An orchestrator will not
-  queue its whole fleet behind one session.  Independent sessions run on
-  independent run contexts — no shared registry, policy or cancellation
-  state — and the check runs two sessions at once and compares their
-  journals for cross-talk;
-- **bounded CPU work inside the agent Emacs.**  The service Emacs is as
-  single-threaded as the editor it serves: token estimation, journal
-  scans, JSON encoding of large tool output and Org export must be
-  chunked with timers or moved into subprocesses, so streaming updates
-  and cancel handling stay responsive during a long run;
+- **the bridge verified against a live Emacs server.**  **Implemented on
+  2026-11-12:** `tests/checks/check-bridge-live-server.el` starts a real
+  daemon, reads a live buffer (including an edit made after the first
+  read), evaluates in it, reports an absent server instead of hanging,
+  and proves the bridge tools stay out of the registry until the operator
+  asks for them.  The channel question is answered: `emacsclient --eval'
+  request/answer is sufficient for what the bridge does today; a
+  persistent connection would only matter for streaming live buffer state,
+  which the bridge does not do;
+- **concurrent sessions in one service Emacs.**  **Implemented on
+  2026-11-12:** `tests/checks/check-concurrent-sessions.el` runs two
+  sessions at once in one Emacs on two run contexts whose fake transports
+  wait on timers, so the runs interleave; the journals are compared for
+  cross-talk, both runs reach a terminal state, and cancelling one run
+  leaves the other to finish.  The control — two runs sharing one session
+  — makes the check report the cross-talk, so the check is real.  The tool
+  registry is the run's own: a run starts from a snapshot and a tool one
+  run registers is not advertised to another run (proven by
+  `tests/checks/check-run-registries.el`).  Sessions, permissions,
+  cancellation, budgets and tools are the run context's own;
+- **bounded CPU work inside the agent Emacs.**  **Implemented on
+  2026-11-12:** measured first — JSON encoding of a large tool result is
+  one C call (23 ms for 5 MiB), a journal projection over 1000 events is
+  1 ms, and the only real hotspot was token estimation: a per-character
+  Lisp walk took 3.1 s for 10 MiB.  It is now counted with `how-many' (C
+  speed): 10 MiB of Latin text is 0.05 s and the estimate is unchanged
+  for every input the unit tests name.  CJK-heavy text is still
+  per-match, but a 10 MiB CJK context is far past the compaction budget,
+  so the realistic worst case is bounded.  `tests/checks/
+  check-runtime-stays-responsive.el' proves a 100 ms timer fires on time
+  while a 10 MiB estimate runs, and it fails against the per-character
+  implementation (the timer fires 3.4 s late);
 - canonical event comparison across placements, excluding timestamps/random
   ids and explicitly transport-specific metadata.
 
@@ -520,8 +619,9 @@ placements. Service cannot access attached buffers without the bridge
 capability. Batch returns a useful exit code and durable journal.
 
 The first two are **closed by the check**; the third is **partly open**: the
-bridge is checked against a stub program, never against a live Emacs
-server.
+bridge is checked against a live Emacs server (a real daemon), not only a
+stub, and the channel question is answered — but a real person's Emacs in
+day-to-day use has not yet been served this way.
 
 ## 10. Stage 7 — declarative delegation and ecosystem
 
@@ -582,7 +682,9 @@ the cancellation of a subtree and the budget of a parent are not.
 
 1. **General coding:** identical initial repositories, tasks, model and
    budgets for Yeah/opencode/pi; score verified task success, time, tokens,
-   cost and human interventions.
+   cost and human interventions.  Yeah runs the benchmark in its primary
+   deployment — a service Emacs driven through ACP — because that is the
+   configuration the comparison claims parity for.
 2. **Emacs-native:** live buffers, Eglot, Magit, Org and introspection tasks;
    these test the architectural advantage, not just parity.
 3. **Robustness:** long sessions, network failures, duplicate callbacks,
@@ -606,17 +708,35 @@ the cancellation of a subtree and the budget of a parent are not.
 
 ## 12. Immediate execution order
 
-Start with a small, reviewable Stage 0 sequence:
+Stages 0–7 are implemented offline.  Under the primary-deployment decision
+(§2) the remaining distance to a usable product closes in this order:
 
-1. repair the gptel contract and remove the dead hook (0.1);
-2. quarantine PTC and add its exploit regression (0.2);
-3. add and satisfy U1–U4 canaries (0.3);
-4. restore a reliable map/gate toolchain (0.4);
-5. reconcile module comments and claims (0.5).
+1. close the public alpha gate: the clean-Emacs bootstrap is
+   network-tested against a local clone (Stage 4); what remains is
+   pushing the layout fix and running the same check against the
+   published repository;
+2. ~~a cancel that preempts a running prompt~~ **done on 2026-11-12**:
+   the socket transport serves connections concurrently and a cancel
+   arrives while the prompt is running; stdio keeps its documented limit
+   (Stage 5);
+3. ~~a third-party ACP client driving the wire end to end~~ **partly done
+   on 2026-11-12**: acp.el drives the wire end to end with a fake model
+   (and the check found a real defect); a real editor against a live
+   provider is open (Stage 5);
+4. ~~the bridge verified against a live Emacs server~~ **done on
+   2026-11-12** (a real daemon; the channel question is answered) (Stage 6);
+5. ~~concurrent sessions in one service Emacs~~ **done on 2026-11-12**:
+   two sessions in one Emacs are checked for cross-talk, and cancellation
+   of one run leaves the other (Stage 6);
+6. ~~bounded CPU work inside the agent Emacs~~ **done on 2026-11-12**:
+   measured first; the only hotspot was token estimation, now counted at
+   C speed, and a canary proves the event loop stays responsive (Stage 6);
+7. ~~the math-coding v5 migration~~ **done on 2026-11-12**: the standing
+   specification is v5, the focused claims hold with controls that bite,
+   and map/run/gate work with the installed v5 binary (Stage 0.4).
 
-Do not start ACP, service mode or sub-agents before the corresponding earlier
-exit criteria hold. Each implementation commit should be small enough to
-review and should include its tests, control and documentation update.
+Each implementation commit should be small enough to review and should
+include its tests, control and documentation update.
 
 ## 13. Decisions still requiring product ownership
 
@@ -629,3 +749,20 @@ These are not implementation details for an agent to decide silently:
 - package distribution channels (MELPA/ELPA/bootstrap) and signing;
 - final benchmark task set and acceptable parity threshold;
 - whether Apache-2.0 remains compatible with every optional integration.
+
+Decided on 2026-11-12:
+
+- **`M-x yeah` defaults to the service placement**: it spawns or connects to
+  a service Emacs and reaches it through the bridge, so the editor never
+  shares a thread with a long turn.  The attached placement remains the
+  demo and development path.  The installation flow gains a
+  service-startup path.
+- The bridge stays **off by default** until the operator turns it on (a
+  capability, not a convenience).
+- The alpha distribution stays **bootstrap-first** (package-vc, pinned
+  gptel); MELPA comes later, when the API settles.
+- PTC stays an **experimental, off-by-default** restricted evaluator with
+  no new investment; no separate-process sandbox is designed now.
+
+Re-opened when a person says so: the math-coding aim block in AGENTS.md is
+written by `mathc install` and is not edited by hand.

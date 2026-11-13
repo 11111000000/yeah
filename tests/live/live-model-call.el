@@ -1,4 +1,4 @@
-;;; live-model-call.el --- a real model call through Yeah's transport -*- lexical-binding: t; -*-
+;;; live-model-call.el --- a real model call through Yeah's transport -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

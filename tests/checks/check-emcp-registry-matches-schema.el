@@ -1,4 +1,4 @@
-;;; check-emcp-registry-matches-schema.el --- canary for the tool surface -*- lexical-binding: t; -*-
+;;; check-emcp-registry-matches-schema.el --- canary for the tool surface -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

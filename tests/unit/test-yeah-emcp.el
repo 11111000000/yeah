@@ -1,4 +1,4 @@
-;;; test-yeah-emcp.el --- ERT tests for yeah-emcp -*- lexical-binding: t; -*-
+;;; test-yeah-emcp.el --- ERT tests for yeah-emcp -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

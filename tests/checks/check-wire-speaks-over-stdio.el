@@ -1,4 +1,4 @@
-;;; check-wire-speaks-over-stdio.el --- real ACP and MCP servers over stdio -*- lexical-binding: t; -*-
+;;; check-wire-speaks-over-stdio.el --- real ACP and MCP servers over stdio -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

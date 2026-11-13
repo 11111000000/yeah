@@ -43,6 +43,42 @@ Run-scoped registries replace global sharing in the placement stage.")
   "List of tool names in the order they were first registered.
 Used by `yeah-tools-names' so the exposed order is stable.")
 
+(defvar yeah-tools--registry-override nil
+  "The registry of the current run, or nil for the shared registry.
+A run binds this so its tools are its own: a tool one run registers does
+not appear in another run, and a tool one run may not use is not
+advertised to its model.")
+
+(defvar yeah-tools--order-override nil
+  "The registration order of the current run, or nil for the shared one.
+The value is a one-element vector holding the order list, so a run that
+adds a name updates the snapshot it shares with the run.")
+
+(defun yeah-tools--active-registry ()
+  "Return the registry of the current run, or the shared one."
+  (or yeah-tools--registry-override yeah-tools--registry))
+
+(defun yeah-tools--active-order ()
+  "Return the registration order of the current run, or the shared one."
+  (if yeah-tools--order-override
+      (aref yeah-tools--order-override 0)
+    yeah-tools--order))
+
+(defun yeah-tools-snapshot ()
+  "Return a registry snapshot for a run of its own.
+The snapshot shares the tool specifications (they are immutable) but not
+the table or the order, so the run registers and removes its own tools."
+  (yeah-tools--ensure-built-ins)
+  (cons (copy-hash-table yeah-tools--registry)
+        (vector (copy-sequence yeah-tools--order))))
+
+(defmacro yeah-tools-with-registry (snapshot &rest body)
+  "Run BODY with the run registry SNAPSHOT (from `yeah-tools-snapshot')."
+  (declare (indent 1))
+  `(let ((yeah-tools--registry-override (car ,snapshot))
+         (yeah-tools--order-override (cdr ,snapshot)))
+     ,@body))
+
 (defvar yeah-tools--built-in-p nil
   "Non-nil after `yeah-tools--ensure-built-ins' has run.")
 
@@ -95,12 +131,16 @@ same `:name' is already registered."
     (signal 'user-error
             (list (format "yeah-tools-register: malformed spec %S" spec))))
   (let ((name (plist-get spec :name)))
-    (when (gethash name yeah-tools--registry)
+    (when (gethash name (yeah-tools--active-registry))
       (signal 'user-error
               (list (format "yeah-tools-register: %S already registered" name))))
-    (puthash name spec yeah-tools--registry)
-    (unless (member name yeah-tools--order)
-      (setq yeah-tools--order (append yeah-tools--order (list name))))
+    (puthash name spec (yeah-tools--active-registry))
+    (if yeah-tools--registry-override
+        (unless (member name (aref yeah-tools--order-override 0))
+          (aset yeah-tools--order-override 0
+                (append (aref yeah-tools--order-override 0) (list name))))
+      (unless (member name yeah-tools--order)
+        (setq yeah-tools--order (append yeah-tools--order (list name)))))
     spec))
 
 (defun yeah-tools-concurrency (spec)
@@ -113,19 +153,22 @@ touch at the same time declares itself `exclusive'."
 
 (defun yeah-tools-unregister (name)
   "Remove the tool registered under NAME. No-op if absent."
-  (when (gethash name yeah-tools--registry)
-    (remhash name yeah-tools--registry)
-    (setq yeah-tools--order (cl-remove name yeah-tools--order :test 'equal)))
+  (when (gethash name (yeah-tools--active-registry))
+    (remhash name (yeah-tools--active-registry))
+    (if yeah-tools--registry-override
+        (aset yeah-tools--order-override 0
+              (cl-remove name (aref yeah-tools--order-override 0) :test 'equal))
+      (setq yeah-tools--order (cl-remove name yeah-tools--order :test 'equal))))
   nil)
 
 (defun yeah-tools-get (name)
   "Return the spec plist for tool NAME, or nil if absent."
-  (gethash name yeah-tools--registry))
+  (gethash name (yeah-tools--active-registry)))
 
 (defun yeah-tools-names ()
   "Return the list of all registered tool names, in registration order."
   (yeah-tools--ensure-built-ins)
-  yeah-tools--order)
+  (yeah-tools--active-order))
 
 (defun yeah-tools--required-count (params)
   "Return the number of required parameters in PARAMS."

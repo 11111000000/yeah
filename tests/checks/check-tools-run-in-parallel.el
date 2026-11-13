@@ -1,4 +1,4 @@
-;;; check-tools-run-in-parallel.el --- canary for the scheduler -*- lexical-binding: t; -*-
+;;; check-tools-run-in-parallel.el --- canary for the scheduler -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

@@ -1,4 +1,4 @@
-;;; check-gptel-request-shape.el --- canary for the transport seam -*- lexical-binding: t; -*-
+;;; check-gptel-request-shape.el --- canary for the transport seam -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

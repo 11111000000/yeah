@@ -1,4 +1,4 @@
-;;; live-coding-task.el --- a real coding task through Yeah -*- lexical-binding: t; -*-
+;;; live-coding-task.el --- a real coding task through Yeah -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -80,7 +80,8 @@
 
 (defun yeah-live--run-test (directory)
   "Run the test of the project in DIRECTORY and return whether it passes."
-  (let* ((command (format "emacs -Q --batch -L %s -l broken-test.el -f ert-run-tests-batch-and-exit"
+  (let* ((command (format "%s -Q --batch -L %s -l broken-test.el -f ert-run-tests-batch-and-exit"
+                           (shell-quote-argument (or (getenv "EMACS") "emacs"))
                            (shell-quote-argument directory)))
          (buffer (generate-new-buffer " *yeah-live-test*")))
     (with-current-buffer buffer
@@ -124,7 +125,7 @@ REPORT is called with the messages of every request the model received."
        (let ((data (plist-get info :data)))
          (funcall report (yeah-live--describe (plist-get data :messages))))
        (funcall callback response info))
-     :system (format "You are an agent inside Emacs, working in the directory %s. You have tools: %s. Act with the tools; do not describe what you are about to do. When the work is done, say what you did."
+     :system (format "You are an agent inside Emacs, working in the directory %s. You have tools: %s. Act with the tools; do not describe what you are about to do. When the work is done and the test passes, call the finish tool with a summary."
                      directory
                      (string-join yeah-live--tools ", ")))))
 

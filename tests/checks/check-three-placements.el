@@ -1,4 +1,4 @@
-;;; check-three-placements.el --- canary for the placements -*- lexical-binding: t; -*-
+;;; check-three-placements.el --- canary for the placements -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;

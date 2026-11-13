@@ -1,4 +1,4 @@
-;;; test-yeah-process.el --- ERT tests for yeah-process -*- lexical-binding: t; -*-
+;;; test-yeah-process.el --- ERT tests for yeah-process -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

@@ -1,4 +1,4 @@
-;;; test-yeah-agent.el --- ERT tests for the agent presets -*- lexical-binding: t; -*-
+;;; test-yeah-agent.el --- ERT tests for the agent presets -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

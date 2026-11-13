@@ -1,4 +1,4 @@
-;;; test-yeah-acp.el --- ERT tests for the ACP v1 agent -*- lexical-binding: t; -*-
+;;; test-yeah-acp.el --- ERT tests for the ACP v1 agent -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 

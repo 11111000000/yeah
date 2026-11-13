@@ -1,4 +1,4 @@
-;;; check-model-turn-runs.el --- canary for the turn -*- lexical-binding: t; -*-
+;;; check-model-turn-runs.el --- canary for the turn -*- lexical-binding: t; no-byte-compile: t -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
