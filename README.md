@@ -27,15 +27,32 @@ can help develop and verify Yeah itself.
 
 ## Why Emacs
 
-A shell-only agent sees files and process output. Yeah is designed to see the
-actual programming environment:
+Emacs is not just an API surface: it is an environment people have already
+invested in — decades of community packages, years of a person's own
+configuration, and workflows built to fit their hands. A shell-only agent
+starts from files and process output; Yeah is designed to start from that
+inheritance. The harness is meant to turn the accumulated experience of the
+environment into a better working experience than a harness that begins
+from nothing.
+
+The mechanism is direct access to the actual programming environment:
 
 - live buffers, including unsaved edits;
-- Emacs documentation, source and introspection;
+- Emacs documentation, source and introspection (the user's own functions
+  included);
 - buffer-native edits with modification-tick checks and native undo;
-- Eglot/Flymake diagnostics, Magit, Org, project.el and TRAMP;
+- Flymake/Eglot diagnostics from the person's own LSP setup, and project.el
+  for the session's project;
 - reproducible Elisp checks through byte compilation and ERT;
 - emacsclient as an explicit bridge between attached and service runtimes.
+
+Magit, Org and TRAMP as agent capabilities are part of the target, not of
+the verified present.
+
+The service placement isolates the **thread**, not the **culture**: the
+editing Emacs never waits for a long turn, while the model configuration,
+the standing permissions and (through the bridge) the live buffers remain
+the person's own.
 
 The target is a complete harness competitive with opencode and pi, with
 additional Emacs-native capabilities. That parity is a goal to measure, not a

@@ -32,10 +32,21 @@ The purpose is larger than a coding assistant: to preserve and extend the
 useful culture of Emacs — introspection, inspectable state, composable tools,
 user control and durable text — in an agent-native form.
 
+The reason for that purpose is the environment itself, not its API list.
+Emacs already holds decades of community packages and years of each person's
+own configuration: an environment people shaped until it fit them. An agent
+born inside that environment starts from that inheritance instead of from
+nothing. **The agent does not replace the person's environment; it becomes
+a participant in it** — and the environment, through the agent, gains a way
+to develop itself. The fixed point of the Y is therefore not a
+self-modification trick: it is the moment the accumulated environment
+begins to improve itself through the agent, the person included.
+
 ## 2. The product promise
 
 Yeah is intended to become competitive with complete harnesses such as
-opencode and pi, while offering capabilities a shell-only harness cannot:
+opencode and pi, while offering what a shell-only harness cannot: the
+accumulated environment of the person's own Emacs, reached directly:
 
 - direct access to live buffers, including unsaved text;
 - the editor's own documentation and source as agent context;
@@ -44,6 +55,10 @@ opencode and pi, while offering capabilities a shell-only harness cannot:
 - Magit, Org, project.el, Dired, TRAMP and emacsclient as native capabilities;
 - an inspectable, durable session journal rather than an opaque process state;
 - local models and offline workflows as first-class configurations.
+
+The service placement isolates the thread, not the culture: the editing
+Emacs never waits for a long turn, while the model configuration, the
+permissions and the live buffers remain the person's own.
 
 Parity is a goal to be measured, not a claim to be advertised prematurely.
 The primary success measure is whether tasks are completed correctly, not
