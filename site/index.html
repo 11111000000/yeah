@@ -31,6 +31,7 @@
     </a>
 
     <nav class="nav" aria-label="Sections">
+      <a href="#vision">Vision</a>
       <a href="#why">Why Emacs</a>
       <a href="#architecture">Architecture</a>
       <a href="#roadmap">Roadmap</a>
@@ -70,10 +71,11 @@
 
         <div class="hero__actions" aria-label="Get started">
           <a class="action action--primary" href="#install">[ install alpha ]</a>
+          <a class="action" href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md">[ read vision ]</a>
           <a class="action" href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md">[ read architecture ]</a>
         </div>
 
-        <p class="hero__status"><span class="label-warning">ALPHA</span> Kernel prototype, not yet a usable product.<br>The public alpha gate is still open.</p>
+        <p class="hero__status"><span class="label-warning">v0.1.0</span> Public alpha — the clean-Emacs install is verified against this repository.<br>A kernel, not yet a complete product.</p>
       </div>
 
       <section class="session" aria-labelledby="session-title">
@@ -112,6 +114,27 @@
     <div class="mode-line" aria-hidden="true">
       <span>-:-&nbsp;&nbsp; *scratch*</span>
       <span>All &nbsp; L1 &nbsp; (Elisp) &nbsp; <b>alpha</b></span>
+    </div>
+  </section>
+
+  <section class="buffer" id="vision" aria-labelledby="vision-title">
+    <div class="window-title">
+      <span>*vision*</span>
+      <span>the reason, in one piece</span>
+    </div>
+    <div class="buffer__body">
+      <p class="code-comment">;; The environment is people.</p>
+      <h2 id="vision-title" class="section-title">A participant, not a replacement.</h2>
+      <p class="section-lead">Emacs is a place people invested themselves in for decades: packages the community wrote, configurations sharpened for years, habits that became muscle memory. The new era should not demand leaving that world behind.</p>
+
+      <ul class="capability-list">
+        <li><span class="capability__face face-keyword">INHERIT</span><div><h3>The agent starts from what people built.</h3><p>Live buffers, your own functions and documentation, your LSP's diagnostics, your permissions. The environment's inheritance is the agent's starting capital, not its background.</p></div></li>
+        <li><span class="capability__face face-keyword">CARRY</span><div><h3>A minimal culture travels anywhere.</h3><p>The same kernel installs on a bare CI Emacs and on an Emacs inhabited for twenty years. Inheritance is a multiplier, not a prerequisite — what travels is the environment's capacity to be used.</p></div></li>
+        <li><span class="capability__face face-keyword">ISOLATE</span><div><h3>The thread, not the culture.</h3><p>A service Emacs runs the long turn so your editor never waits; the model, the permissions and the live buffers stay yours.</p></div></li>
+        <li><span class="capability__face face-keyword">FIXPOINT</span><div><h3>The environment develops itself.</h3><p>The Y is the Y-combinator: person → environment → agent → environment. Yeah repairing its own canary is the modest, measurable form of that cycle.</p></div></li>
+      </ul>
+
+      <p class="buffer-note"><span class="face-comment">;;</span> A check that cannot fail is a comment; unknown is not pass. <a href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md">Read the whole vision.</a></p>
     </div>
   </section>
 
@@ -232,7 +255,7 @@
         <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>1. Coding tools</h3><p>Read, guarded edit/write, asynchronous jobs, diagnostics and artifacts.</p></div></li>
         <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>2. Context and compaction</h3><p>Usage calibration, asynchronous compaction, pruning and corrupt-tail recovery.</p></div></li>
         <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>3. Human control</h3><p>Persistent pending input, steering, cancellation, nudges and deadlines.</p></div></li>
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo next">NEXT</span><div><h3>4. Public alpha gate</h3><p>The interactive path works against a live provider; clean installation from the published repository remains open.</p></div></li>
+        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>4. Public alpha gate</h3><p>The interactive path works against a live provider; clean installation from the published repository is verified. v0.1.0 is the public alpha.</p></div></li>
         <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>5. ACP and MCP wire</h3><p>Stdio and local socket servers; socket cancellation preempts a prompt; a third-party client is verified with a fake model.</p></div></li>
         <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>6. Placements</h3><p>Attached, service and batch share one event stream; the bridge is checked against a live Emacs server.</p></div></li>
         <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>7. Delegation</h3><p>File-based agent presets, parallel children and the fixed-point demonstration are verified; broader ecosystem goals remain.</p></div></li>
@@ -255,8 +278,9 @@
         <section class="status-block" aria-labelledby="verified-title">
           <h3 id="verified-title"><span class="label-success">PASS</span> Verified in this checkout</h3>
           <ul>
-            <li>All <code>lib/</code> modules byte-compile without warnings; <strong>240 / 240</strong> ERT unit tests and all <strong>29</strong> direct canaries pass.</li>
+            <li>All <code>lib/</code> modules byte-compile without warnings; <strong>255 / 255</strong> ERT unit tests and all <strong>45</strong> direct canaries pass.</li>
             <li>A real model completes the coding task and drives the interactive path, including cancel, restart, resume and pending-input recovery.</li>
+            <li>The clean-Emacs bootstrap installs the published repository in a throwaway HOME; gptel is pinned to a revision that compiles cleanly.</li>
             <li>ACP and MCP speak over stdio and a local socket; a third-party ACP client drives the wire with a fake model.</li>
             <li>Three placements write the same events. Two concurrent sessions in one Emacs are isolated; a 10 MiB context estimate stays responsive.</li>
             <li>The bridge reads and edits buffers in a real Emacs server. It remains an explicit, separately approved capability.</li>
@@ -268,7 +292,7 @@
           <h3 id="limits-title"><span class="label-warning">OPEN</span> Do not assume yet</h3>
           <ul>
             <li>No live provider has driven either wire server, and no real ACP editor has completed a task.</li>
-            <li>The bootstrap is tested against a local clone, not yet against the published repository. The public alpha gate remains open.</li>
+            <li>The bootstrap is verified against the published repository in a clean Emacs HOME; it does not run in CI, so a platform-specific failure can still hide there.</li>
             <li>On stdio, cancellation cannot preempt a running prompt. Use the socket transport for that behaviour.</li>
             <li>The bridge is off until the operator enables it and has not been validated in day-to-day personal use.</li>
             <li>Experimental PTC evaluation is off by default and is <strong>not</strong> a security boundary.</li>
@@ -369,6 +393,7 @@
 
     <nav class="footer__links" aria-label="Documents">
       <a href="https://github.com/11111000000/yeah/blob/main/README.md">README</a>
+      <a href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md">Vision</a>
       <a href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md">Architecture</a>
       <a href="https://github.com/11111000000/yeah/blob/main/docs/PLAN.md">Plan</a>
       <a href="https://github.com/11111000000/yeah/blob/main/spec.json">spec.json</a>

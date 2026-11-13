@@ -391,7 +391,10 @@ a terminal run; no hidden infinite nudge/retry loop exists.
 A person can install and use Yeah without reading source or developer docs.
 
 **Status: implemented offline on 2026-11-11, verified against a live
-provider on 2026-11-12.** `yeah.el` declares package
+provider on 2026-11-12; the public alpha gate closed on 2026-11-13.**
+`tests/live/live-clean-install.el` installed the published repository in a
+clean Emacs HOME, so the last network-dependent item of the gate is
+verified. `yeah.el` declares package
 requirements and exposes `M-x yeah`, `M-x yeah-ask` and `M-x yeah-doctor`.
 The journal buffer renders events from the journal, supports ask/steer/
 cancel/recover/withdraw/diff and refreshes without blocking.  Sessions and
@@ -711,10 +714,9 @@ the cancellation of a subtree and the budget of a parent are not.
 Stages 0–7 are implemented offline.  Under the primary-deployment decision
 (§2) the remaining distance to a usable product closes in this order:
 
-1. close the public alpha gate: the clean-Emacs bootstrap is
-   network-tested against a local clone (Stage 4); what remains is
-   pushing the layout fix and running the same check against the
-   published repository;
+1. ~~close the public alpha gate~~ **done on 2026-11-13**: the layout fix
+   is pushed and `tests/live/live-clean-install.el` passes against the
+   published repository (v0.1.0 is the public alpha);
 2. ~~a cancel that preempts a running prompt~~ **done on 2026-11-12**:
    the socket transport serves connections concurrently and a cancel
    arrives while the prompt is running; stdio keeps its documented limit
