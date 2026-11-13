@@ -1,88 +1,73 @@
-/* Yeah — static site behaviour.
-   Progressive enhancement only: the page is readable with JavaScript off. */
+/* Yeah — progressive enhancement for a readable static page. */
 
 (function () {
   "use strict";
 
-  /* ── copy to clipboard ─────────────────────────────────────────── */
+  function reset(button, original) {
+    window.setTimeout(function () {
+      button.textContent = original;
+      button.classList.remove("is-done", "is-error");
+    }, 1600);
+  }
+
+  function fallback(text) {
+    var area = document.createElement("textarea");
+    var copied = false;
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    document.body.appendChild(area);
+    area.select();
+    try { copied = document.execCommand("copy"); } catch (error) { copied = false; }
+    document.body.removeChild(area);
+    return copied;
+  }
 
   document.querySelectorAll("[data-copy-target]").forEach(function (button) {
+    button.hidden = false;
+    button.setAttribute("aria-live", "polite");
+
     button.addEventListener("click", function () {
       var target = document.getElementById(button.dataset.copyTarget);
       if (!target) { return; }
 
       var text = target.textContent.trim();
-      var done = function () {
-        var original = button.textContent;
-        button.textContent = "Copied";
-        button.classList.add("is-done");
-        window.setTimeout(function () {
-          button.textContent = original;
-          button.classList.remove("is-done");
-        }, 1600);
+      var original = "[ copy ]";
+      var finish = function (copied) {
+        button.textContent = copied ? "[ copied ]" : "[ copy failed ]";
+        button.classList.toggle("is-done", copied);
+        button.classList.toggle("is-error", !copied);
+        reset(button, original);
       };
 
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done).catch(function () { fallback(text, done); });
+        navigator.clipboard.writeText(text).then(function () { finish(true); }).catch(function () {
+          finish(fallback(text));
+        });
       } else {
-        fallback(text, done);
+        finish(fallback(text));
       }
     });
   });
 
-  function fallback(text, done) {
-    var area = document.createElement("textarea");
-    area.value = text;
-    area.setAttribute("readonly", "");
-    area.style.position = "absolute";
-    area.style.left = "-9999px";
-    document.body.appendChild(area);
-    area.select();
-    try { document.execCommand("copy"); done(); } catch (error) { /* clipboard unavailable */ }
-    document.body.removeChild(area);
-  }
-
-  /* ── reveal on scroll ──────────────────────────────────────────── */
-
-  var revealables = document.querySelectorAll(".reveal");
-
-  if (!("IntersectionObserver" in window)) {
-    revealables.forEach(function (el) { el.classList.add("is-visible"); });
-  } else {
-    var observer = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) { return; }
-        var el = entry.target;
-        var siblings = Array.prototype.slice.call(el.parentElement.children);
-        var index = siblings.indexOf(el);
-        var delay = Math.min(Math.max(index, 0), 6) * 60;
-        window.setTimeout(function () { el.classList.add("is-visible"); }, delay);
-        observer.unobserve(el);
-      });
-    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.12 });
-
-    revealables.forEach(function (el) { observer.observe(el); });
-  }
-
-  /* ── mark the current section in the navigation ────────────────── */
-
-  var sections = Array.prototype.slice.call(
-    document.querySelectorAll("main section[id]")
-  );
+  var sections = Array.prototype.slice.call(document.querySelectorAll("main section[id]"));
   var links = Array.prototype.slice.call(document.querySelectorAll(".nav a"));
 
-  if ("IntersectionObserver" in window && sections.length && links.length) {
-    var spy = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) { return; }
-        links.forEach(function (link) {
-          var active = link.getAttribute("href") === "#" + entry.target.id;
-          link.style.color = active ? "var(--fg)" : "";
-          link.style.borderBottomColor = active ? "var(--accent-soft)" : "";
-        });
-      });
-    }, { rootMargin: "-40% 0px -55% 0px" });
+  if (!("IntersectionObserver" in window) || !sections.length || !links.length) { return; }
 
-    sections.forEach(function (section) { spy.observe(section); });
-  }
+  var spy = new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) {
+      if (!entry.isIntersecting) { return; }
+      links.forEach(function (link) {
+        if (link.getAttribute("href") === "#" + entry.target.id) {
+          link.setAttribute("aria-current", "location");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+    });
+  }, { rootMargin: "-25% 0px -65% 0px", threshold: 0 });
+
+  sections.forEach(function (section) { spy.observe(section); });
 })();
