@@ -1,13 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="Yeah">
   <title>Yeah</title>
-  <rect width="48" height="48" rx="6" fill="#ffffff"/>
-  <g fill="none" stroke="#8b2252" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M9 10 L24 26 L39 10"/>
-    <circle cx="24" cy="26" r="4.2"/>
-    <path d="M24 30.2 L24 39"/>
+  <rect width="48" height="48" fill="#1a1a1a"/>
+  <path d="M7 8 Q2 24 7 40 M41 8 Q46 24 41 40" fill="none" stroke="#7f7f7f" stroke-width="2" stroke-linecap="round"/>
+  <g fill="none" stroke="#dda0dd" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M13 10 L24 25 L35 10"/>
+    <circle cx="24" cy="25" r="4.2"/>
+    <path d="M24 29.2 L24 38"/>
   </g>
-  <g fill="#8b2252">
-    <circle cx="9" cy="10" r="2.8"/>
-    <circle cx="39" cy="10" r="2.8"/>
+  <g fill="#dda0dd">
+    <circle cx="13" cy="10" r="2.5"/>
+    <circle cx="35" cy="10" r="2.5"/>
   </g>
 </svg>

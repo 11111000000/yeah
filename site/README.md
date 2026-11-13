@@ -1,8 +1,8 @@
 # Yeah — the site
 
 The static site for Yeah, published by GitHub Pages from this directory.
-No build step, no framework, no dependencies: `index.html`, `styles.css`,
-`script.js` and two SVG assets are the whole site.
+There is no build step, framework or runtime dependency: `index.html`,
+`styles.css`, `script.js` and the checked-in assets are the whole site.
 
 ## Preview
 
@@ -11,96 +11,80 @@ cd site && python3 -m http.server 8000
 # then open http://127.0.0.1:8000/
 ```
 
-Any static server works. The page is readable with JavaScript disabled — the
-reveal animation is an enhancement guarded by a `js` class on `<html>`.
+Any static server works. The page is readable with JavaScript disabled.
+JavaScript only enables copy buttons, clipboard feedback and current-section
+navigation; it does not reveal or generate content.
 
 ## Publication
 
-`.github/workflows/pages.yml` builds and deploys `site/` on every push to
-`main` that touches `site/` or the workflow itself. The published address is
+`.github/workflows/pages.yml` deploys `site/` on every push to `main` that
+touches `site/` or the workflow itself. The published address is
 `https://11111000000.github.io/yeah/`.
 
-To publish it by hand instead, the repository settings have to point GitHub
-Pages at the `main` branch with the `/site` folder as the publishing source.
+To publish it by hand instead, point GitHub Pages at the `main` branch and
+`/site` folder in the repository settings.
 
-## The design tokens
+## Design: an Emacs frame, not a product template
 
-Every colour is a colour of the **standard Emacs theme**: the names come from
-the colour table Emacs itself ships (`x-colors` in Emacs 30.2), and the values
-are the RGB values Emacs resolves for those names. Nothing else was
-invented — no hex from a palette generator, no gradient, no shadow colour
-outside the list.
+The page has the anatomy of a dark Emacs frame: menu and system bars, named
+buffers, a session example, a minibuffer, a light mode line and an echo area.
+Sections use hard rules and fixed-pitch rhythm rather than cards, shadows,
+rounded pills or gradients. The architecture is ASCII; the roadmap uses Org
+status markers; status is presented through the language of `yeah-doctor`.
 
-| Token            | Emacs colour name | Value     | Used for                    |
-|------------------|-------------------|-----------|-----------------------------|
-| `--c-white`      | white             | `#ffffff` | page background             |
-| `--c-black`      | black             | `#000000` | text, footer background      |
-| `--c-dimgray`    | DimGray           | `#696969` | secondary text              |
-| `--c-grey30`     | grey30            | `#4d4d4d` | labels inside diagrams      |
-| `--c-grey50`     | grey50            | `#7f7f7f` | muted marks, arrows         |
-| `--c-grey85`     | grey85            | `#d9d9d9` | rules, borders               |
-| `--c-grey90`     | grey90            | `#e6e6e6` | soft rules                  |
-| `--c-grey93`     | grey93            | `#ededed` | reserved                    |
-| `--c-grey96`     | grey96            | `#f5f5f5` | code blocks, soft surfaces   |
-| `--c-aliceblue`  | alice blue        | `#f0f8ff` | tinted sections             |
-| `--c-lavender`   | lavender          | `#e6e6fa` | diagram emphasis            |
-| `--c-lavenderblush` | lavender blush | `#fff0f5` | journal emphasis            |
-| `--c-thistle`    | thistle           | `#d8bfd8` | accent-soft, marker         |
-| `--c-plum`       | plum              | `#dda0dd` | reserved                    |
-| `--c-violetred4` | VioletRed4        | `#8b2252` | the accent                  |
-| `--c-darkslateblue` | dark slate blue | `#483d8b` | secondary accent            |
-| `--c-slateblue`  | SlateBlue         | `#6a5acd` | focus ring                  |
-
-The semantic aliases (`--bg`, `--fg`, `--rule`, `--accent`, …) sit on top of
-them, so a future dark theme only has to remap the aliases.
+The session on the first screen is explicitly labelled **illustrative**. It is
+not represented as a live connection or a browser-based Emacs. Typing effects,
+fake prompts and global keyboard capture are deliberately absent.
 
 ### Typography
 
-The brief asked for the fonts to follow the same standard. Emacs has two
-faces that matter: the fixed-pitch face and the variable-pitch one. The site
-mirrors that pair:
+`--font-fixed` is the only font stack. It uses locally available fixed-pitch
+fonts, matching Emacs' `fixed-pitch` face without downloading a web font.
+Body copy, headings, labels and code share the same family; scale, weight and
+colour establish hierarchy instead of a separate corporate display face.
 
-- `--font-display` — the headline face. The stack starts with Optima and
-  Futura, so the display face follows the geometric grotesque used by IMAX
-  posters wherever those fonts are installed, and falls back to the system
-  sans elsewhere.
-- `--font-prose` — Charter / Iowan Old Style / Georgia: the variable-pitch
-  reading face.
-- `--font-mono` — the fixed-pitch face, used for code, labels and metadata,
-  exactly like the `fixed-pitch` face in Emacs.
+### Colour tokens
 
-No web font is downloaded: the site loads no external resource at all.
+Every colour value comes from the standard Emacs/X11 colour table. Semantic
+aliases correspond to familiar faces and states rather than to marketing
+surfaces.
 
-## The logo
+| Role | Emacs colour name | Value |
+|---|---|---|
+| Deep background, echo area | black | `#000000` |
+| Default buffer background | grey10 | `#1a1a1a` |
+| Raised/menu background | grey15 | `#262626` |
+| Selected background | grey20 | `#333333` |
+| Rules | grey25 / grey35 | `#404040` / `#595959` |
+| Comments, dim text | grey60 | `#999999` |
+| Secondary text | grey65 / grey75 | `#a6a6a6` / `#bfbfbf` |
+| Default foreground | grey90 | `#e6e6e6` |
+| Keywords, Y mark | plum / thistle | `#dda0dd` / `#d8bfd8` |
+| Types, links | light blue | `#add8e6` |
+| Builtins, ASCII diagram | light steel blue | `#b0c4de` |
+| Strings, success | pale green | `#98fb98` |
+| Warnings, open work | khaki | `#f0e68c` |
+| Errors, non-goals | salmon | `#fa8072` |
+| Focus | aquamarine | `#7fffd4` |
+| Text selection | dark slate blue | `#483d8b` |
 
-The mark in `assets/logo.svg` is deliberately simple: a **Y** whose arms end
-in two filled nodes — the inputs — and whose junction is a closed loop — the
-self-reference, the fixed point. The stem below the loop is the recursion.
-It is drawn with the accent colour and nothing else, so it survives being
-printed, inverted or scaled to a favicon.
+Bright colours mark syntax and state. Status never depends on colour alone:
+`PASS`/`OPEN`, `DONE`/`NEXT` and `+`/`!` carry the same information in text.
+Focus indicators remain visible, and reduced-motion users get a static cursor.
 
-The next iteration, which is not yet decided, is the **e-max** direction:
-an *e* for Emacs and *Max* for the model, drawn as a cybernetic mark — a
-loop feeding itself, an agent inside its own harness. Three sketches are
-worth trying, in this order:
+## Assets
 
-1. **The loop-e** — a lowercase `e` drawn as a single closed path that
-   returns to its own starting point, so the crossbar of the `e` is the
-   harness and the loop is the agent.
-2. **The x-node** — `e` and `x` as two terminal nodes of a signal path,
-   with the model as the node that reads the path rather than the one that
-   writes it.
-3. **The recursive mark** — the current `Y`, but with the junction loop
-   replaced by a smaller `e`, so the Y-combinator and the agent share one
-   glyph.
-
-Keep them all inside the same rules as the current mark: one colour, thin
-strokes, no gradients, legible at 16 pixels.
+- `assets/logo.svg` — the Y: two inputs, a self-reference loop and recursion.
+  The parenthesized `(yeah)` wordmark is HTML around this mark.
+- `assets/favicon.svg` — the same mark between parentheses on a dark buffer.
+- `assets/og.svg` — editable 1200×630 source for social preview.
+- `assets/og.png` — checked-in rendered preview used by the metadata. No SVG
+  renderer is needed to publish the site.
 
 ## Content discipline
 
-The text on the site is taken from the repository's own documents and states
-the product at the level the evidence supports. Where the repository is not
-finished, the site says so in the **Status** section. When the numbers
-change, the site changes with them — the ERT and canary counts in the
-status block are copied from the last local run, not from memory.
+The text comes from the repository's own documents and states the product at
+the level its evidence supports. The public alpha gate and protocol limits stay
+visible. Where the repository is unfinished, the site says so in **Status**.
+When test counts change, update the site from an actual local run, not from
+memory; a website claim is not itself evidence.
