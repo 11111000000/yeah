@@ -45,7 +45,8 @@
 (defconst yeah-placement--placements '(attached service batch)
   "The placements a run may live in.")
 
-(defconst yeah-placement--volatile-fields '(:timestamp :id)
+(defconst yeah-placement--volatile-fields
+  '(:timestamp :id :session_id :run_id :turn_id :tool_call_id :parent_event_id)
   "Event fields a placement is allowed to differ in.
 The identifiers and the timestamps are not part of what the run did.")
 
