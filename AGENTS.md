@@ -70,7 +70,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   task, and the interactive path works against a live provider.  The
   clean-Emacs install path is network-tested against the published
   repository (tests/live/live-clean-install.el): the public alpha gate is
-  closed and v0.1.0 is the public alpha.
+  closed; v0.2.0 carries the Emacs-native interface.
 - Stage 3 is implemented offline: the Plan and Build permission profiles,
   a persistent pending FIFO, frozen inputs,
   steering at batch boundaries, cancellation, nudges and deadlines have

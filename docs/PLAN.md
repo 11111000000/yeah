@@ -716,7 +716,7 @@ Stages 0–7 are implemented offline.  Under the primary-deployment decision
 
 1. ~~close the public alpha gate~~ **done on 2026-11-13**: the layout fix
    is pushed and `tests/live/live-clean-install.el` passes against the
-   published repository (v0.1.0 is the public alpha);
+   published repository (v0.2.0 carries the Emacs-native interface);
 2. ~~a cancel that preempts a running prompt~~ **done on 2026-11-12**:
    the socket transport serves connections concurrently and a cancel
    arrives while the prompt is running; stdio keeps its documented limit

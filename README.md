@@ -1,6 +1,6 @@
 # Yeah — Emacs Agent Harness
 
-> **Status: v0.1.0, the public alpha; a kernel, not yet a complete product.**
+> **Status: v0.2.0 — the Emacs-native interface; a kernel, not yet a complete product.**
 > Read `docs/PLAN.md` for the current baseline and the road to a public
 > alpha. `spec.json` and `./scripts/dev map` are the machine-checked source
 > of truth; documentation never substitutes for that evidence.
