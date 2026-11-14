@@ -137,5 +137,29 @@ CALLBACK is called with :once, :always or :reject."
     (pop-to-buffer buffer)
     buffer))
 
+;;;###autoload
+(defun yeah-approval-answer (request)
+  "Ask the person about REQUEST in the approval view and return the decision.
+The decision is `(:effect :allow :reply :once)', `(:effect :allow :reply
+:always)' or `(:effect :deny :reply :reject :reason REASON)'.  A request
+that nobody answers is refused: a question with no answer may not become
+an effect."
+  (let ((decision nil))
+    (yeah-approval-open
+     request
+     (lambda (reply)
+       (setq decision
+             (pcase reply
+               (:once (list :effect :allow :reply :once))
+               (:always (list :effect :allow :reply :always))
+               (:reject (list :effect :deny :reply :reject
+                              :reason "rejected by the person"))))))
+    (let ((deadline (+ (float-time) 600)))
+      (while (and (null decision) (< (float-time) deadline))
+        (accept-process-output nil 0.1)))
+    (or decision
+        (list :effect :deny :reply :reject
+              :reason "the person did not answer the request"))))
+
 (provide 'yeah-approval-ui)
 ;;; yeah-approval-ui.el ends here

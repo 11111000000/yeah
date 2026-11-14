@@ -18,6 +18,7 @@
 
 (require 'cl-lib)
 (require 'project)
+(require 'yeah-approval-ui)
 (require 'yeah-perm)
 (require 'yeah-service)
 (require 'yeah-client)
@@ -67,10 +68,25 @@ may work without asking."
   "Counter used for local records that do not carry an ACP id.")
 
 (defvar yeah-service-ui-permission-prompter
-  #'yeah-service-ui--prompt-permission
+  #'yeah-service-ui--approval-prompter
   "Function answering a permission request of the service.
-Called with (TITLE RAW-INPUT) and returns \"allow-once\", \"reject-once\"
-or \"cancelled\".  The default asks the person; a check binds its own.")
+Called with (TITLE RAW-INPUT) and returns \"allow-once\", \"allow-always\"
+or \"reject-once\".  The default asks the person in the shared approval
+view; a check binds its own.")
+
+(defun yeah-service-ui--approval-prompter (title raw-input)
+  "Ask the person about TITLE with RAW-INPUT in the shared approval view.
+Returns the option id of the answer: \"allow-once\", \"allow-always\" or
+\"reject-once\"."
+  (let ((decision (yeah-approval-answer
+                   (list :action (yeah-service-ui--permission-action title)
+                         :resource (yeah-service-ui--permission-resource title)
+                         :arguments raw-input))))
+    (if (eq (plist-get decision :effect) :allow)
+        ;; The wire has no answer for "always" yet: the service remembers
+        ;; no decision, so the question is asked again next time.
+        "allow-once"
+      "reject-once")))
 
 (defun yeah-service-ui--permission-diff (title raw-input)
   "Return a preview of the change RAW-INPUT describes, or nil.
@@ -270,10 +286,25 @@ running while the person decides."
                 (list :type "error" :id (yeah-service-ui--next-id "error")
                       :payload (format "%s" error)))
              (yeah-service-ui--append-record
-              (list :type "finish" :id (yeah-service-ui--next-id "finish")
-                    :summary (or (plist-get result :stopReason) "done"))))
+              (yeah-service-ui--outcome-record (plist-get result :stopReason))))
            (yeah-service-ui--update-journal)))
        (when (functionp callback) (funcall callback result error))))))
+
+(defun yeah-service-ui--outcome-record (stop-reason)
+  "Return the record of the outcome of a prompt that ended with STOP-REASON.
+A run that ended without the effect is not a finish: the editor must see
+the difference, or the person reads a refusal as a success."
+  (pcase stop-reason
+    ("end_turn"
+     (list :type "finish" :id (yeah-service-ui--next-id "finish")
+           :summary "end_turn"))
+    ("cancelled"
+     (list :type "cancel" :id (yeah-service-ui--next-id "cancel")
+           :payload "the run was cancelled"))
+    (_
+     (list :type "unfinished" :id (yeah-service-ui--next-id "unfinished")
+           :payload "the run ended without the effect"
+           :reason (format "the service answered %s" (or stop-reason "nothing"))))))
 
 (defun yeah-service-ui--ask (prompt)
   "Send PROMPT to this buffer's service session."

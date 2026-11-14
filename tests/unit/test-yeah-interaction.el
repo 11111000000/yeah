@@ -22,6 +22,30 @@
       (write-region (point-min) (point-max) path nil 'silent))
     path))
 
+(ert-deftest yeah-approval-answer-returns-the-decision-of-the-person ()
+  "The shared approval view answers the question: the person decides once,
+always or reject, and the decision is what the caller receives."
+  (let ((decide (lambda (reply)
+                  (run-at-time 0.05 nil
+                    (lambda ()
+                      (with-current-buffer "*Yeah Approval*"
+                        (yeah-approval--decide reply)))))))
+    (funcall decide :once)
+    (let ((decision (yeah-approval-answer
+                      (list :action "edit" :resource "/tmp/x.el" :arguments nil))))
+      (should (eq (plist-get decision :effect) :allow))
+      (should (eq (plist-get decision :reply) :once)))
+    (funcall decide :always)
+    (let ((decision (yeah-approval-answer
+                      (list :action "edit" :resource "/tmp/x.el" :arguments nil))))
+      (should (eq (plist-get decision :effect) :allow))
+      (should (eq (plist-get decision :reply) :always)))
+    (funcall decide :reject)
+    (let ((decision (yeah-approval-answer
+                      (list :action "edit" :resource "/tmp/x.el" :arguments nil))))
+      (should (eq (plist-get decision :effect) :deny))
+      (should (eq (plist-get decision :reply) :reject)))))
+
 (ert-deftest yeah-compose-sends-text-and-explicit-context ()
   (let ((sent nil))
     (let* ((buffer (yeah-compose-open

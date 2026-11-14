@@ -14,6 +14,7 @@
 
 (require 'cl-lib)
 (require 'yeah-approval)
+(require 'yeah-approval-ui)
 (require 'yeah-control)
 (require 'yeah-doctor-ui)
 (require 'yeah-events)
@@ -113,19 +114,17 @@ A session is resumed by its file, so a person can quit and come back."
           (format-time-string "%Y%m%d-%H%M%S")))
 
 (defun yeah-product--human-answerer (request)
-  "Answer REQUEST through an explicit one-key approval."
-  (let* ((action (plist-get request :action))
-         (resource (plist-get request :resource)))
+  "Answer REQUEST in the shared approval view.
+The view names the action, its target and the change it would make, and
+the person answers there: once, always for this resource, or reject.  A
+safe read needs no question at all."
+  (let ((action (plist-get request :action)))
     (if (member action yeah-product--safe-tools)
         (list :effect :allow :reply :once)
-      (let* ((prompt (format "Allow %s on %s? [o]nce/[a]lways/[r]eject "
-                             action resource))
-             (answer (read-char-choice prompt '(?o ?a ?r))))
-        (pcase answer
-          (?o (list :effect :allow :reply :once))
-          (?a (list :effect :allow :reply :always))
-          (_ (list :effect :deny :reply :reject
-                   :reason "rejected by user")))))))
+      (yeah-approval-answer
+       (list :action action
+             :resource (or (plist-get request :resource) "")
+             :arguments (plist-get request :args))))))
 
 ;;;###autoload
 (defun yeah-product-human-answerer (request)
