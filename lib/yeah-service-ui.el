@@ -70,21 +70,22 @@ may work without asking."
 (defvar yeah-service-ui-permission-prompter
   #'yeah-service-ui--approval-prompter
   "Function answering a permission request of the service.
-Called with (TITLE RAW-INPUT) and returns \"allow-once\" or
-\"reject-once\".  The default asks the person in the shared approval
+Called with (TITLE RAW-INPUT) and returns \"allow-once\", \"allow-always\"
+or \"reject-once\".  The default asks the person in the shared approval
 view; a check binds its own.")
 
 (defun yeah-service-ui--approval-prompter (title raw-input)
   "Ask the person about TITLE with RAW-INPUT in the shared approval view.
-Returns the option id of the answer: \"allow-once\" or \"reject-once\"."
+Returns the option id of the answer: \"allow-once\", \"allow-always\" or
+\"reject-once\"."
   (let ((decision (yeah-approval-answer
                    (list :action (yeah-service-ui--permission-action title)
                          :resource (yeah-service-ui--permission-resource title)
                          :arguments raw-input))))
     (if (eq (plist-get decision :effect) :allow)
-        ;; The wire has no answer for "always" yet: the service remembers
-        ;; no decision, so the question is asked again next time.
-        "allow-once"
+        (if (eq (plist-get decision :reply) :always)
+            "allow-always"
+          "allow-once")
       "reject-once")))
 
 (defun yeah-service-ui--next-id (prefix)

@@ -88,6 +88,7 @@ The rules decide first; what they do not name is asked of the client as a
                                                (plist-get request :args)))
                               :options (vector
                                           (list :optionId "allow-once" :name "Allow once" :kind "allow_once")
+                                          (list :optionId "allow-always" :name "Allow always" :kind "allow_always")
                                           (list :optionId "reject-once" :name "Reject" :kind "reject_once")))))
            (puthash request-id session-id yeah-acp--pending-permissions)
            (funcall output (json-serialize
@@ -370,6 +371,10 @@ cancelled request, a protocol error, or an unknown option refuses it."
       (list :effect :deny :reason "cancelled"))
      ((equal option "allow-once")
       (list :effect :allow :reply :once))
+     ((equal option "allow-always")
+      ;; the person says that this action on this resource is allowed from
+      ;; now on; the kernel remembers the decision
+      (list :effect :allow :reply :always))
      ((equal option "reject-once")
       (list :effect :deny :reason "the person refused"))
      (t

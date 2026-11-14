@@ -8,6 +8,7 @@
 
 (require 'ert)
 (require 'cl-lib)
+(require 'yeah-acp)
 (require 'yeah-approval-ui)
 (require 'yeah-compose)
 (require 'yeah-diff)
@@ -21,6 +22,25 @@
       (insert content)
       (write-region (point-min) (point-max) path nil 'silent))
     path))
+
+(ert-deftest yeah-wire-answer-of-always-is-allowed-and-remembered ()
+  "The wire answer `allow-always' permits the effect and asks the kernel to
+remember the decision; any other answer refuses."
+  (should (equal (yeah-acp--permission-decision
+                  (list :result (list :outcome (list :optionId "allow-always"))))
+                 (list :effect :allow :reply :always)))
+  (should (equal (yeah-acp--permission-decision
+                  (list :result (list :outcome (list :optionId "allow-once"))))
+                 (list :effect :allow :reply :once)))
+  (should (eq (plist-get (yeah-acp--permission-decision
+                          (list :result (list :outcome
+                                              (list :optionId "something-else"))))
+                     :effect)
+              :deny))
+  (should (eq (plist-get (yeah-acp--permission-decision
+                          (list :error (list :code -32600 :message "bad")))
+                     :effect)
+              :deny)))
 
 (ert-deftest yeah-approval-view-names-the-action-the-target-and-the-arguments ()
   "The approval view shows what the person is asked about: the action, the
