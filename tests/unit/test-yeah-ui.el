@@ -144,6 +144,24 @@
       (should (eq (plist-get fallback :fallback-reason)
                   'ambiguous-permission-correlation)))))
 
+(ert-deftest yeah-ui-view-shows-a-run-that-never-finished ()
+  "A supervised run that spent its nudge budget without the model finishing
+is visible: the view says `unfinished' and shows the reason, and it never
+shows the run as finished."
+  (let* ((view (yeah-ui-view (yeah-ui-fixture-unfinished)))
+         (blocks (plist-get view :blocks))
+         (unfinished (cl-find-if (lambda (block)
+                                    (eq (plist-get block :kind) :unfinished))
+                                  blocks)))
+    (should (eq (plist-get (plist-get view :status) :state) 'unfinished))
+    (should unfinished)
+    (should (equal (plist-get unfinished :reason)
+                    "the nudge budget was spent"))
+    (should-not (cl-find-if (lambda (block)
+                              (eq (plist-get block :kind) :finish))
+                            blocks))
+    (should-not (eq (plist-get (plist-get view :status) :state) 'completed))))
+
 (ert-deftest yeah-ui-view-links-child-lineage-and-finish ()
   (let* ((view (yeah-ui-view (yeah-ui-fixture-child)))
          (spawn (yeah-ui-test--one-block view :spawn))

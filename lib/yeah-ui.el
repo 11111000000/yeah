@@ -577,6 +577,14 @@ key."
                               (list :text (plist-get record :payload)
                                     :payload (plist-get record :payload))
                               'running))
+      ("unfinished"
+       ;; A supervised run that spent its nudge budget without the model
+       ;; finishing: the person must see that the work is not done.
+       (yeah-ui--simple-event projection record index :unfinished
+                              (list :text (plist-get record :payload)
+                                    :payload (plist-get record :payload)
+                                    :reason (plist-get record :reason))
+                              'unfinished))
       ("cancel"
        (yeah-ui--simple-event projection record index :cancel
                               (list :text (plist-get record :payload)

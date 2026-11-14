@@ -58,6 +58,31 @@
           (should header-line-format))
       (yeah-journal-close journal))))
 
+(ert-deftest yeah-journal-shows-a-run-that-never-finished ()
+  "A run that ended without the effect says so in the transcript."
+  (let* ((calls nil)
+         (view (list :session (list :title "t" :project "" :placement "attached"
+                                    :profile "build" :model "m")
+                     :status (list :state 'unfinished :active-tool-count 0
+                                   :error nil)
+                     :blocks (list (list :kind :unfinished :id "b1"
+                                         :event-id 3 :timestamp "t" :run-id "r"
+                                         :turn-id "tn" :parent-event-id nil
+                                         :text "the model described its next step"
+                                         :reason "the nudge budget was spent"))
+                     :pending-approvals nil
+                     :pending-inputs nil
+                     :usage (list :input nil :output nil :reported-p nil
+                                 :estimated nil)
+                     :capabilities nil))
+         (journal (yeah-journal-open (yeah-journal-test--driver calls) view)))
+    (unwind-protect
+        (with-current-buffer (yeah-journal-buffer journal)
+          (should (string-match-p "Not finished" (buffer-string)))
+          (should (string-match-p "the nudge budget was spent" (buffer-string)))
+          (should (string-match-p "unfinished" (format "%s" header-line-format))))
+      (yeah-journal-close journal))))
+
 (ert-deftest yeah-journal-header-keeps-status-before-long-metadata ()
   (let* ((project "Очень-длинный-путь-проекта-который-не-помещается-в-окне")
          (view (list :session (list :title "Очень длинное название сессии"

@@ -180,6 +180,14 @@ updates."
        (concat
         (propertize "* Completion nudge" 'face 'yeah-faces-warning)
         (format "\n%s" (or (plist-get block :text) (plist-get block :payload) ""))))
+      (:unfinished
+       (concat
+        (propertize "* Not finished" 'face 'yeah-faces-warning)
+        (format "\n%s" (or (plist-get block :text)
+                           (plist-get block :payload)
+                           ""))
+        (when (plist-get block :reason)
+          (format "\n(%s)" (plist-get block :reason)))))
       (:spawn
        (concat
         (propertize "* Child started" 'face 'yeah-faces-metadata)

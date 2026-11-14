@@ -96,6 +96,17 @@ Every fixture record carries the complete envelope, including nil optional ids."
    (list :type "tool-end" :id 4 :tool "probe" :ok t
          :payload "unassignable result")))
 
+(defun yeah-ui-fixture-unfinished ()
+  "Return a supervised run that spent its nudge budget without finishing:
+the nudge, the unfinished record, and no finish."
+  (list
+   (yeah-ui-fixture-header)
+   (yeah-ui-fixture-event 1 "user-message" :payload "fix it")
+   (yeah-ui-fixture-event 2 "nudge" :payload "call the tools now")
+   (yeah-ui-fixture-event 3 "unfinished"
+                          :payload "the model described its next step 4 times"
+                          :reason "the nudge budget was spent")))
+
 (defun yeah-ui-fixture-child ()
   "Return linked spawn/child-end records followed by finish."
   (list
