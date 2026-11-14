@@ -113,7 +113,10 @@ updates."
                         (yeah-faces-status state))
                        resource
                        (if args (format "\nArguments: %S" args) ""))))
-    (propertize text 'face 'yeah-faces-pending)))
+    (concat
+     (propertize "* Approval" 'face 'yeah-faces-pending)
+     "\n"
+     (propertize text 'face 'yeah-faces-pending))))
 
 (defun yeah-journal--render-activity (activity)
   "Return the rendered text of ACTIVITY and its children."
@@ -465,7 +468,10 @@ Signal `user-error' when the capability is unavailable."
 BUFFER-NAME names the transcript buffer.  Return the journal."
   (let* ((name (or buffer-name "*Yeah*"))
          (buffer (generate-new-buffer name))
-         (journal (yeah-journal--make :buffer buffer :driver driver)))
+         (journal (yeah-journal--make
+                   :buffer buffer
+                   :driver driver
+                   :blocks (make-hash-table :test 'equal))))
     (with-current-buffer buffer
       (yeah-journal-mode)
       (setq yeah-journal--current journal)
