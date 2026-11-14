@@ -39,13 +39,16 @@
 (defconst yeah-approval--replies '(once always reject)
   "The answers a person may give to a request for permission.")
 
-(defun yeah-approval-request (action resource &optional args)
+(defun yeah-approval-request (action resource &optional args tool-call-id)
   "Return a request for permission to run ACTION on RESOURCE.
-ARGS, when given, are the arguments the tool would run with: the wire
-carries them so the person sees the change, not only its target."
-  (if args
-      (list :action action :resource resource :args args)
-    (list :action action :resource resource)))
+ARGS, when given, are the arguments the tool would run with.  TOOL-CALL-ID
+correlates the request with its journal events without changing the existing
+`:action', `:resource', `:args' or deferred-answer contracts."
+  (append (list :action action :resource resource)
+          (when args
+            (list :args args))
+          (when tool-call-id
+            (list :tool-call-id tool-call-id))))
 
 (defun yeah-approval-reply-p (reply)
   "Non-nil when REPLY is one of the answers a person may give."

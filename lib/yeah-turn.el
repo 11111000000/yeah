@@ -89,7 +89,8 @@ shared one."
   (transport nil)
   (answerer nil)
   (pending-answer nil)
-  (pending-permissions nil))
+  (pending-permissions nil)
+  (turn-event-id nil))
 
 (declare-function gptel-abort "gptel-request" (buffer))
 (declare-function gptel-fsm-info "gptel-request" (fsm))
@@ -157,6 +158,22 @@ bug in the turn, and the run stops with that reason."
        (yeah-turn--fail turn (error-message-string err))
        (yeah-turn-state turn)))))
 
+(defun yeah-turn--context (turn &optional tool-call-id parent-event-id)
+  "Return explicit journal correlation for TURN and its current model turn."
+  (append
+   (list :run_id (yeah-turn-id turn)
+         :turn_id (format "%s-turn-%d" (yeah-turn-id turn)
+                          (max 1 (yeah-turn-turns turn))))
+   (when tool-call-id
+     (list :tool_call_id tool-call-id))
+   (when parent-event-id
+     (list :parent_event_id parent-event-id))))
+
+(defun yeah-turn--write (turn type context &rest fields)
+  "Write TYPE with FIELDS and explicit CONTEXT for TURN."
+  (apply #'yeah-events-write-with-context
+         (yeah-turn-session turn) type context fields))
+
 (defun yeah-turn--fail (turn reason)
   "Stop TURN because of REASON, and say why in the log."
   (if (eq (yeah-turn-state turn) 'deciding)
@@ -168,23 +185,23 @@ bug in the turn, and the run stops with that reason."
   (setf (yeah-turn-error turn) reason)
   (yeah-turn--mark-done turn)
   (when (yeah-turn-session turn)
-    (yeah-events-write (yeah-turn-session turn) "error" :payload reason))
+    (yeah-turn--write turn "error"
+                      (yeah-turn--context turn nil (yeah-turn-turn-event-id turn))
+                      :payload reason))
   reason)
 
 (defun yeah-turn-resume-permission (turn request-id decision)
   "Answer the deferred permission request REQUEST-ID of TURN with DECISION.
-The wire layer calls this when the client's answer arrives."
+The first answer wins; a cancelled turn ignores a late answer."
   (when-let ((resume (gethash request-id (yeah-turn-pending-permissions turn))))
     (remhash request-id (yeah-turn-pending-permissions turn))
-    (funcall resume decision)))
+    (unless (yeah-turn-done turn)
+      (funcall resume decision))))
 
-(defun yeah-turn--decide (answerer spec name resource args)
-  "Ask the ANSWERER whether the tool NAME may act on RESOURCE with ARGS.
-Return (EFFECT . REFUSED): EFFECT is \"allow\", \"deny\" or \"defer\", and
-REFUSED is the reason the call may not run, or nil when it may.
-The answerer is either the rules or a person; the kernel does not
-know which.  `finish' is always allowed: it is a control signal, not
-an effect on the world."
+(defun yeah-turn--decide (answerer spec name resource args &optional tool-call-id)
+  "Ask ANSWERER whether NAME may act on RESOURCE with ARGS.
+Return (EFFECT . REFUSED), where EFFECT is allow, deny or defer.  TOOL-CALL-ID
+is passed to the answerer without changing the deferred request-id contract."
   (cond
    ((null spec)
     (cons "deny" (format "there is no tool named %s" name)))
@@ -192,9 +209,9 @@ an effect on the world."
     (cons "allow" nil))
    (t
     (let ((decision (funcall answerer
-                             (yeah-approval-request name resource args))))
+                             (yeah-approval-request
+                              name resource args tool-call-id))))
       (if (plist-get decision :defer)
-          ;; The answerer asks the person over the wire; the call waits.
           (cons "defer" (plist-get decision :defer))
         (if (eq (plist-get decision :effect) :allow)
             (cons "allow" nil)
@@ -202,28 +219,38 @@ an effect on the world."
                             (format "the rules say %s" name)))))))))
 
 (defun yeah-turn--prepare (turn answerer index call)
-  "Prepare the tool CALL at INDEX of TURN for the batch.
-Return a plist: :index is the position of the call, :name and :args are
-what the tool is called with, :spec is the registry spec of the tool,
-and :refused is the reason the call may not run, or nil.
-
-The log says what happened: the model asked for the tool, the rules
-were asked, and the rules answered."
+  "Prepare CALL at INDEX, preserving the existing answerer timing.
+The returned slot owns stable ids shared by request, permission and tool-end."
   (let* ((name (yeah-turn--tool-name (nth 0 call)))
          (args (yeah-tools-normalize-args name (nth 1 call)))
          (spec (yeah-tools-get name))
-         (resource (yeah-turn--resource args)))
-    (let ((decision (yeah-turn--decide answerer spec name resource args)))
-      (yeah-events-write (yeah-turn-session turn) "tool-request"
-                         :tool name :args (format "%S" args))
-      (yeah-events-write (yeah-turn-session turn) "permission-request"
-                         :action name :resource resource)
-      (yeah-events-write (yeah-turn-session turn) "permission-decision"
-                         :action name :resource resource
-                         :effect (car decision))
-      (list :index index :name name :args args :spec spec
-            :refused (and (not (equal "defer" (car decision))) (cdr decision))
-            :deferred (and (equal "defer" (car decision)) (cdr decision))))))
+         (resource (yeah-turn--resource args))
+         (tool-call-id (format "%s-call-%d" (yeah-turn-id turn)
+                               (+ (yeah-turn-calls turn) index 1)))
+         (decision (yeah-turn--decide
+                    answerer spec name resource args tool-call-id))
+         (request-event-id
+          (yeah-turn--write turn "tool-request"
+                            (yeah-turn--context
+                             turn tool-call-id (yeah-turn-turn-event-id turn))
+                            :tool name :args (format "%S" args)))
+         (permission-event-id
+          (yeah-turn--write turn "permission-request"
+                            (yeah-turn--context turn tool-call-id request-event-id)
+                            :action name :resource resource))
+         (decision-event-id
+          (yeah-turn--write turn "permission-decision"
+                            (yeah-turn--context
+                             turn tool-call-id permission-event-id)
+                            :action name :resource resource
+                            :effect (car decision))))
+    (list :index index :name name :args args :spec spec :resource resource
+          :tool-call-id tool-call-id
+          :request-event-id request-event-id
+          :permission-request-event-id permission-event-id
+          :decision-event-id decision-event-id
+          :refused (and (not (equal "defer" (car decision))) (cdr decision))
+          :deferred (and (equal "defer" (car decision)) (cdr decision)))))
 
 (defun yeah-turn--continue-batch (turn calls results)
   "Continue TURN after tool CALLS and RESULTS, compacting first if needed.
@@ -232,8 +259,10 @@ Steering is delivered only after the entire batch has settled."
     (let ((steering (and (functionp (yeah-turn-steer-source turn))
                          (funcall (yeah-turn-steer-source turn) turn))))
       (dolist (input steering)
-        (yeah-events-write (yeah-turn-session turn) "steering"
-                           :payload (plist-get input :prompt)))
+        (yeah-turn--write turn "steering"
+                          (yeah-turn--context
+                           turn nil (yeah-turn-turn-event-id turn))
+                          :payload (plist-get input :prompt)))
       (pcase (yeah-turn-state turn)
         ('accumulating (yeah-turn--tick turn 'budget-ok))
         ('compacting (yeah-turn--tick turn 'compact-done)))
@@ -307,18 +336,32 @@ A deferred call waits for the person's answer: the wire layer calls the
 resume callback when the answer arrives, and the tool runs only if the
 person allowed it."
   (lambda (args &optional done)
-    (if (plist-get slot :deferred)
-        (let ((request-id (plist-get slot :deferred)))
-          (puthash request-id
-                   (lambda (decision)
-                     (if (eq (plist-get decision :effect) :allow)
-                         (yeah-tools-dispatch (plist-get slot :name) args done)
-                       (funcall done
-                                (yeah-result-error
-                                 (or (plist-get decision :reason)
-                                     "the person refused")))))
-                   (yeah-turn-pending-permissions turn)))
-      (yeah-tools-dispatch (plist-get slot :name) args done))))
+    (unless (yeah-turn-done turn)
+      (if (plist-get slot :deferred)
+          (let ((request-id (plist-get slot :deferred)))
+            (puthash
+             request-id
+             (lambda (decision)
+               (unless (yeah-turn-done turn)
+                 (yeah-turn--write
+                  turn "permission-decision"
+                  (yeah-turn--context
+                   turn (plist-get slot :tool-call-id)
+                   (plist-get slot :decision-event-id))
+                  :action (plist-get slot :name)
+                  :resource (plist-get slot :resource)
+                  :effect (if (eq (plist-get decision :effect) :allow)
+                              "allow"
+                            "deny"))
+                 (unless (yeah-turn-done turn)
+                   (if (eq (plist-get decision :effect) :allow)
+                       (yeah-tools-dispatch (plist-get slot :name) args done)
+                     (funcall done
+                              (yeah-result-error
+                               (or (plist-get decision :reason)
+                                   "the person refused")))))))
+             (yeah-turn-pending-permissions turn)))
+        (yeah-tools-dispatch (plist-get slot :name) args done)))))
 
 (defun yeah-turn--call-spec (turn slot)
   "Return the scheduler call of SLOT: the tool, its arguments, the
@@ -339,34 +382,47 @@ handler and the concurrency the tool asks for."
       (setq i (1+ i)))
     finish))
 
-(defun yeah-turn--settle-batch (turn transport calls runnable results refused settled)
-  "Record the settled batch of TURN and continue it.
-The results are in the order of the CALLS, whatever order the calls
-finished in: the log of a run is read the same way twice."
+(defun yeah-turn--settle-batch (turn transport calls prepared runnable
+                                      results refused settled)
+  "Record the settled batch of TURN and continue it in CALLS request order.
+PREPARED supplies stable ids and structured result details for every tool-end."
   (let ((i 0))
     (dolist (slot runnable)
       (aset results (plist-get slot :index) (aref settled i))
       (setq i (1+ i))))
-  (let ((i 0))
-    (dolist (call calls)
-      (let ((result (aref results i)))
-        (yeah-events-write
-         (yeah-turn-session turn)
-         "tool-end"
-         :tool (yeah-turn--tool-name (nth 0 call))
-         :ok (if (and (not (aref refused i))
-                      (yeah-result-success-p result))
-               t
-             :false)
-         :payload (yeah-result-model-text result)))
-      (setq i (1+ i))))
+  (dolist (slot prepared)
+    (let* ((index (plist-get slot :index))
+           (result (aref results index))
+           (fields
+            (list :tool (plist-get slot :name)
+                  :ok (if (and (not (aref refused index))
+                               (yeah-result-success-p result))
+                          t
+                        :false)
+                  :payload (yeah-result-model-text result)))
+           (details (yeah-result-details result)))
+      (when details
+        (setq fields (append fields (list :details details))))
+      (apply #'yeah-turn--write
+             turn "tool-end"
+             (yeah-turn--context
+              turn (plist-get slot :tool-call-id)
+              (plist-get slot :request-event-id))
+             fields)))
   (let ((finish (yeah-turn--finish-result calls results)))
     (if finish
-        (progn
-          ;; `finish' is the model's completion signal: the run ends
-          ;; with the summary, the model is not asked again.
-          (yeah-events-write (yeah-turn-session turn) "finish"
-                             :summary (yeah-result-model-text finish))
+        (let ((finish-slot
+               (cl-find-if (lambda (slot)
+                             (equal "finish" (plist-get slot :name)))
+                           prepared)))
+          (yeah-turn--write
+           turn "finish"
+           (if finish-slot
+               (yeah-turn--context
+                turn (plist-get finish-slot :tool-call-id)
+                (plist-get finish-slot :request-event-id))
+             (yeah-turn--context turn nil (yeah-turn-turn-event-id turn)))
+           :summary (yeah-result-model-text finish))
           (yeah-turn--tick turn 'tool-end)
           (yeah-turn--tick turn 'budget-ok)
           (yeah-turn--tick turn 'no-tool-calls)
@@ -395,7 +451,7 @@ finished in: the log of a run is read the same way twice."
        (yeah-scheduler-run
         (mapcar (lambda (slot) (yeah-turn--call-spec turn slot)) runnable)
         (lambda (settled)
-          (yeah-turn--settle-batch turn transport calls runnable
+          (yeah-turn--settle-batch turn transport calls prepared runnable
                                     results refused settled)))))))
 
 (defun yeah-turn--answer-text (turn answer transport answerer)
@@ -404,8 +460,10 @@ A plan, and a result that no tool backs, are nudged into the action; a
 result that a tool backs ends the run."
   (yeah-turn--tick turn 'stream-end)
   (yeah-turn--tick turn 'no-tool-calls)
-  (yeah-events-write (yeah-turn-session turn) "assistant-message"
-                     :payload answer)
+  (yeah-turn--write turn "assistant-message"
+                    (yeah-turn--context
+                     turn nil (yeah-turn-turn-event-id turn))
+                    :payload answer)
   (if (and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))
             (or (yeah-turn--plan-p answer)
                 ;; A result that no tool backs is premature: the run
@@ -415,8 +473,10 @@ result that a tool backs ends the run."
       (progn
         (cl-incf (yeah-turn-nudges turn))
         (let ((nudge (yeah-turn--nudge-text turn)))
-          (yeah-events-write (yeah-turn-session turn) "nudge"
-                             :payload nudge)
+          (yeah-turn--write turn "nudge"
+                            (yeah-turn--context
+                             turn nil (yeah-turn-turn-event-id turn))
+                            :payload nudge)
           (setf (yeah-turn-state turn) 'deciding)
           (setf (yeah-turn-states turn)
                 (append (yeah-turn-states turn) (list 'deciding)))
@@ -431,9 +491,11 @@ result that a tool backs ends the run."
              (input (plist-get reported :input))
              (output (plist-get reported :output)))
         (when (or (numberp input) (numberp output))
-          (yeah-events-write (yeah-turn-session turn) "usage"
-                             :input (if (numberp input) input 0)
-                             :output (if (numberp output) output 0)))
+          (yeah-turn--write turn "usage"
+                            (yeah-turn--context
+                             turn nil (yeah-turn-turn-event-id turn))
+                            :input (if (numberp input) input 0)
+                            :output (if (numberp output) output 0)))
         (let ((usage (yeah-context-usage
                       (yeah-context-project (yeah-turn-session turn)))))
           (yeah-context-calibrate
@@ -512,8 +574,9 @@ The ANSWERER is what answers a request for permission."
     (when (eq (yeah-turn-state turn) 'idle)
       (yeah-turn--tick turn 'user-prompt))
     (cl-incf (yeah-turn-turns turn))
-    (yeah-events-write (yeah-turn-session turn) "user-message"
-                       :payload prompt)
+    (setf (yeah-turn-turn-event-id turn)
+          (yeah-turn--write turn "user-message" (yeah-turn--context turn)
+                            :payload prompt))
     (setf (yeah-turn-model-fsm turn)
           (yeah-tools-with-registry (yeah-turn-tools-registry turn)
             (funcall transport prompt
@@ -527,8 +590,12 @@ Return non-nil when an active run was cancelled.  This does not roll back
 completed effects or guarantee termination of process descendants."
   (unless (yeah-turn-done turn)
     (setf (yeah-turn-cancelled turn) t)
-    (yeah-events-write (yeah-turn-session turn) "cancel"
-                       :payload (or reason "cancelled by user"))
+    (yeah-turn--write turn "cancel"
+                      (yeah-turn--context
+                       turn nil (yeah-turn-turn-event-id turn))
+                      :payload (or reason "cancelled by user"))
+    (when-let ((pending (yeah-turn-pending-permissions turn)))
+      (clrhash pending))
     (yeah-turn--mark-done turn 'interrupted)
     (when-let ((fsm (yeah-turn-model-fsm turn)))
       (when (and (fboundp 'gptel-fsm-info) (fboundp 'gptel-abort))

@@ -23,6 +23,7 @@
 (require 'cl-lib)
 (require 'ert)
 (require 'yeah-session)
+(require 'yeah-events)
 
 (defun yeah-session-test--make-tmpdir ()
   "Create a fresh temp directory; return its absolute path.
@@ -237,6 +238,48 @@ the projection tail grows, but the source-of-truth log only grows."
 the load-bearing assertion of the append-only contract."
   (should-not (fboundp 'yeah-session-delete))
   (should-not (fboundp 'yeah-session-rewrite)))
+
+(ert-deftest yeah-session-append-adds-envelope-and-explicit-correlation ()
+  (let* ((tmpdir (yeah-session-test--make-tmpdir))
+         (session (yeah-session-open "envelope" tmpdir)))
+    (unwind-protect
+        (let ((id (yeah-events-write-with-context
+                   session "user-message"
+                   '(:run_id "run-7" :turn_id "run-7-turn-1"
+                     :tool_call_id "run-7-call-1" :parent_event_id 0)
+                   :payload "hello")))
+          (should (= 1 id))
+          (let ((record (car (last (yeah-session-records session)))))
+            (should (= 1 (plist-get record :schema_version)))
+            (should (equal "envelope" (plist-get record :session_id)))
+            (should (stringp (plist-get record :timestamp)))
+            (should (equal "run-7" (plist-get record :run_id)))
+            (should (equal "run-7-turn-1" (plist-get record :turn_id)))
+            (should (equal "run-7-call-1" (plist-get record :tool_call_id)))
+            (should (= 0 (plist-get record :parent_event_id)))
+            (let ((fields (yeah-session-record-fields record)))
+              (should (equal "hello" (plist-get fields :payload)))
+              (should (= 1 (plist-get fields :id)))
+              (should (equal "envelope" (plist-get fields :session_id)))
+              (should (stringp (plist-get fields :timestamp)))
+              (should (equal "run-7-call-1" (plist-get fields :tool_call_id)))
+              (should-not (plist-get fields :schema_version)))))
+      (yeah-session-test--cleanup tmpdir))))
+
+(ert-deftest yeah-session-open-legacy-log-is-byte-identical ()
+  (let* ((tmpdir (yeah-session-test--make-tmpdir))
+         (contents (concat "{\"type\":\"header\",\"id\":0,\"timestamp\":\"old\",\"session_id\":\"legacy\"}\n"
+                           "{\"type\":\"user-message\",\"id\":7,\"payload\":\"old\"}"))
+         (path (yeah-session-test--write-log tmpdir "legacy" contents)))
+    (unwind-protect
+        (let ((session (yeah-session-open "legacy" tmpdir)))
+          (should (= 8 (plist-get session :next-id)))
+          (should (equal "old" (plist-get (nth 1 (yeah-session-records session))
+                                           :payload)))
+          (should-not (plist-get (car (yeah-session-records session))
+                                 :schema_version))
+          (should (equal contents (yeah-session--read-file path))))
+      (yeah-session-test--cleanup tmpdir))))
 
 (provide 'test-yeah-session)
 ;;; test-yeah-session.el ends here

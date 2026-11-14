@@ -26,7 +26,8 @@
   budget
   max-nudges
   frozen-defaults
-  active-turn)
+  active-turn
+  completion-listeners)
 
 (defun yeah-control-new (session &optional transport answerer budget max-nudges frozen)
   "Return a controller for SESSION without starting any work.
@@ -39,7 +40,8 @@ FROZEN is additional serializable configuration recorded with each input."
    :answerer (or answerer #'yeah-approval-policy-decision)
    :budget (or budget yeah-context-default-budget)
    :max-nudges (or max-nudges yeah-turn-default-max-nudges)
-   :frozen-defaults frozen))
+   :frozen-defaults frozen
+   :completion-listeners (make-hash-table :test 'equal)))
 
 (defun yeah-control--frozen (control kind prompt frozen)
   "Build a new KIND input for PROMPT with FROZEN configuration."
@@ -74,6 +76,39 @@ that their words were not used."
                        :reason "the run it was addressed to ended"))
   nil)
 
+(defun yeah-control-add-completion-listener (control input-id callback)
+  "Register runtime CALLBACK for INPUT-ID in CONTROL.
+The callback is memory-only and is never included in frozen input data.
+Multiple listeners run in registration order and are removed before running."
+  (unless (and (stringp input-id) (not (string-empty-p input-id)))
+    (signal 'user-error (list "yeah-control: INPUT-ID must be a nonempty string")))
+  (unless (functionp callback)
+    (signal 'user-error (list "yeah-control: CALLBACK must be a function")))
+  (let ((listeners (or (yeah-control-completion-listeners control)
+                       (setf (yeah-control-completion-listeners control)
+                             (make-hash-table :test 'equal)))))
+    (puthash input-id
+             (append (gethash input-id listeners) (list callback))
+             listeners))
+  callback)
+
+(defun yeah-control--notify-completion (control input &optional turn state)
+  "Notify and remove INPUT's listeners with TURN and terminal STATE."
+  (let* ((input-id (plist-get input :id))
+         (listeners (yeah-control-completion-listeners control))
+         (callbacks (and listeners (gethash input-id listeners)))
+         (completion (list :input-id input-id :input input :turn turn
+                           :state (or state (and turn (yeah-turn-state turn))))))
+    (when listeners
+      (remhash input-id listeners))
+    (dolist (callback callbacks)
+      (condition-case err
+          (funcall callback completion)
+        (error
+         (message "yeah-control completion listener failed: %s"
+                  (error-message-string err)))))
+    completion))
+
 (defun yeah-control--start-next (control)
   "Start the oldest pending ask in CONTROL when no turn is active.
 A steering is not a task: it belongs to a run, and it is delivered at
@@ -94,9 +129,10 @@ Return the active turn or nil when the queue holds no ask."
                     (yeah-control-budget control))
                 (or (plist-get (plist-get input :frozen) :max-nudges)
                     (yeah-control-max-nudges control))
-                (lambda (_turn)
+                (lambda (finished)
                   (setf (yeah-control-active-turn control) nil)
                   (yeah-control--release-steering control)
+                  (yeah-control--notify-completion control input finished)
                   (yeah-control--start-next control))
                 (lambda (_turn)
                   (yeah-control--steering-batch control))
@@ -106,13 +142,27 @@ Return the active turn or nil when the queue holds no ask."
             (setf (yeah-control-active-turn control) turn))
           turn)))))
 
+(defun yeah-control-submit (control prompt &optional frozen on-complete)
+  "Queue PROMPT with FROZEN data and return its persistent input id.
+ON-COMPLETE receives one plist of shape
+`:input-id ID :input INPUT :turn TURN-OR-NIL :state STATE'.  It is runtime
+state only, never serialized with INPUT.  A queued input has its own completion
+notification, and withdrawing it reports state `cancelled' with a nil turn."
+  (let ((input (yeah-input-enqueue
+                (yeah-control-session control)
+                (yeah-control--frozen control 'ask prompt frozen))))
+    (when on-complete
+      (yeah-control-add-completion-listener control (plist-get input :id)
+                                            on-complete))
+    (unless (yeah-control-active-turn control)
+      (yeah-control--start-next control))
+    (plist-get input :id)))
+
 (defun yeah-control-ask (control prompt &optional frozen)
   "Queue PROMPT as an ordinary ask with FROZEN configuration.
-Start it immediately when no turn is active."
-  (yeah-input-enqueue (yeah-control-session control)
-                      (yeah-control--frozen control 'ask prompt frozen))
-  (unless (yeah-control-active-turn control)
-    (yeah-control--start-next control))
+Retain the original return value: CONTROL's active turn, or nil when all work
+finished synchronously.  Use `yeah-control-submit' to obtain the input id."
+  (yeah-control-submit control prompt frozen)
   (yeah-control-active-turn control))
 
 (defun yeah-control-steer (control prompt &optional frozen)
@@ -140,8 +190,10 @@ Steering is delivered after the current tool batch, never between tools."
   (yeah-input-pending (yeah-control-session control)))
 
 (defun yeah-control-withdraw (control id)
-  "Withdraw the pending input identified by ID from CONTROL."
-  (yeah-input-withdraw (yeah-control-session control) id))
+  "Withdraw pending input ID and complete its runtime listeners as cancelled."
+  (when-let ((input (yeah-input-withdraw (yeah-control-session control) id)))
+    (yeah-control--notify-completion control input nil 'cancelled)
+    input))
 
 (defun yeah-control-done-p (control)
   "Return non-nil when CONTROL has no active turn."
