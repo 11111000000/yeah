@@ -9,91 +9,135 @@
 
 ;;; Commentary:
 ;;
-;; The session log was append-only and honest, and its records had no
-;; vocabulary: there was no type for the start of a tool call, for the
-;; end of one, for the request of a permission, for the refusal of one,
-;; for the spend of tokens. A log that cannot be read without knowing
-;; the code that wrote it is a trace, not a specification.
+;; Every record belongs to the declared vocabulary.  Writers validate the
+;; event-specific payload before `yeah-session' adds the common envelope.
+;; Readers continue to accept older records without that envelope.
 ;;
-;; This module gives the log its vocabulary. Every record is one of the
-;; declared events, and it carries the fields its type declares. The
-;; vocabulary is not a description of what happens to be written: writing
-;; an event of an unknown type, or with fields that are not the declared
-;; ones, is refused.
-;;
-;; The log is still append-only, and it is still a log of what happened
-;; rather than a story about it: the order of the records is the order of
-;; the events.
-;;
-;; The task list of a run is a part of this vocabulary: a `todo' event
-;; carries the tasks that were added or changed, so that the list of the
-;; run is what the log says when it is read from the beginning.
+;; `yeah-events-write' retains its original calling convention.
+;; `yeah-events-write-with-context' additionally takes explicit correlation
+;; metadata; no ambient current-run variable is consulted.
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'yeah-session)
 
-(defconst yeah-events--vocabulary
-  '((:type "header"             :fields (:session_id :timestamp))
-    (:type "user-message"       :fields (:payload))
-    (:type "assistant-message"  :fields (:payload))
-    (:type "tool-request"       :fields (:tool :args))
-    (:type "permission-request" :fields (:action :resource))
-    (:type "permission-decision" :fields (:action :resource :effect))
-    (:type "tool-end"           :fields (:tool :ok :payload))
-    (:type "compaction"         :fields (:cut_point :summary :timestamp))
-    (:type "pruning"            :fields (:keep-chars))
-    (:type "steering"           :fields (:payload))
-    (:type "nudge"              :fields (:payload))
-    (:type "cancel"             :fields (:payload))
-    (:type "spawn"              :fields (:child :role :depth))
-    (:type "child-end"          :fields (:child :role :ok :summary))
-    (:type "input-withdrawn"    :fields (:kind :reason))
-    (:type "usage"              :fields (:input :output))
-    (:type "todo"               :fields (:items :operation))
-    (:type "error"              :fields (:payload))
-    (:type "finish"             :fields (:summary)))
-  "The vocabulary of the event log.
+(defconst yeah-events--envelope-required
+  '(:schema_version :session_id :timestamp)
+  "Envelope fields required in new records, except `:id' and `:type'.")
 
-Every record of the log is one of these, and it carries the fields its
-type declares. A record also carries the `:type' that names it and the
-`:id' the log gives it; those two are not among the declared fields.")
+(defconst yeah-events--envelope-optional
+  '(:run_id :turn_id :tool_call_id :parent_event_id)
+  "Optional correlation fields accepted by the context-writing API.")
+
+(defconst yeah-events--vocabulary
+  '((:type "header"
+     :required (:session_id :timestamp))
+    (:type "user-message"
+     :required (:payload))
+    (:type "assistant-message"
+     :required (:payload))
+    (:type "tool-request"
+     :required (:tool :args))
+    (:type "permission-request"
+     :required (:action :resource))
+    (:type "permission-decision"
+     :required (:action :resource :effect))
+    (:type "tool-end"
+     :required (:tool :ok :payload)
+     :optional (:details))
+    (:type "compaction"
+     :required (:cut_point :summary :timestamp))
+    (:type "pruning"
+     :required (:keep-chars))
+    (:type "steering"
+     :required (:payload))
+    (:type "nudge"
+     :required (:payload))
+    (:type "cancel"
+     :required (:payload))
+    (:type "spawn"
+     :required (:child :role :depth))
+    (:type "child-end"
+     :required (:child :role :ok :summary))
+    (:type "input-withdrawn"
+     :required (:kind :reason))
+    (:type "usage"
+     :required (:input :output))
+    (:type "todo"
+     :required (:items :operation))
+    (:type "error"
+     :required (:payload))
+    (:type "finish"
+     :required (:summary)))
+  "The event vocabulary, with required and optional payload fields.")
 
 (defun yeah-events-types ()
   "Return the names of the event types, in the order of the vocabulary."
   (mapcar (lambda (entry) (plist-get entry :type)) yeah-events--vocabulary))
 
 (defun yeah-events-spec (type)
-  "Return the specification of the event TYPE, or nil when it is unknown."
-  (cl-find-if (lambda (entry) (equal (plist-get entry :type) type))
-              yeah-events--vocabulary))
-
-(defun yeah-events--same-fields-p (a b)
-  "Non-nil when the field names A and B are the same, in any order."
-  (equal (sort (copy-sequence a) #'string<)
-         (sort (copy-sequence b) #'string<)))
+  "Return the specification of event TYPE, or nil when it is unknown.
+`:required' and `:optional' describe event-specific writer fields.
+The compatibility `:fields' value also includes the required on-disk envelope,
+excluding `:id' and `:type', for readers that validate complete records."
+  (when-let ((entry (cl-find-if
+                     (lambda (candidate)
+                       (equal (plist-get candidate :type) type))
+                     yeah-events--vocabulary)))
+    (let ((required (append yeah-events--envelope-required
+                            (plist-get entry :required))))
+      (plist-put (copy-sequence entry) :fields
+                 (seq-uniq (copy-sequence required))))))
 
 (defun yeah-events--keys (plist)
-  "Return the keys of the plist PLIST, in the order they are in."
-  (let ((keys nil) (rest plist))
+  "Return the keys of PLIST in their original order."
+  (unless (and (proper-list-p plist) (zerop (% (length plist) 2)))
+    (signal 'user-error (list "yeah-events: fields must be a proper plist")))
+  (let ((keys nil)
+        (rest plist))
     (while rest
-      (setq keys (cons (car rest) keys))
+      (push (car rest) keys)
       (setq rest (cddr rest)))
     (nreverse keys)))
 
 (defun yeah-events--check (type fields)
-  "Signal a `user-error' unless TYPE is known and FIELDS are its fields.
-FIELDS is a plist of keyword pairs."
-  (unless (yeah-events-spec type)
-    (signal 'user-error
-            (list (format "yeah-events: unknown event type: %S" type))))
-  (let* ((declared (plist-get (yeah-events-spec type) :fields))
-         (given (yeah-events--keys fields)))
-    (unless (yeah-events--same-fields-p declared given)
+  "Signal `user-error' unless TYPE accepts the payload FIELDS."
+  (let ((spec (yeah-events-spec type)))
+    (unless spec
       (signal 'user-error
-              (list (format "yeah-events: the event %S declares %S and was given %S"
-                            type declared given))))))
+              (list (format "yeah-events: unknown event type: %S" type))))
+    (let* ((required (plist-get spec :required))
+           (optional (plist-get spec :optional))
+           (given (yeah-events--keys fields))
+           (missing (seq-remove (lambda (key) (memq key given)) required))
+           (unknown (seq-remove (lambda (key) (memq key (append required optional)))
+                                given)))
+      (when (or missing unknown)
+        (signal 'user-error
+                (list (format "yeah-events: %S has missing fields %S and unknown fields %S"
+                              type missing unknown)))))))
+
+(defun yeah-events--context (context)
+  "Validate CONTEXT and return its non-nil correlation fields in canonical order."
+  (dolist (key (yeah-events--keys context))
+    (unless (memq key yeah-events--envelope-optional)
+      (signal 'user-error
+              (list (format "yeah-events: unknown context field %S" key)))))
+  (dolist (key '(:run_id :turn_id :tool_call_id))
+    (when-let ((value (plist-get context key)))
+      (unless (and (stringp value) (not (string-empty-p value)))
+        (signal 'user-error
+                (list (format "yeah-events: %S must be a nonempty string" key))))))
+  (when-let ((parent (plist-get context :parent_event_id)))
+    (unless (and (integerp parent) (>= parent 0))
+      (signal 'user-error
+              (list "yeah-events: :parent_event_id must be a nonnegative integer"))))
+  (let ((normalized nil))
+    (dolist (key yeah-events--envelope-optional)
+      (when (plist-get context key)
+        (setq normalized (append normalized (list key (plist-get context key))))))
+    normalized))
 
 (defun yeah-events-boolean-p (value)
   "Return non-nil when VALUE is a true boolean of a journal record.
@@ -104,22 +148,38 @@ reads back as nil.  Both mean the same thing: not true."
 
 (defvar yeah-events-write-functions nil
   "Functions called with (SESSION TYPE FIELDS ID) after a validated append.
+FIELDS contains the event payload and any explicit correlation fields.
 Observers are observational: errors are reported and do not stop other
 listeners or the write.")
+
+(defun yeah-events--write (session type context fields)
+  "Append TYPE with FIELDS and CONTEXT to SESSION and notify observers."
+  (yeah-events--check type fields)
+  (let* ((normalized (yeah-events--context context))
+         (id (yeah-session-append session (cons :type (cons type fields))
+                                  normalized)))
+    (dolist (listener yeah-events-write-functions)
+      (condition-case err
+          (funcall listener session type (append fields normalized) id)
+        (error
+         (message "yeah-events listener failed: %s" (error-message-string err)))))
+    id))
 
 ;;;###autoload
 (defun yeah-events-write (session type &rest fields)
   "Append an event of TYPE with FIELDS to the log of SESSION.
-FIELDS are keyword pairs and must be exactly the fields TYPE declares.
-Return the identifier of the new record."
-  (yeah-events--check type fields)
-  (let ((id (yeah-session-append session (cons :type (cons type fields)))))
-    (dolist (listener yeah-events-write-functions)
-      (condition-case err
-          (funcall listener session type fields id)
-        (error
-         (message "yeah-events listener failed: %s" (error-message-string err)))))
-    id))
+FIELDS are the required and optional payload fields declared for TYPE.
+Return the monotonic integer identifier of the new record."
+  (yeah-events--write session type nil fields))
+
+;;;###autoload
+(defun yeah-events-write-with-context (session type context &rest fields)
+  "Append TYPE with FIELDS and explicit correlation CONTEXT to SESSION.
+CONTEXT accepts only `:run_id', `:turn_id', `:tool_call_id' and
+`:parent_event_id'.  Nil optional values are omitted.  The common schema,
+session, id and timestamp envelope is always supplied by `yeah-session'.
+Return the monotonic integer identifier of the new record."
+  (yeah-events--write session type context fields))
 
 (provide 'yeah-events)
 ;;; yeah-events.el ends here

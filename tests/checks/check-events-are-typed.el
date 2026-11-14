@@ -89,8 +89,8 @@
         (push (format "the log holds the wrong events: %S"
                       (yeah-check--types records))
               failures))
-      ;; Every record is a declared event, and it carries the fields its
-      ;; type declares.
+      ;; Every record has the common envelope, its required payload fields,
+      ;; and only declared optional payload/correlation fields.
       (dolist (record records)
         (let* ((type (plist-get record :type))
                (spec (yeah-events-spec type)))
@@ -98,12 +98,18 @@
             (push (format "the log holds an event of an unknown type: %S" type)
                   failures))
           (when spec
-            (let ((declared (plist-get spec :fields))
-                  (given (delq :id (delq :type (yeah-check--keys record)))))
-              (unless (equal (sort (copy-sequence declared) #'string<)
-                             (sort (copy-sequence given) #'string<))
-                (push (format "the event %S declares %S and was given %S"
-                              type declared given)
+            (let* ((declared (plist-get spec :fields))
+                   (optional (append '(:run_id :turn_id :tool_call_id
+                                       :parent_event_id)
+                                     (plist-get spec :optional)))
+                   (given (delq :id (delq :type (yeah-check--keys record))))
+                   (missing (seq-remove (lambda (key) (memq key given)) declared))
+                   (unknown (seq-remove (lambda (key)
+                                          (memq key (append declared optional)))
+                                        given)))
+              (when (or missing unknown)
+                (push (format "the event %S misses %S and has unknown fields %S"
+                              type missing unknown)
                       failures))))))
       ;; An event of an unknown type is refused.
       (condition-case nil
@@ -123,8 +129,12 @@
         (unless spec
           (push "the vocabulary has no todo event" failures))
         (when spec
+          (unless (equal (plist-get spec :required) '(:items :operation))
+            (push (format "the todo payload declares %S"
+                          (plist-get spec :required))
+                  failures))
           (unless (equal (sort (copy-sequence (plist-get spec :fields)) #'string<)
-                         '(:items :operation))
+                         '(:items :operation :schema_version :session_id :timestamp))
             (push (format "the todo event declares %S" (plist-get spec :fields))
                   failures)))
         ;; A todo event with the fields it declares is accepted.

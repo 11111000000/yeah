@@ -27,6 +27,9 @@
   "Yeah append-only session log."
   :group 'yeah)
 
+(defconst yeah-session-schema-version 1
+  "Schema version written in every newly appended journal record.")
+
 (defcustom yeah-session--root nil
   "Override the root below which `sessions/<id>.jsonl' is stored.
 When nil, sessions are stored below `default-directory'.  Tests can use a
@@ -150,6 +153,7 @@ Returns a plist of shape:
                 (display-warning 'yeah-session message :warning))))
           (setq records (nreverse records)))
       (let* ((header (list :type "header"
+                           :schema_version yeah-session-schema-version
                            :id 0
                            :timestamp (format-time-string "%Y-%m-%dT%H:%M:%S%z")
                            :session_id session-id))
@@ -178,10 +182,29 @@ Returns a plist of shape:
           (setq max rid))))
     (1+ max)))
 
-(defun yeah-session-append (session record)
-  "Append RECORD (a plist `:type :timestamp :payload') to SESSION.
-Writes one JSONL line, appends the parsed record (with a fresh
-`:id') to `:records', and returns the new record id (an integer)."
+(defun yeah-session--context (context)
+  "Validate and normalize optional correlation CONTEXT for a new record."
+  (unless (and (proper-list-p context) (zerop (% (length context) 2)))
+    (signal 'user-error (list "yeah-session-append: context must be a plist")))
+  (let ((allowed '(:run_id :turn_id :tool_call_id :parent_event_id))
+        (normalized nil))
+    (dolist (key allowed)
+      (when-let ((value (plist-get context key)))
+        (setq normalized (append normalized (list key value)))))
+    (let ((rest context))
+      (while rest
+        (unless (memq (car rest) allowed)
+          (signal 'user-error
+                  (list (format "yeah-session-append: unknown context field %S"
+                                (car rest)))))
+        (setq rest (cddr rest))))
+    normalized))
+
+(defun yeah-session-append (session record &optional context)
+  "Append RECORD to SESSION with a fresh common envelope.
+CONTEXT may contain `:run_id', `:turn_id', `:tool_call_id' and
+`:parent_event_id'.  Existing records are never rewritten.  Return the new
+monotonic integer id."
   (unless (and (consp session) (plist-get session :path))
     (signal 'user-error
             (list (format "yeah-session-append: not a session %S" session))))
@@ -190,9 +213,18 @@ Writes one JSONL line, appends the parsed record (with a fresh
             (list (format "yeah-session-append: record missing :type %S" record))))
   (let* ((path (plist-get session :path))
          (next (yeah-session--next-id (plist-get session :records)))
-         (with-id (plist-put (copy-sequence record) :id next))
-         (serialized (yeah-session--serialize with-id)))
-    (yeah-session--write-line path serialized)
+         (metadata (yeah-session--context context))
+         (with-id (plist-put (copy-sequence record) :id next)))
+    (setq with-id (plist-put with-id :schema_version yeah-session-schema-version))
+    (setq with-id (plist-put with-id :session_id (plist-get session :id)))
+    (unless (plist-member with-id :timestamp)
+      (setq with-id
+            (plist-put with-id :timestamp
+                       (format-time-string "%Y-%m-%dT%H:%M:%S%z"))))
+    (dolist (key '(:run_id :turn_id :tool_call_id :parent_event_id))
+      (when (plist-member metadata key)
+        (setq with-id (plist-put with-id key (plist-get metadata key)))))
+    (yeah-session--write-line path (yeah-session--serialize with-id))
     (plist-put session :records (append (plist-get session :records)
                                         (list with-id)))
     (plist-put session :next-id (1+ next))
@@ -217,14 +249,20 @@ RECORDS is the in-memory record list in append order."
     latest))
 
 (defun yeah-session-record-fields (record)
-  "Return the fields of the journal RECORD without the pair that names its type.
-The record is the one the journal holds: `(:type TYPE . FIELDS)'."
+  "Return RECORD's payload and correlation fields, excluding type and schema.
+Correlation remains visible to the placement projection's volatile-field
+filter; the constant schema version does not change semantic event equality."
   (let ((rest record)
         (fields nil))
     (while rest
       (when (eq (car rest) :type)
-        (setq fields (cddr rest)))
-      (setq rest (cddr rest)))
+        (setq rest (cddr rest))
+        (while rest
+          (unless (eq (car rest) :schema_version)
+            (setq fields (append fields (list (car rest) (cadr rest)))))
+          (setq rest (cddr rest))))
+      (when rest
+        (setq rest (cddr rest))))
     fields))
 
 (defun yeah-session-project (session)

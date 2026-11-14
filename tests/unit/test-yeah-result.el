@@ -5,6 +5,7 @@
 ;;; Code:
 
 (require 'ert)
+(require 'json)
 (require 'yeah-result)
 
 (ert-deftest yeah-result-success-has-provider-safe-content ()
@@ -39,6 +40,25 @@
   (should (equal "legacy" (yeah-result-model-text "legacy")))
   (should (equal "Error: old"
                  (yeah-result-model-text '(:yeah-error "Error: old")))))
+
+(ert-deftest yeah-result-details-are-structured-and-json-safe ()
+  (let* ((result (yeah-result-ok "short" '(:tick 7 :status ready :ids ("a" "b"))
+                                 t '("/tmp/full")))
+         (details (yeah-result-details result)))
+    (should (eq t (plist-get details :truncated)))
+    (should (equal ["/tmp/full"] (plist-get details :artifacts)))
+    (should (= 7 (plist-get (plist-get details :metadata) :tick)))
+    (should (equal "ready" (plist-get (plist-get details :metadata) :status)))
+    (should (equal ["a" "b"]
+                   (plist-get (plist-get details :metadata) :ids)))
+    (should (stringp (json-serialize details)))
+    (should (equal (concat "short\n[tick: 7]\n[Output truncated.]"
+                           "\n[Full output: /tmp/full]")
+                   (yeah-result-model-text result)))))
+
+(ert-deftest yeah-result-details-omit-legacy-and-empty-metadata ()
+  (should-not (yeah-result-details "legacy"))
+  (should-not (yeah-result-details (yeah-result-ok "plain"))))
 
 (provide 'test-yeah-result)
 ;;; test-yeah-result.el ends here

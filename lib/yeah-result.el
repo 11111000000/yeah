@@ -127,5 +127,53 @@ legacy strings and scheduler error plists are accepted for compatibility."
    ((stringp value) value)
    (t (format "%S" value))))
 
+(defun yeah-result--json-safe (value)
+  "Return a JSON-safe representation of result metadata VALUE."
+  (cond
+   ((or (stringp value) (integerp value) (eq value t) (eq value :false)
+        (null value))
+    value)
+   ((floatp value)
+    (if (or (isnan value) (= value 1.0e+INF) (= value -1.0e+INF))
+        (format "%S" value)
+      value))
+   ((vectorp value)
+    (apply #'vector (mapcar #'yeah-result--json-safe value)))
+   ((and (proper-list-p value)
+         (zerop (% (length value) 2))
+         (cl-loop for key in value by #'cddr always (keywordp key)))
+    (let ((rest value)
+          (result nil))
+      (while rest
+        (setq result
+              (append result
+                      (list (car rest) (yeah-result--json-safe (cadr rest)))))
+        (setq rest (cddr rest)))
+      result))
+   ((proper-list-p value)
+    (apply #'vector (mapcar #'yeah-result--json-safe value)))
+   ((symbolp value)
+    (symbol-name value))
+   (t
+    (format "%S" value))))
+
+(defun yeah-result-details (value)
+  "Return JSON-safe UI details for a structured result VALUE.
+The shape is `(:truncated BOOL :artifacts VECTOR :metadata DATA)', with the
+last two keys omitted when absent.  Nil is returned for legacy values and
+for structured results with no truncation, artifacts or metadata.  This
+projection does not change `yeah-result-model-text'."
+  (when (yeah-result-p value)
+    (let ((truncated (plist-get value :truncated))
+          (artifacts (plist-get value :artifacts))
+          (metadata (plist-get value :metadata)))
+      (when (or truncated artifacts metadata)
+        (append
+         (list :truncated (if truncated t :false))
+         (when artifacts
+           (list :artifacts (yeah-result--json-safe artifacts)))
+         (when metadata
+           (list :metadata (yeah-result--json-safe metadata))))))))
+
 (provide 'yeah-result)
 ;;; yeah-result.el ends here

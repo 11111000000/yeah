@@ -361,5 +361,277 @@ does not bring it back."
                            (yeah-session-records session))))
       (ignore-errors (delete-directory root t t)))))
 
+(ert-deftest yeah-turn-parallel-same-name-calls-have-stable-correlation ()
+  (yeah-control-test--with-tools
+    (let* ((root (make-temp-file "yeah-correlation" t))
+           (session (yeah-session-open "correlation" root))
+           (callbacks nil)
+           (continued 0))
+      (unwind-protect
+          (progn
+            (yeah-tools-register
+             (list :name "probe" :description "parallel probe"
+                   :input '((:name "path" :type string)) :async t
+                   :handler (lambda (path done)
+                              (push (cons (car path) done) callbacks))))
+            (let* ((transport
+                    (lambda (_prompt callback)
+                      (let ((continuation
+                             (lambda (_value)
+                               (cl-incf continued)
+                               (when (= continued 2)
+                                 (funcall callback "finished")))))
+                        (funcall callback
+                                 (list 'tool-call
+                                       (list (list :name "probe") '("a") continuation)
+                                       (list (list :name "probe") '("b") continuation))))))
+                   (turn (yeah-turn-run session "parallel" transport nil 60000 0)))
+              (should (= 2 (length callbacks)))
+              (funcall (cdr (assoc "b" callbacks)) "second")
+              (should-not (cl-some (lambda (record)
+                                     (equal "tool-end" (plist-get record :type)))
+                                   (yeah-session-records session)))
+              (funcall (cdr (assoc "a" callbacks)) "first")
+              (should (yeah-turn-done turn))
+              (let* ((records (yeah-session-records session))
+                     (user (cl-find-if (lambda (record)
+                                         (equal "user-message" (plist-get record :type)))
+                                       records))
+                     (requests (cl-remove-if-not
+                                (lambda (record)
+                                  (equal "tool-request" (plist-get record :type)))
+                                records))
+                     (permissions (cl-remove-if-not
+                                   (lambda (record)
+                                     (equal "permission-request"
+                                            (plist-get record :type)))
+                                   records))
+                     (decisions (cl-remove-if-not
+                                 (lambda (record)
+                                   (equal "permission-decision"
+                                          (plist-get record :type)))
+                                 records))
+                     (ends (cl-remove-if-not
+                            (lambda (record)
+                              (equal "tool-end" (plist-get record :type)))
+                            records)))
+                (dotimes (index 2)
+                  (let ((request (nth index requests))
+                        (permission (nth index permissions))
+                        (decision (nth index decisions))
+                        (end (nth index ends)))
+                    (should (equal (format "%s-call-%d" (yeah-turn-id turn)
+                                           (1+ index))
+                                   (plist-get request :tool_call_id)))
+                    (should (equal (plist-get user :id)
+                                   (plist-get request :parent_event_id)))
+                    (should (equal (plist-get request :tool_call_id)
+                                   (plist-get permission :tool_call_id)))
+                    (should (equal (plist-get request :tool_call_id)
+                                   (plist-get decision :tool_call_id)))
+                    (should (equal (plist-get request :tool_call_id)
+                                   (plist-get end :tool_call_id)))
+                    (should (equal (plist-get request :id)
+                                   (plist-get permission :parent_event_id)))
+                    (should (equal (plist-get permission :id)
+                                   (plist-get decision :parent_event_id)))
+                    (should (equal (plist-get request :id)
+                                   (plist-get end :parent_event_id)))
+                    (should (equal (plist-get request :run_id)
+                                   (plist-get end :run_id)))
+                    (should (equal (plist-get request :turn_id)
+                                   (plist-get end :turn_id))))))))
+        (ignore-errors (delete-directory root t t))))))
+
+(ert-deftest yeah-turn-deferred-permission-resume-logs-final-decision-once ()
+  (yeah-control-test--with-tools
+    (let* ((root (make-temp-file "yeah-deferred" t))
+           (session (yeah-session-open "deferred" root))
+           (seen-request nil)
+           (dispatched 0))
+      (unwind-protect
+          (progn
+            (yeah-tools-register
+             (list :name "probe" :description "probe" :input nil
+                   :handler (lambda ()
+                              (cl-incf dispatched)
+                              "ok")))
+            (let* ((answerer
+                    (lambda (request)
+                      (setq seen-request request)
+                      (list :defer "permission-1")))
+                   (turn
+                    (yeah-turn-run
+                     session "wait"
+                     (lambda (_prompt callback)
+                       (funcall callback
+                                (yeah-control-test--answer
+                                 "probe" nil
+                                 (lambda (_value)
+                                   (funcall callback "finished")))))
+                     answerer 60000 0)))
+              (should (= 0 dispatched))
+              (should (eq 'awaiting-tool (yeah-turn-state turn)))
+              (yeah-turn-resume-permission
+               turn "permission-1" (list :effect :allow :reply :once))
+              (yeah-turn-resume-permission
+               turn "permission-1" (list :effect :deny :reply :reject))
+              (should (= 1 dispatched))
+              (should (yeah-turn-done turn))
+              (let* ((records (yeah-session-records session))
+                     (request (cl-find-if
+                               (lambda (record)
+                                 (equal "tool-request" (plist-get record :type)))
+                               records))
+                     (decisions (cl-remove-if-not
+                                 (lambda (record)
+                                   (equal "permission-decision"
+                                          (plist-get record :type)))
+                                 records))
+                     (end (cl-find-if
+                           (lambda (record)
+                             (equal "tool-end" (plist-get record :type)))
+                           records))
+                     (tool-call-id (plist-get request :tool_call_id)))
+                (should (equal tool-call-id
+                               (plist-get seen-request :tool-call-id)))
+                (should (= 2 (length decisions)))
+                (should (equal "defer" (plist-get (nth 0 decisions) :effect)))
+                (should (equal "allow" (plist-get (nth 1 decisions) :effect)))
+                (should (equal tool-call-id
+                               (plist-get (nth 0 decisions) :tool_call_id)))
+                (should (equal tool-call-id
+                               (plist-get (nth 1 decisions) :tool_call_id)))
+                (should (equal tool-call-id (plist-get end :tool_call_id)))
+                (should (equal (plist-get (nth 0 decisions) :id)
+                               (plist-get (nth 1 decisions) :parent_event_id)))
+                (should (equal (plist-get request :id)
+                               (plist-get end :parent_event_id))))))
+        (ignore-errors (delete-directory root t t))))))
+
+(ert-deftest yeah-turn-cancel-before-deferred-response-prevents-dispatch ()
+  (yeah-control-test--with-tools
+    (let* ((root (make-temp-file "yeah-cancel-deferred" t))
+           (session (yeah-session-open "cancel-deferred" root))
+           (dispatched 0))
+      (unwind-protect
+          (progn
+            (yeah-tools-register
+             (list :name "probe" :description "probe" :input nil
+                   :handler (lambda ()
+                              (cl-incf dispatched)
+                              "must not run")))
+            (let ((turn
+                   (yeah-turn-run
+                    session "wait"
+                    (lambda (_prompt callback)
+                      (funcall callback
+                               (yeah-control-test--answer "probe" nil nil)))
+                    (lambda (_request) (list :defer "permission-cancel"))
+                    60000 0)))
+              (yeah-turn-cancel turn "stop before permission")
+              (yeah-turn-resume-permission
+               turn "permission-cancel" (list :effect :allow :reply :once))
+              (should (= 0 dispatched))
+              (should (eq 'interrupted (yeah-turn-state turn)))
+              (should-not (cl-some
+                           (lambda (record)
+                             (equal "tool-end" (plist-get record :type)))
+                           (yeah-session-records session)))
+              (should (= 1 (cl-count-if
+                            (lambda (record)
+                              (equal "permission-decision"
+                                     (plist-get record :type)))
+                            (yeah-session-records session))))))
+        (ignore-errors (delete-directory root t t))))))
+
+(ert-deftest yeah-turn-tool-end-carries-truthful-result-details ()
+  (yeah-control-test--with-tools
+    (let* ((root (make-temp-file "yeah-result-details" t))
+           (session (yeah-session-open "result-details" root)))
+      (unwind-protect
+          (progn
+            (yeah-tools-register
+             (list :name "probe" :description "probe" :input nil
+                   :handler (lambda ()
+                              (yeah-result-ok "short" '(:tick 7) t
+                                              '("/tmp/full")))))
+            (let ((turn
+                   (yeah-turn-run
+                    session "details"
+                    (lambda (_prompt callback)
+                      (funcall callback
+                               (yeah-control-test--answer
+                                "probe" nil
+                                (lambda (_value)
+                                  (funcall callback "finished")))))
+                    nil 60000 0)))
+              (should (yeah-turn-done turn))
+              (let* ((end (cl-find-if
+                           (lambda (record)
+                             (equal "tool-end" (plist-get record :type)))
+                           (yeah-session-records session)))
+                     (details (plist-get end :details)))
+                (should (eq t (plist-get details :truncated)))
+                (should (equal ["/tmp/full"] (plist-get details :artifacts)))
+                (should (= 7 (plist-get (plist-get details :metadata) :tick)))
+                (should (equal (concat "short\n[tick: 7]\n[Output truncated.]"
+                                       "\n[Full output: /tmp/full]")
+                               (plist-get end :payload))))))
+        (ignore-errors (delete-directory root t t))))))
+
+(ert-deftest yeah-control-submit-completes-each-queued-input ()
+  (let* ((root (make-temp-file "yeah-submit" t))
+         (yeah-input-directory root)
+         (session (yeah-session-open "submit" root))
+         (model-callbacks nil)
+         (completions nil)
+         (control nil))
+    (unwind-protect
+        (progn
+          (setq control
+                (yeah-control-new
+                 session
+                 (lambda (prompt callback)
+                   (push (cons prompt callback) model-callbacks))
+                 nil 60000 0))
+          (let ((first (yeah-control-submit
+                        control "first" nil
+                        (lambda (completion) (push completion completions))))
+                (second nil)
+                (third nil))
+            (setq second
+                  (yeah-control-submit
+                   control "second" nil
+                   (lambda (completion) (push completion completions))))
+            (setq third
+                  (yeah-control-submit
+                   control "third" nil
+                   (lambda (completion) (push completion completions))))
+            (should (and (stringp first) (stringp second) (stringp third)))
+            (should (= 2 (length (yeah-control-pending control))))
+            (dolist (input (yeah-control-pending control))
+              (should (yeah-input--serializable-p (plist-get input :frozen))))
+            (yeah-control-withdraw control third)
+            (let ((withdrawn (cl-find third completions
+                                      :key (lambda (completion)
+                                             (plist-get completion :input-id))
+                                      :test #'equal)))
+              (should (eq 'cancelled (plist-get withdrawn :state)))
+              (should-not (plist-get withdrawn :turn)))
+            (funcall (cdr (assoc "first" model-callbacks)) "first done")
+            (should (assoc "second" model-callbacks))
+            (funcall (cdr (assoc "second" model-callbacks)) "second done")
+            (should (= 3 (length completions)))
+            (dolist (id (list first second))
+              (let ((completion (cl-find id completions
+                                         :key (lambda (value)
+                                                (plist-get value :input-id))
+                                         :test #'equal)))
+                (should (eq 'completed (plist-get completion :state)))
+                (should (plist-get completion :turn))))
+            (should (yeah-control-done-p control))))
+      (ignore-errors (delete-directory root t t)))))
+
 (provide 'test-yeah-control)
 ;;; test-yeah-control.el ends here
