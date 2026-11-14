@@ -724,7 +724,10 @@ Stages 0–7 are implemented offline.  Under the primary-deployment decision
 3. ~~a third-party ACP client driving the wire end to end~~ **partly done
    on 2026-11-12**: acp.el drives the wire end to end with a fake model
    (and the check found a real defect); a real editor against a live
-   provider is open (Stage 5);
+   provider is open (Stage 5). **The service path itself passed with a
+   live model on 2026-11-13** (tests/live/live-service-path.el: clean
+   service, wire-approved write, file created; one intermittent
+   provider-side refusal recorded);
 4. ~~the bridge verified against a live Emacs server~~ **done on
    2026-11-12** (a real daemon; the channel question is answered) (Stage 6);
 5. ~~concurrent sessions in one service Emacs~~ **done on 2026-11-12**:
