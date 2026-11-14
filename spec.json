@@ -1,1010 +1,1292 @@
 {
-  "schema_version": 5,
-  "goal": {
-    "text": "Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client",
-    "scope": [
-      "lib/", "tests/", "scripts/", "schemas/", "docs/", "AGENTS.md",
-      "README.md", "ELISP_BEST_PRACTICES.md", "site/", "install/"
-    ],
-    "by": "p.b.kosov@yandex.ru",
-    "at": 1794485971,
-    "reason": null
-  },
-  "claims": [
+ "schema_version": 5,
+ "goal": {
+  "text": "Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client",
+  "scope": [
+   "lib/",
+   "tests/",
+   "scripts/",
+   "schemas/",
+   "docs/",
+   "AGENTS.md",
+   "README.md",
+   "ELISP_BEST_PRACTICES.md",
+   "site/",
+   "install/"
+  ],
+  "by": "p.b.kosov@yandex.ru",
+  "at": 1794485971,
+  "reason": null
+ },
+ "claims": [
+  {
+   "id": "lib-byte-compiles-clean",
+   "text": "every file under lib/ byte-compiles without errors and without warnings",
+   "scope": [
+    "lib/",
+    "scripts/dev"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
     {
-      "id": "lib-byte-compiles-clean",
-      "text": "every file under lib/ byte-compiles without errors and without warnings",
-      "scope": [ "lib/", "scripts/dev" ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        { "kind": "verifier", "spec": "./scripts/dev byte-compile-all" }
-      ],
-      "falsifier": "the byte-compilation of lib/ fails or reports a warning",
-      "register": "fact",
-      "control": "printf '(defun yeah-broken (x)\\n' >> lib/yeah-state.el",
-      "waiver": null
-    },
-    {
-      "id": "unit-tests-pass",
-      "text": "all ERT unit tests pass",
-      "scope": [ "lib/", "tests/unit/" ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/*.el" }
-      ],
-      "falsifier": "an ERT unit test fails",
-      "register": "fact",
-      "control": "sed -i 's|(/ cjk 2.0)|(/ cjk 1.0)|' lib/yeah-context.el",
-      "waiver": null
-    },
-    {
-      "id": "wire-cancel-preempts",
-      "text": "a session/cancel on the socket transport stops a running prompt",
-      "scope": [
-        "lib/yeah-acp.el", "lib/yeah-wire-socket.el",
-        "tests/checks/check-wire-cancel-preempts.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-wire-cancel-preempts.el"
-        }
-      ],
-      "falsifier": "a cancel that arrives during a running prompt is read only after the prompt settles",
-      "register": "fact",
-      "control": "sed -i 's/(yeah-turn-cancel turn \"cancelled by ACP client\")/(progn)/' lib/yeah-acp.el",
-      "waiver": null
-    },
-    {
-      "id": "bridge-live-server",
-      "text": "the emacsclient bridge reads and edits the live buffers of a real Emacs server",
-      "scope": [
-        "lib/yeah-bridge.el", "tests/checks/check-bridge-live-server.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-bridge-live-server.el"
-        }
-      ],
-      "falsifier": "the bridge is checked only against a stub, or a live read returns the wrong text",
-      "register": "fact",
-      "control": "sed -i 's/(yeah-bridge--decode (plist-get result :output))/\"wrong-text\"/' lib/yeah-bridge.el",
-      "waiver": null
-    },
-    {
-      "id": "concurrent-sessions",
-      "text": "two sessions in one Emacs run at once without cross-talk, and cancelling one leaves the other",
-      "scope": [
-        "lib/yeah-run.el", "lib/yeah-session.el", "lib/yeah-turn.el",
-        "tests/checks/check-concurrent-sessions.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-concurrent-sessions.el"
-        }
-      ],
-      "falsifier": "an event of one run lands in the journal of the other",
-      "register": "fact",
-      "control": "sed -i 's/\"answer-b\"/\"answer-a\"/' tests/checks/check-concurrent-sessions.el",
-      "waiver": null
-    },
-    {
-      "id": "wire-stdio",
-      "text": "the ACP and MCP servers answer over stdio with the real protocol",
-      "scope": [
-        "lib/yeah-acp.el", "lib/yeah-mcp.el",
-        "tests/checks/check-wire-speaks-over-stdio.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-wire-speaks-over-stdio.el"
-        }
-      ],
-      "falsifier": "a stdio server does not answer or answers with the wrong protocol",
-      "register": "fact",
-      "control": "sed -i 's/(defconst yeah-acp--protocol-version 1/(defconst yeah-acp--protocol-version 2/' lib/yeah-acp.el",
-      "waiver": null
-    },
-    {
-      "id": "runtime-stays-responsive",
-      "text": "a 10 MiB token estimate does not block the event loop beyond a 100 ms timer",
-      "scope": [
-        "lib/yeah-context.el",
-        "tests/checks/check-runtime-stays-responsive.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-runtime-stays-responsive.el"
-        }
-      ],
-      "falsifier": "the estimate walks the text character by character and the timer fires seconds late",
-      "register": "fact",
-      "control": "sed -i 's|(how-many yeah-context--cjk-regexp)|(progn (dotimes (_ 4000000) (+ 1 1)) 0)|' lib/yeah-context.el",
-      "waiver": null
-    },
-    {
-      "id": "product-installs",
-      "text": "the package entry declares the supported Emacs and gptel versions, and the bootstrap installs from lib/ with a pinned gptel",
-      "scope": [
-        "lib/yeah.el", "install/yeah-bootstrap.el",
-        "tests/checks/check-product-installs.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-product-installs.el"
-        }
-      ],
-      "falsifier": "the package loses its version declaration or the bootstrap its lib layout",
-      "register": "fact",
-      "control": "sed -i '/Package-Requires/d' lib/yeah.el",
-      "waiver": null
-    },
-    {
-      "id": "run-registries-are-isolated",
-      "text": "a run starts from a snapshot of the registry; a tool one run registers is not advertised to another run or the shared registry",
-      "scope": [
-        "lib/yeah-tools.el", "lib/yeah-turn.el", "lib/yeah-run.el",
-        "lib/yeah-acp.el", "tests/checks/check-run-registries.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-run-registries.el"
-        }
-      ],
-      "falsifier": "a tool one run registers appears in the shared registry or in another run",
-      "register": "fact",
-      "control": "sed -i 's|(puthash name spec (yeah-tools--active-registry))|(puthash name spec yeah-tools--registry)|' lib/yeah-tools.el",
-      "waiver": null
-    },
-    {
-      "id": "service-lifecycle",
-      "text": "a service Emacs starts, serves a prompt over the socket, writes the turn to its journal and stops",
-      "scope": [
-        "lib/yeah-service.el", "lib/yeah-acp.el", "lib/yeah-wire-socket.el",
-        "tests/checks/check-service-lifecycle.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-service-lifecycle.el"
-        }
-      ],
-      "falsifier": "the service does not answer, or the journal has no turn",
-      "register": "fact",
-      "control": "sed -i 's|(yeah-acp-serve-socket %S %s)|(ignore)|' lib/yeah-service.el",
-      "waiver": null
-    },
-    {
-      "id": "client-drives-service",
-      "text": "the editor client connects to a service Emacs and drives a prompt over the socket, seeing the streamed updates",
-      "scope": [
-        "lib/yeah-client.el", "lib/yeah-service.el",
-        "tests/checks/check-client-drives-service.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-client-drives-service.el"
-        }
-      ],
-      "falsifier": "the client cannot connect, or the prompt is not answered, or no update arrives",
-      "register": "fact",
-      "control": "sed -i 's|(and id (plist-get message :result))|nil|' lib/yeah-client.el",
-      "waiver": null
-    },
-    {
-      "id": "service-ui-drives-service",
-      "text": "M-x yeah-service opens a buffer that drives a service Emacs: the question, the streamed answer and the stop reason are rendered",
-      "scope": [
-        "lib/yeah-service-ui.el", "lib/yeah-service.el",
-        "lib/yeah-client.el", "tests/checks/check-service-ui.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-service-ui.el"
-        }
-      ],
-      "falsifier": "the buffer does not show the question, the answer or the stop reason",
-      "register": "fact",
-      "control": "sed -i 's|\"agent_message_chunk\"|\"never-matches\"|' lib/yeah-service-ui.el",
-      "waiver": null
-    },
-    {
-      "id": "nudge-only-for-plans",
-      "text": "an answer that only announces the next step, or a result no tool backs, is nudged into the action; a result that a tool backs ends the run",
-      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
-        }
-      ],
-      "falsifier": "the run ends without acting, or a run that acted is nudged anyway",
-      "register": "fact",
-      "control": "sed -i 's|(and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))|(and nil (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))|' lib/yeah-turn.el",
-      "waiver": null
-    },
-    {
-      "id": "late-answer-does-not-break-the-run",
-      "text": "an answer that arrives while the harness waits for a tool waits for the tools and ends the run instead of failing it",
-      "scope": [
-        "lib/yeah-turn.el", "lib/yeah-loop.el",
-        "tests/unit/test-yeah-control.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
-        }
-      ],
-      "falsifier": "the run fails with no transition from awaiting-tool on stream-end",
-      "register": "fact",
-      "control": "sed -i 's|(setf (yeah-turn-pending-answer turn) answer)|(progn (yeah-turn--fail turn \"late answer dropped\") nil)|' lib/yeah-turn.el",
-      "waiver": null
-    },
-    {
-      "id": "service-permissions",
-      "text": "the standing permissions the person grants a service reach it: a tool the rules allow is allowed there, and a tool they do not name is asked of the client over the wire",
-      "scope": [
-        "lib/yeah-service.el", "lib/yeah-perm.el", "lib/yeah-acp.el",
-        "tests/checks/check-service-permissions.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-service-permissions.el"
-        }
-      ],
-      "falsifier": "the service denies a tool the person granted, or allows — without asking the client — a tool nobody granted",
-      "register": "fact",
-      "control": "sed -i 's|(format \"(dolist (rule .%S) (yeah-perm-rules-add rule))\" rules))|\"\")|' lib/yeah-service.el",
-      "waiver": null
-    },
-    {
-      "id": "registry-async-isolation",
-      "text": "a tool that registers another tool while it runs lands in the registry of the run, not in the shared one; the async-continuation path is documented, not silently wrong",
-      "scope": [
-        "lib/yeah-turn.el", "lib/yeah-tools.el",
-        "tests/checks/check-registry-async.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-registry-async.el"
-        }
-      ],
-      "falsifier": "a tool a run registers while it runs appears in the shared registry",
-      "register": "fact",
-      "control": "sed -i 's|(yeah-tools-with-registry (yeah-turn-tools-registry turn)|(yeah-tools-with-registry nil|' lib/yeah-turn.el",
-      "waiver": null
-    },
-    {
-      "id": "finish-is-the-only-completion-path",
-      "text": "with supervision, the model ends the run by calling the finish tool; a text answer alone is not a completion",
-      "scope": [
-        "lib/yeah-turn.el", "lib/yeah-builtins.el", "lib/yeah-events.el",
-        "tests/unit/test-yeah-control.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
-        }
-      ],
-      "falsifier": "a run completes on a text answer alone when supervision is on",
-      "register": "fact",
-      "control": "sed -i 's|(if finish|(if nil|' lib/yeah-turn.el",
-      "waiver": null
-    },
-    {
-      "id": "tool-descriptions-are-unambiguous",
-      "text": "the descriptions of the built-in tools are unambiguous: read reads a file from disk by its path, buffer-read reads the content of a live Emacs buffer by its buffer name, every tool names the thing it works on, and no two tools share one description",
-      "scope": [
-        "lib/yeah-files.el", "lib/yeah-emacs.el", "lib/yeah-edit.el",
-        "tests/checks/check-tool-descriptions.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-tool-descriptions.el"
-        }
-      ],
-      "falsifier": "read and buffer-read describe themselves the same way, or a tool description names another tool's subject, or two tools share one description",
-      "register": "fact",
-      "control": "sed -i 's|:description \"Read the content of a live Emacs buffer.*\"|:description \"Read a file from disk by its path, from a 1-based line offset, up to a line limit. Use it for source code and for any file stored on disk.\"|' lib/yeah-emacs.el",
-      "waiver": null
-    },
-    {
-      "id": "todo-is-a-journal-projection",
-      "text": "the task list of a run is a projection of its journal: the tools todo_add, todo_update and todo_list change the list through todo events of the session log, and a restart that reads the log again finds the same list",
-      "scope": [
-        "lib/yeah-todo.el", "lib/yeah-events.el", "lib/yeah-builtins.el",
-        "tests/checks/check-todo.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-todo.el"
-        }
-      ],
-      "falsifier": "the task list is not the projection of the journal: the tools do not write the tasks into the log of the run, a restart that reads the log again does not restore the list, or the list survives the loss of its events",
-      "register": "fact",
-      "control": "sed -i 's|(yeah-todo--items-in (yeah-session-records session))|(yeah-todo--items-in nil)|' lib/yeah-todo.el",
-      "waiver": null
-    },
-    {
-      "id": "git-tools-for-review",
-      "text": "the git tools show the status and the difference of a project, and write a commit only when the rules allow it",
-      "scope": [
-        "lib/yeah-git.el", "lib/yeah-builtins.el",
-        "tests/checks/check-git-tools.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-git-tools.el"
-        }
-      ],
-      "falsifier": "the status or the difference does not show the change, or a commit is written although no rule allows it",
-      "register": "fact",
-      "control": "sed -i 's|(user-error \"the rules do not allow a commit|(message \"the rules do not allow a commit|' lib/yeah-git.el",
-      "waiver": null
-    },
-    {
-      "id": "read-shows-the-tick-to-the-model",
-      "text": "a read of a file open in a buffer gives the model the modification tick it needs for a guarded edit",
-      "scope": [
-        "lib/yeah-result.el", "lib/yeah-files.el",
-        "tests/unit/test-yeah-files.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev ert tests/unit/test-yeah-files.el"
-        }
-      ],
-      "falsifier": "the model's view of a read has no tick",
-      "register": "fact",
-      "control": "sed -i 's|(plist-get metadata :tick)|nil|' lib/yeah-result.el",
-      "waiver": null
-    },
-    {
-      "id": "wire-permission-request",
-      "text": "the service asks the client before an effect the rules do not name",
-      "scope": [
-        "lib/yeah-acp.el", "lib/yeah-turn.el", "lib/yeah-service.el",
-        "tests/checks/check-wire-permission.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-wire-permission.el"
-        }
-      ],
-      "falsifier": "the tool runs although the client refused, or is denied although the client allowed",
-      "register": "fact",
-      "control": "sed -i 's|(equal option \"reject-once\")|(not (equal option \"reject-once\"))|' lib/yeah-acp.el",
-      "waiver": null
-    },
-    {
-      "id": "service-ui-answers-permission",
-      "text": "the editor answers the service's permission request over the wire",
-      "scope": [
-        "lib/yeah-service-ui.el", "lib/yeah-client.el", "lib/yeah-acp.el",
-        "tests/checks/check-service-ui-permission.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-service-ui-permission.el"
-        }
-      ],
-      "falsifier": "the person's answer never reaches the service, or the question does not name the tool and its target",
-      "register": "fact",
-      "control": "sed -i 's|((and method id)|((and nil method id)|' lib/yeah-client.el",
-      "waiver": null
-    },
-    {
-      "id": "service-socket-is-private",
-      "text": "the service socket lives where only this user can reach it",
-      "scope": [
-        "lib/yeah-service.el",
-        "tests/checks/check-service-socket-is-private.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-service-socket-is-private.el"
-        }
-      ],
-      "falsifier": "the socket sits bare in a world-writable directory, so any local user can drive the agent",
-      "register": "fact",
-      "control": "python3 -c \"s=open('lib/yeah-service.el').read();open('lib/yeah-service.el','w').write(s.replace('(yeah-service--socket-directory)))','(or (getenv \\\"TMPDIR\\\") \\\"/tmp\\\")))'))\"",
-      "waiver": null
-    },
-    {
-      "id": "client-sees-service-death",
-      "text": "the client notices when the service is gone",
-      "scope": [
-        "lib/yeah-client.el", "lib/yeah-service-ui.el",
-        "tests/checks/check-client-sees-service-death.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-client-sees-service-death.el"
-        }
-      ],
-      "falsifier": "the person types into a buffer nobody answers: the death of the service is not shown",
-      "register": "fact",
-      "control": "sed -i \"s|(eq (process-status process) 'closed)|(eq (process-status process) 'run)|\" lib/yeah-client.el",
-      "waiver": null
-    },
-    {
-      "id": "service-model-comes-from-init-file",
-      "text": "a clean service takes its model from the init file alone",
-      "scope": [
-        "lib/yeah-service.el", "lib/yeah-acp.el", "lib/yeah-service-ui.el",
-        "tests/checks/check-service-init-file.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-service-init-file.el"
-        }
-      ],
-      "falsifier": "the clean service has no model: the init file it loaded is ignored",
-      "register": "fact",
-      "control": "sed -i 's|(or transport \"yeah-acp-default-transport\")|(or transport \"nil\")|' lib/yeah-service.el",
-      "waiver": null
-    },
-    {
-      "id": "session-log-append-only",
-      "text": "The session log on disk is append-only: every record written through yeah-session-append is appended to the JSONL file, so the file holds the header and every record in order with monotonic ids.",
-      "scope": [
-        "lib/yeah-session.el",
-        "tests/checks/check-session-log-append-only.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-session-log-append-only.el"
-        }
-      ],
-      "falsifier": "Reading the JSONL file after several appends shows any record missing, overwritten, or with non-monotonic ids — a writer that rewrites the file instead of appending loses the log while the in-memory list stays intact.",
-      "register": "fact",
-      "control": "sed -i \"s/path 'append 'no-message/path nil 'no-message/\" lib/yeah-session.el",
-      "waiver": null
-    },
-    {
-      "id": "sessions-have-a-tree",
-      "text": "The sessions of a project form a tree: an index lists every run under a root with its cost, and continuing a run from an earlier record keeps the abandoned path instead of deleting it.",
-      "scope": [
-        "lib/yeah-sessions.el", "lib/yeah-session.el",
-        "tests/checks/check-sessions-have-a-tree.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-sessions-have-a-tree.el"
-        }
-      ],
-      "falsifier": "The index misses a session or its cost, the reported/estimated tokens are lost, or branching at a record drops the abandoned records.",
-      "register": "fact",
-      "control": "sed -i 's/(push record abandoned)/nil/' lib/yeah-sessions.el",
-      "waiver": null
-    },
-    {
-      "id": "session-exports-to-org",
-      "text": "A session exports to Org for the person: one heading per event, event fields as upper-case Org properties, and event text inside example blocks that Org cannot mistake for syntax, with the journal header excluded.",
-      "scope": [
-        "lib/yeah-org.el", "lib/yeah-events.el", "lib/yeah-session.el",
-        "tests/checks/check-session-exports-to-org.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-session-exports-to-org.el"
-        }
-      ],
-      "falsifier": "The export lacks the title or an event heading, loses a property, writes payload text outside an example block, exports the journal header, or the written file differs from the produced text.",
-      "register": "fact",
-      "control": "sed -i 's/#+BEGIN_example/#+BEGIN_src/' lib/yeah-org.el",
-      "waiver": null
-    },
-    {
-      "id": "interactive-journey",
-      "text": "The journey of a person works end to end without a network: ask, watch the work in the view, steer a busy run, quit and restart with pending inputs intact, withdraw a steering, recover a pending input explicitly, and cancel a run — with each step journaled.",
-      "scope": [
-        "lib/yeah-control.el", "lib/yeah-input.el", "lib/yeah-turn.el",
-        "lib/yeah-session.el", "lib/yeah-tools.el", "lib/yeah-ui.el",
-        "tests/checks/check-interactive-journey.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-interactive-journey.el"
-        }
-      ],
-      "falsifier": "Any step of the journey breaks: the work does not journal the expected events, steering is not queued or survives a cancel, pending inputs vanish or auto-run after restart, withdrawal does not remove, recovery starts nothing, or a cancel does not stop the run and write the cancel record.",
-      "register": "fact",
-      "control": "sed -i 's/(yeah-turn-cancel active reason)/nil/' lib/yeah-control.el",
-      "waiver": null
-    },
-    {
-      "id": "interface-renders-events",
-      "text": "The interface renders the run from the event stream and nothing else: the view built from the log records shows the transcript in order, each tool call with its final state and result, the approvals still waiting, and the counted cost.",
-      "scope": [
-        "lib/yeah-ui.el", "lib/yeah-turn.el", "lib/yeah-tools.el",
-        "lib/yeah-perm.el", "lib/yeah-session.el",
-        "tests/checks/check-interface-renders-events.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-interface-renders-events.el"
-        }
-      ],
-      "falsifier": "The view diverges from the log: the transcript misses or misorders a message, a finished call is shown running or failed, answered approvals still show as pending, or the view reports a cost the log does not count.",
-      "register": "fact",
-      "control": "sed -i \"s/:state state/:state 'running/\" lib/yeah-ui.el",
-      "waiver": null
-    },
-    {
-      "id": "acp-dispatcher-routes-every-method",
-      "text": "The ACP JSON-RPC dispatcher routes every method of the v1 surface (initialize, session/new, session/load, session/prompt, session/cancel), answers prompts asynchronously with a stop reason, and refuses unknown methods with -32601 and invalid requests with -32602.",
-      "scope": [
-        "lib/yeah-acp.el",
-        "tests/checks/check-acp-dispatcher-routes-every-method.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-acp-dispatcher-routes-every-method.el"
-        }
-      ],
-      "falsifier": "The dispatcher fails to answer a v1 method, answers a prompt synchronously or without the end_turn stop reason, or answers an unknown method or an invalid request instead of refusing it with -32601/-32602.",
-      "register": "fact",
-      "control": "sed -i 's/(\"session\\/load\"/(\"session\\/lod\"/' lib/yeah-acp.el",
-      "waiver": null
-    },
-    {
-      "id": "acp-server-speaks-to-a-third-party-client",
-      "text": "The ACP server completes the handshake, session creation, and an asynchronous prompt — including streamed session/update notifications and the end_turn stop reason — when driven by a third-party client (xenodium/acp.el) rather than by Yeah itself.",
-      "scope": [
-        "lib/yeah-acp.el", "tests/checks/check-acp-third-party-client.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-acp-third-party-client.el"
-        }
-      ],
-      "falsifier": "A third-party ACP client cannot initialize, open a session, or get a prompt answered with stopReason end_turn and session/update notifications from the Yeah server.",
-      "register": "fact",
-      "control": "sed -i \"s/('completed \\\"end_turn\\\")/('completed \\\"max_tokens\\\")/\" lib/yeah-acp.el",
-      "waiver": null
-    },
-    {
-      "id": "approvals-have-reply-kinds",
-      "text": "A permission request is answered once, always or reject: once allows only this call, reject refuses only this call, always is written into the rules so it outlives the question, any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
-      "scope": [
-        "lib/yeah-approval.el", "lib/yeah-perm.el",
-        "tests/checks/check-approvals-have-reply-kinds.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-approvals-have-reply-kinds.el"
-        }
-      ],
-      "falsifier": "A reply of once/always/reject does not produce its documented decision, always does not persist into the rules, an invalid reply is accepted, or the policy answers contrary to the rules.",
-      "register": "fact",
-      "control": "sed -i \"86s/'allow/'deny/\" lib/yeah-approval.el",
-      "waiver": null
-    },
-    {
-      "id": "emcp-registry-matches-schema",
-      "text": "The MCP tool registry in lib/yeah-emcp.el and the published schema schemas/emcp-v1.json name the same tools, with identical descriptions, inputs and outputs, and agree on which tools are published by default.",
-      "scope": [
-        "lib/yeah-emcp.el", "schemas/emcp-v1.json",
-        "tests/checks/check-emcp-registry-matches-schema.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-emcp-registry-matches-schema.el"
-        }
-      ],
-      "falsifier": "The registry and the schema drift apart: a different tool set, a differing description/input/output for any tool, or a different default-published set.",
-      "register": "fact",
-      "control": "sed -i 's/List live buffers, optionally filtered by a name prefix\\./List every live buffer./' lib/yeah-emcp.el",
-      "waiver": null
-    },
-    {
-      "id": "events-are-typed",
-      "text": "Every record written to the session log is one of the declared event types and carries exactly the fields its type declares; the writer refuses events of unknown type or with undeclared fields, and the todo event carries the tasks it changes and the operation that changed them.",
-      "scope": [
-        "lib/yeah-events.el", "lib/yeah-turn.el", "lib/yeah-session.el",
-        "tests/checks/check-events-are-typed.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-events-are-typed.el"
-        }
-      ],
-      "falsifier": "The log holds an event of an undeclared type or with fields its type does not declare, the writer accepts such an event, or the todo event does not declare exactly :items and :operation.",
-      "register": "fact",
-      "control": "sed -i 's/(:items :operation)/(:items)/' lib/yeah-events.el",
-      "waiver": null
-    },
-    {
-      "id": "no-global-gptel-hooks",
-      "text": "No Yeah kernel module installs or removes a global gptel hook; every gptel request is configured privately, per request.",
-      "scope": [
-        "lib/*.el", "tests/checks/check-gptel-hooks-live-in-one-module.sh"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-gptel-hooks-live-in-one-module.sh"
-        }
-      ],
-      "falsifier": "A module under lib/ contains a call to add-hook or remove-hook on a gptel-* hook, creating a second, global integration path.",
-      "register": "fact",
-      "control": "printf '%s\\n' \"(add-hook 'gptel-post-response-functions #'ignore)\" >> lib/yeah-gptel.el",
-      "waiver": null
-    },
-    {
-      "id": "gptel-is-the-only-call-site",
-      "text": "The model is called in exactly one place, yeah-gptel-request in lib/yeah-gptel.el; no other kernel module calls gptel-request directly, and the turn reaches the model through that single bridge.",
-      "scope": [
-        "lib/yeah-gptel.el", "lib/yeah-turn.el",
-        "tests/checks/check-gptel-is-the-only-call-site.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-gptel-is-the-only-call-site.el"
-        }
-      ],
-      "falsifier": "A lib module other than yeah-gptel.el contains a direct gptel-request call, or yeah-gptel-request does not exist, or the turn no longer goes through the bridge.",
-      "register": "fact",
-      "control": "printf '%s\\n\\n%s\\n' '(defun yeah-turn--control-second-call-site (prompt)' '  (gptel-request prompt))' >> lib/yeah-turn.el",
-      "waiver": null
-    },
-    {
-      "id": "gptel-request-shape-is-preserved",
-      "text": "yeah-gptel-request delivers the prompt unchanged, passes the caller's callback and the private system prompt to gptel, disables ambient gptel editor context, and returns the model's answer through the callback.",
-      "scope": [
-        "lib/yeah-gptel.el", "tests/checks/check-gptel-request-shape.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-gptel-request-shape.el"
-        }
-      ],
-      "falsifier": "The adapter alters or drops the prompt, callback or system prompt on the way to gptel-request, or lets ambient gptel editor context leak into the request, or the answer never reaches the callback.",
-      "register": "fact",
-      "control": "sed -i 's/(gptel-use-context nil)/(gptel-use-context t)/' lib/yeah-gptel.el",
-      "waiver": null
-    },
-    {
-      "id": "three-placements-write-the-same-truth",
-      "text": "The same task runs in all three placements — attached, service and batch — and each writes the same canonical projection of events to its session journal; a service run cannot see the editor's bridge tools without an operator decision.",
-      "scope": [
-        "lib/yeah-placement.el", "lib/yeah-run.el", "lib/yeah-session.el",
-        "lib/yeah-bridge.el", "tests/support/scenario.el",
-        "tests/checks/check-three-placements.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-three-placements.el"
-        }
-      ],
-      "falsifier": "Any placement fails to run the task to completion, the three journals disagree in their canonical event projections, the event sequence differs, or the bridge tool is registered without an operator decision.",
-      "register": "fact",
-      "control": "sed -i 's/(cons (plist-get record :type)/(cons (format \"%s:%s\" (plist-get session :id) (plist-get record :type))/' lib/yeah-placement.el",
-      "waiver": null
-    },
-    {
-      "id": "subagent-depth-limit-is-enforced",
-      "text": "A sub-agent spawn whose child would reach the depth limit is refused with a user-error at spawn time, while a spawn within the limit is accepted.",
-      "scope": [
-        "lib/yeah-subagent.el",
-        "tests/checks/check-subagent-depth-limit-is-enforced.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-subagent-depth-limit-is-enforced.el"
-        }
-      ],
-      "falsifier": "A spawn at the boundary depth is accepted, or a spawn strictly within the limit is refused.",
-      "register": "fact",
-      "control": "sed -i 's/(>= (1+ depth) yeah-subagent--max-depth)/(> (1+ depth) yeah-subagent--max-depth)/' lib/yeah-subagent.el",
-      "waiver": null
-    },
-    {
-      "id": "ptc-evaluator-restricts-forbidden-forms",
-      "text": "The experimental PTC evaluator refuses every form while disabled, runs ordinary registry tools through the permission system when explicitly enabled, and rejects direct and higher-order-function bypasses before anything is evaluated.",
-      "scope": [
-        "lib/yeah-codes.el", "tests/checks/check-ptc-sandbox-restricts.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-ptc-sandbox-restricts.el"
-        }
-      ],
-      "falsifier": "A form is evaluated while PTC is disabled, an allowed registry tool does not run when PTC is enabled, or a forbidden call is accepted and executes its side effect.",
-      "register": "fact",
-      "control": "sed -i \"s/'(car cdr caar/'(delete-file car cdr caar/\" lib/yeah-codes.el",
-      "waiver": null
-    },
-    {
-      "id": "the-agent-loop-is-wired",
-      "text": "The pieces of the agent loop are actually wired together: yeah-loop-tick, yeah-perm-evaluate, yeah-tools-call and yeah-session-append are each called from at least one module outside the module that defines them.",
-      "scope": [
-        "lib/yeah-loop.el", "lib/yeah-perm.el", "lib/yeah-tools.el",
-        "lib/yeah-session.el", "tests/checks/check-agent-loop-wired.sh"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-agent-loop-wired.sh"
-        }
-      ],
-      "falsifier": "Any of the four loop primitives has no caller outside its defining module — the modules exist but the loop does not run.",
-      "register": "fact",
-      "control": "sed -i 's/(yeah-tools-call /(yeah-tools-call-DISCONNECTED /' lib/yeah-gptel.el",
-      "waiver": null
-    },
-    {
-      "id": "client-disconnect-cancels-the-run",
-      "text": "a client that dies with a pending permission request does not hang the run: the service cancels it and writes the reason into the journal",
-      "scope": [
-        "lib/yeah-wire-socket.el", "lib/yeah-acp.el",
-        "tests/checks/check-client-disconnect-during-permission.el"
-      ],
-      "source": null,
-      "kind": "acceptance",
-      "phase": "pre-merge",
-      "owner": "p.b.kosov@yandex.ru",
-      "review_on": [],
-      "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev check tests/checks/check-client-disconnect-during-permission.el"
-        }
-      ],
-      "falsifier": "the run still waits for an answer after its client disconnected, or the write ran although nobody allowed it",
-      "register": "fact",
-      "control": "sed -i 's|(yeah-turn-cancel turn \"the client disconnected\")|nil|' lib/yeah-acp.el",
-      "waiver": null
+     "kind": "verifier",
+     "spec": "./scripts/dev byte-compile-all"
     }
-  ]
+   ],
+   "falsifier": "the byte-compilation of lib/ fails or reports a warning",
+   "register": "fact",
+   "control": "printf '(defun yeah-broken (x)\\n' >> lib/yeah-state.el",
+   "waiver": null
+  },
+  {
+   "id": "unit-tests-pass",
+   "text": "all ERT unit tests pass",
+   "scope": [
+    "lib/",
+    "tests/unit/"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev ert tests/unit/*.el"
+    }
+   ],
+   "falsifier": "an ERT unit test fails",
+   "register": "fact",
+   "control": "sed -i 's|(/ cjk 2.0)|(/ cjk 1.0)|' lib/yeah-context.el",
+   "waiver": null
+  },
+  {
+   "id": "wire-cancel-preempts",
+   "text": "a session/cancel on the socket transport stops a running prompt",
+   "scope": [
+    "lib/yeah-acp.el",
+    "lib/yeah-wire-socket.el",
+    "tests/checks/check-wire-cancel-preempts.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-wire-cancel-preempts.el"
+    }
+   ],
+   "falsifier": "a cancel that arrives during a running prompt is read only after the prompt settles",
+   "register": "fact",
+   "control": "sed -i 's/(yeah-turn-cancel turn \"cancelled by ACP client\")/(progn)/' lib/yeah-acp.el",
+   "waiver": null
+  },
+  {
+   "id": "bridge-live-server",
+   "text": "the emacsclient bridge reads and edits the live buffers of a real Emacs server",
+   "scope": [
+    "lib/yeah-bridge.el",
+    "tests/checks/check-bridge-live-server.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-bridge-live-server.el"
+    }
+   ],
+   "falsifier": "the bridge is checked only against a stub, or a live read returns the wrong text",
+   "register": "fact",
+   "control": "sed -i 's/(yeah-bridge--decode (plist-get result :output))/\"wrong-text\"/' lib/yeah-bridge.el",
+   "waiver": null
+  },
+  {
+   "id": "concurrent-sessions",
+   "text": "two sessions in one Emacs run at once without cross-talk, and cancelling one leaves the other",
+   "scope": [
+    "lib/yeah-run.el",
+    "lib/yeah-session.el",
+    "lib/yeah-turn.el",
+    "tests/checks/check-concurrent-sessions.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-concurrent-sessions.el"
+    }
+   ],
+   "falsifier": "an event of one run lands in the journal of the other",
+   "register": "fact",
+   "control": "sed -i 's/\"answer-b\"/\"answer-a\"/' tests/checks/check-concurrent-sessions.el",
+   "waiver": null
+  },
+  {
+   "id": "wire-stdio",
+   "text": "the ACP and MCP servers answer over stdio with the real protocol",
+   "scope": [
+    "lib/yeah-acp.el",
+    "lib/yeah-mcp.el",
+    "tests/checks/check-wire-speaks-over-stdio.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-wire-speaks-over-stdio.el"
+    }
+   ],
+   "falsifier": "a stdio server does not answer or answers with the wrong protocol",
+   "register": "fact",
+   "control": "sed -i 's/(defconst yeah-acp--protocol-version 1/(defconst yeah-acp--protocol-version 2/' lib/yeah-acp.el",
+   "waiver": null
+  },
+  {
+   "id": "runtime-stays-responsive",
+   "text": "a 10 MiB token estimate does not block the event loop beyond a 100 ms timer",
+   "scope": [
+    "lib/yeah-context.el",
+    "tests/checks/check-runtime-stays-responsive.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-runtime-stays-responsive.el"
+    }
+   ],
+   "falsifier": "the estimate walks the text character by character and the timer fires seconds late",
+   "register": "fact",
+   "control": "sed -i 's|(how-many yeah-context--cjk-regexp)|(progn (dotimes (_ 40000000) (+ 1 1)) 0)|' lib/yeah-context.el",
+   "waiver": null
+  },
+  {
+   "id": "product-installs",
+   "text": "the package entry declares the supported Emacs and gptel versions, and the bootstrap installs from lib/ with a pinned gptel",
+   "scope": [
+    "lib/yeah.el",
+    "install/yeah-bootstrap.el",
+    "tests/checks/check-product-installs.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-product-installs.el"
+    }
+   ],
+   "falsifier": "the package loses its version declaration or the bootstrap its lib layout",
+   "register": "fact",
+   "control": "sed -i '/Package-Requires/d' lib/yeah.el",
+   "waiver": null
+  },
+  {
+   "id": "run-registries-are-isolated",
+   "text": "a run starts from a snapshot of the registry; a tool one run registers is not advertised to another run or the shared registry",
+   "scope": [
+    "lib/yeah-tools.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-run.el",
+    "lib/yeah-acp.el",
+    "tests/checks/check-run-registries.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-run-registries.el"
+    }
+   ],
+   "falsifier": "a tool one run registers appears in the shared registry or in another run",
+   "register": "fact",
+   "control": "sed -i 's|(puthash name spec (yeah-tools--active-registry))|(puthash name spec yeah-tools--registry)|' lib/yeah-tools.el",
+   "waiver": null
+  },
+  {
+   "id": "service-lifecycle",
+   "text": "a service Emacs starts, serves a prompt over the socket, writes the turn to its journal and stops",
+   "scope": [
+    "lib/yeah-service.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-wire-socket.el",
+    "tests/checks/check-service-lifecycle.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-service-lifecycle.el"
+    }
+   ],
+   "falsifier": "the service does not answer, or the journal has no turn",
+   "register": "fact",
+   "control": "sed -i 's|(yeah-acp-serve-socket %S %s)|(ignore)|' lib/yeah-service.el",
+   "waiver": null
+  },
+  {
+   "id": "client-drives-service",
+   "text": "the editor client connects to a service Emacs and drives a prompt over the socket, seeing the streamed updates",
+   "scope": [
+    "lib/yeah-client.el",
+    "lib/yeah-service.el",
+    "tests/checks/check-client-drives-service.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-client-drives-service.el"
+    }
+   ],
+   "falsifier": "the client cannot connect, or the prompt is not answered, or no update arrives",
+   "register": "fact",
+   "control": "sed -i 's|(and id (plist-get message :result))|nil|' lib/yeah-client.el",
+   "waiver": null
+  },
+  {
+   "id": "service-ui-drives-service",
+   "text": "M-x yeah-service opens a buffer that drives a service Emacs: the question, the streamed answer and the stop reason are rendered",
+   "scope": [
+    "lib/yeah-service-ui.el",
+    "lib/yeah-service.el",
+    "lib/yeah-client.el",
+    "tests/checks/check-service-ui.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-service-ui.el"
+    }
+   ],
+   "falsifier": "the buffer does not show the question, the answer or the stop reason",
+   "register": "fact",
+   "control": "sed -i 's|\"agent_message_chunk\"|\"never-matches\"|' lib/yeah-service-ui.el",
+   "waiver": null
+  },
+  {
+   "id": "nudge-only-for-plans",
+   "text": "an answer that only announces the next step, or a result no tool backs, is nudged into the action; a result that a tool backs ends the run",
+   "scope": [
+    "lib/yeah-turn.el",
+    "tests/unit/test-yeah-control.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+    }
+   ],
+   "falsifier": "the run ends without acting, or a run that acted is nudged anyway",
+   "register": "fact",
+   "control": "sed -i 's|(and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))|(and nil (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))|' lib/yeah-turn.el",
+   "waiver": null
+  },
+  {
+   "id": "late-answer-does-not-break-the-run",
+   "text": "an answer that arrives while the harness waits for a tool waits for the tools and ends the run instead of failing it",
+   "scope": [
+    "lib/yeah-turn.el",
+    "lib/yeah-loop.el",
+    "tests/unit/test-yeah-control.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+    }
+   ],
+   "falsifier": "the run fails with no transition from awaiting-tool on stream-end",
+   "register": "fact",
+   "control": "sed -i 's|(setf (yeah-turn-pending-answer turn) answer)|(progn (yeah-turn--fail turn \"late answer dropped\") nil)|' lib/yeah-turn.el",
+   "waiver": null
+  },
+  {
+   "id": "service-permissions",
+   "text": "the standing permissions the person grants a service reach it: a tool the rules allow is allowed there, and a tool they do not name is asked of the client over the wire",
+   "scope": [
+    "lib/yeah-service.el",
+    "lib/yeah-perm.el",
+    "lib/yeah-acp.el",
+    "tests/checks/check-service-permissions.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-service-permissions.el"
+    }
+   ],
+   "falsifier": "the service denies a tool the person granted, or allows — without asking the client — a tool nobody granted",
+   "register": "fact",
+   "control": "sed -i 's|(format \"(dolist (rule .%S) (yeah-perm-rules-add rule))\" rules))|\"\")|' lib/yeah-service.el",
+   "waiver": null
+  },
+  {
+   "id": "registry-async-isolation",
+   "text": "a tool that registers another tool while it runs lands in the registry of the run, not in the shared one; the async-continuation path is documented, not silently wrong",
+   "scope": [
+    "lib/yeah-turn.el",
+    "lib/yeah-tools.el",
+    "tests/checks/check-registry-async.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-registry-async.el"
+    }
+   ],
+   "falsifier": "a tool a run registers while it runs appears in the shared registry",
+   "register": "fact",
+   "control": "sed -i 's|(yeah-tools-with-registry (yeah-turn-tools-registry turn)|(yeah-tools-with-registry nil|' lib/yeah-turn.el",
+   "waiver": null
+  },
+  {
+   "id": "finish-is-the-only-completion-path",
+   "text": "with supervision, the model ends the run by calling the finish tool; a text answer alone is not a completion",
+   "scope": [
+    "lib/yeah-turn.el",
+    "lib/yeah-builtins.el",
+    "lib/yeah-events.el",
+    "tests/unit/test-yeah-control.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+    }
+   ],
+   "falsifier": "a run completes on a text answer alone when supervision is on",
+   "register": "fact",
+   "control": "sed -i 's|(if finish|(if nil|' lib/yeah-turn.el",
+   "waiver": null
+  },
+  {
+   "id": "tool-descriptions-are-unambiguous",
+   "text": "the descriptions of the built-in tools are unambiguous: read reads a file from disk by its path, buffer-read reads the content of a live Emacs buffer by its buffer name, every tool names the thing it works on, and no two tools share one description",
+   "scope": [
+    "lib/yeah-files.el",
+    "lib/yeah-emacs.el",
+    "lib/yeah-edit.el",
+    "tests/checks/check-tool-descriptions.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-tool-descriptions.el"
+    }
+   ],
+   "falsifier": "read and buffer-read describe themselves the same way, or a tool description names another tool's subject, or two tools share one description",
+   "register": "fact",
+   "control": "sed -i 's|:description \"Read the content of a live Emacs buffer.*\"|:description \"Read a file from disk by its path, from a 1-based line offset, up to a line limit. Use it for source code and for any file stored on disk.\"|' lib/yeah-emacs.el",
+   "waiver": null
+  },
+  {
+   "id": "todo-is-a-journal-projection",
+   "text": "the task list of a run is a projection of its journal: the tools todo_add, todo_update and todo_list change the list through todo events of the session log, and a restart that reads the log again finds the same list",
+   "scope": [
+    "lib/yeah-todo.el",
+    "lib/yeah-events.el",
+    "lib/yeah-builtins.el",
+    "tests/checks/check-todo.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-todo.el"
+    }
+   ],
+   "falsifier": "the task list is not the projection of the journal: the tools do not write the tasks into the log of the run, a restart that reads the log again does not restore the list, or the list survives the loss of its events",
+   "register": "fact",
+   "control": "sed -i 's|(yeah-todo--items-in (yeah-session-records session))|(yeah-todo--items-in nil)|' lib/yeah-todo.el",
+   "waiver": null
+  },
+  {
+   "id": "git-tools-for-review",
+   "text": "the git tools show the status and the difference of a project, and write a commit only when the rules allow it",
+   "scope": [
+    "lib/yeah-git.el",
+    "lib/yeah-builtins.el",
+    "tests/checks/check-git-tools.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-git-tools.el"
+    }
+   ],
+   "falsifier": "the status or the difference does not show the change, or a commit is written although no rule allows it",
+   "register": "fact",
+   "control": "sed -i 's|(user-error \"the rules do not allow a commit|(message \"the rules do not allow a commit|' lib/yeah-git.el",
+   "waiver": null
+  },
+  {
+   "id": "read-shows-the-tick-to-the-model",
+   "text": "a read of a file open in a buffer gives the model the modification tick it needs for a guarded edit",
+   "scope": [
+    "lib/yeah-result.el",
+    "lib/yeah-files.el",
+    "tests/unit/test-yeah-files.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev ert tests/unit/test-yeah-files.el"
+    }
+   ],
+   "falsifier": "the model's view of a read has no tick",
+   "register": "fact",
+   "control": "sed -i 's|(plist-get metadata :tick)|nil|' lib/yeah-result.el",
+   "waiver": null
+  },
+  {
+   "id": "wire-permission-request",
+   "text": "the service asks the client before an effect the rules do not name",
+   "scope": [
+    "lib/yeah-acp.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-service.el",
+    "tests/checks/check-wire-permission.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-wire-permission.el"
+    }
+   ],
+   "falsifier": "the tool runs although the client refused, or is denied although the client allowed",
+   "register": "fact",
+   "control": "sed -i 's|(equal option \"reject-once\")|(not (equal option \"reject-once\"))|' lib/yeah-acp.el",
+   "waiver": null
+  },
+  {
+   "id": "service-ui-answers-permission",
+   "text": "the editor answers the service's permission request over the wire",
+   "scope": [
+    "lib/yeah-service-ui.el",
+    "lib/yeah-client.el",
+    "lib/yeah-acp.el",
+    "tests/checks/check-service-ui-permission.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-service-ui-permission.el"
+    }
+   ],
+   "falsifier": "the person's answer never reaches the service, or the question does not name the tool and its target",
+   "register": "fact",
+   "control": "sed -i 's|((and method id)|((and nil method id)|' lib/yeah-client.el",
+   "waiver": null
+  },
+  {
+   "id": "service-socket-is-private",
+   "text": "the service socket lives where only this user can reach it",
+   "scope": [
+    "lib/yeah-service.el",
+    "tests/checks/check-service-socket-is-private.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-service-socket-is-private.el"
+    }
+   ],
+   "falsifier": "the socket sits bare in a world-writable directory, so any local user can drive the agent",
+   "register": "fact",
+   "control": "python3 -c \"s=open('lib/yeah-service.el').read();open('lib/yeah-service.el','w').write(s.replace('(yeah-service--socket-directory)))','(or (getenv \\\"TMPDIR\\\") \\\"/tmp\\\")))'))\"",
+   "waiver": null
+  },
+  {
+   "id": "client-sees-service-death",
+   "text": "the client notices when the service is gone",
+   "scope": [
+    "lib/yeah-client.el",
+    "lib/yeah-service-ui.el",
+    "tests/checks/check-client-sees-service-death.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-client-sees-service-death.el"
+    }
+   ],
+   "falsifier": "the person types into a buffer nobody answers: the death of the service is not shown",
+   "register": "fact",
+   "control": "sed -i \"s|(eq (process-status process) 'closed)|(eq (process-status process) 'run)|\" lib/yeah-client.el",
+   "waiver": null
+  },
+  {
+   "id": "service-model-comes-from-init-file",
+   "text": "a clean service takes its model from the init file alone",
+   "scope": [
+    "lib/yeah-service.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-service-ui.el",
+    "tests/checks/check-service-init-file.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-service-init-file.el"
+    }
+   ],
+   "falsifier": "the clean service has no model: the init file it loaded is ignored",
+   "register": "fact",
+   "control": "sed -i 's|(or transport \"yeah-acp-default-transport\")|(or transport \"nil\")|' lib/yeah-service.el",
+   "waiver": null
+  },
+  {
+   "id": "session-log-append-only",
+   "text": "The session log on disk is append-only: every record written through yeah-session-append is appended to the JSONL file, so the file holds the header and every record in order with monotonic ids.",
+   "scope": [
+    "lib/yeah-session.el",
+    "tests/checks/check-session-log-append-only.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-session-log-append-only.el"
+    }
+   ],
+   "falsifier": "Reading the JSONL file after several appends shows any record missing, overwritten, or with non-monotonic ids — a writer that rewrites the file instead of appending loses the log while the in-memory list stays intact.",
+   "register": "fact",
+   "control": "sed -i \"s/path 'append 'no-message/path nil 'no-message/\" lib/yeah-session.el",
+   "waiver": null
+  },
+  {
+   "id": "sessions-have-a-tree",
+   "text": "The sessions of a project form a tree: an index lists every run under a root with its cost, and continuing a run from an earlier record keeps the abandoned path instead of deleting it.",
+   "scope": [
+    "lib/yeah-sessions.el",
+    "lib/yeah-session.el",
+    "tests/checks/check-sessions-have-a-tree.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-sessions-have-a-tree.el"
+    }
+   ],
+   "falsifier": "The index misses a session or its cost, the reported/estimated tokens are lost, or branching at a record drops the abandoned records.",
+   "register": "fact",
+   "control": "sed -i 's/(push record abandoned)/nil/' lib/yeah-sessions.el",
+   "waiver": null
+  },
+  {
+   "id": "session-exports-to-org",
+   "text": "A session exports to Org for the person: one heading per event, event fields as upper-case Org properties, and event text inside example blocks that Org cannot mistake for syntax, with the journal header excluded.",
+   "scope": [
+    "lib/yeah-org.el",
+    "lib/yeah-events.el",
+    "lib/yeah-session.el",
+    "tests/checks/check-session-exports-to-org.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-session-exports-to-org.el"
+    }
+   ],
+   "falsifier": "The export lacks the title or an event heading, loses a property, writes payload text outside an example block, exports the journal header, or the written file differs from the produced text.",
+   "register": "fact",
+   "control": "sed -i 's/#+BEGIN_example/#+BEGIN_src/' lib/yeah-org.el",
+   "waiver": null
+  },
+  {
+   "id": "interactive-journey",
+   "text": "The journey of a person works end to end without a network: ask, watch the work in the view, steer a busy run, quit and restart with pending inputs intact, withdraw a steering, recover a pending input explicitly, and cancel a run — with each step journaled.",
+   "scope": [
+    "lib/yeah-control.el",
+    "lib/yeah-input.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-session.el",
+    "lib/yeah-tools.el",
+    "lib/yeah-ui.el",
+    "tests/checks/check-interactive-journey.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-interactive-journey.el"
+    }
+   ],
+   "falsifier": "Any step of the journey breaks: the work does not journal the expected events, steering is not queued or survives a cancel, pending inputs vanish or auto-run after restart, withdrawal does not remove, recovery starts nothing, or a cancel does not stop the run and write the cancel record.",
+   "register": "fact",
+   "control": "sed -i 's/(yeah-turn-cancel active reason)/nil/' lib/yeah-control.el",
+   "waiver": null
+  },
+  {
+   "id": "interface-renders-events",
+   "text": "The interface renders the run from the event stream and nothing else: the view built from the log records shows the transcript in order, each tool call with its final state and result, the approvals still waiting, and the counted cost.",
+   "scope": [
+    "lib/yeah-ui.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-tools.el",
+    "lib/yeah-perm.el",
+    "lib/yeah-session.el",
+    "tests/checks/check-interface-renders-events.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-interface-renders-events.el"
+    }
+   ],
+   "falsifier": "The view diverges from the log: the transcript misses or misorders a message, a finished call is shown running or failed, answered approvals still show as pending, or the view reports a cost the log does not count.",
+   "register": "fact",
+   "control": "sed -i \"s/:state state/:state 'running/\" lib/yeah-ui.el",
+   "waiver": null
+  },
+  {
+   "id": "acp-dispatcher-routes-every-method",
+   "text": "The ACP JSON-RPC dispatcher routes every method of the v1 surface (initialize, session/new, session/load, session/prompt, session/cancel), answers prompts asynchronously with a stop reason, and refuses unknown methods with -32601 and invalid requests with -32602.",
+   "scope": [
+    "lib/yeah-acp.el",
+    "tests/checks/check-acp-dispatcher-routes-every-method.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-acp-dispatcher-routes-every-method.el"
+    }
+   ],
+   "falsifier": "The dispatcher fails to answer a v1 method, answers a prompt synchronously or without the end_turn stop reason, or answers an unknown method or an invalid request instead of refusing it with -32601/-32602.",
+   "register": "fact",
+   "control": "sed -i 's/(\"session\\/load\"/(\"session\\/lod\"/' lib/yeah-acp.el",
+   "waiver": null
+  },
+  {
+   "id": "acp-server-speaks-to-a-third-party-client",
+   "text": "The ACP server completes the handshake, session creation, and an asynchronous prompt — including streamed session/update notifications and the end_turn stop reason — when driven by a third-party client (xenodium/acp.el) rather than by Yeah itself.",
+   "scope": [
+    "lib/yeah-acp.el",
+    "tests/checks/check-acp-third-party-client.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-acp-third-party-client.el"
+    }
+   ],
+   "falsifier": "A third-party ACP client cannot initialize, open a session, or get a prompt answered with stopReason end_turn and session/update notifications from the Yeah server.",
+   "register": "fact",
+   "control": "sed -i \"s/('completed \\\"end_turn\\\")/('completed \\\"max_tokens\\\")/\" lib/yeah-acp.el",
+   "waiver": null
+  },
+  {
+   "id": "approvals-have-reply-kinds",
+   "text": "A permission request is answered once, always or reject: once allows only this call, reject refuses only this call, always is written into the rules so it outlives the question, any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
+   "scope": [
+    "lib/yeah-approval.el",
+    "lib/yeah-perm.el",
+    "tests/checks/check-approvals-have-reply-kinds.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-approvals-have-reply-kinds.el"
+    }
+   ],
+   "falsifier": "A reply of once/always/reject does not produce its documented decision, always does not persist into the rules, an invalid reply is accepted, or the policy answers contrary to the rules.",
+   "register": "fact",
+   "control": "sed -i \"86s/'allow/'deny/\" lib/yeah-approval.el",
+   "waiver": null
+  },
+  {
+   "id": "emcp-registry-matches-schema",
+   "text": "The MCP tool registry in lib/yeah-emcp.el and the published schema schemas/emcp-v1.json name the same tools, with identical descriptions, inputs and outputs, and agree on which tools are published by default.",
+   "scope": [
+    "lib/yeah-emcp.el",
+    "schemas/emcp-v1.json",
+    "tests/checks/check-emcp-registry-matches-schema.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-emcp-registry-matches-schema.el"
+    }
+   ],
+   "falsifier": "The registry and the schema drift apart: a different tool set, a differing description/input/output for any tool, or a different default-published set.",
+   "register": "fact",
+   "control": "sed -i 's/List live buffers, optionally filtered by a name prefix\\./List every live buffer./' lib/yeah-emcp.el",
+   "waiver": null
+  },
+  {
+   "id": "events-are-typed",
+   "text": "Every record written to the session log is one of the declared event types and carries exactly the fields its type declares; the writer refuses events of unknown type or with undeclared fields, and the todo event carries the tasks it changes and the operation that changed them.",
+   "scope": [
+    "lib/yeah-events.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-session.el",
+    "tests/checks/check-events-are-typed.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-events-are-typed.el"
+    }
+   ],
+   "falsifier": "The log holds an event of an undeclared type or with fields its type does not declare, the writer accepts such an event, or the todo event does not declare exactly :items and :operation.",
+   "register": "fact",
+   "control": "sed -i 's/(:items :operation)/(:items)/' lib/yeah-events.el",
+   "waiver": null
+  },
+  {
+   "id": "no-global-gptel-hooks",
+   "text": "No Yeah kernel module installs or removes a global gptel hook; every gptel request is configured privately, per request.",
+   "scope": [
+    "lib/",
+    "tests/checks/check-gptel-hooks-live-in-one-module.sh"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-gptel-hooks-live-in-one-module.sh"
+    }
+   ],
+   "falsifier": "A module under lib/ contains a call to add-hook or remove-hook on a gptel-* hook, creating a second, global integration path.",
+   "register": "fact",
+   "control": "printf '%s\\n' \"(add-hook 'gptel-post-response-functions #'ignore)\" >> lib/yeah-gptel.el",
+   "waiver": null
+  },
+  {
+   "id": "gptel-is-the-only-call-site",
+   "text": "The model is called in exactly one place, yeah-gptel-request in lib/yeah-gptel.el; no other kernel module calls gptel-request directly, and the turn reaches the model through that single bridge.",
+   "scope": [
+    "lib/yeah-gptel.el",
+    "lib/yeah-turn.el",
+    "tests/checks/check-gptel-is-the-only-call-site.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-gptel-is-the-only-call-site.el"
+    }
+   ],
+   "falsifier": "A lib module other than yeah-gptel.el contains a direct gptel-request call, or yeah-gptel-request does not exist, or the turn no longer goes through the bridge.",
+   "register": "fact",
+   "control": "printf '%s\\n\\n%s\\n' '(defun yeah-turn--control-second-call-site (prompt)' '  (gptel-request prompt))' >> lib/yeah-turn.el",
+   "waiver": null
+  },
+  {
+   "id": "gptel-request-shape-is-preserved",
+   "text": "yeah-gptel-request delivers the prompt unchanged, passes the caller's callback and the private system prompt to gptel, disables ambient gptel editor context, and returns the model's answer through the callback.",
+   "scope": [
+    "lib/yeah-gptel.el",
+    "tests/checks/check-gptel-request-shape.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-gptel-request-shape.el"
+    }
+   ],
+   "falsifier": "The adapter alters or drops the prompt, callback or system prompt on the way to gptel-request, or lets ambient gptel editor context leak into the request, or the answer never reaches the callback.",
+   "register": "fact",
+   "control": "sed -i 's/(gptel-use-context nil)/(gptel-use-context t)/' lib/yeah-gptel.el",
+   "waiver": null
+  },
+  {
+   "id": "three-placements-write-the-same-truth",
+   "text": "The same task runs in all three placements — attached, service and batch — and each writes the same canonical projection of events to its session journal; a service run cannot see the editor's bridge tools without an operator decision.",
+   "scope": [
+    "lib/yeah-placement.el",
+    "lib/yeah-run.el",
+    "lib/yeah-session.el",
+    "lib/yeah-bridge.el",
+    "tests/support/scenario.el",
+    "tests/checks/check-three-placements.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-three-placements.el"
+    }
+   ],
+   "falsifier": "Any placement fails to run the task to completion, the three journals disagree in their canonical event projections, the event sequence differs, or the bridge tool is registered without an operator decision.",
+   "register": "fact",
+   "control": "sed -i 's/(cons (plist-get record :type)/(cons (format \"%s:%s\" (plist-get session :id) (plist-get record :type))/' lib/yeah-placement.el",
+   "waiver": null
+  },
+  {
+   "id": "subagent-depth-limit-is-enforced",
+   "text": "A sub-agent spawn whose child would reach the depth limit is refused with a user-error at spawn time, while a spawn within the limit is accepted.",
+   "scope": [
+    "lib/yeah-subagent.el",
+    "tests/checks/check-subagent-depth-limit-is-enforced.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-subagent-depth-limit-is-enforced.el"
+    }
+   ],
+   "falsifier": "A spawn at the boundary depth is accepted, or a spawn strictly within the limit is refused.",
+   "register": "fact",
+   "control": "sed -i 's/(>= (1+ depth) yeah-subagent--max-depth)/(> (1+ depth) yeah-subagent--max-depth)/' lib/yeah-subagent.el",
+   "waiver": null
+  },
+  {
+   "id": "ptc-evaluator-restricts-forbidden-forms",
+   "text": "The experimental PTC evaluator refuses every form while disabled, runs ordinary registry tools through the permission system when explicitly enabled, and rejects direct and higher-order-function bypasses before anything is evaluated.",
+   "scope": [
+    "lib/yeah-codes.el",
+    "tests/checks/check-ptc-sandbox-restricts.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-ptc-sandbox-restricts.el"
+    }
+   ],
+   "falsifier": "A form is evaluated while PTC is disabled, an allowed registry tool does not run when PTC is enabled, or a forbidden call is accepted and executes its side effect.",
+   "register": "fact",
+   "control": "sed -i \"s/'(car cdr caar/'(delete-file car cdr caar/\" lib/yeah-codes.el",
+   "waiver": null
+  },
+  {
+   "id": "the-agent-loop-is-wired",
+   "text": "The pieces of the agent loop are actually wired together: yeah-loop-tick, yeah-perm-evaluate, yeah-tools-call and yeah-session-append are each called from at least one module outside the module that defines them.",
+   "scope": [
+    "lib/yeah-gptel.el",
+    "lib/yeah-loop.el",
+    "lib/yeah-perm.el",
+    "lib/yeah-tools.el",
+    "lib/yeah-session.el",
+    "tests/checks/check-agent-loop-wired.sh"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-agent-loop-wired.sh"
+    }
+   ],
+   "falsifier": "Any of the four loop primitives has no caller outside its defining module — the modules exist but the loop does not run.",
+   "register": "fact",
+   "control": "sed -i 's/(yeah-tools-call /(yeah-tools-call-DISCONNECTED /' lib/yeah-gptel.el",
+   "waiver": null
+  },
+  {
+   "id": "client-disconnect-cancels-the-run",
+   "text": "a client that dies with a pending permission request does not hang the run: the service cancels it and writes the reason into the journal",
+   "scope": [
+    "lib/yeah-wire-socket.el",
+    "lib/yeah-acp.el",
+    "tests/checks/check-client-disconnect-during-permission.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-client-disconnect-during-permission.el"
+    }
+   ],
+   "falsifier": "the run still waits for an answer after its client disconnected, or the write ran although nobody allowed it",
+   "register": "fact",
+   "control": "sed -i 's|(yeah-turn-cancel turn \"the client disconnected\")|nil|' lib/yeah-acp.el",
+   "waiver": null
+  },
+  {
+   "id": "tools-run-in-parallel",
+   "text": "The tool calls of one model answer run as a batch: shared calls overlap, an exclusive call runs alone, and the batch continuation fires only after every call has settled, with results in call order.",
+   "scope": [
+    "lib/yeah-scheduler.el",
+    "tests/checks/check-tools-run-in-parallel.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-tools-run-in-parallel.el"
+    }
+   ],
+   "falsifier": "shared calls run one at a time, an exclusive call overlaps with another call, the batch settles before all calls have, or results come back out of order",
+   "register": "fact",
+   "control": "sed -i \"s/(eq (plist-get call :mode) 'exclusive)/t/\" lib/yeah-scheduler.el",
+   "waiver": null
+  },
+  {
+   "id": "runtime-never-blocks",
+   "text": "The runtime retries a failing command a bounded number of times, cuts a hanging command at its timeout and flags it as a timeout, detects doom loops of identical mutating calls while allowing repeated read-only inspection, and never holds the main loop.",
+   "scope": [
+    "lib/yeah-runtime.el",
+    "tests/checks/check-runtime-never-blocks.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-runtime-never-blocks.el"
+    }
+   ],
+   "falsifier": "a failing command is not retried, a hanging command is not cut or not marked as a timeout, repeated mutation is not seen as a loop, or repeated read-only inspection is flagged as one",
+   "register": "fact",
+   "control": "sed -i 's/(> retries 0)/(< retries 0)/' lib/yeah-runtime.el",
+   "waiver": null
+  },
+  {
+   "id": "model-turn-runs",
+   "text": "A turn asks the model, runs the permitted tool calls through the permission system and the registry, appends what happened to the session log, and refuses a denied call without running it, logging the refusal.",
+   "scope": [
+    "lib/yeah-turn.el",
+    "lib/yeah-tools.el",
+    "lib/yeah-perm.el",
+    "lib/yeah-session.el",
+    "tests/checks/check-model-turn-runs.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-model-turn-runs.el"
+    }
+   ],
+   "falsifier": "a permitted call does not run or is not logged in order, or a denied call runs anyway or is not logged as a refusal",
+   "register": "fact",
+   "control": "sed -i 's/(eq (plist-get decision :effect) :allow)/(eq (plist-get decision :effect) :deny)/' lib/yeah-turn.el",
+   "waiver": null
+  },
+  {
+   "id": "turn-handles-tool-failures",
+   "text": "Malformed arguments, handler exceptions, duplicate async callbacks and nil results become bounded string failures handed to the model once — the turn never wedges, never logs a failure as a success, and never settles one call twice.",
+   "scope": [
+    "lib/yeah-scheduler.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-tools.el",
+    "lib/yeah-result.el",
+    "tests/checks/check-turn-handles-tool-failures.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-turn-handles-tool-failures.el"
+    }
+   ],
+   "falsifier": "a tool failure wedges the turn or escapes as an error, a failed call is logged as a success, a duplicate async callback settles the call twice, or a nil result reaches the model instead of an explicit error string",
+   "register": "fact",
+   "control": "sed -i '/((null result)/,+1d' lib/yeah-scheduler.el",
+   "waiver": null
+  },
+  {
+   "id": "turn-compacts-asynchronously",
+   "text": "When the context overflows, the turn enters the compacting state without blocking, waits for the asynchronously arriving summary, commits it as a compaction record before the continued answer, and keeps the source tool events.",
+   "scope": [
+    "lib/yeah-turn.el",
+    "lib/yeah-compact.el",
+    "tests/checks/check-turn-compacts-asynchronously.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-turn-compacts-asynchronously.el"
+    }
+   ],
+   "falsifier": "the turn blocks waiting for the summary, completes without the committed compaction record, orders the compaction after the continued answer, or loses the source tool events",
+   "register": "fact",
+   "control": "sed -i 's/((not summary)/((or t (not summary))/' lib/yeah-compact.el",
+   "waiver": null
+  },
+  {
+   "id": "coding-tools-end-to-end",
+   "text": "The built-in coding tools work end to end on a real temporary project: read, glob and grep find content, a fresh modification tick guards a real buffer edit, elisp-check validates the result, async bash settles through its continuation, introspection answers, and every built-in tool is registered.",
+   "scope": [
+    "lib/yeah-tools.el",
+    "lib/yeah-builtins.el",
+    "lib/yeah-edit.el",
+    "lib/yeah-files.el",
+    "lib/yeah-process.el",
+    "lib/yeah-emacs.el",
+    "tests/checks/check-coding-tools-end-to-end.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-coding-tools-end-to-end.el"
+    }
+   ],
+   "falsifier": "discovery misses the file, a tick-fresh edit is rejected or does not change the buffer, the edited Elisp is unreadable, async bash never settles or returns wrong output, introspection fails, or a built-in tool is missing from the registry",
+   "register": "fact",
+   "control": "sed -i 's|(if (and tick (/= tick current-tick))|(if tick|' lib/yeah-edit.el",
+   "waiver": null
+  },
+  {
+   "id": "compaction-is-a-model-call",
+   "text": "Context usage is counted, overflow is detected, the summary is written by the model and not by a placeholder, compaction appends its record while keeping the summarised sources on disk, and pruning marks old outputs without deleting records.",
+   "scope": [
+    "lib/yeah-context.el",
+    "lib/yeah-compact.el",
+    "lib/yeah-session.el",
+    "tests/checks/check-compaction-is-a-model-call.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-compaction-is-a-model-call.el"
+    }
+   ],
+   "falsifier": "usage or overflow is not seen, the summary does not come from the model, compaction leaves no record or drops sources, or pruning deletes records instead of marking them",
+   "register": "fact",
+   "control": "sed -i 's/(answered answered)/(answered \"a placeholder summary\")/' lib/yeah-context.el",
+   "waiver": null
+  },
+  {
+   "id": "compaction-keeps-sources",
+   "text": "Compaction is a projection, not a deletion: the on-disk log after a compaction holds exactly the source records plus one appended compaction record, with every source byte-for-byte untouched.",
+   "scope": [
+    "lib/yeah-compact.el",
+    "lib/yeah-session.el",
+    "tests/checks/check-compaction-keeps-sources.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-compaction-keeps-sources.el"
+    }
+   ],
+   "falsifier": "the log is shorter or longer than sources-plus-one after a compaction, the source records changed, or the trailing record is not the compaction",
+   "register": "fact",
+   "control": "sed -i 's/^        (yeah-session-record-compaction$/        (ignore/' lib/yeah-compact.el",
+   "waiver": null
+  }
+ ]
 }
