@@ -31,7 +31,7 @@
 
 (defun yeah-doctor-ui--version-ok-p ()
   "Return non-nil when the running Emacs is supported."
-  (version< emacs-version "30.2"))
+  (not (version< emacs-version "30.2")))
 
 (defun yeah-doctor-ui--directory-status (directory)
   "Return the status of DIRECTORY as a plist."
@@ -53,7 +53,7 @@ Each check has `:name', `:status', `:detail' and optional `:action'."
                      checks)))
       (add "Emacs"
            (if (yeah-doctor-ui--version-ok-p) :ok :action)
-           (format "Emacs %s" emacs-version)
+           (format "Emacs: %s" emacs-version)
            (and (not (yeah-doctor-ui--version-ok-p))
                 "Yeah requires Emacs 30.2 or newer"))
       (let ((gptel
@@ -83,8 +83,8 @@ Each check has `:name', `:status', `:detail' and optional `:action'."
                (list (list "Session data" (yeah-doctor-ui--data-home))
                      (list "Pending input" yeah-input-directory)
                      (list "Output artifacts" yeah-result-artifact-directory)))
-        (let ((report (yeah-doctor-ui--directory-status (plist-get item 1))))
-          (add (plist-get item 0)
+        (let ((report (yeah-doctor-ui--directory-status (cadr item))))
+          (add (car item)
                (plist-get report :status)
                (plist-get report :detail)
                (and (not (eq (plist-get report :status) :ok))
@@ -96,7 +96,9 @@ Each check has `:name', `:status', `:detail' and optional `:action'."
            (if (file-executable-p yeah-service-emacs)
                (format "%s is executable" yeah-service-emacs)
              "No executable service Emacs was found")
-           "Set yeah-service-emacs or install Emacs 30.2")
+           (unless (and (file-executable-p yeah-service-emacs)
+                        (fboundp 'make-network-process))
+             "Set yeah-service-emacs or install Emacs 30.2"))
       (add "Icons"
            :ok
            (if (or (featurep 'nerd-icons) (locate-library "nerd-icons"))
@@ -131,7 +133,7 @@ Each check has `:name', `:status', `:detail' and optional `:action'."
            (format "  Next: %s\n" action))
          "\n")))
     checks
-    "")))
+    "\nNo API keys or secrets are printed.\n")))
 
 (defvar yeah-doctor-ui-mode-map
   (make-sparse-keymap)

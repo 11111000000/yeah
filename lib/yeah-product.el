@@ -1,25 +1,29 @@
 ;;; yeah-product.el --- interactive Yeah journal -*- lexical-binding: t; -*-
-;;
+
 ;; Copyright (C) 2026  Petr Kosov
 ;;
-;; This file is part of Yeah.
+;; Part of Yeah.
 
 ;;; Commentary:
 ;;
-;; The product layer renders the session journal and queues user input through
-;; `yeah-control'.  It is intentionally a client of the kernel: the view is
-;; rebuilt from events, and all execution happens through the run controller.
+;; The product layer owns the attached placement.  It turns a session and
+;; its run controller into the shared read-only journal, provides the
+;; attached driver, and keeps the historical public commands working.
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'yeah-approval)
 (require 'yeah-control)
+(require 'yeah-doctor-ui)
 (require 'yeah-events)
 (require 'yeah-input)
+(require 'yeah-journal)
 (require 'yeah-org)
 (require 'yeah-result)
+(require 'yeah-session-list)
 (require 'yeah-tools)
+(require 'yeah-ui)
 (require 'yeah-gptel)
 
 (declare-function project-current "project" (&optional maybe-prompt))
@@ -55,11 +59,14 @@
 (defvar-local yeah-product--control nil
   "Controller for the current Yeah session buffer.")
 
-(defvar-local yeah-product--rendered-count nil
-  "Number of journal records already rendered in this buffer.")
-
 (defvar-local yeah-product--refresh-timer nil
   "Timer refreshing this Yeah session buffer.")
+
+(defvar-local yeah-product--profile nil
+  "Permission profile of the current Yeah session.")
+
+(defvar-local yeah-product--root nil
+  "Project root of the current Yeah session.")
 
 (defun yeah-product-project-root ()
   "Return the current project root, or `default-directory' outside projects."
@@ -84,11 +91,20 @@
 A session is resumed by its file, so a person can quit and come back."
   (let ((directory (expand-file-name "sessions" (yeah-product-session-root root))))
     (when (file-directory-p directory)
-      (let ((files (sort (directory-files directory t "\\.jsonl\\'")
-                         (lambda (left right)
-                           (string< (car left) (car right))))))
-        (and files
-             (file-name-base (car files)))))))
+      (let ((files (directory-files directory t "\\.jsonl\\'")))
+        (when files
+          (file-name-base
+           (car (sort files
+                       (lambda (left right)
+                         (let ((left-time
+                                (file-attribute-modification-time
+                                 (file-attributes left)))
+                               (right-time
+                                (file-attribute-modification-time
+                                 (file-attributes right))))
+                           (if (= left-time right-time)
+                               (string< (car left) (car right))
+                             (> left-time right-time))))))))))))
 
 (defun yeah-product--session-id (root)
   "Return a readable unique session id for project ROOT."
@@ -118,87 +134,68 @@ This is the answerer of the attached placement: the run lives in the
 Emacs of the person, so the person may answer."
   (yeah-product--human-answerer request))
 
-(defun yeah-product--format-event (record)
-  "Return one display block for journal RECORD."
-  (pcase (plist-get record :type)
-    ("header" nil)
-    ("user-message"
-     (concat "* User\n" (or (plist-get record :payload) "") "\n"))
-    ("assistant-message"
-     (concat "* Assistant\n" (or (plist-get record :payload) "") "\n"))
-    ("tool-request"
-     (format "* Tool request: %s\n%s\n"
-             (plist-get record :tool)
-             (plist-get record :args)))
-    ("permission-decision"
-     (format "* Permission: %s on %s → %s\n"
-             (plist-get record :action)
-             (plist-get record :resource)
-             (plist-get record :effect)))
-    ("tool-end"
-     (format "* Tool result: %s (%s)\n%s\n"
-             (plist-get record :tool)
-             (if (yeah-events-boolean-p (plist-get record :ok))
-                 "ok"
-               "error")
-             (plist-get record :payload)))
-    ("usage"
-     (format "* Usage: input %s, output %s\n"
-             (plist-get record :input)
-             (plist-get record :output)))
-    ("compaction"
-     (format "* Compaction: cut %s\n%s\n"
-             (plist-get record :cut_point)
-             (plist-get record :summary)))
-    ("pruning"
-     (format "* Pruning: keep %s characters\n"
-             (plist-get record :keep-chars)))
-    ("steering"
-     (concat "* Steering\n" (or (plist-get record :payload) "") "\n"))
-    ("nudge"
-     (concat "* Completion nudge\n" (or (plist-get record :payload) "") "\n"))
-    ("cancel"
-     (concat "* Cancelled\n" (or (plist-get record :payload) "") "\n"))
-    ("error"
-     (concat "* Error\n" (or (plist-get record :payload) "") "\n"))
-    (_ (format "* Event %s\n%S\n"
-               (plist-get record :type) record))))
+(defun yeah-product--view (control &optional profile root)
+  "Return the journal view of CONTROL.
+PROFILE and ROOT enrich the session metadata without changing the journal."
+  (let* ((session (yeah-control-session control))
+         (view (yeah-ui-view (yeah-session-records session)))
+         (metadata (plist-put (copy-sequence (plist-get view :session))
+                              :placement "attached")))
+    (plist-put metadata :project (or root
+                                   (plist-get session :project-root)))
+    (plist-put metadata :profile (or profile "build"))
+    (when (and (boundp 'gptel-model) gptel-model)
+      (plist-put metadata :model gptel-model))
+    (plist-put view :session metadata)
+    view))
+
+(defun yeah-product--prompt-with-context (text context)
+  "Return TEXT with the explicit composer CONTEXT appended."
+  (let ((file (plist-get context :file))
+        (buffer (plist-get context :buffer)))
+    (concat text
+            (when file (format "\n\nExplicit file context: %s" file))
+            (when buffer (format "\n\nExplicit buffer context: %s" buffer)))))
+
+(defun yeah-product--driver (control)
+  "Return the attached driver for CONTROL."
+  (list
+   :ask (lambda (text context callback)
+          (yeah-control-ask
+           control (yeah-product--prompt-with-context text context))
+          (when (functionp callback) (funcall callback t)))
+   :steer (lambda (text context callback)
+            (yeah-control-steer
+             control (yeah-product--prompt-with-context text context))
+            (when (functionp callback) (funcall callback t)))
+   :cancel (lambda (callback)
+             (yeah-control-cancel control "cancelled by user")
+             (when (functionp callback) (funcall callback t)))
+   :export (lambda (callback)
+             (yeah-product-export)
+             (when (functionp callback) (funcall callback t)))
+   :capabilities '(:ask :steer :cancel :export)))
 
 (defun yeah-product-render (&optional buffer)
   "Render BUFFER's session journal from scratch."
   (let ((buffer (or buffer (current-buffer))))
     (when (buffer-live-p buffer)
       (with-current-buffer buffer
-        (let ((inhibit-read-only t)
-              (control yeah-product--control))
-          (erase-buffer)
-          (insert "# Yeah\n\n")
-          (insert (format "Session: %s\n"
-                          (plist-get (yeah-control-session control) :id)))
-          (insert (format "Project: %s\n"
-                          (plist-get (yeah-control-session control)
-                                     :project-root)))
-          (insert (format "State: %s\n\n"
-                          (if-let ((turn (yeah-control-active-turn control)))
-                              (yeah-turn-state turn)
-                            'idle)))
-          (insert "Keys: a ask · s steer · c cancel · r recover · w withdraw · d diff · g refresh · q bury\n\n")
-          (dolist (record (yeah-session-records (yeah-control-session control)))
-            (when-let ((block (yeah-product--format-event record)))
-              (insert block "\n")))
-          (setq yeah-product--rendered-count
-                (length (yeah-session-records (yeah-control-session control))))
-          (goto-char (point-max))
-          (setq buffer-read-only t)
-          buffer)))))
+        (let ((journal yeah-journal--current))
+          (yeah-journal-full-render
+           journal (yeah-product--view yeah-product--control
+                                         yeah-product--profile
+                                         yeah-product--root)))))))
 
 (defun yeah-product--refresh ()
   "Refresh the current session buffer when its journal changed."
-  (let ((control yeah-product--control))
-    (when (and control
-               (/= (or yeah-product--rendered-count -1)
-                   (length (yeah-session-records (yeah-control-session control)))))
-      (yeah-product-render))))
+  (let ((control yeah-product--control)
+        (journal yeah-journal--current))
+    (when (and control journal)
+      (yeah-journal-update
+       journal (yeah-product--view control
+                                   yeah-product--profile
+                                   yeah-product--root)))))
 
 (defun yeah-product-refresh ()
   "Refresh the current Yeah session buffer."
@@ -207,23 +204,26 @@ Emacs of the person, so the person may answer."
 
 (defvar yeah-mode-map
   (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map yeah-journal-mode-map)
     (define-key map (kbd "a") #'yeah-product-ask)
     (define-key map (kbd "s") #'yeah-product-steer)
     (define-key map (kbd "c") #'yeah-product-cancel)
     (define-key map (kbd "r") #'yeah-product-recover-next)
     (define-key map (kbd "w") #'yeah-product-withdraw)
     (define-key map (kbd "d") #'yeah-product-diff)
-    (define-key map (kbd "e") #'yeah-product-export)
     (define-key map (kbd "g") #'yeah-product-refresh)
-    (define-key map (kbd "q") #'bury-buffer)
     map)
   "Keymap for `yeah-mode'.")
 
-(define-derived-mode yeah-mode special-mode "Yeah"
+(define-derived-mode yeah-mode yeah-journal-mode "Yeah"
   "Interactive Yeah session journal."
-  (setq-local outline-regexp "^\\* ")
-  (when (fboundp 'outline-minor-mode)
-    (outline-minor-mode 1))
+  (set-keymap-parent yeah-mode-map yeah-journal-mode-map)
+  (define-key yeah-mode-map (kbd "a") #'yeah-product-ask)
+  (define-key yeah-mode-map (kbd "s") #'yeah-product-steer)
+  (define-key yeah-mode-map (kbd "c") #'yeah-product-cancel)
+  (define-key yeah-mode-map (kbd "r") #'yeah-product-recover-next)
+  (define-key yeah-mode-map (kbd "w") #'yeah-product-withdraw)
+  (define-key yeah-mode-map (kbd "d") #'yeah-product-diff)
   (add-hook 'kill-buffer-hook #'yeah-product--kill-buffer nil t))
 
 (defun yeah-product--kill-buffer ()
@@ -237,8 +237,11 @@ Emacs of the person, so the person may answer."
 The answer is `plan' or `build'; `build' is the default, and it is the
 behaviour of the harness without a profile: the person is asked for
 every tool that changes the world."
-  (let ((answer (read-char-choice "Yeah profile: [p]lan/[b]uild " '(?p ?b))))
-    (if (eq answer ?p) "plan" "build")))
+  (completing-read
+   "Yeah profile: "
+   '(("Build — ask before changing the world" . "build")
+     ("Plan — read only" . "plan"))
+   nil t "build"))
 
 (defun yeah-product--system-prompt (root)
   "Return the system prompt of a session in the project ROOT.
@@ -262,33 +265,42 @@ resumes an existing session of the project instead of starting a new one."
          (session (yeah-session-open (or session-id
                                          (yeah-product--session-id root))
                                      session-root))
-         (buffer (generate-new-buffer
-                  (format "*Yeah: %s*"
-                          (file-name-nondirectory (directory-file-name root))))))
+         (profile (or profile "build"))
+         (control
+          (yeah-control-new
+           session
+           (or transport
+               (lambda (prompt callback)
+                 (yeah-gptel-request
+                  prompt callback
+                  :system (yeah-product--system-prompt root))))
+           (yeah-approval-profile-answerer
+            profile
+            (or answerer #'yeah-product--human-answerer))
+           budget nudges frozen))
+         (buffer-name (format "*Yeah: %s*"
+                              (file-name-nondirectory
+                               (directory-file-name root))))
+         (journal (yeah-journal-open
+                   (yeah-product--driver control)
+                   (yeah-product--view control profile root)
+                   buffer-name)))
     (plist-put session :project-root root)
-    (with-current-buffer buffer
+    (with-current-buffer (yeah-journal-buffer journal)
       (yeah-mode)
-      (setq yeah-product--control
-            (yeah-control-new session
-                              (or transport
-                                  (lambda (prompt callback)
-                                    (yeah-gptel-request
-                                     prompt callback
-                                     :system (yeah-product--system-prompt root))))
-                              (yeah-approval-profile-answerer
-                               profile
-                               (or answerer #'yeah-product--human-answerer))
-                              budget nudges frozen))
-      (setq yeah-product--refresh-timer
+      (setq yeah-journal--current journal
+            yeah-product--control control
+            yeah-product--profile profile
+            yeah-product--root root
+            yeah-product--refresh-timer
             (run-at-time yeah-product-refresh-interval
                          yeah-product-refresh-interval
                          (lambda ()
-                           (when (buffer-live-p buffer)
-                             (with-current-buffer buffer
-                               (yeah-product--refresh))))))
-      (yeah-product-render buffer))
-    (pop-to-buffer buffer)
-    buffer))
+                           (when (buffer-live-p (yeah-journal-buffer journal))
+                             (with-current-buffer (yeah-journal-buffer journal)
+                               (yeah-product--refresh)))))))
+    (pop-to-buffer (yeah-journal-buffer journal))
+    (yeah-journal-buffer journal)))
 
 (defun yeah-product--current-control ()
   "Return the controller of the current `yeah-mode' buffer."
@@ -296,17 +308,27 @@ resumes an existing session of the project instead of starting a new one."
     (user-error "yeah: current buffer is not a Yeah session"))
   yeah-product--control)
 
-(defun yeah-product-ask (prompt)
-  "Queue PROMPT in the current session, starting it when idle."
-  (interactive "sYeah ask: ")
-  (yeah-control-ask (yeah-product--current-control) prompt)
-  (yeah-product-refresh))
+(defun yeah-product-ask (&optional prompt)
+  "Queue PROMPT in the current session, starting it when idle.
+Interactively, open the full prompt composer."
+  (interactive)
+  (let ((control (yeah-product--current-control)))
+    (if prompt
+        (progn
+          (yeah-control-ask control prompt)
+          (yeah-product-refresh))
+      (yeah-journal-ask-command))))
 
-(defun yeah-product-steer (prompt)
-  "Queue steering clarification PROMPT for the active run."
-  (interactive "sYeah steering: ")
-  (yeah-control-steer (yeah-product--current-control) prompt)
-  (yeah-product-refresh))
+(defun yeah-product-steer (&optional prompt)
+  "Queue steering clarification PROMPT for the active run.
+Interactively, open the full steering composer."
+  (interactive)
+  (let ((control (yeah-product--current-control)))
+    (if prompt
+        (progn
+          (yeah-control-steer control prompt)
+          (yeah-product-refresh))
+      (yeah-journal-steer-command))))
 
 (defun yeah-product-cancel ()
   "Cancel the current active run."
@@ -365,31 +387,7 @@ person, in the format the person already reads."
 (defun yeah-doctor ()
   "Display local Yeah runtime diagnostics without exposing credentials."
   (interactive)
-  (let ((buffer (get-buffer-create "*Yeah Doctor*"))
-        (gptel-status
-         (condition-case err
-             (if (yeah-gptel-check-contract)
-                 (format "supported gptel %s" gptel-version))
-           (user-error (error-message-string err)))))
-    (with-current-buffer buffer
-      (special-mode)
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert "# Yeah Doctor\n\n")
-        (insert (format "Emacs: %s\n" emacs-version))
-        (insert (format "Model transport: %s\n" gptel-status))
-        (insert (format "Backend configured: %s\n"
-                        (and (boundp 'gptel-backend) gptel-backend t)))
-        (insert (format "Model configured: %s\n"
-                        (and (boundp 'gptel-model) gptel-model t)))
-        (insert (format "Registered tools: %d\n" (length (yeah-tools-names))))
-        (insert (format "Data home: %s\n" yeah-data-home))
-        (insert (format "Pending inputs: %s\n" yeah-input-directory))
-        (insert (format "Output artifacts: %s\n" yeah-result-artifact-directory))
-        (insert "\nNo API keys or secrets are printed.\n"))
-      (goto-char (point-min)))
-    (pop-to-buffer buffer)
-    buffer))
+  (yeah-doctor-ui-open))
 
 (provide 'yeah-product)
 ;;; yeah-product.el ends here
