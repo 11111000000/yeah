@@ -80,9 +80,23 @@
                                (setq asked request)
                                (list :effect :allow :reply :once))))
          (answerer (yeah-run-context-policy context))
-         (decision (funcall answerer (list :action "read"
+         (decision (funcall answerer (list :action "edit"
                                             :resource "/tmp/x"))))
     (should asked)
+    (should (eq :allow (plist-get decision :effect)))))
+
+(ert-deftest yeah-run-context-policy-asks-nobody-about-a-safe-read ()
+  "A read that changes nothing needs no question, even in a run."
+  (let* ((asked nil)
+         (context (yeah-run-context-create
+                   :placement 'attached
+                   :answerer (lambda (request)
+                               (setq asked request)
+                               (list :effect :allow :reply :once))))
+         (answerer (yeah-run-context-policy context))
+         (decision (funcall answerer (list :action "read"
+                                            :resource "/tmp/x"))))
+    (should-not asked)
     (should (eq :allow (plist-get decision :effect)))))
 
 (ert-deftest yeah-run-context-policy-refuses-when-nobody-is-there ()

@@ -44,10 +44,16 @@
   "Map ACP session ids to their Yeah session state.")
 
 (defvar yeah-acp--active-turns (make-hash-table :test 'equal)
-  "Map ACP session ids to their active turns.")
+  "Map ACP session ids to the list of their live turns.
+A session may have more than one turn: a client may start a second
+prompt before the first one settled, and the answer of a permission
+question belongs to the turn that asked it.")
 
 (defvar yeah-acp--pending-permissions (make-hash-table :test 'equal)
-  "Map permission request ids to the session they belong to.")
+  "Map permission request ids to the question they ask.
+The value names the session, the action and the resource, so that the
+answer reaches the turn that asked and may be remembered for the
+session.")
 
 (defvar yeah-acp--connection nil
   "The connection being served, bound dynamically by the socket handler.
@@ -63,39 +69,62 @@ the printed form otherwise."
         array)
     (error (format "%S" args))))
 
+(defun yeah-acp--session-rules (session-id)
+  "Return the permission rules that decide for SESSION-ID.
+The standing permissions of the service come first and the decisions the
+client remembered for this session come last: the last match wins."
+  (let ((state (yeah-acp--session-state session-id)))
+    (append (yeah-perm-rules-list) (plist-get state :rules))))
+
+(defun yeah-acp--ask-client (session-id output request)
+  "Ask the client about REQUEST and return the deferral of the question.
+The question carries three answers: allow once, allow always (the decision
+is remembered for the session) and reject.  The question itself is kept,
+so that the answer reaches the turn that asked and may be remembered."
+  (let* ((request-id (yeah-acp--fresh-id "perm"))
+         (params (list :sessionId session-id
+                       :toolCall (list :toolCallId request-id
+                                       :title (format "%s on %s"
+                                                      (plist-get request :action)
+                                                      (plist-get request :resource))
+                                       :rawInput
+                                       (yeah-acp--jsonable-args
+                                        (plist-get request :args)))
+                       :options (vector
+                                 (list :optionId "allow-once"
+                                       :name "Allow once" :kind "allow_once")
+                                 (list :optionId "allow-always"
+                                       :name "Allow always" :kind "allow_always")
+                                 (list :optionId "reject-once"
+                                       :name "Reject" :kind "reject_once")))))
+    (puthash request-id
+             (list :session-id session-id
+                   :action (plist-get request :action)
+                   :resource (plist-get request :resource))
+             yeah-acp--pending-permissions)
+    (funcall output (json-serialize
+                     (list :jsonrpc "2.0" :id request-id
+                           :method "session/request_permission"
+                           :params params)))
+    (list :defer request-id)))
+
 (defun yeah-acp--client-answerer (session-id output)
   "Return the answerer of SESSION-ID that asks the client over the wire.
 The rules decide first; what they do not name is asked of the client as a
-`session/request_permission', and the call waits for the answer."
+`session/request_permission', and the call waits for the answer.  A safe
+read needs no question: it is allowed, and it says why."
   (lambda (request)
-    (let ((effect (yeah-perm-effect (plist-get request :action)
-                                    (plist-get request :resource))))
+    (let* ((action (plist-get request :action))
+           (resource (plist-get request :resource))
+           (effect (yeah-perm-effect action resource
+                                     (yeah-acp--session-rules session-id))))
       (pcase effect
         ('allow (list :effect :allow :reply :once))
         ('deny (list :effect :deny :reply :reject
                      :reason (format "the rules deny %s on %s"
-                                     (plist-get request :action)
-                                     (plist-get request :resource))))
-        (_
-         (let* ((request-id (yeah-acp--fresh-id "perm"))
-                (params (list :sessionId session-id
-                              :toolCall (list :toolCallId request-id
-                                              :title (format "%s on %s"
-                                                             (plist-get request :action)
-                                                             (plist-get request :resource))
-                                              :rawInput
-                                              (yeah-acp--jsonable-args
-                                               (plist-get request :args)))
-                              :options (vector
-                                          (list :optionId "allow-once" :name "Allow once" :kind "allow_once")
-                                          (list :optionId "allow-always" :name "Allow always" :kind "allow_always")
-                                          (list :optionId "reject-once" :name "Reject" :kind "reject_once")))))
-           (puthash request-id session-id yeah-acp--pending-permissions)
-           (funcall output (json-serialize
-                            (list :jsonrpc "2.0" :id request-id
-                                  :method "session/request_permission"
-                                  :params params)))
-           (list :defer request-id)))))))
+                                     action resource)))
+        (_ (or (yeah-approval-safe-read-decision request)
+               (yeah-acp--ask-client session-id output request)))))))
 
 (defvar yeah-acp--counter 0
   "Monotonic counter for generated identifiers.")
@@ -257,11 +286,14 @@ OUTPUT receives the serialized message and defaults to standard output."
   "Register SESSION for ACP and return its state plist.
 The state carries the output function of the connection the session was
 created on, so its notifications reach that connection; when the session
-was created without a connection the current output function is used."
+was created without a connection the current output function is used.
+The state also carries the rules the client remembered for this session:
+a decision of the client is remembered here and in no other session."
   (let* ((id (plist-get session :id))
          (state (list :id id :session session :cwd cwd :listener nil
                       :output yeah-acp--output
                       :connection yeah-acp--connection
+                      :rules nil
                       :registry (yeah-tools-snapshot)))
          (listener (lambda (observed-session type fields event-id)
                      (yeah-acp--observe-event state observed-session type fields event-id))))
@@ -314,6 +346,20 @@ Text and resource_link blocks are supported; every other block is refused."
     ('interrupted "cancelled")
     (_ "refusal")))
 
+(defun yeah-acp--remember-turn (session-id turn)
+  "Remember TURN as a live turn of SESSION-ID."
+  (puthash session-id (cons turn (gethash session-id yeah-acp--active-turns))
+            yeah-acp--active-turns))
+
+(defun yeah-acp--forget-turn (session-id turn)
+  "Remove TURN from the live turns of SESSION-ID."
+  (let ((turns (gethash session-id yeah-acp--active-turns)))
+    (when turns
+      (let ((rest (cl-remove turn turns :test #'eq)))
+        (if rest
+            (puthash session-id rest yeah-acp--active-turns)
+          (remhash session-id yeah-acp--active-turns))))))
+
 (defun yeah-acp-session-prompt (request id)
   "Start a prompt for REQUEST and send its response later under request ID."
   (unless (listp request)
@@ -332,7 +378,7 @@ Text and resource_link blocks are supported; every other block is refused."
                (yeah-acp--client-answerer session-id output))
            nil nil
            (lambda (finished)
-             (remhash session-id yeah-acp--active-turns)
+             (yeah-acp--forget-turn session-id finished)
              (funcall
               output
               (json-serialize
@@ -342,15 +388,16 @@ Text and resource_link blocks are supported; every other block is refused."
            nil frozen nil
            (plist-get state :registry))))
     (unless (yeah-turn-done turn)
-      (puthash session-id turn yeah-acp--active-turns))
+      (yeah-acp--remember-turn session-id turn))
     nil))
 
 (defun yeah-acp-session-cancel (request)
   "Handle the session/cancel notification REQUEST."
   (unless (and (listp request) (stringp (plist-get request :sessionId)))
     (signal 'user-error (list "session/cancel needs sessionId")))
-  (when-let ((turn (gethash (plist-get request :sessionId)
-                            yeah-acp--active-turns)))
+  (dolist (turn (copy-sequence
+                 (gethash (plist-get request :sessionId)
+                          yeah-acp--active-turns)))
     (yeah-turn-cancel turn "cancelled by ACP client"))
   nil)
 
@@ -381,16 +428,41 @@ cancelled request, a protocol error, or an unknown option refuses it."
       (list :effect :deny
             :reason "the client returned an unknown permission response")))))
 
+(defun yeah-acp--turn-waiting-for (session-id request-id)
+  "Return the turn of SESSION-ID that waits for the answer of REQUEST-ID.
+The answer may arrive after another prompt of the same session started: the
+turn that asked the question is the one that gets the answer."
+  (seq-find (lambda (turn)
+              (and (not (yeah-turn-done turn))
+                   (gethash request-id (yeah-turn-pending-permissions turn))))
+            (gethash session-id yeah-acp--active-turns)))
+
+(defun yeah-acp--remember-decision (question decision)
+  "Remember an `always' DECISION for QUESTION in the rules of its session.
+The decision is remembered for this session only: the standing permissions
+of the service are not touched."
+  (let ((session-id (plist-get question :session-id)))
+    (when-let ((rule (yeah-approval-remember-rule
+                      (list :action (plist-get question :action)
+                            :resource (plist-get question :resource))
+                      decision)))
+      (let ((state (yeah-acp--session-state session-id)))
+        (plist-put state :rules
+                   (yeah-perm-rules-append (plist-get state :rules) rule))))))
+
 (defun yeah-acp--route-response (message)
   "Route a client RESPONSE (a message with an id and no method) to the
 permission it answers.  Return non-nil when it was a response."
   (let ((id (plist-get message :id)))
     (when (and id (null (plist-get message :method)))
-      (when-let ((session-id (gethash id yeah-acp--pending-permissions)))
+      (when-let ((question (gethash id yeah-acp--pending-permissions)))
         (remhash id yeah-acp--pending-permissions)
-        (when-let ((turn (gethash session-id yeah-acp--active-turns)))
-          (yeah-turn-resume-permission
-           turn id (yeah-acp--permission-decision message)))
+        (let ((decision (yeah-acp--permission-decision message)))
+          (when (yeah-approval-always-p decision)
+            (yeah-acp--remember-decision question decision))
+          (when-let ((turn (yeah-acp--turn-waiting-for
+                            (plist-get question :session-id) id)))
+            (yeah-turn-resume-permission turn id decision)))
         t))))
 
 (defun yeah-acp--connection-closed (connection)
@@ -405,14 +477,15 @@ of the dead connection are dropped."
          (push id sessions)))
      yeah-acp--sessions)
     (let ((stale nil))
-      (maphash (lambda (id session-id)
-                 (when (memq session-id sessions)
+      (maphash (lambda (id question)
+                 (when (memq (plist-get question :session-id) sessions)
                    (push id stale)))
                yeah-acp--pending-permissions)
       (dolist (id stale)
         (remhash id yeah-acp--pending-permissions)))
     (dolist (session-id sessions)
-      (when-let ((turn (gethash session-id yeah-acp--active-turns)))
+      (dolist (turn (copy-sequence
+                     (gethash session-id yeah-acp--active-turns)))
         (yeah-turn-cancel turn "the client disconnected")))))
 
 (defun yeah-acp--dispatch (method params id)

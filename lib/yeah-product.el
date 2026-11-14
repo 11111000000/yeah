@@ -52,10 +52,10 @@
   :type 'number
   :group 'yeah-product)
 
-(defconst yeah-product--safe-tools
-  '("read" "glob" "grep" "introspect" "buffer-read" "elisp-check"
-    "diagnostics" "job-status" "job-read")
-  "Read-oriented tools that do not need an interactive approval prompt.")
+(defconst yeah-product--safe-tools yeah-approval-safe-read-actions
+  "Read-oriented tools that do not need an interactive approval prompt.
+The list is the shared one of the approval layer: a tool that only looks
+needs no question.")
 
 (defvar-local yeah-product--control nil
   "Controller for the current Yeah session buffer.")

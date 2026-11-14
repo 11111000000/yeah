@@ -34,11 +34,15 @@
 
 (ert-deftest yeah-approval-reply-decision-remembers-an-always ()
   "An `always' answer becomes a rule of the person."
-  (yeah-perm-rules-reset-for-test)
-  (let ((decision (yeah-approval-reply-decision
-                   (list :action "read" :resource "/tmp/x") 'always)))
-    (should (eq :allow (plist-get decision :effect)))
-    (should (= 1 (length (yeah-perm-rules-list))))))
+  (unwind-protect
+      (progn
+        (yeah-perm-rules-reset-for-test)
+        (let ((decision (yeah-approval-reply-decision
+                         (list :action "read" :resource "/tmp/x") 'always)))
+          (should (eq :allow (plist-get decision :effect)))
+          (should (= 1 (length (yeah-perm-rules-list))))))
+    ;; the rule of this test belongs to this test
+    (yeah-perm-rules-reset-for-test)))
 
 (ert-deftest yeah-approval-profile-refuses-before-anything-is-asked ()
   "The plan profile refuses the tools that change the world, and the
@@ -62,10 +66,24 @@ person is not asked about them."
                     (lambda (request)
                       (setq asked request)
                       (list :effect :allow :reply :once))))
-         (decision (funcall answerer (list :action "read"
+         (decision (funcall answerer (list :action "git_status"
                                              :resource "/tmp/x"))))
     (should asked)
     (should (eq :allow (plist-get decision :effect)))))
+
+(ert-deftest yeah-approval-a-safe-read-needs-no-question ()
+  "A read that changes nothing is not asked about: the decision says why."
+  (let* ((asked nil)
+         (answerer (yeah-approval-profile-answerer
+                    "plan"
+                    (lambda (request)
+                      (setq asked request)
+                      (list :effect :allow :reply :once))))
+         (decision (funcall answerer (list :action "read"
+                                             :resource "/tmp/x"))))
+    (should-not asked)
+    (should (eq :allow (plist-get decision :effect)))
+    (should (string-match-p "safe read" (or (plist-get decision :reason) "")))))
 
 (provide 'test-yeah-approval)
 ;;; test-yeah-approval.el ends here

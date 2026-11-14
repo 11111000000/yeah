@@ -114,12 +114,24 @@ own reach for the length of the run."
         (yeah-perm-rules-append (yeah-run-context-rules context) rule))
   context)
 
+(defun yeah-run-context--answer (context request person)
+  "Ask PERSON about REQUEST and remember an `always' answer in CONTEXT.
+The rules of the context are the run's own: a remembered decision stays
+in this run and in no other."
+  (let ((decision (funcall person request)))
+    (when-let ((rule (yeah-approval-remember-rule request decision)))
+      (yeah-run-context-add-rule context rule))
+    decision))
+
 (defun yeah-run-context-policy (context)
   "Return the answerer of CONTEXT.
 
 The rules of the context decide.  What they do not name is asked of the
 answerer of the context, when there is one; with nobody to ask, the
-answer is a refusal that says so."
+answer is a refusal that says so.  A safe read needs no question: when
+there is a person to ask, the read answers itself and says why.  An
+`always' answer of the person is remembered in the rules of the
+context, so the same question is not asked twice."
   (let ((person (yeah-run-context-answerer context)))
     (lambda (request)
       (let* ((action (plist-get request :action))
@@ -134,7 +146,8 @@ answer is a refusal that says so."
                  :reason (format "the rules deny %s on %s" action resource)))
           (_
            (if person
-               (funcall person request)
+               (or (yeah-approval-safe-read-decision request)
+                   (yeah-run-context--answer context request person))
              (list :effect :deny :reply :reject
                    :reason (format "the rules ask about %s on %s and nobody answers"
                                    action resource)))))))))

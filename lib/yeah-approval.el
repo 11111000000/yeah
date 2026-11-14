@@ -30,6 +30,13 @@
 ;; So the two kinds are not two truths about what may happen: the person
 ;; answers, the answer is written into the rules, and the rules are the
 ;; only thing the kernel ever consults.
+;;
+;; A SAFE READ is the third thing the kernel knows: an action that only
+;; looks.  A safe read needs no question — there is nothing in it to
+;; approve — but the rules still decide what they name, and an explicit
+;; refusal of a safe read stays a refusal.  The safe read answers itself,
+;; and it says why in the decision, so the journal shows the reason the
+;; person was not asked.
 
 ;;; Code:
 
@@ -53,6 +60,42 @@ correlates the request with its journal events without changing the existing
 (defun yeah-approval-reply-p (reply)
   "Non-nil when REPLY is one of the answers a person may give."
   (memq reply yeah-approval--replies))
+
+(defconst yeah-approval-safe-read-actions
+  '("read" "glob" "grep" "introspect" "buffer-read" "elisp-check"
+    "diagnostics" "job-status" "job-read")
+  "Read-oriented actions that need no question from the person.
+A safe read only looks: it changes nothing.  The rules still decide what
+they name, and an explicit refusal of a safe read stays a refusal.")
+
+(defun yeah-approval-safe-read-p (request)
+  "Return non-nil when REQUEST names a known safe read."
+  (and (stringp (plist-get request :action))
+       (member (plist-get request :action) yeah-approval-safe-read-actions)
+       t))
+
+(defun yeah-approval-safe-read-decision (request)
+  "Return the decision of a safe read of REQUEST, or nil.
+The decision allows the read and says why it needed no question: a read
+changes nothing, so there is nothing to ask about."
+  (when (yeah-approval-safe-read-p request)
+    (list :effect :allow :reply :once
+          :reason (format "%s is a safe read: it changes nothing"
+                          (plist-get request :action)))))
+
+(defun yeah-approval-always-p (decision)
+  "Return non-nil when DECISION is an answer that is to be remembered."
+  (memq (plist-get decision :reply) '(always :always)))
+
+(defun yeah-approval-remember-rule (request decision)
+  "Return the rule that remembers DECISION for REQUEST, or nil.
+An `always' answer becomes an allow rule for the exact action and the
+exact resource of REQUEST; every other answer is forgotten."
+  (when (and (eq (plist-get decision :effect) :allow)
+             (yeah-approval-always-p decision))
+    (yeah-perm-rule-make (plist-get request :action)
+                         (plist-get request :resource)
+                         'allow)))
 
 (defun yeah-approval-policy-decision (request)
   "Answer REQUEST from the rules.
@@ -94,7 +137,8 @@ question. Return the decision."
 
 PERSON answers what the profile does not decide.  The profile decides
 first: a tool the profile forbids is refused, and everything else is
-left to the person."
+left to the person.  A safe read needs no question: when there is a
+person to ask, the read answers itself and says why."
   (let* ((rules (yeah-perm-profile profile))
          (action (plist-get request :action))
          (resource (plist-get request :resource))
@@ -104,7 +148,10 @@ left to the person."
     (if (eq effect 'deny)
         (list :effect :deny :reply :reject
               :reason (format "the %s profile does not allow %s" profile action))
-      (funcall (or person #'yeah-approval-policy-decision) request))))
+      (if person
+          (or (yeah-approval-safe-read-decision request)
+              (funcall person request))
+        (funcall (or person #'yeah-approval-policy-decision) request)))))
 
 (defun yeah-approval-profile-answerer (profile &optional person)
   "Return an answerer that answers under the permission profile PROFILE.

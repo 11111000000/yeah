@@ -200,23 +200,49 @@ The first answer wins; a cancelled turn ignores a late answer."
 
 (defun yeah-turn--decide (answerer spec name resource args &optional tool-call-id)
   "Ask ANSWERER whether NAME may act on RESOURCE with ARGS.
-Return (EFFECT . REFUSED), where EFFECT is allow, deny or defer.  TOOL-CALL-ID
-is passed to the answerer without changing the deferred request-id contract."
+Return (EFFECT DETAIL REPLY): EFFECT is allow, deny or defer, DETAIL is the
+reason of the decision (the question that waits for the person when the
+effect is defer), and REPLY is what the person answered (`:once' or
+`:always').  TOOL-CALL-ID is passed to the answerer without changing the
+deferred request-id contract."
   (cond
    ((null spec)
-    (cons "deny" (format "there is no tool named %s" name)))
+    (list "deny" (format "there is no tool named %s" name) nil))
    ((equal name "finish")
-    (cons "allow" nil))
+    (list "allow" nil nil))
    (t
     (let ((decision (funcall answerer
                              (yeah-approval-request
                               name resource args tool-call-id))))
       (if (plist-get decision :defer)
-          (cons "defer" (plist-get decision :defer))
+          (list "defer" (plist-get decision :defer) nil)
         (if (eq (plist-get decision :effect) :allow)
-            (cons "allow" nil)
-          (cons "deny" (or (plist-get decision :reason)
-                            (format "the rules say %s" name)))))))))
+            (list "allow" (plist-get decision :reason)
+                  (plist-get decision :reply))
+          (list "deny" (or (plist-get decision :reason)
+                           (format "the rules say %s" name))
+                nil)))))))
+
+(defun yeah-turn--arguments (args)
+  "Return the JSON-safe arguments of a tool call."
+  (apply #'vector (mapcar #'yeah-result-json-safe args)))
+
+(defun yeah-turn--reply-name (reply)
+  "Return the journal name of the answer REPLY.
+The journal is JSON: a keyword or a symbol becomes its name."
+  (cond ((null reply) nil)
+        ((stringp reply) reply)
+        ((symbolp reply) (symbol-name reply))
+        (t (format "%S" reply))))
+
+(defun yeah-turn--decision-fields (name resource effect reply reason)
+  "Return the fields of the permission decision of a call.
+REPLY is the answer of the person and REASON the reason of the decision;
+both are left out when there is nothing to say."
+  (let ((fields (list :action name :resource resource :effect effect)))
+    (when reply (plist-put fields :reply (yeah-turn--reply-name reply)))
+    (when reason (plist-put fields :reason reason))
+    fields))
 
 (defun yeah-turn--prepare (turn answerer index call)
   "Prepare CALL at INDEX, preserving the existing answerer timing.
@@ -229,6 +255,9 @@ The returned slot owns stable ids shared by request, permission and tool-end."
                                (+ (yeah-turn-calls turn) index 1)))
          (decision (yeah-turn--decide
                     answerer spec name resource args tool-call-id))
+         (effect (nth 0 decision))
+         (detail (nth 1 decision))
+         (reply (nth 2 decision))
          (request-event-id
           (yeah-turn--write turn "tool-request"
                             (yeah-turn--context
@@ -237,20 +266,21 @@ The returned slot owns stable ids shared by request, permission and tool-end."
          (permission-event-id
           (yeah-turn--write turn "permission-request"
                             (yeah-turn--context turn tool-call-id request-event-id)
-                            :action name :resource resource))
-         (decision-event-id
-          (yeah-turn--write turn "permission-decision"
-                            (yeah-turn--context
-                             turn tool-call-id permission-event-id)
                             :action name :resource resource
-                            :effect (car decision))))
+                            :arguments (yeah-turn--arguments args)))
+         (decision-event-id
+          (apply #'yeah-turn--write turn "permission-decision"
+                 (yeah-turn--context turn tool-call-id permission-event-id)
+                 (yeah-turn--decision-fields
+                  name resource effect reply
+                  (and (not (equal "defer" effect)) detail)))))
     (list :index index :name name :args args :spec spec :resource resource
           :tool-call-id tool-call-id
           :request-event-id request-event-id
           :permission-request-event-id permission-event-id
           :decision-event-id decision-event-id
-          :refused (and (not (equal "defer" (car decision))) (cdr decision))
-          :deferred (and (equal "defer" (car decision)) (cdr decision)))))
+          :refused (and (equal "deny" effect) detail)
+          :deferred (and (equal "defer" effect) detail))))
 
 (defun yeah-turn--continue-batch (turn calls results)
   "Continue TURN after tool CALLS and RESULTS, compacting first if needed.
@@ -343,16 +373,19 @@ person allowed it."
              request-id
              (lambda (decision)
                (unless (yeah-turn-done turn)
-                 (yeah-turn--write
-                  turn "permission-decision"
-                  (yeah-turn--context
-                   turn (plist-get slot :tool-call-id)
-                   (plist-get slot :decision-event-id))
-                  :action (plist-get slot :name)
-                  :resource (plist-get slot :resource)
-                  :effect (if (eq (plist-get decision :effect) :allow)
-                              "allow"
-                            "deny"))
+                 (apply #'yeah-turn--write
+                        turn "permission-decision"
+                        (yeah-turn--context
+                         turn (plist-get slot :tool-call-id)
+                         (plist-get slot :decision-event-id))
+                        (yeah-turn--decision-fields
+                         (plist-get slot :name)
+                         (plist-get slot :resource)
+                         (if (eq (plist-get decision :effect) :allow)
+                             "allow"
+                           "deny")
+                         (plist-get decision :reply)
+                         (plist-get decision :reason)))
                  (unless (yeah-turn-done turn)
                    (if (eq (plist-get decision :effect) :allow)
                        (yeah-tools-dispatch (plist-get slot :name) args done)

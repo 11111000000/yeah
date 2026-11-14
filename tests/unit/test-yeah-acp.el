@@ -170,5 +170,23 @@
     (should (eq (plist-get (yeah-acp--permission-decision message) :effect)
                 :deny))))
 
+(ert-deftest yeah-acp-an-always-answer-is-remembered-for-the-session ()
+  "The client may answer `allow-always': the decision is remembered for
+the session, so the same question is not asked a second time."
+  (yeah-acp-test--with-server
+    (let* ((session-id (yeah-acp-test--new-session))
+           (answerer (yeah-acp--client-answerer
+                      session-id (lambda (text) text)))
+           (request (list :action "write" :resource "/tmp/x.el" :args nil))
+           (deferral (funcall answerer request)))
+      (should (plist-get deferral :defer))
+      (let ((question (gethash (plist-get deferral :defer)
+                               yeah-acp--pending-permissions)))
+        (should question)
+        (yeah-acp--remember-decision question
+                                     (list :effect :allow :reply :always)))
+      (should (eq :allow
+                  (plist-get (funcall answerer request) :effect))))))
+
 (provide 'test-yeah-acp)
 ;;; test-yeah-acp.el ends here

@@ -26,14 +26,17 @@
 (require 'yeah-client)
 (require 'yeah-perm)
 
-(defconst yeah-check--transport
-  "(defun yeah-check--transport (prompt callback)
+(defun yeah-check--transport (tool)
+  "Return the source of a fake transport that asks for TOOL.
+A read changes nothing, a write changes the world: the service asks the
+client about the second and answers the first by itself."
+  (format "(defun yeah-check--transport (prompt callback)
      (funcall callback
               (list 'tool-call
-                    (list (list :name \"read\")
+                    (list (list :name \"%s\")
                           (list \"/etc/hostname\")
                           (lambda (value) (funcall callback \"done\"))))))"
-  "The fake transport of the service: it asks for one read.")
+          tool))
 
 (defun yeah-check--decisions (data-home)
   "Return the permission effects the service recorded, in journal order."
@@ -72,15 +75,15 @@
         (accept-process-output nil 0.05)))
     (yeah-check--decisions data-home)))
 
-(defun yeah-check--run (rules)
-  "Start a service with RULES, drive one tool call through it, and return
-the permission decision the service recorded."
+(defun yeah-check--run (rules tool)
+  "Start a service with RULES, drive one call of TOOL through it, and
+return the permission decisions the service recorded."
   (let ((data-home (make-temp-file "yeah-service-perm" t))
         (name (format "perm-%d" (random 1000000)))
         (decision nil))
     (unwind-protect
         (progn
-          (yeah-service-start name yeah-check--transport data-home
+          (yeah-service-start name (yeah-check--transport tool) data-home
                              "#'yeah-check--transport" t rules)
           (let ((client
                  (condition-case err
@@ -103,17 +106,26 @@ the permission decision the service recorded."
     decision))
 
 (let* ((failures nil)
-       (without (yeah-check--run nil))
-       (with-read (yeah-check--run (list (yeah-perm-rule-make "read" "*" 'allow)))))
+       ;; a tool that changes the world: the client is asked
+       (without (yeah-check--run nil "write"))
+       ;; the same tool with the permission granted
+       (with-write (yeah-check--run (list (yeah-perm-rule-make "write" "*" 'allow))
+                                   "write"))
+       ;; a tool that only looks: nobody is asked, and the journal says why
+       (safe-read (yeah-check--run nil "read")))
   (unless (and (member "defer" without)
                (not (member "allow" without)))
-    (push (format "a service without permissions did not ask the client safely: %S"
+    (push (format "a service without permissions did not ask the client about the write: %S"
                   without)
           failures))
-  (unless (and (member "allow" with-read)
-               (not (member "defer" with-read)))
+  (unless (and (member "allow" with-write)
+               (not (member "defer" with-write)))
     (push (format "the granted permission did not reach the service: %S"
-                  with-read)
+                  with-write)
+          failures))
+  (unless (and (member "allow" safe-read)
+               (not (member "defer" safe-read)))
+    (push (format "a safe read was asked about: %S" safe-read)
           failures))
   (dolist (failure failures)
     (message "service-perm: %s" failure))

@@ -40,9 +40,11 @@
     (:type "tool-request"
      :required (:tool :args))
     (:type "permission-request"
-     :required (:action :resource))
+     :required (:action :resource)
+     :optional (:arguments))
     (:type "permission-decision"
-     :required (:action :resource :effect))
+     :required (:action :resource :effect)
+     :optional (:reply :reason))
     (:type "tool-end"
      :required (:tool :ok :payload)
      :optional (:details))
