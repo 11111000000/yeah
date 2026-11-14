@@ -145,7 +145,13 @@ shown to bite.
 A real model (MiniMax-M3.1-Flash) finishes the Stage 1 coding task, and the
 interactive path works against a live provider: the journal mode, the cancel,
 the quit and the restart, the resume of the session, and the recovery of a
-pending input.  The fixed point passes with a live model too: a child agent
+pending input.  The interactive path was re-checked on 2026-11-14 after the
+Emacs-native UX wave: the whole scenario (fix the file, cancel, quit,
+restart, recover) passes with MiniMax-M2.7, and the service path passes with
+MiniMax-M3.1-Flash.  One honest difference: a model that narrates its next
+step instead of acting is nudged into the action by the completion nudge —
+that nudge carries MiniMax-M2.7 through, but MiniMax-M3.1-Flash keeps
+narrating on the larger task and the run ends without the effect.  The fixed point passes with a live model too: a child agent
 repairs a Yeah canary and the canary passes afterwards.  The clean-Emacs
 install path is network-tested against the published repository by
 `tests/live/live-clean-install.el`, which closes the public alpha gate.
