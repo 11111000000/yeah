@@ -843,6 +843,17 @@ two are not yet the single wired question for both placements: attached and
 service still use their smaller prompts.  That gap is explicit rather than
 hidden behind a second transcript.
 
+**14.7a Supervision is model-dependent.**  The live interactive path was
+re-checked on 2026-11-14 after the UX wave.  With MiniMax-M2.7 the whole
+scenario passes: the model fixes the file, the run is cancelled, the
+session survives a quit and a restart, and a pending input is recovered.
+With MiniMax-M3.1-Flash the same scenario ends with the file unfixed: the
+model answers with a plan, the completion nudge is sent, the model narrates
+again, and the run ends without the effect.  The nudge is therefore a
+prompt, not a guarantee; the next step is a second-stage nudge that names
+the exact call to make, or a decision to require an explicit action before
+the run may end.
+
 **14.8 The remaining product work is parity, not decoration.**  `M-x yeah'
 still opens the attached placement.  Before service becomes the default,
 the service path needs session replay, steering, pending-input
