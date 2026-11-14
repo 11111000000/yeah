@@ -68,6 +68,8 @@
      :required (:items :operation))
     (:type "error"
      :required (:payload))
+    (:type "unfinished"
+     :required (:payload :reason))
     (:type "finish"
      :required (:summary)))
   "The event vocabulary, with required and optional payload fields.")

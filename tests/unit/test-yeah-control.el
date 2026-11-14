@@ -270,6 +270,28 @@ call, not another plan."
                                   (car nudges))))
       (ignore-errors (delete-directory root t t)))))
 
+(ert-deftest yeah-turn-a-supervised-run-that-never-finishes-says-so ()
+  "A supervised run whose nudge budget is spent without the model finishing
+writes the `unfinished' event: ending as if it were done would be a false
+success."
+  (let* ((root (make-temp-file "yeah-unfinished" t))
+         (session (yeah-session-open "unfinished" root))
+         (turn nil))
+    (unwind-protect
+        (progn
+          (setq turn (yeah-turn-run session "start"
+                                     (lambda (_prompt callback)
+                                       (funcall callback
+                                                "I'll start by looking at the project."))
+                                     nil 60000 1))
+          (should (yeah-turn-done turn))
+          (should (cl-some
+                   (lambda (record)
+                     (and (equal "unfinished" (plist-get record :type))
+                          (plist-get record :reason)))
+                   (yeah-session-records session))))
+      (ignore-errors (delete-directory root t t)))))
+
 (defvar yeah-turn-test--late-callback nil
   "The answer callback of the model, captured while a tool runs.")
 

@@ -259,7 +259,7 @@ interactive use defaults to gptel and one-key human approvals.
 PROFILE is the permission profile of the session: `plan' refuses the tools
 that change the world, `build' asks for them.  SESSION-ID, when given,
 resumes an existing session of the project instead of starting a new one."
-  (let* ((nudges (or nudges 2))
+  (let* ((nudges (or nudges 4))
          (root (or project-root (yeah-product-project-root)))
          (session-root (yeah-product-session-root root))
          (session (yeah-session-open (or session-id

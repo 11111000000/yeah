@@ -1409,6 +1409,30 @@
    "register": "fact",
    "control": "sed -i 's|(accept-process-output nil 0.05)|nil|' lib/yeah-bridge.el",
    "waiver": null
+  },
+  {
+   "id": "supervised-run-says-it-did-not-finish",
+   "text": "A supervised run whose nudge budget is spent without the model finishing writes the unfinished event: a run that ends without the effect must not look done.",
+   "scope": [
+    "lib/yeah-turn.el",
+    "lib/yeah-events.el",
+    "tests/unit/test-yeah-control.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+    }
+   ],
+   "falsifier": "the run ends as if the work were done although the model never finished",
+   "register": "fact",
+   "control": "sed -i 's|(> (yeah-turn-max-nudges turn) 0)|(> (yeah-turn-max-nudges turn) 100)|' lib/yeah-turn.el",
+   "waiver": null
   }
  ]
 }

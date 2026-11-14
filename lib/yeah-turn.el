@@ -481,7 +481,21 @@ result that a tool backs ends the run."
           (setf (yeah-turn-states turn)
                 (append (yeah-turn-states turn) (list 'deciding)))
           (yeah-turn--ask turn nudge transport answerer)))
-    (yeah-turn--mark-done turn)))
+    (progn
+      ;; A supervised run that ends without the model finishing must say
+      ;; so: the nudge budget is spent and the model still describes its
+      ;; next step.  Ending as if it were done would be a false success.
+      (when (and (> (yeah-turn-max-nudges turn) 0)
+                 (or (yeah-turn--plan-p answer)
+                     (null (yeah-turn-tools-used turn))))
+        (yeah-turn--write turn "unfinished"
+                          (yeah-turn--context
+                           turn nil (yeah-turn-turn-event-id turn))
+                          :payload (format
+                                    "the model described its next step %d times and the run ended without an effect"
+                                    (yeah-turn-nudges turn))
+                          :reason "the nudge budget was spent"))
+      (yeah-turn--mark-done turn))))
 
 (defun yeah-turn--answer (turn answer answerer &optional transport info)
   "Handle the model's ANSWER in TURN. The ANSWERER answers requests."
@@ -605,9 +619,13 @@ that the next answer must contain the call, not a plan."
                (string-join unused ", ")))
      (cond
       ((and tool path)
-       (format "\n\nMake this call now: `%s' on %s." tool path))
+       (format (concat "\n\nMake this call now: `%s' on %s. "
+                       "Your next answer must be the tool call, not a plan.")
+               tool path))
       (tool
-       (format "\n\nMake this call now: `%s', with the `path' argument." tool))
+       (format (concat "\n\nMake this call now: `%s', with the `path' argument. "
+                       "Your next answer must be the tool call, not a plan.")
+               tool))
       (t "")))))
 
 (defun yeah-turn--ask (turn prompt transport answerer)
