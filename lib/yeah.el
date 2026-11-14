@@ -35,14 +35,17 @@ that change the world, `build' asks for them."
                             latest))))
 
 ;;;###autoload
-(defun yeah-ask (prompt)
-  "Send PROMPT to the current Yeah session, creating one when needed."
-  (interactive "sYeah ask: ")
+(defun yeah-ask (&optional prompt)
+  "Send PROMPT to the current Yeah session, creating one when needed.
+Interactively, open the full prompt composer."
+  (interactive)
   (let ((buffer (if (and (derived-mode-p 'yeah-mode) yeah-product--control)
                     (current-buffer)
                   (yeah-product-open))))
     (with-current-buffer buffer
-      (yeah-product-ask prompt))))
+      (if prompt
+          (yeah-product-ask prompt)
+        (yeah-journal-ask-command)))))
 
 (provide 'yeah)
 ;;; yeah.el ends here

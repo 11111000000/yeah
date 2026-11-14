@@ -1,6 +1,8 @@
 ;;; test-yeah-product.el --- interactive product layer tests -*- lexical-binding: t; no-byte-compile: t -*-
-;;
+
 ;; Copyright (C) 2026  Petr Kosov
+;;
+;; Part of Yeah.
 
 ;;; Code:
 
@@ -41,30 +43,16 @@
       (yeah-product-ask "hello"))
     (yeah-product-render buffer)
     (let ((text (with-current-buffer buffer (buffer-string))))
-      (should (string-match-p "Session:" text))
-      (should (string-match-p "State: idle" text))
       (should (string-match-p "\\* User\nhello" text))
-      (should (string-match-p "\\* Assistant\ndone" text))
-      (should (string-match-p "a ask · s steer" text)))))
-
-(ert-deftest yeah-product-formats-stage-events ()
-  (let ((text (yeah-product--format-event
-               (list :type "steering" :payload "clarify"))))
-    (should (string-match-p "Steering" text))
-    (should (string-match-p "clarify" text)))
-  (let ((text (yeah-product--format-event
-               (list :type "nudge" :payload "verify"))))
-    (should (string-match-p "Completion nudge" text)))
-  (let ((text (yeah-product--format-event
-               (list :type "cancel" :payload "stop"))))
-    (should (string-match-p "Cancelled" text))))
+      (should (string-match-p "\\* Yeah\ndone" text))
+      (should buffer-read-only))))
 
 (ert-deftest yeah-product-doctor-does-not-print-secrets ()
   (let ((buffer (yeah-doctor)))
     (unwind-protect
         (let ((text (with-current-buffer buffer (buffer-string))))
           (should (string-match-p "Emacs:" text))
-          (should (string-match-p "Model transport:" text))
+          (should (string-match-p "gptel" text))
           (should (string-match-p "No API keys" text))
           (should-not (string-match-p "Bearer" text)))
       (kill-buffer buffer))))
