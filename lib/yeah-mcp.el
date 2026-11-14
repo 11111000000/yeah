@@ -194,7 +194,7 @@ FAMILY is `local' for a Unix socket and `ipv4' for a loopback TCP port.
 Each connection is answered on its own connection."
   (yeah-wire-socket-serve
    service
-   (lambda (line respond)
+   (lambda (line respond &optional _connection)
      (let ((response (yeah-mcp-handle-message line)))
        (when response
          (funcall respond response))))

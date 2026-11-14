@@ -54,11 +54,13 @@ The incomplete tail of CONNECTION is kept for the next chunk."
     (process-send-string connection (concat text "\n"))))
 
 ;;;###autoload
-(defun yeah-wire-socket-server (service handler &optional family)
+(defun yeah-wire-socket-server (service handler &optional family on-close)
   "Listen on the local socket SERVICE and serve connections with HANDLER.
 FAMILY is `local' for a Unix socket and `ipv4' for a loopback TCP port.
-HANDLER is called with (LINE RESPOND) for every complete line of input;
-RESPOND takes one message and sends it back to that connection.
+HANDLER is called with (LINE RESPOND CONNECTION) for every complete line
+of input; RESPOND takes one message and sends it back to that connection.
+ON-CLOSE, when given, is called with CONNECTION after it closed: a
+question asked of a dead connection must not hang the server.
 Return the server process."
   (make-network-process
    :name "yeah-wire-socket"
@@ -66,6 +68,12 @@ Return the server process."
    :family (or family 'local)
    :service service
    :noquery t
+   :sentinel
+   (when on-close
+     (lambda (connection _event)
+       (when (memq (process-status connection) '(closed failed exit))
+         (remhash connection yeah-wire-socket--pending)
+         (funcall on-close connection))))
    :filter
    (lambda (connection chunk)
      (cond
@@ -75,13 +83,15 @@ Return the server process."
        (dolist (line (yeah-wire-socket--lines connection chunk))
          (unless (string-blank-p line)
            (funcall handler line
-                    (lambda (text) (yeah-wire-socket--respond connection text))))))))))
+                    (lambda (text) (yeah-wire-socket--respond connection text))
+                    connection))))))))
 
 ;;;###autoload
-(defun yeah-wire-socket-serve (service handler &optional family)
+(defun yeah-wire-socket-serve (service handler &optional family on-close)
   "Serve connections on SERVICE with HANDLER until the server stops.
-FAMILY and HANDLER mean what they mean in `yeah-wire-socket-server'."
-  (let ((server (yeah-wire-socket-server service handler family)))
+FAMILY, HANDLER and ON-CLOSE mean what they mean in
+`yeah-wire-socket-server'."
+  (let ((server (yeah-wire-socket-server service handler family on-close)))
     (while (process-live-p server)
       (accept-process-output nil 0.05))
     server))
