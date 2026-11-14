@@ -100,7 +100,9 @@ kernel and its Emacs-native interface:
   unused path tool and the file the model named), and a repeated nudge
   requires the next answer to contain the call, not another plan — while
   "I fixed it, the test passes" ends the run; a run that is supervised ends through the `finish' tool,
-  not through talk; and a model that answers while the harness is still
+  not through talk, and a run that spends its nudge budget without
+  finishing says so in the journal instead of looking done; and a model
+  that answers while the harness is still
   waiting for a tool no longer breaks the state machine;
 - a shared read-only journal for the attached and service placements: one
   event-derived view, incremental block updates that preserve the reading
@@ -174,10 +176,11 @@ Do not infer a working product from the presence of a module:
   not yet replay an earlier session into it, and the service path does not
   yet expose the attached path's pending queue, steering, withdrawal and
   recovery commands;
-- the shared approval/diff components are implemented and tested, but the
-  attached and service paths still use their smaller prompt surfaces rather
-  than one wired approval view.  The service preview is a read-only text
-  diff, not the full `diff-mode' surface;
+- the permission question is asked in one place: the shared approval view,
+  which names the action, its target, the arguments and the diff of the
+  change, and which both the attached and the service path open.  The
+  preview is a read-only text diff, not the full `diff-mode' surface, and
+  the wire answer `always' is not remembered by the kernel yet;
 - `nerd-icons' is optional decoration only.  Without it, without multiple
   fonts, or with `yeah-icons' set to `never', every label remains readable
   text; no icon package is required;
