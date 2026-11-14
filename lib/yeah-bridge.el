@@ -104,6 +104,17 @@ Return a plist with the keys `:ok', `:status', `:output' and
               (let ((timed-out (process-live-p process)))
                 (when timed-out
                   (ignore-errors (kill-process process)))
+                ;; A process can exit before its last chunk reaches the
+                ;; filter: the answer of the attached Emacs is then lost
+                ;; and the bridge answers with nothing.  Draining the
+                ;; pending events after the exit — until the output stops
+                ;; changing — gives the filter its last words.
+                (let ((previous nil)
+                      (drain-deadline (+ (float-time) 0.2)))
+                  (while (and (< (float-time) drain-deadline)
+                              (not (equal previous output)))
+                    (setq previous output)
+                    (accept-process-output nil 0.05)))
                 (let ((status (unless timed-out (process-exit-status process))))
                   (list :ok (and (not timed-out) (eq status 0))
                         :status status

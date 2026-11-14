@@ -1281,6 +1281,28 @@
       "register": "fact",
       "control": "sed -i 's/Make this call now/Continue when ready/g' lib/yeah-turn.el",
       "waiver": null
+    },
+    {
+      "id": "bridge-keeps-the-answer",
+      "text": "The bridge does not lose the answer of the attached Emacs: a process that exits before its last chunk reaches the filter still delivers the answer.",
+      "scope": [
+        "lib/yeah-bridge.el", "tests/checks/check-bridge-keeps-the-answer.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-bridge-keeps-the-answer.el"
+        }
+      ],
+      "falsifier": "the bridge answers with an empty output although the attached Emacs printed the answer",
+      "register": "fact",
+      "control": "sed -i 's|(accept-process-output nil 0.05)|nil|' lib/yeah-bridge.el",
+      "waiver": null
     }
   ]
 }

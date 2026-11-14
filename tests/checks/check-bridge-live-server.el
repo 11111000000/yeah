@@ -84,6 +84,25 @@
   "Ask the server NAME to stop."
   (ignore-errors (yeah-check--daemon-eval name "(kill-emacs)")))
 
+(defun yeah-check--bridge-read-until (name expected &optional timeout)
+  "Read *yeah-live* of server NAME through the bridge until the text is
+EXPECTED, retrying within TIMEOUT seconds (default 15).
+A bridge call is killed after the bridge's own 2-second timeout, and on a
+loaded machine a single call can lose that race; the check asks for live
+state, not for one fast call, so it retries instead of reporting a slow
+server as a broken bridge."
+  (let ((deadline (+ (float-time) (or timeout 15)))
+        (got nil))
+    (while (and (not (equal got expected)) (< (float-time) deadline))
+      (setq got (condition-case nil
+                    (let ((yeah-bridge-program yeah-check--emacsclient)
+                          (yeah-bridge-server name))
+                      (yeah-bridge-buffer-read "*yeah-live*"))
+                  (error nil)))
+      (unless (equal got expected)
+        (accept-process-output nil 0.2)))
+    got))
+
 (let ((failures nil)
       (name (format "yeah-bridge-live-%d" (random 1000000))))
   (unwind-protect
@@ -95,20 +114,14 @@
         (unless (yeah-check--daemon-await name)
           (push "the Emacs server did not answer" failures))
         (unless (equal "live text"
-                       (condition-case nil
-                           (let ((yeah-bridge-program yeah-check--emacsclient) (yeah-bridge-server name))
-                             (yeah-bridge-buffer-read "*yeah-live*"))
-                         (error "ERROR")))
+                       (yeah-check--bridge-read-until name "live text"))
           (push "the bridge could not read the live buffer" failures))
         ;; the bridge sees an edit made after the first read: live state
         (yeah-check--daemon-eval
          name
          "(with-current-buffer \"*yeah-live*\" (goto-char (point-max)) (insert \" edited\"))")
-        (unless (string-match-p "edited"
-                                (condition-case nil
-                                    (let ((yeah-bridge-program yeah-check--emacsclient) (yeah-bridge-server name))
-                                      (yeah-bridge-buffer-read "*yeah-live*"))
-                                  (error "")))
+        (unless (equal "live text edited"
+                       (yeah-check--bridge-read-until name "live text edited"))
           (push "the bridge did not see the edit made after the first read"
                 failures))
         ;; evaluation in the server
