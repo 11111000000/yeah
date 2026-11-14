@@ -1349,6 +1349,29 @@
       "register": "fact",
       "control": "sed -i 's|(\"unfinished\"|(\"unfinished-disabled\"|' lib/yeah-ui.el",
       "waiver": null
+    },
+    {
+      "id": "one-approval-surface",
+      "text": "The question of the permission is asked in one place: the shared approval view, which names the action, the resource it acts on, the arguments it would run with and the diff of the change; the attached and the service path both answer there.",
+      "scope": [
+        "lib/yeah-approval-ui.el", "lib/yeah-product.el",
+        "lib/yeah-service-ui.el", "tests/unit/test-yeah-interaction.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-interaction.el"
+        }
+      ],
+      "falsifier": "a path asks the permission somewhere else, or the view does not name what the person is asked about",
+      "register": "fact",
+      "control": "sed -i 's|(format \"Arguments: %S\\\\n\" arguments)||' lib/yeah-approval-ui.el",
+      "waiver": null
     }
   ]
 }

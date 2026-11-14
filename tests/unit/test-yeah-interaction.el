@@ -22,6 +22,21 @@
       (write-region (point-min) (point-max) path nil 'silent))
     path))
 
+(ert-deftest yeah-approval-view-names-the-action-the-target-and-the-arguments ()
+  "The approval view shows what the person is asked about: the action, the
+resource it acts on and the arguments it would run with."
+  (let ((buffer (yeah-approval-open
+                 (list :action "edit" :resource "/tmp/x.el"
+                       :arguments '("old text" "new text"))
+                 #'ignore)))
+    (unwind-protect
+        (with-current-buffer buffer
+          (should (string-match-p "edit" (buffer-string)))
+          (should (string-match-p "/tmp/x.el" (buffer-string)))
+          (should (string-match-p "old text" (buffer-string)))
+          (should (string-match-p "new text" (buffer-string))))
+      (kill-buffer buffer))))
+
 (ert-deftest yeah-approval-answer-returns-the-decision-of-the-person ()
   "The shared approval view answers the question: the person decides once,
 always or reject, and the decision is what the caller receives."
