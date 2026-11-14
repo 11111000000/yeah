@@ -201,16 +201,16 @@ OUTPUT receives the serialized message and defaults to standard output."
   (list :sessionUpdate kind
         :content (list :type "text" :text (or text ""))))
 
-(defun yeah-acp--tool-call (record-id name status &optional result)
-  "Return a tool_call or tool_call_update ACP update for RECORD-ID."
+(defun yeah-acp--tool-call (tool-call-id name status &optional result)
+  "Return a tool_call or tool_call_update ACP update for TOOL-CALL-ID."
   (if (eq status 'started)
       (list :sessionUpdate "tool_call"
-            :toolCallId (format "tool-%s" record-id)
+            :toolCallId tool-call-id
             :title name
             :status "pending")
     (list :sessionUpdate "tool_call_update"
-          :toolCallId (format "tool-%s" record-id)
-          :status (if result "completed" "failed")
+          :toolCallId tool-call-id
+          :status (if (eq status 'failed) "failed" "completed")
           :content (list (list :type "text" :text (or result ""))))))
 
 (defun yeah-acp--observe-event (state session type fields id)
@@ -231,12 +231,19 @@ OUTPUT receives the serialized message and defaults to standard output."
           output))
         ("tool-request"
          (yeah-acp--send-update
-          session-id (yeah-acp--tool-call id (plist-get fields :tool) 'started)
+          session-id (yeah-acp--tool-call
+                     (or (plist-get fields :tool_call_id) id)
+                     (plist-get fields :tool) 'started)
           output))
         ("tool-end"
          (yeah-acp--send-update
-          session-id (yeah-acp--tool-call id (plist-get fields :tool) nil
-                                          (plist-get fields :payload))
+          session-id (yeah-acp--tool-call
+                     (or (plist-get fields :tool_call_id) id)
+                     (plist-get fields :tool)
+                     (if (yeah-events-boolean-p (plist-get fields :ok))
+                         'completed
+                       'failed)
+                     (plist-get fields :payload))
           output))
         (_ nil)))))
 

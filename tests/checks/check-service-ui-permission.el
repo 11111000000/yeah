@@ -24,6 +24,7 @@
 (require 'json)
 (require 'yeah-service)
 (require 'yeah-client)
+(require 'yeah-journal)
 (require 'yeah-service-ui)
 
 (defun yeah-check--transport-source (target)
@@ -46,7 +47,8 @@
 (let* ((failures nil)
        (data-home (make-temp-file "yeah-ui-perm" t))
        (name (format "ui-perm-%d" (random 1000000)))
-       (buffer (generate-new-buffer "*Yeah service: ui-perm*"))
+       (buffer nil)
+       (journal nil)
        (client nil)
        (initialized nil)
        (session-id nil)
@@ -89,6 +91,18 @@
           (unless (yeah-check--await (lambda () session-id))
             (push "the service did not open the session" failures)))
         (when session-id
+          (setq journal (yeah-journal-open nil nil "*Yeah service: ui-perm*"))
+          (setf (yeah-journal-driver journal)
+                (yeah-service-ui--driver journal))
+          (setq buffer (yeah-journal-buffer journal))
+          (with-current-buffer buffer
+            (yeah-service-ui-mode)
+            (setq yeah-journal--current journal
+                  yeah-service-ui--client client
+                  yeah-service-ui--session-id session-id
+                  yeah-service-ui--busy nil
+                  yeah-service-ui--records nil
+                  yeah-service-ui--event-id 0))
           (yeah-client-request
            client "session/prompt"
            (list :sessionId session-id
@@ -98,15 +112,21 @@
           (unless (yeah-check--await (lambda () answered))
             (push "the prompt was not answered" failures)))
         ;; the question was rendered into the session buffer
+        (yeah-check--await
+         (lambda ()
+           (with-current-buffer buffer
+             (let ((text (buffer-string)))
+               (and (string-match-p "\\* Approval\nwrite" text)
+                    (string-match-p "written\\.txt" text))))))
         (unless (with-current-buffer buffer
-                  (string-match-p
-                   "\\[permission\\] write on .*written\\.txt"
-                   (buffer-string)))
+                  (let ((text (buffer-string)))
+                    (and (string-match-p "\\* Approval\nwrite" text)
+                         (string-match-p "written\\.txt" text))))
           (push (format "the session buffer does not show the question: %S"
                         (with-current-buffer buffer (buffer-string)))
                 failures))
         ;; the person allowed, so the write ran
-        (let ((journal
+        (let ((journal-text
                (mapconcat
                 (lambda (file)
                   (with-temp-buffer
@@ -114,8 +134,8 @@
                     (buffer-string)))
                 (directory-files-recursively data-home "\\.jsonl\\'")
                 "\n")))
-          (unless (string-match-p "\"tool\":\"write\".*\"ok\":true" journal)
-            (push (format "the allowed write did not run:\n%s" journal)
+          (unless (string-match-p "\"tool\":\"write\".*\"ok\":true" journal-text)
+            (push (format "the allowed write did not run:\n%s" journal-text)
                   failures))))
     (when client (yeah-client-close client))
     (yeah-service-stop name)
