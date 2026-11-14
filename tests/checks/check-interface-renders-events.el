@@ -55,11 +55,33 @@
                                                  (format "done: %s" value))))))
                (funcall callback "the model is done")))))
       (yeah-turn-run session "do the thing" transport))
-    (yeah-ui-view (yeah-ui--records root "view"))))
+    (yeah-ui-view
+     (yeah-session-records (yeah-session-open "view" root)))))
+
+(defun yeah-check--deferred-view (root)
+  "Return the view of a real turn waiting on a deferred permission."
+  (let ((session (yeah-session-open "deferred-view" root)))
+    (yeah-tools-reset-for-test)
+    (yeah-perm-rules-reset-for-test)
+    (yeah-tools-register
+     (list :name "probe"
+           :description "A tool that must wait for the person."
+           :input (list (list :name "path" :type 'string))
+           :handler (lambda (_path) "the tool ran")))
+    (yeah-turn-run
+     session "wait for permission"
+     (lambda (_prompt callback)
+       (funcall callback
+                (list 'tool-call
+                      (list (list :name "probe") '("/tmp/deferred")
+                            (lambda (_value) nil)))))
+     (lambda (_request) (list :defer "request-1")))
+    (yeah-ui-view (yeah-session-records session))))
 
 (let ((failures nil)
-      (root (make-temp-file "yeah-ui-check" t))
-      (view (yeah-check--run (make-temp-file "yeah-ui-check" t))))
+      (view (yeah-check--run (make-temp-file "yeah-ui-check" t)))
+      (deferred-view
+       (yeah-check--deferred-view (make-temp-file "yeah-ui-deferred-check" t))))
 
   ;; the transcript: what was said, in the order it was said
   (let ((transcript (plist-get view :transcript)))
@@ -94,11 +116,36 @@
                   (length (plist-get view :pending)))
           failures))
 
-  ;; the cost: nothing was spent, because nothing was counted
-  (unless (equal (plist-get view :usage) '(:input 0 :output 0))
-    (push (format "the view reports a cost it cannot know: %S"
-                  (plist-get view :usage))
-          failures))
+  ;; a real deferred decision remains pending instead of becoming a refusal
+  (let ((pending (plist-get deferred-view :pending-approvals))
+        (calls (plist-get deferred-view :calls)))
+    (unless (and (= 1 (length pending))
+                 (eq 'deferred (plist-get (car pending) :state)))
+      (push (format "the deferred permission is not pending: %S" pending)
+            failures))
+    (unless (and (= 1 (length calls))
+                 (eq 'awaiting-approval (plist-get (car calls) :state)))
+      (push "the deferred tool is not waiting for approval" failures))
+    (unless (eq 'awaiting-approval
+                (plist-get (plist-get deferred-view :status) :state))
+      (push "the deferred run does not report its waiting state" failures)))
+
+  ;; provider silence is unknown, not zero; the estimate is separate
+  (let ((usage (plist-get view :usage)))
+    (when (or (plist-get usage :input)
+              (plist-get usage :output)
+              (plist-get usage :reported-p))
+      (push (format "the view reports provider usage it cannot know: %S" usage)
+            failures))
+    (unless (and (numberp (plist-get usage :estimated))
+                 (> (plist-get usage :estimated) 0))
+      (push (format "the view has no separate estimate: %S" usage) failures)))
+
+  ;; the new shape exists alongside the compatibility fields
+  (dolist (key '(:session :status :blocks :pending-approvals :pending-inputs
+                 :usage :capabilities :transcript :calls :pending))
+    (unless (plist-member view key)
+      (push (format "the view is missing %S" key) failures)))
 
   (dolist (failure failures)
     (message "interface: %s" failure))
