@@ -25,10 +25,24 @@
 (require 'cl-lib)
 (require 'json)
 
-(defvar yeah-check--acp-dir
-  (expand-file-name "../../emacs-agents-research/acp.el"
-                    (file-name-directory (or (locate-library "yeah-acp")
-                                             "yeah-acp.el")))
+(defun yeah-check--acp-client-dir ()
+  "Return the directory of the independent acp.el client.
+The environment variable wins, then the checkout sibling, then the usual
+research checkout in the user's home."
+  (let* ((library-dir
+          (file-name-directory (or (locate-library "yeah-acp") "yeah-acp.el")))
+         (candidates
+          (delq nil
+                (list (getenv "YEAH_ACP_RESEARCH_DIR")
+                      (expand-file-name "../../emacs-agents-research/acp.el"
+                                        library-dir)
+                      (expand-file-name "~/Projects/emacs-agents-research/acp.el")))))
+    (or (cl-find-if (lambda (dir)
+                      (file-readable-p (expand-file-name "acp.el" dir)))
+                    candidates)
+        (car candidates))))
+
+(defvar yeah-check--acp-dir (yeah-check--acp-client-dir)
   "The directory of the acp.el research clone.")
 
 (unless (and (file-directory-p yeah-check--acp-dir)

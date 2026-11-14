@@ -549,7 +549,7 @@
    ],
    "falsifier": "the tool runs although the client refused, or is denied although the client allowed",
    "register": "fact",
-   "control": "sed -i 's|(equal option \"reject-once\")|(not (equal option \"reject-once\"))|' lib/yeah-acp.el",
+   "control": "sed -i 's|(equal option \"allow-once\")|(not (equal option \"allow-once\"))|' lib/yeah-acp.el",
    "waiver": null
   },
   {
@@ -773,7 +773,7 @@
    ],
    "falsifier": "The view diverges from the log: the transcript misses or misorders a message, a finished call is shown running or failed, answered approvals still show as pending, or the view reports a cost the log does not count.",
    "register": "fact",
-   "control": "sed -i \"s/:state state/:state 'running/\" lib/yeah-ui.el",
+   "control": "sed -i \"s/(ok 'done)/(ok 'running)/\" lib/yeah-ui.el",
    "waiver": null
   },
   {
@@ -843,7 +843,7 @@
    ],
    "falsifier": "A reply of once/always/reject does not produce its documented decision, always does not persist into the rules, an invalid reply is accepted, or the policy answers contrary to the rules.",
    "register": "fact",
-   "control": "sed -i \"86s/'allow/'deny/\" lib/yeah-approval.el",
+   "control": "sed -i \"s/'allow))/'deny))/\" lib/yeah-approval.el",
    "waiver": null
   },
   {

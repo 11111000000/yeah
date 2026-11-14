@@ -41,6 +41,8 @@
                     (setq exit (process-exit-status proc))))))))
         (while (and (null exit) (process-live-p process))
           (accept-process-output process 0.05))
+        ;; The sentinel may run just before the final output filter callback.
+        (accept-process-output nil 0.05)
         (let ((output (buffer-substring-no-properties (point-min) (point-max))))
           (kill-buffer buffer)
           (cons exit output))))))
