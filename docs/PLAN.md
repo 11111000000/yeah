@@ -12,20 +12,20 @@
 
 ## 1. Current baseline
 
-Verified on 2026-11-12 in this checkout:
+Verified on 2026-11-14 in the `feat/emacs-ux-v3` integration branch:
 
-- all 45 Elisp files under `lib/` byte-compile without warnings;
-- 255/255 ERT unit tests pass;
-- all 40 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
-- the installed `mathc` does not accept the `--root` invocation used by
-  `scripts/dev`, so the map/gate needs a compatible pinned tool;
-- live provider behavior is verified on 2026-11-12: the live coding task
+- all 53 Elisp files under `lib/` byte-compile without warnings;
+- 319/319 ERT unit tests pass;
+- all 46 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
+- the installed math-coding v5 tool runs the standing specification: all 55
+  claims hold, and every negative control changes its scoped subject and
+  makes the verifier fail with an assertion;
+- live provider behavior remains verified on 2026-11-12: the live coding task
   (MiniMax-M3.1-Flash) reads the project, edits the file with a guarded edit,
   saves it, and the test of the project passes, and the interactive UI
   path (journal, cancel, quit, restart, resume, recover) works against a
-  live provider.  The clean-Emacs install path is network-tested against a
-  local clone (`tests/live/live-clean-install.el`); the published-repository
-  variant still needs the layout fix pushed.
+  live provider.  The clean-Emacs install path is network-tested against the
+  published repository (`tests/live/live-clean-install.el`).
 
 The code contains a working kernel and a working wire, but not yet a usable
 product:
@@ -773,100 +773,100 @@ Decided on 2026-11-12:
 
 ### State of the parallel work (as of 2026-11-14)
 
-The user-interface work runs in parallel branches of this repository, each in
-its own worktree:
+The parallel work has been consolidated into one integration branch:
 
 | branch | worktree | state | content |
 |---|---|---|---|
-| `feat/emacs-ux-r2` | `yeah-emacs-ux-r2` | **ready to merge** | main plus semantic faces, the journal view model, event correlation, the shared journal renderer, and a fail-closed permission answer |
-| `ux/events` | `yeah-ux-events` | **in flight** (11 uncommitted files) | kernel contracts: events, results, sessions, the turn (the base is the pre-UX snapshot) |
-| `ux/view-model` | `yeah-ux-view` | **in flight** (6 uncommitted files) | the sessions view and its fixtures |
-| `ux/interaction` | `yeah-ux-interaction` | **in flight** (6 new files) | approval UI, compose, diff, doctor UI, session list |
-| `feat/emacs-ux`, `ux/faces`, `ux/events`, `ux/view-model` | their worktrees | **superseded** | the same work on the pre-UX base |
+| `feat/emacs-ux-v3` | `yeah-emacs-ux-v3` | **active integration line** | current `main`, semantic faces, stable event correlation, the pure view model, the shared journal and composer, the attached driver, the service driver, and repaired evidence controls |
+| `ux/service-driver` | `yeah-ux-service-driver` | **committed reference** | the service-through-journal change merged into the integration line |
+| older `feat/emacs-ux*` and `ux/*` branches | their worktrees | **superseded reference** | earlier pre-UX-base attempts; retained until their owners approve cleanup |
 
-`feat/emacs-ux-r2` already contains `main` (fast-forward possible) and is
-green: 312 ERT tests and all direct canaries pass.  The three streams in
-flight are based on the snapshot before the wire-permission work, so they
-must be rebased before they are merged.
+`main` remains untouched.  The integration branch is green with 319 ERT
+tests, 46 direct canaries and a math-coding v5 verdict of green for all 55
+declared claims.  Three UX claims were added with controls independently
+shown to change their subject and fail their verifier by assertion.
 
 ### The decisions this integration needs
 
-**14.1 Merge the ready branch first.**  `feat/emacs-ux-r2` merges into `main`
-without conflicts and is green.  Before the merge, run `mathc run` in that
-worktree: the UX branch rewrote `lib/yeah-turn.el`, `lib/yeah-ui.el`,
-`lib/yeah-events.el`, `lib/yeah-acp.el`, `lib/yeah-approval.el`,
-`lib/yeah-control.el` and three checks, so the controls of the existing
-claims may no longer reach their subject.  A claim whose control cannot be
-shown to bite is not established: re-derive those controls, do not weaken
-them.
+**14.1 Evidence repair came first.**  Four stale controls now mutate the
+subject they claim to cover: an explicit `allow-once' is the only wire
+answer that permits an effect, a finished tool is rendered as finished, the
+independent ACP client is found outside the isolated checkout, and an
+`always' approval is stored as a rule.  A fifth repair made the git canary
+wait for the final output callback before reading `git log'.  The controls
+that previously reached nothing now bite; a direct verifier failure is
+distinct from a blocked or unreadable check.
 
-**14.2 The fail-open defect the parallel branch found.**  The wire answer of
-the client was read as "allow" for every answer the service did not know
-(`lib/yeah-acp.el`, `yeah-acp--route-response`).  The parallel branch fixed
-it (`f4a02d8`): only an explicit `allow-once' permits the effect; a
-rejection, a cancellation, a protocol error and an unknown option refuse
-it.  This is a claim of its own — "an unknown answer refuses" — with a
-control that sends an unknown option and requires the refusal.
+**14.2 One canonical event and view model.**  New events carry explicit
+run, turn, tool-call and parent ids.  `yeah-ui-view` correlates parallel
+same-name calls and their approvals by stable id and marks ambiguous legacy
+records unknown instead of guessing.  The model-facing and person-facing
+paths therefore read one truth.
 
-**14.3 Claims for the user-interface work.**  The UX branch ships no
-math-coding claims: `spec.json` is unchanged on `feat/emacs-ux-r2`.  Each
-new surface needs a claim with a verifier and a control that bites:
-the semantic faces, the shared journal renderer, the markdown rendering, the
-view model, the event correlation, and the fail-closed permission answer.
+**14.3 One journal and one composer.**  `lib/yeah-journal.el` owns the
+read-only, outline-structured transcript and its incremental updates.  It
+preserves the reader's point and window position, replaces only the block
+that changed, and exposes a header derived from the same view.  Semantic
+faces inherit the active theme; `nerd-icons' is optional decoration and
+every state keeps readable text.  `lib/yeah-compose.el` owns the separate
+multiline prompt buffer, bounded history and explicit context.
 
-**14.4 The dependency of the journal renderer.**  `lib/yeah-journal.el`
-requires `transient'.  The product declares only `emacs' and `gptel'.  Either
-the module must degrade without `transient', or `transient' becomes a
-declared dependency of the package and of the bootstrap; the clean-install
-check must be run again against the published repository afterwards.
+**14.4 Attached and service use that journal.**  `lib/yeah-product.el` is
+the attached driver; `lib/yeah-service-ui.el` projects the ACP stream into
+the same records and uses the same journal and composer.  The local
+duplicate of the user's prompt is gone, tool calls keep the same
+`toolCallId` from start to completion, the service prompt callback keeps
+its buffer-local state, and a service permission question is visible in
+the journal before its answer is sent.  A canary drives the attached path
+with a fake model and the service path through a real Emacs process and a
+real client connection, then compares the two transcripts.
 
-**14.5 One surface per concern.**  `lib/yeah-journal.el' is the person-facing
-transcript of a run in every placement (read-only, incremental); 
-`lib/yeah-service-ui.el' is the editor's control surface over a service
-session (ask, cancel, approve over the wire).  The approval surface that
-`ux/interaction' introduces (`lib/yeah-approval-ui.el', `lib/yeah-diff.el')
-must not become a third copy of the permission question: one
-implementation, used by both the attached and the service path.  Decide
-which module owns the question and which owns the transcript, and say so in
-`docs/ARCHITECTURE.md`.
+**14.5 The three UX claims are explicit.**  `ux-correlates-tools-by-stable-id`
+covers stable correlation; `ux-journal-preserves-reading-and-text` covers
+incremental reading position and textual fallback; and
+`ux-attached-and-service-share-the-journal` covers the two placements.
+Each has a verifier and a control that reaches its scoped subject.
 
-**14.6 Order of the streams and the shape of the conflict.**  The kernel
-contracts come first (`ux/events'), because they rewrite the event
-vocabulary and the turn; the view model second (`ux/view-model'); the
-interaction modules last (`ux/interaction').  Each stream is rebased onto
-`main' before it is merged.  The conflict in `lib/yeah-turn.el' is a design
-conflict, not a textual one: the stream introduces its own
-`yeah-turn--prepare-batch' with a different shape from the one on `main'
-and it lacks the wire-permission contract entirely.  After every rebase
-the merge must prove that the fail-closed permission path and the
-disconnect handling are still there: `tests/checks/check-wire-permission.el',
-`tests/checks/check-client-disconnect-during-permission.el' and
-`tests/checks/check-service-ui-permission.el' must pass.  A silent drop of
-that path is a fail-open regression.
+**14.6 Optional presentation packages stay optional.**  `nerd-icons' is
+loaded only when available and displayable; its absence is not an error.
+`markdown-mode' is an optional fontifier and plain text remains a complete
+baseline.  `transient' is bundled with the supported Emacs and supplies the
+journal menu; it introduces no package-install requirement of its own.
 
-**14.7 Live proof after the merge.**  The person-facing surface changed, so
-the live paths are checked again with a real model:
-`tests/live/live-interactive-path.el' (attached) and
-`tests/live/live-service-path.el' (the service placement with a write
-approved over the wire).
+**14.7 The division of labour is now explicit.**  `yeah-journal.el` owns the
+transcript and navigation, `yeah-ui.el` owns the pure projection,
+`yeah-product.el` owns attached actions, `yeah-service-ui.el` owns the
+service connection and maps its protocol replies into the journal, and
+`yeah-compose.el` owns prompt composition.  `yeah-approval-ui.el` and
+`yeah-diff.el` own the standalone approval and preview surfaces.  The last
+two are not yet the single wired question for both placements: attached and
+service still use their smaller prompts.  That gap is explicit rather than
+hidden behind a second transcript.
 
-**14.8 Housekeeping.**  The superseded branches and their worktrees are
-removed only after their content is confirmed present in the merged line.
-Worktrees with uncommitted work (`ux/events', `ux/view-model',
-`ux/interaction') are never removed before their work is committed and
-merged.
+**14.8 The remaining product work is parity, not decoration.**  `M-x yeah'
+still opens the attached placement.  Before service becomes the default,
+the service path needs session replay, steering, pending-input
+withdrawal/recovery and mode parity.  The shared approval view and full
+`diff-mode' preview must replace the smaller prompts.  After the owner
+merges the integration line, the live attached and service paths must run
+again with provider credentials, followed by the published-repository clean
+install.  Superseded worktrees are removed only after their content is
+confirmed present in the merged line.
 
 ### Exit criteria for this section
 
-- `main' contains the merged UX line; byte compilation is clean; ERT and
-  every direct canary pass; `mathc run' is green except the claim that
-  needs the external research clone;
-- every new user-interface surface has a claim whose control bites;
+- the integration branch byte-compiles cleanly; all 319 ERT tests and all 46
+  direct canaries pass;
+- `mathc run` is green, every declared control bites, and the three UX
+  claims hold;
+- attached and service show the same question, answer and terminal state in
+  one read-only journal;
 - the clean install against the published repository passes after the
-  merge;
-- the live interactive and service paths pass with a real model;
-- the division of labour between the transcript, the control surface and
-  the approval surface is written down in `docs/ARCHITECTURE.md'.
+  owner merges the line;
+- the live interactive and service paths pass with a real model when
+  credentials are available;
+- the service-default switch waits for session/queue/mode parity and the
+  one shared approval view is wired.
 
 Re-opened when a person says so: the math-coding aim block in AGENTS.md is
 written by `mathc install` and is not edited by hand.

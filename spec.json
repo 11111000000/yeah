@@ -1287,6 +1287,82 @@
    "register": "fact",
    "control": "sed -i 's/^        (yeah-session-record-compaction$/        (ignore/' lib/yeah-compact.el",
    "waiver": null
+  },
+  {
+   "id": "ux-correlates-tools-by-stable-id",
+   "text": "The person-facing projection correlates parallel same-name tool calls, approvals and terminal results by stable tool-call id, and never guesses when an id is ambiguous.",
+   "scope": [
+    "lib/yeah-ui.el",
+    "lib/yeah-events.el",
+    "lib/yeah-turn.el",
+    "tests/unit/test-yeah-ui.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev ert tests/unit/test-yeah-ui.el"
+    }
+   ],
+   "falsifier": "A parallel same-name tool call, its approval or its result is attached to another call, or an ambiguous legacy record is presented as a confident correlation.",
+   "register": "fact",
+   "control": "sed -i 's/(if stable-p/(if nil/' lib/yeah-ui.el",
+   "waiver": null
+  },
+  {
+   "id": "ux-journal-preserves-reading-and-text",
+   "text": "The shared journal preserves the person's reading position while it updates, and every semantic label keeps readable text when optional icons are unavailable.",
+   "scope": [
+    "lib/yeah-journal.el",
+    "lib/yeah-faces.el",
+    "tests/unit/test-yeah-journal.el",
+    "tests/unit/test-yeah-faces.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev ert tests/unit/test-yeah-journal.el tests/unit/test-yeah-faces.el"
+    }
+   ],
+   "falsifier": "An update moves a reader away from the passage being read, erases a block, or replaces a readable label with an icon-only or empty string.",
+   "register": "fact",
+   "control": "sed -i 's/(unless following/(when following/' lib/yeah-journal.el && sed -i 's/(yeah-faces--label-text label (plist-get spec :label))/(format \"\" (plist-get spec :label))/' lib/yeah-faces.el",
+   "waiver": null
+  },
+  {
+   "id": "ux-attached-and-service-share-the-journal",
+   "text": "Attached and service placements show the same question, answer and terminal state in the same shared read-only journal; the service path is driven through a real Emacs process and a real client connection.",
+   "scope": [
+    "lib/yeah-journal.el",
+    "lib/yeah-product.el",
+    "lib/yeah-service-ui.el",
+    "lib/yeah-acp.el",
+    "tests/checks/check-service-ui.el"
+   ],
+   "source": null,
+   "kind": "acceptance",
+   "phase": "pre-merge",
+   "owner": "p.b.kosov@yandex.ru",
+   "review_on": [],
+   "requirements": [
+    {
+     "kind": "verifier",
+     "spec": "./scripts/dev check tests/checks/check-service-ui.el"
+    }
+   ],
+   "falsifier": "Either placement renders a different or duplicated transcript, exposes an editable transcript, loses the answer or stop reason, or the service path stops being a real process and client connection.",
+   "register": "fact",
+   "control": "sed -i 's/(\"user_message_chunk\"/(\"ignored_user_chunk\"/' lib/yeah-service-ui.el",
+   "waiver": null
   }
  ]
 }

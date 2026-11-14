@@ -207,6 +207,12 @@ updates."
   "Return the top-level blocks of VIEW."
   (plist-get view :blocks))
 
+(defun yeah-journal--compact (text width face)
+  "Return TEXT shortened to WIDTH columns with FACE and the full help text."
+  (let* ((full (format "%s" (or text "")))
+         (shown (truncate-string-to-width full width nil nil "…")))
+    (propertize shown 'face face 'help-echo full)))
+
 (defun yeah-journal--header (view)
   "Return a header-line format for VIEW."
   (let* ((session (plist-get view :session))
@@ -216,6 +222,7 @@ updates."
          (project (or (plist-get session :project) ""))
          (profile (or (plist-get session :profile) ""))
          (model (or (plist-get session :model) ""))
+         (placement (or (plist-get session :placement) ""))
          (state (or (plist-get status :state) "idle"))
          (reported (plist-get usage :reported-p))
          (input (plist-get usage :input))
@@ -224,18 +231,23 @@ updates."
           (if reported
               (format "%s in / %s out" (or input "?") (or output "?"))
             "usage unknown")))
-    (list
-     (propertize "Yeah" 'face 'mode-line-emphasis)
-     "  "
-     (propertize (format "%s" title) 'face 'bold)
+    (append
+     (list
+      (propertize "Yeah" 'face 'mode-line-emphasis)
+      "  "
+      (yeah-journal--compact title 36 'bold)
+      "  "
+      (yeah-journal--compact state 18 'mode-line)
+      "  "
+      (yeah-journal--compact usage-text 21 'help-key-binding))
+     (when (not (string-empty-p placement))
+       (list "  " (yeah-journal--compact placement 10 'font-lock-constant-face)))
      (when (not (string-empty-p project))
-       (concat "  " (propertize (format "%s" project) 'face 'dired-header)))
+       (list "  " (yeah-journal--compact project 24 'dired-header)))
      (when (not (string-empty-p profile))
-       (concat "  " (propertize (format "%s" profile) 'face 'font-lock-type-face)))
+       (list "  " (yeah-journal--compact profile 16 'font-lock-type-face)))
      (when (not (string-empty-p model))
-       (concat "  " (propertize (format "%s" model) 'face 'font-lock-string-face)))
-     (concat "  " (propertize (format "%s" state) 'face 'mode-line))
-     (concat "  " (propertize usage-text 'face 'help-key-binding)))))
+       (list "  " (yeah-journal--compact model 24 'font-lock-string-face))))))
 
 (defun yeah-journal--save-window-state (buffer)
   "Return a saved point/window state for BUFFER."

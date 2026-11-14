@@ -58,6 +58,39 @@
           (should header-line-format))
       (yeah-journal-close journal))))
 
+(ert-deftest yeah-journal-header-keeps-status-before-long-metadata ()
+  (let* ((project "Очень-длинный-путь-проекта-который-не-помещается-в-окне")
+         (view (list :session (list :title "Очень длинное название сессии"
+                                    :project project
+                                    :placement "attached"
+                                    :profile "build"
+                                    :model "provider/model-with-a-long-name")
+                     :status (list :state "running")
+                     :usage (list :input nil :output nil :reported-p nil)))
+         (header (yeah-journal--header view))
+         (project-part
+          (seq-find (lambda (part)
+                      (eq (get-text-property 0 'face part) 'dired-header))
+                    header))
+         (state-index
+          (cl-position-if (lambda (part)
+                            (eq (get-text-property 0 'face part) 'mode-line))
+                          header))
+         (project-index
+          (cl-position-if (lambda (part)
+                            (eq (get-text-property 0 'face part) 'dired-header))
+                          header)))
+    (should project-part)
+    (should (< state-index project-index))
+    (should (string-suffix-p "…" (substring-no-properties project-part)))
+    (should (equal project (get-text-property 0 'help-echo project-part)))
+    (should (string-match-p "running"
+                            (mapconcat (lambda (part)
+                                         (if (stringp part)
+                                             (substring-no-properties part)
+                                           ""))
+                                       header "")))))
+
 (ert-deftest yeah-journal-update-preserves-a-reading-place ()
   (let* ((journal (yeah-journal-open
                    (yeah-journal-test--driver)
