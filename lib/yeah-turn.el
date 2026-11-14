@@ -280,98 +280,123 @@ Steering is delivered only after the entire batch has settled."
          (lambda () (not (yeah-turn-done turn)))))
     (yeah-turn--continue-batch turn calls results)))
 
+(defun yeah-turn--prepare-batch (turn answerer calls)
+  "Return the prepared slots of CALLS, in the order of the calls.
+Each slot says what the tool is, what it is called with, and whether it
+may run: :refused names the reason it may not, :deferred names the
+question that waits for the person."
+  (mapcar (lambda (index)
+            (yeah-turn--prepare turn answerer index (nth index calls)))
+          (number-sequence 0 (1- (length calls)))))
+
+(defun yeah-turn--split-slots (prepared)
+  "Return (RUNNABLE . REFUSED) for the PREPARED slots.
+REFUSED holds an (INDEX . REASON) pair per call that may not run; every
+other slot may run, including the ones waiting for the person."
+  (let ((runnable nil) (refused nil))
+    (dolist (slot prepared)
+      (if (plist-get slot :refused)
+          (push (cons (plist-get slot :index) (plist-get slot :refused))
+                refused)
+        (push slot runnable)))
+    (cons (nreverse runnable) (nreverse refused))))
+
+(defun yeah-turn--handler (turn slot)
+  "Return the handler that runs SLOT's tool once it may.
+A deferred call waits for the person's answer: the wire layer calls the
+resume callback when the answer arrives, and the tool runs only if the
+person allowed it."
+  (lambda (args &optional done)
+    (if (plist-get slot :deferred)
+        (let ((request-id (plist-get slot :deferred)))
+          (puthash request-id
+                   (lambda (decision)
+                     (if (eq (plist-get decision :effect) :allow)
+                         (yeah-tools-dispatch (plist-get slot :name) args done)
+                       (funcall done
+                                (yeah-result-error
+                                 (or (plist-get decision :reason)
+                                     "the person refused")))))
+                   (yeah-turn-pending-permissions turn)))
+      (yeah-tools-dispatch (plist-get slot :name) args done))))
+
+(defun yeah-turn--call-spec (turn slot)
+  "Return the scheduler call of SLOT: the tool, its arguments, the
+handler and the concurrency the tool asks for."
+  (let ((spec (plist-get slot :spec)))
+    (list :name (plist-get slot :name)
+          :args (plist-get slot :args)
+          :handler (yeah-turn--handler turn slot)
+          :async (or (plist-get slot :deferred) (plist-get spec :async))
+          :mode (yeah-tools-concurrency spec))))
+
+(defun yeah-turn--finish-result (calls results)
+  "Return the result of the `finish' call among CALLS, or nil."
+  (let ((finish nil) (i 0))
+    (dolist (call calls)
+      (when (equal "finish" (yeah-turn--tool-name (nth 0 call)))
+        (setq finish (aref results i)))
+      (setq i (1+ i)))
+    finish))
+
+(defun yeah-turn--settle-batch (turn transport calls runnable results refused settled)
+  "Record the settled batch of TURN and continue it.
+The results are in the order of the CALLS, whatever order the calls
+finished in: the log of a run is read the same way twice."
+  (let ((i 0))
+    (dolist (slot runnable)
+      (aset results (plist-get slot :index) (aref settled i))
+      (setq i (1+ i))))
+  (let ((i 0))
+    (dolist (call calls)
+      (let ((result (aref results i)))
+        (yeah-events-write
+         (yeah-turn-session turn)
+         "tool-end"
+         :tool (yeah-turn--tool-name (nth 0 call))
+         :ok (if (and (not (aref refused i))
+                      (yeah-result-success-p result))
+               t
+             :false)
+         :payload (yeah-result-model-text result)))
+      (setq i (1+ i))))
+  (let ((finish (yeah-turn--finish-result calls results)))
+    (if finish
+        (progn
+          ;; `finish' is the model's completion signal: the run ends
+          ;; with the summary, the model is not asked again.
+          (yeah-events-write (yeah-turn-session turn) "finish"
+                             :summary (yeah-result-model-text finish))
+          (yeah-turn--tick turn 'tool-end)
+          (yeah-turn--tick turn 'budget-ok)
+          (yeah-turn--tick turn 'no-tool-calls)
+          (yeah-turn--mark-done turn))
+      (unless (yeah-turn-done turn)
+        (yeah-turn--tick turn 'tool-end)))
+    (yeah-turn--maybe-compact turn transport calls results)))
+
 (defun yeah-turn--dispatch-batch (turn answerer calls &optional transport)
   "Dispatch CALLS together, and continue the turn when they have settled."
   (yeah-tools-with-registry (yeah-turn-tools-registry turn)
-   (let* ((prepared (mapcar (lambda (index)
-                              (yeah-turn--prepare turn answerer index
-                                                 (nth index calls)))
-                            (number-sequence 0 (1- (length calls)))))
-         (results (make-vector (length calls) nil))
-         (refused (make-vector (length calls) nil))
-         (runnable nil))
-    (dolist (slot prepared)
-      (cond
-       ((plist-get slot :refused)
-        (progn
-          (aset refused (plist-get slot :index) t)
-          (aset results (plist-get slot :index) (plist-get slot :refused))))
-       ((plist-get slot :deferred)
-        ;; the call waits for the client's answer: the answerer deferred it
-        (push slot runnable))
-       (t
-        (push slot runnable))))
-    (setf runnable (nreverse runnable))
-    (cl-incf (yeah-turn-calls turn) (length calls))
-    (dolist (slot runnable)
-      (let ((name (plist-get slot :name)))
-        (unless (member name (yeah-turn-tools-used turn))
-          (push name (yeah-turn-tools-used turn)))))
-    (let ((yeah-process--current-run-id (yeah-turn-id turn)))
-      (yeah-scheduler-run
-       (mapcar (lambda (slot)
-               (let ((spec (plist-get slot :spec)))
-                 (list :name (plist-get slot :name)
-                       :args (plist-get slot :args)
-                       :handler (lambda (args &optional done)
-                                  (if (plist-get slot :deferred)
-                                      ;; the call waits for the client's answer:
-                                      ;; the wire layer calls the resume callback
-                                      ;; when the answer arrives
-                                      (let ((request-id (plist-get slot :deferred)))
-                                        (puthash request-id
-                                                 (lambda (decision)
-                                                   (if (eq (plist-get decision :effect) :allow)
-                                                       (yeah-tools-dispatch (plist-get slot :name) args done)
-                                                     (funcall done
-                                                              (yeah-result-error
-                                                               (or (plist-get decision :reason)
-                                                                   "the person refused")))))
-                                                 (yeah-turn-pending-permissions turn)))
-                                    (yeah-tools-dispatch (plist-get slot :name)
-                                                         args done)))
-                       :async (or (plist-get slot :deferred) (plist-get spec :async))
-                       :mode (yeah-tools-concurrency spec))))
-             runnable)
-     (lambda (settled)
-       ;; The results are in the order of the CALLS, whatever order the
-       ;; calls finished in: the log of a run is read the same way twice.
-       (let ((i 0))
-         (dolist (slot runnable)
-           (aset results (plist-get slot :index) (aref settled i))
-           (setq i (1+ i))))
-       (let ((i 0))
-         (dolist (call calls)
-           (let ((result (aref results i)))
-             (yeah-events-write
-              (yeah-turn-session turn)
-              "tool-end"
-              :tool (yeah-turn--tool-name (nth 0 call))
-              :ok (if (and (not (aref refused i))
-                           (yeah-result-success-p result))
-                    t
-                  :false)
-              :payload (yeah-result-model-text result)))
-           (setq i (1+ i))))
-       (let ((finish nil))
-         (let ((i 0))
-           (dolist (call calls)
-             (when (equal "finish" (yeah-turn--tool-name (nth 0 call)))
-               (setq finish (aref results i)))
-             (setq i (1+ i))))
-         (if finish
-             (progn
-               ;; `finish' is the model's completion signal: the run ends
-               ;; with the summary, the model is not asked again.
-               (yeah-events-write (yeah-turn-session turn) "finish"
-                                  :summary (yeah-result-model-text finish))
-               (yeah-turn--tick turn 'tool-end)
-               (yeah-turn--tick turn 'budget-ok)
-               (yeah-turn--tick turn 'no-tool-calls)
-               (yeah-turn--mark-done turn))
-           (unless (yeah-turn-done turn)
-             (yeah-turn--tick turn 'tool-end))
-           (yeah-turn--maybe-compact turn transport calls results)))))))))
+   (let* ((prepared (yeah-turn--prepare-batch turn answerer calls))
+          (split (yeah-turn--split-slots prepared))
+          (runnable (car split))
+          (results (make-vector (length calls) nil))
+          (refused (make-vector (length calls) nil)))
+     (dolist (entry (cdr split))
+       (aset refused (car entry) t)
+       (aset results (car entry) (cdr entry)))
+     (cl-incf (yeah-turn-calls turn) (length calls))
+     (dolist (slot runnable)
+       (let ((name (plist-get slot :name)))
+         (unless (member name (yeah-turn-tools-used turn))
+           (push name (yeah-turn-tools-used turn)))))
+     (let ((yeah-process--current-run-id (yeah-turn-id turn)))
+       (yeah-scheduler-run
+        (mapcar (lambda (slot) (yeah-turn--call-spec turn slot)) runnable)
+        (lambda (settled)
+          (yeah-turn--settle-batch turn transport calls runnable
+                                    results refused settled)))))))
 
 (defun yeah-turn--answer-text (turn answer transport answerer)
   "Handle a text ANSWER from the model: record it, nudge it or end the run.
