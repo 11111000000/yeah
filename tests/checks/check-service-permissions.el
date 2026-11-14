@@ -35,18 +35,19 @@
                           (lambda (value) (funcall callback \"done\"))))))"
   "The fake transport of the service: it asks for one read.")
 
-(defun yeah-check--decision (data-home)
-  "Return the effect the service recorded for its permission request."
-  (let ((effect nil))
+(defun yeah-check--decisions (data-home)
+  "Return the permission effects the service recorded, in journal order."
+  (let (effects)
     (dolist (file (directory-files-recursively data-home "\\.jsonl\\'"))
       (dolist (line (split-string (with-temp-buffer
                                     (insert-file-contents file)
                                     (buffer-string))
                                   "\n" t))
         (when (string-match-p "\"type\":\"permission-decision\"" line)
-          (setq effect (plist-get (json-parse-string line :object-type 'plist)
-                                  :effect)))))
-    effect))
+          (push (plist-get (json-parse-string line :object-type 'plist)
+                           :effect)
+                effects))))
+    (nreverse effects)))
 
 (defun yeah-check--drive (client data-home)
   "Drive one tool call through CLIENT and return the service's decision."
@@ -66,10 +67,10 @@
              :prompt (vector (list :type "text" :text "read it")))
        (lambda (_result _error) nil)))
     (let ((deadline (+ (float-time) 15)))
-      (while (and (null (yeah-check--decision data-home))
+      (while (and (null (yeah-check--decisions data-home))
                   (< (float-time) deadline))
         (accept-process-output nil 0.05)))
-    (yeah-check--decision data-home)))
+    (yeah-check--decisions data-home)))
 
 (defun yeah-check--run (rules)
   "Start a service with RULES, drive one tool call through it, and return
@@ -104,11 +105,13 @@ the permission decision the service recorded."
 (let* ((failures nil)
        (without (yeah-check--run nil))
        (with-read (yeah-check--run (list (yeah-perm-rule-make "read" "*" 'allow)))))
-  (unless (equal without "defer")
-    (push (format "a service without permissions did not ask the client: %S"
+  (unless (and (member "defer" without)
+               (not (member "allow" without)))
+    (push (format "a service without permissions did not ask the client safely: %S"
                   without)
           failures))
-  (unless (equal with-read "allow")
+  (unless (and (member "allow" with-read)
+               (not (member "defer" with-read)))
     (push (format "the granted permission did not reach the service: %S"
                   with-read)
           failures))
