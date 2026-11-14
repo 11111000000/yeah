@@ -82,7 +82,10 @@ The repository contains 53 focused Elisp modules implementing pieces of the
 kernel and its Emacs-native interface:
 
 - a defined run state machine and model-turn orchestration;
-- a typed tool registry and last-match permission rules;
+- a typed tool registry and last-match permission rules, where a read that
+  changes nothing is not asked about at all — it answers itself and says
+  why — and an answer of `always' becomes a rule, so the same question is
+  not asked twice;
 - shared/exclusive scheduling with once-only settlement and structured tool
   failure handling;
 - built-in file, guarded edit/write, async process/job, output artifact,

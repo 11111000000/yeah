@@ -945,7 +945,7 @@ attached path and the service path now open it, the one-key prompts are
 gone, and the person answers there: once, always for this resource, or
 reject.  The wire may answer `allow-always'.
 
-### 15.4 The archived kernel work
+### 15.4 The archived kernel work — **done on 2026-11-14**
 
 `ux/archive-async-approval' holds work that is not in `main': safe reads
 that run without a question, an approval that is answered asynchronously,
@@ -959,6 +959,13 @@ functions), and keep the parts that earn their place: a safe read needs no
 question, and the wire answer may remember the decision.  The wire
 answer of the client has `allow-once' and `reject-once' today; `always'
 is what a person wants when they answer the same question twice.
+
+**Done on 2026-11-14:** the work was brought over by hand — the safe read
+answers itself with a reason (in the profile of a run and over the wire
+alike), an answer of `always' becomes a rule of the run or of the session,
+and the turn carries the reply of the person so that the journal shows it.
+The claims `safe-reads-need-no-question' and
+`always-is-remembered-for-the-session' hold.
 
 ### 15.5 Supervision believes the model
 
