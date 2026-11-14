@@ -55,11 +55,13 @@ work item. Never resolve it by silently making documentation more optimistic.
   newline JSON-RPC over stdio and over a local socket, the `emacs__*`
   handlers are real, and the MCP client imports foreign tools. The wire is
   now driven by a third-party client (xenodium/acp.el) with a fake model;
+  the service path with a live provider is covered by
+  tests/live/live-service-path.el;
   what is still not proven is a real editor against a live provider.  Two
   limits are not hidden — the stdio server answers one request at a time
   (a blocking stdin read stops the event loop, so a cancel cannot preempt
   a running prompt there; the socket transport can), and a live provider
-  has not driven either server.
+  has not driven the MCP server.
 - REPL still contains placeholders. Do not build new public behavior on
   top of it while its stage's prerequisites are unmet.
 - Stage 4 is implemented offline and verified against a live provider:

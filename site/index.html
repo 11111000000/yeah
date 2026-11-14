@@ -291,7 +291,7 @@
         <section class="status-block status-block--limits" aria-labelledby="limits-title">
           <h3 id="limits-title"><span class="label-warning">OPEN</span> Do not assume yet</h3>
           <ul>
-            <li>No live provider has driven either wire server, and no real ACP editor has completed a task.</li>
+            <li>The service path is verified with a live provider (tests/live/live-service-path.el, one intermittent provider failure observed). No real ACP editor (agent-shell) has completed a task yet, and no live provider has driven the MCP server.</li>
             <li>The bootstrap is verified against the published repository in a clean Emacs HOME; it does not run in CI, so a platform-specific failure can still hide there.</li>
             <li>On stdio, cancellation cannot preempt a running prompt. Use the socket transport for that behaviour.</li>
             <li>The bridge is off until the operator enables it and has not been validated in day-to-day personal use.</li>
