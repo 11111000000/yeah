@@ -95,9 +95,11 @@ kernel and its Emacs-native interface:
   completion nudges, whole-run deadlines and retry backoff, and the Plan
   and Build permission profiles;
 - completion supervision that tells the difference between a plan and a
-  result: "I'll read the file" is nudged into the action (the nudge names
-  the tools the run has not called yet), while "I fixed it, the test passes"
-  ends the run; a run that is supervised ends through the `finish' tool,
+  result: "I'll read the file" is nudged into the action — the nudge names
+  the tools the run has not called yet and the exact call to make (the
+  unused path tool and the file the model named), and a repeated nudge
+  requires the next answer to contain the call, not another plan — while
+  "I fixed it, the test passes" ends the run; a run that is supervised ends through the `finish' tool,
   not through talk; and a model that answers while the harness is still
   waiting for a tool no longer breaks the state machine;
 - a shared read-only journal for the attached and service placements: one

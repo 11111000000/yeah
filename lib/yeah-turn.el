@@ -472,7 +472,7 @@ result that a tool backs ends the run."
                 (null (yeah-turn-tools-used turn))))
       (progn
         (cl-incf (yeah-turn-nudges turn))
-        (let ((nudge (yeah-turn--nudge-text turn)))
+        (let ((nudge (yeah-turn--nudge-text turn answer)))
           (yeah-turn--write turn "nudge"
                             (yeah-turn--context
                              turn nil (yeah-turn-turn-event-id turn))
@@ -548,22 +548,67 @@ An answer that reports what was done is not a plan and ends the run."
          (used (yeah-turn-tools-used turn)))
     (seq-remove (lambda (name) (member name used)) names)))
 
-(defun yeah-turn--nudge-text (turn)
-  "Return the nudge text for TURN.
-The nudge names the tools the run has not called yet: a model that
-describes its next step instead of taking it is answered with the step
-itself, not with a reminder to continue."
-  (let ((unused (yeah-turn--unused-tools turn)))
-    (if (null unused)
-        yeah-turn-nudge-message
-      (format (concat "%s\n\nYou have not called these tools yet: %s. "
-                      "Call one of them now, with the arguments it needs, "
-                      "or call `finish' with a summary when the task is done "
-                      "and verified. "
-                      "Do not describe what you are about to do instead of "
-                      "doing it.")
-              yeah-turn-nudge-message
-              (string-join unused ", ")))))
+(defconst yeah-turn--path-regexp
+  "\\(?:[A-Za-z0-9_.-]+/\\)?[A-Za-z0-9_.-]+\\.[A-Za-z0-9_]+\\b"
+  "Regexp matching a file name in an answer of the model.")
+
+(defun yeah-turn--answer-path (answer)
+  "Return the file name the model names in ANSWER, or nil.
+Used to name the exact call a narration nudge should ask for."
+  (and (stringp answer)
+       (let ((case-fold-search nil))
+         (when (string-match yeah-turn--path-regexp answer)
+           (match-string 0 answer)))))
+
+(defun yeah-turn--unused-path-tool (turn)
+  "Return the first tool of TURN that the run has not called and that
+takes a path argument, or nil.  The narration nudge names this tool
+because it is the cheapest safe way to touch the project for real."
+  (let* ((registry (yeah-turn-tools-registry turn))
+         (unused (yeah-turn--unused-tools turn)))
+    (seq-find
+     (lambda (name)
+       (let ((spec (if registry
+                       (yeah-tools-with-registry registry
+                         (yeah-tools-get name))
+                     (yeah-tools-get name))))
+         (and spec
+              (seq-some (lambda (arg)
+                          (and (listp arg)
+                               (member (plist-get arg :name)
+                                       '("path" "file" "directory" "pattern"))))
+                        (plist-get spec :input)))))
+     unused)))
+
+(defun yeah-turn--nudge-text (turn &optional answer)
+  "Return the nudge text for TURN after the model answered ANSWER.
+The nudge names the tools the run has not called yet and, when one of
+them takes a path, the exact call to make: a model that describes its
+next step is answered with the step itself, and a second nudge says
+that the next answer must contain the call, not a plan."
+  (let* ((unused (yeah-turn--unused-tools turn))
+         (tool (yeah-turn--unused-path-tool turn))
+         (path (yeah-turn--answer-path answer))
+         (repeated (> (yeah-turn-nudges turn) 1)))
+    (concat
+     (when repeated
+       "You have already been asked to act: your next answer must contain the tool call, not a plan.\n\n")
+     (if (null unused)
+         yeah-turn-nudge-message
+       (format (concat "%s\n\nYou have not called these tools yet: %s. "
+                       "Call one of them now, with the arguments it needs, "
+                       "or call `finish' with a summary when the task is done "
+                       "and verified. "
+                       "Do not describe what you are about to do instead of "
+                       "doing it.")
+               yeah-turn-nudge-message
+               (string-join unused ", ")))
+     (cond
+      ((and tool path)
+       (format "\n\nMake this call now: `%s' on %s." tool path))
+      (tool
+       (format "\n\nMake this call now: `%s', with the `path' argument." tool))
+      (t "")))))
 
 (defun yeah-turn--ask (turn prompt transport answerer)
   "Ask the model PROMPT with TRANSPORT, and continue TURN when it answers.

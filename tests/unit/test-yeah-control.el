@@ -227,6 +227,49 @@
                            (yeah-session-records session))))))
       (ignore-errors (delete-directory root t t)))))
 
+(ert-deftest yeah-turn-nudge-names-the-next-call ()
+  "A narration nudge names the exact call: the unused path tool and the file
+the model named, and a repeated nudge says the next answer must contain the
+call, not another plan."
+  (let* ((root (make-temp-file "yeah-nudge-call" t))
+         (session (yeah-session-open "nudge-call" root))
+         (nudges nil))
+    (unwind-protect
+        (progn
+          (yeah-turn-run session "start"
+                         (lambda (_prompt callback)
+                           (funcall callback "I'll start by checking broken.el."))
+                         nil 60000 2)
+          (dolist (record (yeah-session-records session))
+            (when (equal "nudge" (plist-get record :type))
+              (push (plist-get record :payload) nudges)))
+          (setq nudges (nreverse nudges))
+          (should (= 2 (length nudges)))
+          (should (string-match-p "Make this call now: `read' on broken.el"
+                                  (nth 0 nudges)))
+          (should (string-match-p "next answer must contain the tool call"
+                                  (nth 1 nudges))))
+      (ignore-errors (delete-directory root t t)))))
+
+(ert-deftest yeah-turn-nudge-names-the-path-argument-without-a-file ()
+  "When the plan names no file, the nudge names the path argument to use."
+  (let* ((root (make-temp-file "yeah-nudge-arg" t))
+         (session (yeah-session-open "nudge-arg" root))
+         (nudges nil))
+    (unwind-protect
+        (progn
+          (yeah-turn-run session "start"
+                         (lambda (_prompt callback)
+                           (funcall callback "Let me look at the project first."))
+                         nil 60000 1)
+          (dolist (record (yeah-session-records session))
+            (when (equal "nudge" (plist-get record :type))
+              (push (plist-get record :payload) nudges)))
+          (should (= 1 (length nudges)))
+          (should (string-match-p "Make this call now: `read', with the `path' argument"
+                                  (car nudges))))
+      (ignore-errors (delete-directory root t t)))))
+
 (defvar yeah-turn-test--late-callback nil
   "The answer callback of the model, captured while a tool runs.")
 
