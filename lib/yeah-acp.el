@@ -346,6 +346,29 @@ Text and resource_link blocks are supported; every other block is refused."
     (yeah-turn-cancel turn "cancelled by ACP client"))
   nil)
 
+(defun yeah-acp--permission-decision (message)
+  "Return the permission decision carried by client RESPONSE MESSAGE.
+Only an explicit `allow-once' permits the effect.  A rejection, a
+cancelled request, a protocol error, or an unknown option refuses it."
+  (let* ((error (plist-get message :error))
+         (result (plist-get message :result))
+         (outcome (plist-get result :outcome))
+         (state (plist-get outcome :outcome))
+         (option (plist-get outcome :optionId)))
+    (cond
+     (error
+      (list :effect :deny
+            :reason "the client could not answer the permission request"))
+     ((equal state "cancelled")
+      (list :effect :deny :reason "cancelled"))
+     ((equal option "allow-once")
+      (list :effect :allow :reply :once))
+     ((equal option "reject-once")
+      (list :effect :deny :reason "the person refused"))
+     (t
+      (list :effect :deny
+            :reason "the client returned an unknown permission response")))))
+
 (defun yeah-acp--route-response (message)
   "Route a client RESPONSE (a message with an id and no method) to the
 permission it answers.  Return non-nil when it was a response."
@@ -354,14 +377,8 @@ permission it answers.  Return non-nil when it was a response."
       (when-let ((session-id (gethash id yeah-acp--pending-permissions)))
         (remhash id yeah-acp--pending-permissions)
         (when-let ((turn (gethash session-id yeah-acp--active-turns)))
-          (let* ((outcome (plist-get (plist-get message :result) :outcome))
-                 (cancelled (equal (plist-get outcome :outcome) "cancelled"))
-                 (option (plist-get outcome :optionId))
-                 (decision (if (or cancelled (equal option "reject-once"))
-                               (list :effect :deny
-                                     :reason (if cancelled "cancelled" "the person refused"))
-                             (list :effect :allow :reply :once))))
-            (yeah-turn-resume-permission turn id decision)))
+          (yeah-turn-resume-permission
+           turn id (yeah-acp--permission-decision message)))
         t))))
 
 (defun yeah-acp--connection-closed (connection)

@@ -150,5 +150,25 @@
                      "\"params\":{}}")))))
       (should (= -32601 (plist-get (plist-get response :error) :code))))))
 
+(ert-deftest yeah-acp-permission-response-allows-only-an-explicit-allow ()
+  "Unknown, failed, cancelled and rejected responses never allow an effect."
+  (should (equal (plist-get
+                  (yeah-acp--permission-decision
+                   (list :result (list :outcome
+                                       (list :outcome "selected"
+                                             :optionId "allow-once"))))
+                 :effect)
+                 :allow))
+  (dolist (message
+           (list (list :error (list :code -32601 :message "unsupported"))
+                 (list :result (list :outcome (list :outcome "cancelled")))
+                 (list :result (list :outcome (list :outcome "selected"
+                                                      :optionId "reject-once")))
+                 (list :result (list :outcome (list :outcome "selected"
+                                                      :optionId "unknown")))
+                 (list)))
+    (should (eq (plist-get (yeah-acp--permission-decision message) :effect)
+                :deny))))
+
 (provide 'test-yeah-acp)
 ;;; test-yeah-acp.el ends here
