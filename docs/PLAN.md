@@ -879,5 +879,104 @@ confirmed present in the merged line.
 - the service-default switch waits for session/queue/mode parity and the
   one shared approval view is wired.
 
+## 15. What the UX wave left open
+
+The Emacs-native interface merged on 2026-11-14 (v0.2.0).  A critical look at
+the result, checked against the code, leaves five things that the release
+papered over.
+
+### 15.1 The `unfinished' event is written and never shown
+
+The turn writes an `unfinished' event when a supervised run spends its
+nudge budget without the model finishing (the vocabulary declares it, the
+turn writes it).  `lib/yeah-ui.el' has no branch for it: the record falls
+into the generic block, and the run keeps the state of its last narration.
+The person sees a transcript that simply stops.  The point of the event is
+that the person sees it.
+
+**Work:** a branch for `unfinished' in the view model — its own block, its
+own state in the status line (`unfinished', not `running' and not
+`completed'), and the reason in the text.  A unit test that a run which
+ends without the effect shows `unfinished' and never `completed'.  A claim
+`unfinished-is-visible' with a control that removes the branch.
+
+### 15.2 Eight new modules, three claims
+
+`lib/yeah-faces.el`, `lib/yeah-journal.el`, `lib/yeah-markdown.el`,
+`lib/yeah-compose.el`, `lib/yeah-diff.el`, `lib/yeah-approval-ui.el',
+`lib/yeah-doctor-ui.el' and `lib/yeah-session-list.el' are 1745 lines of
+new surface.  Three claims cover them (correlation, reading position, one
+journal for both paths).  The composer, the diff preview, the approval
+view, the doctor and the session list have no claim of their own.
+
+**Work:** one claim per surface that a person can reach, each with a
+verifier and a control that bites: the composer (a multiline answer
+becomes one prompt), the diff preview (an edit shows what it would
+change), the session list (a session is found and opened), the doctor
+(it reports what it checked).
+
+### 15.3 The approval view is an orphan
+
+`lib/yeah-approval-ui.el' is required by nobody.  The question of the
+permission is asked in `lib/yeah-service-ui.el' (the wire path) and in the
+smaller prompts of the attached path, so the product has two places that
+answer the same question.
+
+**Work:** decide, then do one of the two: wire the approval view into
+both paths and drop the duplicates, or delete the module and keep the
+prompts.  The recommendation is to wire it: it is written and tested, and
+the plan of the interface already asks for one approval surface.
+
+### 15.4 The archived kernel work
+
+`ux/archive-async-approval' holds work that is not in `main': safe reads
+that run without a question, an approval that is answered asynchronously,
+and a decision that is remembered.  It was written against the snapshot
+before the wire permissions and the split of the batch dispatch, so it
+cannot be merged as it is.
+
+**Work:** rebase it onto the current kernel, resolve the conflict in
+`lib/yeah-turn.el' by design (the preparation of a batch now has six
+functions), and keep the parts that earn their place: a safe read needs no
+question, and the wire answer may remember the decision.  The wire
+answer of the client has `allow-once' and `reject-once' today; `always'
+is what a person wants when they answer the same question twice.
+
+### 15.5 Supervision believes the model
+
+The nudge names the call and the run says it did not finish, but the run
+still ends when the model says so.  A model that insists on talking can
+still end the run with the work undone; the harness knows which tools ran
+and could check the effect instead of the promise.
+
+**Work:** a decision that belongs to a person: does a run need a criterion
+of success (a check that must pass) before it may end?  If yes, the run
+context grows a completion check, and `finish' is only one way to satisfy
+it.
+
+### 15.6 Smaller things that are true
+
+- The live paths are outside the map: six files under `tests/live' and the
+  fixtures are uncovered, so the green verdict of 58 claims does not speak
+  for them.  They are run by hand, and the result belongs in the README.
+- The socket transport has a TCP family, and the editor still asks for a
+  Unix socket; on a platform without Unix sockets the service placement
+  cannot start.  The family is a choice, not a constant.
+- "One shared journal" is true; "one shared control" is not: the service
+  path still has no replay of an old session and no parity of the pending
+  input, the steering and the recovery.  The wording should say which is
+  which.
+- `M-x yeah' still opens the attached placement, and the decision that it
+  should default to the service waits for that parity (Section 13).
+
+### Exit criteria
+
+- every surface a person can reach has a claim whose control bites;
+- a run that ends without the effect says so where the person looks;
+- the question of the permission is asked in one place;
+- the README, the site and `docs/PLAN.md' say the same thing about what is
+  shared and what is not.
+
+
 Re-opened when a person says so: the math-coding aim block in AGENTS.md is
 written by `mathc install` and is not edited by hand.
