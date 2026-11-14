@@ -885,7 +885,7 @@ The Emacs-native interface merged on 2026-11-14 (v0.2.0).  A critical look at
 the result, checked against the code, leaves five things that the release
 papered over.
 
-### 15.1 The `unfinished' event is written and never shown
+### 15.1 The `unfinished' event is written and never shown — **done on 2026-11-14**
 
 The turn writes an `unfinished' event when a supervised run spends its
 nudge budget without the model finishing (the vocabulary declares it, the
@@ -900,7 +900,11 @@ own state in the status line (`unfinished', not `running' and not
 ends without the effect shows `unfinished' and never `completed'.  A claim
 `unfinished-is-visible' with a control that removes the branch.
 
-### 15.2 Eight new modules, three claims
+**Done on 2026-11-14:** the view says `unfinished', the journal shows the
+reason, the service path no longer calls a refusal a finish, and the
+claim `unfinished-is-visible' has a control that bites.
+
+### 15.2 Eight new modules, three claims — **done on 2026-11-14**
 
 `lib/yeah-faces.el`, `lib/yeah-journal.el`, `lib/yeah-markdown.el`,
 `lib/yeah-compose.el`, `lib/yeah-diff.el`, `lib/yeah-approval-ui.el',
@@ -915,7 +919,16 @@ becomes one prompt), the diff preview (an edit shows what it would
 change), the session list (a session is found and opened), the doctor
 (it reports what it checked).
 
-### 15.3 The approval view is an orphan
+**Done on 2026-11-14:** five claims were added with controls that bite —
+`compose-sends-one-prompt-with-its-context',
+`diff-previews-a-change-without-touching-the-file',
+`doctor-ui-reports-checks-without-leaking-secrets',
+`session-list-shows-and-opens-a-project-session' and
+`markdown-fontifies-only-face-properties'.  The claim of the approval
+surface was wider than its own verifier: a new test now asks both paths
+and fails when one of them stops asking in the view.
+
+### 15.3 The approval view is an orphan — **done on 2026-11-14**
 
 `lib/yeah-approval-ui.el' is required by nobody.  The question of the
 permission is asked in `lib/yeah-service-ui.el' (the wire path) and in the
@@ -926,6 +939,11 @@ answer the same question.
 both paths and drop the duplicates, or delete the module and keep the
 prompts.  The recommendation is to wire it: it is written and tested, and
 the plan of the interface already asks for one approval surface.
+
+**Done on 2026-11-14:** the view was wired into both paths — the
+attached path and the service path now open it, the one-key prompts are
+gone, and the person answers there: once, always for this resource, or
+reject.  The wire may answer `allow-always'.
 
 ### 15.4 The archived kernel work
 
