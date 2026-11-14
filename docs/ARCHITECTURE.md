@@ -340,11 +340,24 @@ process boundary and its own adversarial verification.
 
 ## 9. Product and interface
 
-`M-x yeah` is the primary interactive entry point of the attached
-placement; the primary deployment is driven through ACP/MCP clients and
-orchestrators against a service Emacs. The interface renders the
-journal: streamed text, reasoning visibility, tool calls and results,
-approvals, diffs, usage, errors, child work and cancellation state.
+`M-x yeah` currently opens the attached placement; the primary deployment
+is driven through ACP/MCP clients and orchestrators against a service Emacs.
+The editor side of the service and the attached placement use the same
+person-facing transcript: `yeah-ui.el` projects the canonical events,
+`yeah-journal.el` renders that projection as a read-only outline-structured
+buffer, and `yeah-compose.el` owns the separate multiline prompt. The
+attached driver is `yeah-product.el`; the service driver and its ACP mapping
+are `yeah-service-ui.el`. The transcript shows streamed text, reasoning
+visibility, tool calls and results, approvals, diffs, usage, errors, child
+work and cancellation state. Incremental updates replace only the changed
+block and preserve the reader's position.
+
+Semantic faces inherit the active theme. `nerd-icons` and `markdown-mode`
+are optional adapters: icons never replace the readable state text, and
+plain text remains a complete baseline. `yeah-approval-ui.el` and
+`yeah-diff.el` own standalone approval and read-only preview surfaces;
+wiring one approval question into both placements remains open, so neither
+path may claim that the other is its UI.
 
 Emacs UI libraries are adapters, not kernel dependencies. magit-section,
 transient, tabulated-list and the user's completing-read framework are

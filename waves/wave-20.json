@@ -1,0 +1,39 @@
+{
+  "id": "wave-20",
+  "title": "one Emacs-native journal for attached and service",
+  "intent": "A person should not have to learn a second interface when the agent moves from the attached placement to a service Emacs. The events, projection, transcript, semantic presentation and composer are shared; the placement changes who owns the process and who answers, not what the person reads. This wave also repairs stale acceptance controls so the evidence follows the code instead of an older shape.",
+  "touches": [
+    "lib/yeah-acp.el",
+    "lib/yeah-journal.el",
+    "lib/yeah-product.el",
+    "lib/yeah-service-ui.el",
+    "lib/yeah-ui.el",
+    "tests/checks/",
+    "tests/unit/",
+    "spec.json",
+    "waves/",
+    "README.md",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/VISION.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*",
+    "./scripts/dev run"
+  ],
+  "claims": [
+    "ux-correlates-tools-by-stable-id",
+    "ux-journal-preserves-reading-and-text",
+    "ux-attached-and-service-share-the-journal"
+  ],
+  "commitment": [
+    { "claim": "ux-correlates-tools-by-stable-id", "state": "holds" },
+    { "claim": "ux-journal-preserves-reading-and-text", "state": "holds" },
+    { "claim": "ux-attached-and-service-share-the-journal", "state": "holds" }
+  ],
+  "objection": "A shared journal can hide a placement-specific truth: the editor may think an effect was approved while the service interpreted the reply differently, or one path may duplicate the user's prompt.",
+  "refuted_by": "The attached and service buffers show different, duplicated or missing questions, answers or terminal states; a permission answer reaches one placement with a different meaning; or a control that changes the scoped subject leaves the verifier green.",
+  "note": "The ACP tool-call id is stable from request to completion. The service callback keeps its journal state in the journal buffer. The shared journal updates only a changed block and preserves the reading position. Optional icons never replace readable text. The service remains explicit until session replay, queued-control parity and one wired approval view are complete."
+}

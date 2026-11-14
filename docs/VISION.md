@@ -84,7 +84,22 @@ than the code. Parity with complete harnesses is a goal measured by
 completed tasks, not a checklist of features. Even this vision is not a
 statement about the present but a commitment about direction.
 
-## 7. Telos
+## 7. The interface is part of the culture
+
+An agent that lives in Emacs should behave like the rest of the Emacs
+experience, not like a chat window dropped into it. The transcript is
+read-only and inspectable; updates preserve the place a person is reading;
+semantic faces inherit the active theme; a multiline prompt is a real text
+buffer; an approval shows the concrete effect before it is allowed; and
+optional icons decorate readable text rather than replace it. No required
+package, global keybinding or decorative dependency may stand between the
+person and the work.
+
+This is not polish added after the kernel is true. The quality of the
+interface is part of whether the agent can become a participant in an
+environment whose value was built by people over decades.
+
+## 8. Telos
 
 To preserve the line of personal computing in the era of agents. So that a
 person whose environment grew with them is not forced to leave it for new

@@ -78,8 +78,8 @@ for the same task.
 
 ## What exists today
 
-The repository contains 40 focused Elisp modules implementing pieces of the
-kernel:
+The repository contains 53 focused Elisp modules implementing pieces of the
+kernel and its Emacs-native interface:
 
 - a defined run state machine and model-turn orchestration;
 - a typed tool registry and last-match permission rules;
@@ -100,8 +100,15 @@ kernel:
   ends the run; a run that is supervised ends through the `finish' tool,
   not through talk; and a model that answers while the harness is still
   waiting for a tool no longer breaks the state machine;
-- an interactive journal mode with `M-x yeah`, ask/steer/cancel/recover,
-  withdrawal, diff review, Org export and `M-x yeah-doctor`;
+- a shared read-only journal for the attached and service placements: one
+  event-derived view, incremental block updates that preserve the reading
+  position, outline folding, semantic faces, optional `nerd-icons' with a
+  permanent text fallback, and a separate multiline composer with bounded
+  in-memory history and explicit file/buffer context;
+- `M-x yeah' with ask/steer/cancel/recover, withdrawal, diff review, Org
+  export and `M-x yeah-doctor';
+- tested interaction components for read-only Edit/Write previews, an
+  approval view, Doctor diagnostics and a session list;
 - an ACP v1 agent over newline JSON-RPC on stdio, with real sessions, journal
   updates, streaming tool calls and cancellation — and over a local socket,
   where a cancel is handled while the prompt is still running;
@@ -124,15 +131,17 @@ kernel:
 - agent presets read from files, and a delegation that runs a child for
   real: its own session, its own permissions, its own journal.
 
-After Stage 7, byte compilation is clean and 255 ERT unit tests pass, and
+After Stage 7, byte compilation is clean and 319 ERT unit tests pass, and
 the fixed-point demonstration is verified with a real model.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
 (real Emacs processes serving ACP and MCP over stdio, and ACP over a local
 socket, where a cancel preempts a running prompt), the placements
-(the same task in three real processes, compared event by event) and the
-journey of a person (ask, steer, quit, restart, withdraw, recover, cancel).  Frozen
-math-coding v4 map/run/gate results are not treated as current evidence.
+(the same task in three real processes, compared event by event), the
+journey of a person (ask, steer, quit, restart, withdraw, recover, cancel),
+and the shared attached/service journal.  The math-coding v5 map/run/gate
+result is green for all 55 declared claims, each with a negative control
+shown to bite.
 A real model (MiniMax-M3.1-Flash) finishes the Stage 1 coding task, and the
 interactive path works against a live provider: the journal mode, the cancel,
 the quit and the restart, the resume of the session, and the recovery of a
@@ -149,6 +158,21 @@ Do not infer a working product from the presence of a module:
   while a prompt is running is read after that prompt reaches a terminal
   state.  The socket transport (`lib/yeah-wire-socket.el`) does not have
   this limit — a cancel is handled while the prompt is still running;
+- `M-x yeah' still opens the attached placement.  The service placement has
+  the same journal and composer, but switching the default entry point is
+  deliberately deferred until session replay, steering, pending-input
+  recovery and mode changes have the same service/attached behaviour;
+- the service journal receives the live ACP stream, but `session/load' does
+  not yet replay an earlier session into it, and the service path does not
+  yet expose the attached path's pending queue, steering, withdrawal and
+  recovery commands;
+- the shared approval/diff components are implemented and tested, but the
+  attached and service paths still use their smaller prompt surfaces rather
+  than one wired approval view.  The service preview is a read-only text
+  diff, not the full `diff-mode' surface;
+- `nerd-icons' is optional decoration only.  Without it, without multiple
+  fonts, or with `yeah-icons' set to `never', every label remains readable
+  text; no icon package is required;
 - the ACP agent and the MCP server are driven by a third-party client
   (xenodium/acp.el) with a fake model, and the service path itself is
   verified with a live provider (`tests/live/live-service-path.el`: a clean
