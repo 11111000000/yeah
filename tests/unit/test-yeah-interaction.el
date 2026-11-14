@@ -10,6 +10,8 @@
 (require 'cl-lib)
 (require 'yeah-acp)
 (require 'yeah-approval-ui)
+(require 'yeah-product)
+(require 'yeah-service-ui)
 (require 'yeah-compose)
 (require 'yeah-diff)
 (require 'yeah-doctor-ui)
@@ -22,6 +24,31 @@
       (insert content)
       (write-region (point-min) (point-max) path nil 'silent))
     path))
+
+(ert-deftest yeah-both-paths-ask-in-the-approval-view ()
+  "Both paths ask the permission in the shared approval view: the attached
+path and the service path.  A path that asked somewhere else would leave
+the view unopened."
+  (let ((asked nil))
+    (cl-letf (((symbol-function 'yeah-approval-answer)
+                (lambda (request)
+                  (setq asked (cons request asked))
+                  (list :effect :allow :reply :once))))
+      (should (eq (plist-get (yeah-product--human-answerer
+                              (list :action "edit" :resource "/tmp/x.el"
+                                    :args nil))
+                           :effect)
+                  :allow))
+      (should asked))
+    (setq asked nil)
+    (cl-letf (((symbol-function 'yeah-approval-answer)
+                (lambda (request)
+                  (setq asked (cons request asked))
+                  (list :effect :allow :reply :always))))
+      (should (equal (yeah-service-ui--approval-prompter
+                      "edit on /tmp/x.el" '("a" "b"))
+                     "allow-always"))
+      (should asked))))
 
 (ert-deftest yeah-wire-answer-of-always-is-allowed-and-remembered ()
   "The wire answer `allow-always' permits the effect and asks the kernel to
