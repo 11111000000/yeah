@@ -22,6 +22,7 @@
 (require 'cl-lib)
 (require 'outline)
 (require 'transient)
+(require 'yeah-compose)
 (require 'yeah-faces)
 (require 'yeah-markdown)
 
@@ -378,33 +379,52 @@ Signal `user-error' when the capability is unavailable."
               (list (format "yeah: %s has no callback" capability))))
     (apply callback arguments)))
 
+(defun yeah-journal-submit (journal text &optional context)
+  "Submit TEXT and optional CONTEXT to JOURNAL's driver."
+  (unless (stringp text)
+    (signal 'user-error "yeah: the prompt is not text"))
+  (when (string-empty-p (string-trim text))
+    (signal 'user-error "yeah: the prompt is empty"))
+  (yeah-journal--call-driver journal :ask text context nil))
+
+(defun yeah-journal-submit-steering (journal text &optional context)
+  "Submit steering TEXT and optional CONTEXT to JOURNAL's driver."
+  (unless (stringp text)
+    (signal 'user-error "yeah: the steering is not text"))
+  (when (string-empty-p (string-trim text))
+    (signal 'user-error "yeah: the steering is empty"))
+  (yeah-journal--call-driver journal :steer text context nil))
+
 (defun yeah-journal-ask (journal &optional prompt)
   "Ask JOURNAL, optionally using PROMPT, through its driver."
-  (let ((text (or prompt (read-string "Yeah ask: "))))
-    (when (string-empty-p (string-trim text))
-      (signal 'user-error "yeah: the prompt is empty"))
-    (yeah-journal--call-driver journal :ask text nil nil)))
+  (yeah-journal-submit journal (or prompt (read-string "Yeah ask: "))))
 
 (defun yeah-journal-steer (journal &optional prompt)
   "Steer JOURNAL, optionally using PROMPT, through its driver."
-  (let ((text (or prompt (read-string "Yeah steering: "))))
-    (when (string-empty-p (string-trim text))
-      (signal 'user-error "yeah: the steering is empty"))
-    (yeah-journal--call-driver journal :steer text nil nil)))
+  (yeah-journal-submit-steering
+   journal (or prompt (read-string "Yeah steering: "))))
 
 (defun yeah-journal-cancel (journal)
   "Cancel the active work of JOURNAL."
   (yeah-journal--call-driver journal :cancel nil))
 
 (defun yeah-journal-ask-command ()
-  "Ask the current journal through its driver."
+  "Compose a new prompt for the current journal."
   (interactive)
-  (yeah-journal-ask (yeah-journal--current)))
+  (let ((journal (yeah-journal--current)))
+    (yeah-compose-open
+     (lambda (text context)
+       (yeah-journal-submit journal text context))
+     :ask)))
 
 (defun yeah-journal-steer-command ()
-  "Steer the current journal through its driver."
+  "Compose steering for the current journal."
   (interactive)
-  (yeah-journal-steer (yeah-journal--current)))
+  (let ((journal (yeah-journal--current)))
+    (yeah-compose-open
+     (lambda (text context)
+       (yeah-journal-submit-steering journal text context))
+     :steering)))
 
 (defun yeah-journal-cancel-command ()
   "Cancel the current journal through its driver."
