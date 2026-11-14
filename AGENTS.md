@@ -40,8 +40,10 @@ work item. Never resolve it by silently making documentation more optimistic.
 - This is a kernel prototype, not a usable coding product.
 - Stage 7 is implemented offline: an agent preset is a file (a Markdown or
   Org header and a body), and a child runs for real in its own session with
-  only the tools it was granted. Parallel children, the cheaper child
-  model, the Org projection and the fixed-point demonstration are not
+  only the tools it was granted. The fixed-point demonstration passes with
+  a live model: a child repairs a Yeah canary and the canary passes
+  afterwards (tests/live/live-fixed-point.el, one child). Parallel
+  children, the cheaper child model and the Org projection are not
   implemented yet.
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
@@ -62,7 +64,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   top of it while its stage's prerequisites are unmet.
 - Stage 4 is implemented offline and verified against a live provider:
   `M-x yeah`, journal commands, the Org export, doctor and a package-vc
-  bootstrap exist.  A real model (MiniMax-M2.7) finishes the Stage 1 coding
+  bootstrap exist.  A real model (MiniMax-M3.1-Flash) finishes the Stage 1 coding
   task, and the interactive path works against a live provider.  The
   clean-Emacs install path is network-tested against the published
   repository (tests/live/live-clean-install.el): the public alpha gate is

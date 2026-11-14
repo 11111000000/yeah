@@ -38,7 +38,7 @@
   "ACP v1 protocol version spoken by Yeah.")
 
 (defconst yeah-acp--agent-name "yeah")
-(defconst yeah-acp--agent-version "0.1.0-alpha")
+(defconst yeah-acp--agent-version "0.1.0")
 
 (defvar yeah-acp--sessions (make-hash-table :test 'equal)
   "Map ACP session ids to their Yeah session state.")
@@ -48,6 +48,11 @@
 
 (defvar yeah-acp--pending-permissions (make-hash-table :test 'equal)
   "Map permission request ids to the session they belong to.")
+
+(defvar yeah-acp--connection nil
+  "The connection being served, bound dynamically by the socket handler.
+A session remembers which connection owns it, so the death of that
+connection can cancel the work it started.")
 
 (defun yeah-acp--jsonable-args (args)
   "Return ARGS as a JSON value: an array when every element serializes,
@@ -248,6 +253,7 @@ was created without a connection the current output function is used."
   (let* ((id (plist-get session :id))
          (state (list :id id :session session :cwd cwd :listener nil
                       :output yeah-acp--output
+                      :connection yeah-acp--connection
                       :registry (yeah-tools-snapshot)))
          (listener (lambda (observed-session type fields event-id)
                      (yeah-acp--observe-event state observed-session type fields event-id))))
@@ -358,6 +364,28 @@ permission it answers.  Return non-nil when it was a response."
             (yeah-turn-resume-permission turn id decision)))
         t))))
 
+(defun yeah-acp--connection-closed (connection)
+  "Cancel the work CONNECTION started and forget its pending questions.
+A permission request whose asker is gone must never hang the run: the
+turn is cancelled with the reason in the journal, and the request ids
+of the dead connection are dropped."
+  (let ((sessions nil))
+    (maphash
+     (lambda (id state)
+       (when (eq connection (plist-get state :connection))
+         (push id sessions)))
+     yeah-acp--sessions)
+    (let ((stale nil))
+      (maphash (lambda (id session-id)
+                 (when (memq session-id sessions)
+                   (push id stale)))
+               yeah-acp--pending-permissions)
+      (dolist (id stale)
+        (remhash id yeah-acp--pending-permissions)))
+    (dolist (session-id sessions)
+      (when-let ((turn (gethash session-id yeah-acp--active-turns)))
+        (yeah-turn-cancel turn "the client disconnected")))))
+
 (defun yeah-acp--dispatch (method params id)
   "Dispatch ACP METHOD with PARAMS and request ID.
 Return a response string for immediate requests, or nil for notifications
@@ -438,12 +466,14 @@ served at the same time."
         yeah-acp--answerer answerer)
   (yeah-wire-socket-serve
    service
-   (lambda (line respond)
-     (let ((yeah-acp--output respond))
+   (lambda (line respond &optional connection)
+     (let ((yeah-acp--output respond)
+           (yeah-acp--connection connection))
        (let ((response (yeah-acp-handle-message line)))
          (when response
            (funcall respond response)))))
-   family))
+   family
+   #'yeah-acp--connection-closed))
 
 (defun yeah-acp--reset-for-test ()
   "Clear ACP sessions, listeners and active turns for tests."

@@ -243,11 +243,11 @@ does not support the CLI used by the script, the result is blocked — not pass.
 Real provider tests exist separately and require environment credentials:
 
 ```sh
-YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M3.1-Flash EMACS=... \
   emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-model-call.el
-YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M3.1-Flash EMACS=... \
   emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-coding-task.el
-YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M3.1-Flash EMACS=... \
   emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-fixed-point.el
 ```
 
