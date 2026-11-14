@@ -70,14 +70,13 @@ may work without asking."
 (defvar yeah-service-ui-permission-prompter
   #'yeah-service-ui--approval-prompter
   "Function answering a permission request of the service.
-Called with (TITLE RAW-INPUT) and returns \"allow-once\", \"allow-always\"
-or \"reject-once\".  The default asks the person in the shared approval
+Called with (TITLE RAW-INPUT) and returns \"allow-once\" or
+\"reject-once\".  The default asks the person in the shared approval
 view; a check binds its own.")
 
 (defun yeah-service-ui--approval-prompter (title raw-input)
   "Ask the person about TITLE with RAW-INPUT in the shared approval view.
-Returns the option id of the answer: \"allow-once\", \"allow-always\" or
-\"reject-once\"."
+Returns the option id of the answer: \"allow-once\" or \"reject-once\"."
   (let ((decision (yeah-approval-answer
                    (list :action (yeah-service-ui--permission-action title)
                          :resource (yeah-service-ui--permission-resource title)
@@ -87,35 +86,6 @@ Returns the option id of the answer: \"allow-once\", \"allow-always\" or
         ;; no decision, so the question is asked again next time.
         "allow-once"
       "reject-once")))
-
-(defun yeah-service-ui--permission-diff (title raw-input)
-  "Return a preview of the change RAW-INPUT describes, or nil.
-An `edit' on a file this machine can read is shown as a diff of the
-passage the edit replaces; anything else has no preview."
-  (when (and (string-match-p "\\`edit " (or title ""))
-             (listp raw-input)
-             (stringp (nth 0 raw-input))
-             (stringp (nth 1 raw-input))
-             (stringp (nth 2 raw-input))
-             (file-readable-p (nth 0 raw-input)))
-    (let ((old (nth 1 raw-input))
-          (new (nth 2 raw-input)))
-      (format "--- %s\n+++ %s (edited)\n-%s\n+%s"
-              (nth 0 raw-input) (nth 0 raw-input)
-              (replace-regexp-in-string "\n" "\n-" old)
-              (replace-regexp-in-string "\n" "\n+" new)))))
-
-(defun yeah-service-ui--prompt-permission (title raw-input)
-  "Ask the person whether the service may run TITLE with RAW-INPUT.
-Returns \"allow-once\", \"reject-once\" or \"cancelled\"."
-  (when-let ((diff (yeah-service-ui--permission-diff title raw-input)))
-    (with-temp-buffer-window "*Yeah permission*" nil nil
-      (princ diff)))
-  (pcase (read-char-choice
-          (format "Yeah service asks: %s — [a]llow once / [r]eject " title)
-          '(?a ?r))
-    (?a "allow-once")
-    (?r "reject-once")))
 
 (defun yeah-service-ui--next-id (prefix)
   "Return a fresh local id beginning with PREFIX."
