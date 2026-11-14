@@ -18,6 +18,11 @@
 ;; timer must fire on time.  Against the per-character implementation the
 ;; estimate takes seconds and the timer fires seconds late; against the
 ;; C-speed `how-many' implementation it fires on time.
+;;
+;; The direct measurement of the estimate is the load-independent part:
+;; 10 MiB take tens of milliseconds with `how-many' and seconds when the
+;; text is walked in Lisp.  The timer bound is generous on purpose — a
+;; loaded machine may be slow — but the estimate bound is not.
 
 ;;; Code:
 
@@ -27,12 +32,17 @@
       (start (float-time))
       (big (make-string 10000000 ?a)))
   (run-with-timer 0.1 nil (lambda () (setq fired-at (float-time))))
-  (yeah-context-estimate-tokens big)
-  (accept-process-output nil 1.5)
-  (let ((slack (and fired-at (- fired-at start))))
-    (unless (and fired-at (< slack 1.0))
-      (message "responsive: the timer fired late (%s s)" slack)
-      (kill-emacs 1))
-    (kill-emacs 0)))
+  (let ((estimate-start (float-time)))
+    (yeah-context-estimate-tokens big)
+    (let ((elapsed (- (float-time) estimate-start)))
+      (unless (< elapsed 1.0)
+        (message "responsive: the estimate took %.3f s for 10 MiB" elapsed)
+        (kill-emacs 1))
+      (accept-process-output nil 3.0)
+      (let ((slack (and fired-at (- fired-at start))))
+        (unless (and fired-at (< slack 3.0))
+          (message "responsive: the timer fired late (%s s)" slack)
+          (kill-emacs 1))
+        (kill-emacs 0)))))
 
 ;;; check-runtime-stays-responsive.el ends here

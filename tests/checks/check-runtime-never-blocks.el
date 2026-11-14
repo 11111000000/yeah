@@ -26,20 +26,22 @@
   "Record TEXT as a failure."
   (push text yeah-check--failures))
 
-(defun yeah-check--wait (done)
-  "Let the event loop run until DONE is non-nil, or a minute passes."
+(defun yeah-check--wait (probe)
+  "Let the event loop run until (funcall PROBE) is non-nil, or a minute passes.
+PROBE is a function: the outcome arrives asynchronously, so a value passed
+here would be nil forever."
   (let ((waited 0))
-    (while (and (null done) (< waited 60))
+    (while (and (null (funcall probe)) (< waited 60))
       (accept-process-output nil 0.2)
       (setq waited (+ waited 0.2)))
-    done))
+    (funcall probe)))
 
 (defun yeah-check--call (command retries timeout)
   "Run COMMAND through the runtime and return the outcome."
   (let ((outcome nil))
     (yeah-runtime-call command (lambda (result) (setq outcome result))
                        :retries retries :timeout timeout)
-    (yeah-check--wait outcome)
+    (yeah-check--wait (lambda () outcome))
     outcome))
 
 (defun yeah-check--failing-call ()

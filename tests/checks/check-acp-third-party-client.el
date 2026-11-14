@@ -33,8 +33,12 @@
 
 (unless (and (file-directory-p yeah-check--acp-dir)
              (file-readable-p (expand-file-name "acp.el" yeah-check--acp-dir)))
-  (message "third-party: skipped — the acp.el research clone is absent")
-  (kill-emacs 0))
+  ;; The independent client lives outside this repository.  Its absence is
+  ;; a blocked check, not a passed one: exit 2 says "unknown", and a
+  ;; check that cannot fail proves nothing.
+  (message "third-party: blocked — the acp.el research clone is absent (%s)"
+           yeah-check--acp-dir)
+  (kill-emacs 2))
 
 (add-to-list 'load-path yeah-check--acp-dir)
 (require 'acp)
