@@ -150,8 +150,11 @@ Do not infer a working product from the presence of a module:
   state.  The socket transport (`lib/yeah-wire-socket.el`) does not have
   this limit — a cancel is handled while the prompt is still running;
 - the ACP agent and the MCP server are driven by a third-party client
-  (xenodium/acp.el) with a fake model, but not yet by a real editor
-  (agent-shell) against a live provider;
+  (xenodium/acp.el) with a fake model, and the service path itself is
+  verified with a live provider (`tests/live/live-service-path.el`: a clean
+  service Emacs, a real model, a write approved over the wire — one earlier
+  attempt failed at the provider, an intermittent refusal); a real editor
+  (agent-shell) against a live provider is still open;
 - the bridge to the buffers of an attached Emacs is verified against a live
   Emacs server (a real daemon), but not yet against a person's Emacs in
   day-to-day use;

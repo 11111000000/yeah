@@ -37,9 +37,11 @@
 Only the load paths and the gptel backend are configured; the key is read
 from the service's own environment, never from a command line."
   (format "(progn
-            (dolist (dir (file-expand-wildcards
-                          (expand-file-name \"~/.emacs.d/elpa/{gptel,transient,compat}-*\")))
-              (add-to-list 'load-path dir))
+            (dolist (prefix '(\"gptel\" \"transient\" \"compat\"))
+              (dolist (dir (file-expand-wildcards
+                            (concat (expand-file-name \"~/.emacs.d/elpa/\")
+                                    prefix \"-*\")))
+                (add-to-list 'load-path dir)))
             (require 'gptel)
             (require 'gptel-openai)
             (setq gptel-backend
@@ -124,8 +126,17 @@ from the service's own environment, never from a command line."
                   (push "the file has the wrong content" failures))))))
       (when client (yeah-client-close client))
       (yeah-service-stop name)
-      (ignore-errors (delete-directory directory t))
-      (ignore-errors (delete-directory data-home t)))
+      (if failures
+          (progn
+            (message "live service path: the journal follows; data kept in %s"
+                     data-home)
+            (dolist (file (directory-files-recursively data-home "\\.jsonl\\'"))
+              (unless (string-prefix-p ".#" (file-name-nondirectory file))
+                (with-temp-buffer
+                  (insert-file-contents file)
+                  (message "%s" (buffer-string))))))
+        (ignore-errors (delete-directory data-home t)))
+      (ignore-errors (delete-directory directory t)))
     (dolist (failure failures)
       (message "live service path: %s" failure))
     (if failures

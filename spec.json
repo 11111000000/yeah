@@ -982,6 +982,29 @@
       "register": "fact",
       "control": "sed -i 's/(yeah-tools-call /(yeah-tools-call-DISCONNECTED /' lib/yeah-gptel.el",
       "waiver": null
+    },
+    {
+      "id": "client-disconnect-cancels-the-run",
+      "text": "a client that dies with a pending permission request does not hang the run: the service cancels it and writes the reason into the journal",
+      "scope": [
+        "lib/yeah-wire-socket.el", "lib/yeah-acp.el",
+        "tests/checks/check-client-disconnect-during-permission.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-client-disconnect-during-permission.el"
+        }
+      ],
+      "falsifier": "the run still waits for an answer after its client disconnected, or the write ran although nobody allowed it",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-turn-cancel turn \"the client disconnected\")|nil|' lib/yeah-acp.el",
+      "waiver": null
     }
   ]
 }
