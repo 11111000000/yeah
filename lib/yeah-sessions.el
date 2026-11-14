@@ -24,6 +24,7 @@
 
 (require 'cl-lib)
 (require 'yeah-session)
+(require 'yeah-ui)
 
 (defun yeah-sessions--records-of (file)
   "Return the records of the log FILE."
@@ -32,42 +33,58 @@
     (mapcar (lambda (line) (json-parse-string line :object-type 'plist))
             (split-string (buffer-string) "\n" t))))
 
-(defun yeah-sessions--estimated-tokens (record)
-  "Return the number of tokens the RECORD is worth, estimated."
-  (max 1 (ceiling (/ (length (format "%S" record)) 4.0))))
+(defun yeah-sessions--cost-from-usage (usage)
+  "Return the session cost corresponding to view USAGE.
+Reported values remain nil when the provider supplied none.  :total is the
+legacy aggregate of the values that are known plus the separate estimate."
+  (let ((input (plist-get usage :input))
+        (output (plist-get usage :output))
+        (reported-p (plist-get usage :reported-p))
+        (estimated (plist-get usage :estimated)))
+    (list :reported-input input
+          :reported-output output
+          :reported-p reported-p
+          :estimated estimated
+          :total (when (or reported-p (and estimated (> estimated 0)))
+                   (+ (or input 0) (or output 0) (or estimated 0))))))
 
 (defun yeah-sessions-cost (records)
-  "Return what the run RECORDS cost: a plist of the tokens.
-The tokens the provider reported are counted as they are; the rest is
-estimated from the text of the records, because a run must be able to
-say what it cost even when the provider said nothing."
-  (let ((reported-input 0)
-        (reported-output 0)
-        (estimated 0))
-    (dolist (record records)
-      (if (equal (plist-get record :type) "usage")
-          (progn
-            (setq reported-input (+ reported-input (or (plist-get record :input) 0)))
-            (setq reported-output (+ reported-output (or (plist-get record :output) 0))))
-        (setq estimated (+ estimated (yeah-sessions--estimated-tokens record)))))
-    (list :reported-input reported-input
-          :reported-output reported-output
-          :estimated estimated
-          :total (+ reported-input reported-output estimated))))
+  "Return what the run RECORDS cost.
+:reported-input and :reported-output contain only provider-reported totals and
+are nil when unknown.  :reported-p records whether either value was reported.
+:estimated is a separate record-text estimate.  The legacy :total key combines
+known values and the estimate; consumers that must distinguish evidence from a
+heuristic use the other fields instead."
+  (yeah-sessions--cost-from-usage (plist-get (yeah-ui-view records) :usage)))
 
 (defun yeah-sessions-index (root)
-  "Return the sessions under ROOT: a list of plists.
-Each is `(:id ID :records N :cost COST)', and the list is ordered by
-the identifier of the session."
+  "Return the sessions under ROOT, ordered by session id.
+Each entry preserves :id, :records and :cost, and adds :mtime (the file
+modification time), :title, :last-status (the projected state), :model,
+:placement and :profile.  :status aliases :last-status for session-list
+callers.  This is a full-scan projection of the JSONL journals, not a derived
+second source of truth."
   (let ((dir (expand-file-name "sessions" root))
         (result nil))
     (when (file-directory-p dir)
       (dolist (file (directory-files dir t "\\.jsonl\\'"))
         (let* ((id (file-name-base file))
-               (records (yeah-sessions--records-of file)))
+               (records (yeah-sessions--records-of file))
+               (view (yeah-ui-view records))
+               (session (plist-get view :session))
+               (state (plist-get (plist-get view :status) :state))
+               (cost (yeah-sessions--cost-from-usage (plist-get view :usage)))
+               (mtime (file-attribute-modification-time (file-attributes file))))
           (push (list :id id
                       :records (length records)
-                      :cost (yeah-sessions-cost records))
+                      :cost cost
+                      :mtime mtime
+                      :title (plist-get session :title)
+                      :last-status state
+                      :status state
+                      :model (plist-get session :model)
+                      :placement (plist-get session :placement)
+                      :profile (plist-get session :profile))
                 result))))
     (sort result (lambda (a b) (string< (plist-get a :id) (plist-get b :id))))))
 
