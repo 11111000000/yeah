@@ -1,6 +1,6 @@
 # Yeah — Emacs Agent Harness
 
-> **Status: v0.2.0 — the Emacs-native interface; a kernel, not yet a complete product.**
+> **Status: v0.3.0 — the kernel asks only what matters; a kernel, not yet a complete product.**
 > Read `docs/PLAN.md` for the current baseline and the road to a public
 > alpha. `spec.json` and `./scripts/dev map` are the machine-checked source
 > of truth; documentation never substitutes for that evidence.
@@ -138,7 +138,7 @@ kernel and its Emacs-native interface:
 - agent presets read from files, and a delegation that runs a child for
   real: its own session, its own permissions, its own journal.
 
-After Stage 7, byte compilation is clean and 319 ERT unit tests pass, and
+After Stage 7, byte compilation is clean and 331 ERT unit tests pass, and
 the fixed-point demonstration is verified with a real model.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
@@ -147,7 +147,7 @@ socket, where a cancel preempts a running prompt), the placements
 (the same task in three real processes, compared event by event), the
 journey of a person (ask, steer, quit, restart, withdraw, recover, cancel),
 and the shared attached/service journal.  The math-coding v5 map/run/gate
-result is green for all 55 declared claims, each with a negative control
+result is green for all 67 declared claims, each with a negative control
 shown to bite.
 A real model (MiniMax-M3.1-Flash) finishes the Stage 1 coding task, and the
 interactive path works against a live provider: the journal mode, the cancel,

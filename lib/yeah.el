@@ -3,7 +3,7 @@
 ;; Copyright (C) 2026  Petr Kosov
 ;;
 ;; Package-Requires: ((emacs "30.2") (gptel "0.9.9.5"))
-;; Version: 0.2.0
+;; Version: 0.3.0
 ;; URL: https://github.com/11111000000/yeah
 ;;
 ;; This file is part of Yeah.
