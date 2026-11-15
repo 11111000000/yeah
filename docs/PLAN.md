@@ -1019,8 +1019,9 @@ distance to measuring the parity the vision asks for.
 **What has landed since (2026-11-15).**  16.1, 16.2, 16.3 and 16.4 are
 implemented; the register of 16.5 and the apparatus of 16.7 are built; 16.6 is
 done — the interface is photographed under a virtual frame server — and 16.8
-is done.  The measurements of 16.7 wait for a provider and for a decision of
-the owner.  The wave is
+is done.  The pilot of 16.7 is measured on three tasks with a live provider
+and a second harness; the difference it found is a defect of one turn, and
+the threshold is still a decision of the owner.  The wave is
 `waves/wave-21.json', the review that started it is
 `docs/REVIEW-2026-11-15.md', and the map holds 74 claims; 358 ERT tests and 53
 canaries pass.  The review of the session that carried the wave, and the plan of
@@ -1137,10 +1138,10 @@ is registered in `docs/LIVE-EVIDENCE.md`.  A stored golden picture is still
 open: it is a decision about the reference machine and its fonts, not a
 technical obstacle.
 
-### 16.7 The parity that is measured, not claimed — **the apparatus is done on 2026-11-15**
+### 16.7 The parity that is measured, not claimed — **the pilot is measured on 2026-11-15**
 
 The vision asks for a harness competitive with opencode and pi, and the
-documents say the parity is a goal to measure.  Nothing is measured yet.
+documents say the parity is a goal to measure.
 
 **Work:** a task set (ten tasks of the kind a person actually asks for:
 read, edit, fix a failing test, write a file, answer a question) and a
@@ -1151,9 +1152,31 @@ threshold is a decision of the owner (Section 13).
 **What landed:** `bench/' holds the ten tasks, the manifest and the runner;
 `./scripts/dev bench' proves that every task has a prompt and a check that
 fails on an untouched workspace, and the runner records a harness that could
-not run as `skipped' or `not-available', never as a pass.  No threshold is
-declared, and no measurement has been made: that needs a provider, a second
-harness and the decision of the owner.
+not run as `skipped' or `not-available', never as a pass.
+
+**The pilot (2026-11-15).**  Three tasks — `read-answer',
+`fix-failing-test', `write-new-file' — were given to Yeah and to pi with the
+same provider, the same model (MiniMax-M2.7) and the same workspaces; the
+result is in `bench/results/20261115T135915Z.jsonl' and in the register of
+the live evidence.  pi passed all three; Yeah passed none of them.
+
+That number is **not** a verdict about parity, and it must not be quoted as
+one.  The threshold is a decision of the owner that has not been taken
+(Section 13); three tasks are a sample, not a benchmark; and the difference
+the pilot found is a defect of one turn, not a difference of quality between
+the agents.  In every run of Yeah the model called the tools, the results of
+the tools arrived, and the provider then answered with an **empty** message:
+the turn took the empty answer as the end of the work and stopped without
+the effect.  The live path of the kernel with the same key and the same
+model passes (`tests/live/live-coding-task.el'), so the tools and the model
+work; what does not work is the turn that has to notice that the model has
+not advanced.
+
+**Open, for the next wave:** a claim with a biting control for the turn that
+accepts an empty answer as the end of the work.  Until it exists, the parity
+of this section cannot be measured honestly — the harness under measurement
+is the one that fails the tasks, and the cause of the failure is not yet
+understood to the end.
 
 ### 16.8 Housekeeping — **done on 2026-11-15**
 

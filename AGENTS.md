@@ -38,6 +38,14 @@ work item. Never resolve it by silently making documentation more optimistic.
 ## Current warnings for every agent
 
 - This is a kernel prototype, not a usable coding product.
+- The parity with other harnesses was piloted on 2026-11-15, and the
+  difference the pilot found is a defect of the turn, not a difference of
+  quality: after the results of the tool calls arrive, the model may answer
+  with an empty message, and the turn takes that as the end of the work and
+  stops without the effect (docs/LIVE-EVIDENCE.md, "The pilot of the
+  parity"). The threshold of the parity is a decision of the owner
+  (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
+  parity.
 - Stage 7 is implemented offline: an agent preset is a file (a Markdown or
   Org header and a body), and a child runs for real in its own session with
   only the tools it was granted. The fixed-point demonstration passes with

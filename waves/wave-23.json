@@ -1,0 +1,23 @@
+{
+  "id": "wave-23",
+  "title": "the parity, measured",
+  "intent": "The parity with the other harnesses was a goal to measure and nothing had ever been measured. This wave measures it on three tasks of the set with a live provider and a second harness under the same conditions, fixes the two defects of the apparatus that would have distorted the numbers, and records the result as evidence without a claim: the difference the pilot found is a defect of one turn, not a difference of quality between the agents, and the threshold of the parity is a decision of the owner that has not been taken.",
+  "touches": [
+    "bench/run-bench.el",
+    "bench/README.md",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "README.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev bench",
+    "./scripts/dev bench --run"
+  ],
+  "claims": [],
+  "commitment": [],
+  "objection": "A pilot of three tasks with one model and one second harness is not a measurement of parity: the sample is small, the threshold is not decided, and the difference that was found may be a defect of the one harness under measurement rather than a difference between the agents. The apparatus itself may favour one of the participants: a harness that is offered tools it is not allowed to use spends its turns on refusals, and a harness whose standard input never ends waits for the whole timeout and is counted as a failure it never had a chance to avoid.",
+  "refuted_by": "The runner announces to a harness the tools it is not allowed to use, or hands it a standard input that never ends; a harness that could not run is counted as a pass; the two participants do not get the same provider, the same model and the same task workspaces; a task is counted as solved by a harness that did nothing; or the numbers of the pilot are quoted as a verdict about parity while no threshold has been decided.",
+  "note": "No claim enters the map with this wave. The measurement needs a provider key and a second harness, so it is blocked on every machine that lacks them, and blocked is not pass. The result is registered in `docs/LIVE-EVIDENCE.md` under 'The pilot of the parity': with MiniMax-M2.7 and pi, pi passed the three tasks and Yeah passed none. That number is not a verdict: the threshold is an owner decision (docs/PLAN.md section 13), three tasks are a sample, and the difference is a defect of the turn -- after the results of the tool calls arrive the provider answers with an empty message, the turn takes it as the end of the work and stops without the effect, while the live path of the kernel with the same key and the same model passes (tests/live/live-coding-task.el). The next wave owes a claim with a biting control for the turn that accepts an empty answer as the end of the work; until it exists, the parity cannot be measured honestly."
+}

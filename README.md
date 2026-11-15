@@ -203,6 +203,13 @@ Do not infer a working product from the presence of a module:
   a provider, so no control can bite and the green verdict of the 74 claims
   says nothing about them.  What each of them proves, how to run it and when
   it was last recorded is in `docs/LIVE-EVIDENCE.md`;
+- the parity with other harnesses was piloted on 2026-11-15 on three tasks
+  with a live provider (`MiniMax-M2.7`) and `pi`: pi passed all three, Yeah
+  passed none.  That is not a verdict — the threshold is a decision of the
+  owner (`docs/PLAN.md` §13), three tasks are a sample, and the difference
+  the pilot found is a defect of one turn (an empty answer of the model ends
+  the turn without the effect).  The numbers and the conditions are in
+  `docs/LIVE-EVIDENCE.md`;
 - `nerd-icons' is optional decoration only.  Without it, without multiple
   fonts, or with `yeah-icons' set to `never', every label remains readable
   text; no icon package is required;
@@ -309,11 +316,11 @@ pass. The pictures land in `tests/artifacts/` and are not kept in git.
 Real provider tests exist separately and require environment credentials:
 
 ```sh
-YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M3.1-Flash EMACS=... \
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
   emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-model-call.el
-YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M3.1-Flash EMACS=... \
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
   emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-coding-task.el
-YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M3.1-Flash EMACS=... \
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
   emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-fixed-point.el
 ```
 
@@ -322,6 +329,11 @@ choose the endpoint and the model, and `EMACS` names the Emacs that runs the
 project's own tests.  No key belongs in this repository, in a session log
 or in the documentation; keep the credentials in the environment (a private
 file outside the checkout is enough).
+
+The model matters: with `MiniMax-M3` and `MiniMax-M3.1-Flash` the same
+provider answers an empty message through `gptel` — even the plain model
+call — so those checks fail for the provider and not for the harness.
+`MiniMax-M2.7` is the model the live evidence was recorded with.
 
 The second one runs a real coding task against a real provider: the harness
 reads the project, edits the file with a guarded edit, saves it, and the
