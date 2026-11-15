@@ -90,6 +90,14 @@ work item. Never resolve it by silently making documentation more optimistic.
   version that no read handed out is ignored, like a tick that no read handed
   out. docs/ARCHITECTURE.md §D5 was amended, not weakened: it names the
   version as the second form of the state a read returns.
+- A decision that repeats a call that is already running is dropped, and the
+  drop is now in the journal: the event `tool-dropped` carries the tool, the
+  reason and the arguments, so a reader of the log tells a repeated decision
+  from a decision that never came (wave 30). The model is not told that its
+  repetition was refused, because a tool that runs twice would repeat its
+  side effect; the identity of a call is still the tool and its arguments.
+  docs/ARCHITECTURE.md §D1 was amended, not weakened: the vocabulary it
+  names now includes dropped calls.
 - Stage 7 is implemented offline: an agent preset is a file (a Markdown or
   Org header and a body), and a child runs for real in its own session with
   only the tools it was granted. The fixed-point demonstration passes with
