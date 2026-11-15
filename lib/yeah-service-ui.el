@@ -24,6 +24,7 @@
 (require 'yeah-client)
 (require 'yeah-compose)
 (require 'yeah-journal)
+(require 'yeah-org)
 (require 'yeah-ui)
 
 (defgroup yeah-service-ui nil
@@ -38,6 +39,15 @@ yeah-service' starts the service clean and loads only this file, which
 typically configures gptel (or sets `yeah-acp-default-transport').
 When nil, the service inherits the person's full init file."
   :type '(choice (const nil) file)
+  :group 'yeah-service-ui)
+
+(defcustom yeah-service-ui-export-directory
+  (expand-file-name
+   "yeah/exports/"
+   (or (getenv "XDG_DATA_HOME")
+       (expand-file-name ".local/share/" (getenv "HOME"))))
+  "Directory where service journal exports are written."
+  :type 'directory
   :group 'yeah-service-ui)
 
 (defun yeah-service-ui--rules (profile)
@@ -133,23 +143,84 @@ Returns the option id of the answer: \"allow-once\", \"allow-always\" or
 
 (defun yeah-service-ui--content-text (content)
   "Return the text of CONTENT, a list of ACP content blocks."
-  (if (vectorp content)
-      (string-join
-       (mapcar (lambda (block)
-                 (if (hash-table-p block)
-                     (or (gethash "text" block) "")
-                   (or (plist-get block :text) "")))
-               (append content nil))
-       "")
-    (if (and (listp content) (plist-get content :text))
-        (plist-get content :text)
-      "")))
+  (let ((blocks (cond
+                 ((vectorp content) (append content nil))
+                 ((and (listp content) (plist-get content :text))
+                  (list content))
+                 ((listp content) content)
+                 (t nil))))
+    (string-join
+     (mapcar (lambda (block)
+               (if (hash-table-p block)
+                   (or (gethash "text" block) "")
+                 (or (plist-get block :text) "")))
+             blocks)
+     "")))
+
+(defun yeah-service-ui--plist-value (plist &rest keys)
+  "Return the first value of KEYS present in PLIST.
+A present nil value is returned as nil; it is not confused with an
+absent key."
+  (let ((value nil)
+        (found nil))
+    (while (and keys (not found))
+      (let ((key (pop keys)))
+        (when (plist-member plist key)
+          (setq value (plist-get plist key)
+                found t))))
+    value))
+
+(defun yeah-service-ui--queue-record-type (kind)
+  "Return the local record type for the ACP queue event KIND."
+  (pcase kind
+    ("input_queued" "input-queued")
+    ("input_taken" "input-taken")
+    ("input_recovered" "input-recovered")
+    ("input_withdrawn" "input-withdrawn")
+    (_ nil)))
+
+(defun yeah-service-ui--queue-kind-p (kind)
+  "Return non-nil when KIND is an ACP queue event kind."
+  (and (stringp kind)
+       (member kind '("input_queued"
+                      "input_taken"
+                      "input_recovered"
+                      "input_withdrawn"))))
+
+(defun yeah-service-ui--queue-record (kind update params)
+  "Return the local record for the ACP queue event KIND.
+UPDATE carries the event payload and PARAMS the notification envelope."
+  (let* ((input-id (or (yeah-service-ui--plist-value
+                         update :inputId :input_id :input-id)
+                       (yeah-service-ui--plist-value
+                         params :inputId :input_id :input-id)))
+         (input-kind (or (yeah-service-ui--plist-value
+                            update :inputKind :input_kind :input-kind :kind)
+                          (yeah-service-ui--plist-value
+                            params :inputKind :input_kind :input-kind :kind)))
+         (prompt (or (yeah-service-ui--plist-value
+                       update :prompt :text)
+                     (yeah-service-ui--content-text
+                      (yeah-service-ui--plist-value update :content))
+                     (yeah-service-ui--plist-value params :prompt)))
+         (reason (or (yeah-service-ui--plist-value update :reason)
+                     (yeah-service-ui--plist-value params :reason)))
+         (type (yeah-service-ui--queue-record-type kind)))
+    (when type
+      (list :type type
+            :id (yeah-service-ui--next-id "input")
+            :input_id input-id
+            :input_kind input-kind
+            :kind input-kind
+            :prompt prompt
+            :reason reason))))
 
 (defun yeah-service-ui--render-update (buffer message)
   "Project the ACP MESSAGE into BUFFER's canonical journal view."
   (when (buffer-live-p buffer)
     (with-current-buffer buffer
-      (let* ((update (plist-get (plist-get message :params) :update))
+      (let* ((params (plist-get message :params))
+             (update (plist-get params :update))
              (kind (plist-get update :sessionUpdate))
              (content (plist-get update :content)))
         (pcase kind
@@ -187,6 +258,10 @@ Returns the option id of the answer: \"allow-once\", \"allow-always\" or
                   :payload (yeah-service-ui--content-text content)
                   :tool_call_id (or (plist-get update :toolCallId)
                                    (yeah-service-ui--next-id "tool")))))
+          ((pred yeah-service-ui--queue-kind-p)
+           (let ((record (yeah-service-ui--queue-record kind update params)))
+             (when record
+               (yeah-service-ui--append-record record))))
           (_ nil))
         (yeah-service-ui--update-journal)))))
 
@@ -293,10 +368,104 @@ the difference, or the person reads a refusal as a success."
   (setq yeah-service-ui--busy nil)
   (yeah-service-ui--update-journal))
 
+(defun yeah-service-ui--request-control (method params &optional callback)
+  "Send the control request METHOD with PARAMS for this service session.
+CALLBACK, when given, receives the ACP result and error."
+  (unless (and yeah-service-ui--client yeah-service-ui--session-id)
+    (user-error "No service session in this buffer"))
+  (let ((buffer (current-buffer)))
+    (yeah-client-request
+     yeah-service-ui--client method params
+     (lambda (result error)
+       (when (and error (buffer-live-p buffer))
+         (with-current-buffer buffer
+           (yeah-service-ui--append-record
+            (list :type "error"
+                  :id (yeah-service-ui--next-id "error")
+                  :payload (format "%s" error)))
+           (yeah-service-ui--update-journal)))
+       (when (functionp callback)
+         (funcall callback result error))))))
+
+(defun yeah-service-ui--prompt-with-context (text context)
+  "Return TEXT with the explicit composer CONTEXT appended."
+  (let ((file (plist-get context :file))
+        (buffer (plist-get context :buffer)))
+    (concat text
+            (when file (format "\n\nExplicit file context: %s" file))
+            (when buffer
+              (format "\n\nExplicit buffer context: %s" buffer)))))
+
+(defun yeah-service-ui--send-steering (text context &optional callback)
+  "Queue steering TEXT with CONTEXT for the running service prompt.
+CALLBACK, when given, receives the ACP result and error."
+  (unless (stringp text)
+    (user-error "The service steering must be text"))
+  (yeah-service-ui--request-control
+   "session/steer"
+   (list :sessionId yeah-service-ui--session-id
+         :prompt (yeah-service-ui--prompt-with-context text context))
+   callback))
+
+(defun yeah-service-ui-steer (&optional prompt)
+  "Queue steering clarification PROMPT for the running service prompt.
+Interactively, open the full steering composer."
+  (interactive)
+  (if prompt
+      (yeah-service-ui--send-steering prompt nil)
+    (yeah-journal-steer-command)))
+
+(defun yeah-service-ui-withdraw (id)
+  "Withdraw pending input ID from this service session."
+  (interactive
+   (let* ((pending (plist-get (yeah-service-ui--view) :pending-inputs))
+          (choices (mapcar
+                    (lambda (input)
+                      (cons (format "%s: %s"
+                                    (plist-get input :id)
+                                    (truncate-string-to-width
+                                     (or (plist-get input :prompt) "") 60))
+                            (plist-get input :id)))
+                    pending)))
+     (unless choices
+       (user-error "Yeah service: no pending input"))
+     (cdr (assoc (completing-read "Withdraw service input: " choices nil t)
+                 choices))))
+  (unless (stringp id)
+    (user-error "Yeah service: the pending input id must be text"))
+  (yeah-service-ui--request-control
+   "session/withdraw"
+   (list :sessionId yeah-service-ui--session-id
+         :inputId id)))
+
+(defun yeah-service-ui-recover ()
+  "Explicitly start the oldest pending input in this service session."
+  (interactive)
+  (yeah-service-ui--request-control
+   "session/recover"
+   (list :sessionId yeah-service-ui--session-id)))
+
+(defun yeah-service-ui--export ()
+  "Export this service journal as an Org file and open it."
+  (let* ((session (list :id (or yeah-service-ui--session-id "service")
+                        :path "service"
+                        :records yeah-service-ui--records))
+         (file (yeah-org-export-file session
+                                     yeah-service-ui-export-directory)))
+    (find-file file)))
+
+(defun yeah-service-ui-export ()
+  "Export this service journal as an Org file and open it."
+  (interactive)
+  (yeah-service-ui--export))
+
 (defvar yeah-service-ui-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "a") #'yeah-journal-ask-command)
+    (define-key map (kbd "s") #'yeah-service-ui-steer)
     (define-key map (kbd "c") #'yeah-service-ui--cancel)
+    (define-key map (kbd "r") #'yeah-service-ui-recover)
+    (define-key map (kbd "w") #'yeah-service-ui-withdraw)
     map)
   "Keymap of the Yeah service buffer.")
 
@@ -304,18 +473,28 @@ the difference, or the person reads a refusal as a success."
   "A buffer driving a Yeah service Emacs."
   (set-keymap-parent yeah-service-ui-mode-map yeah-journal-mode-map)
   (define-key yeah-service-ui-mode-map (kbd "a") #'yeah-journal-ask-command)
-  (define-key yeah-service-ui-mode-map (kbd "c") #'yeah-service-ui--cancel))
+  (define-key yeah-service-ui-mode-map (kbd "s") #'yeah-service-ui-steer)
+  (define-key yeah-service-ui-mode-map (kbd "c") #'yeah-service-ui--cancel)
+  (define-key yeah-service-ui-mode-map (kbd "r") #'yeah-service-ui-recover)
+  (define-key yeah-service-ui-mode-map (kbd "w") #'yeah-service-ui-withdraw))
 
 (defun yeah-service-ui--driver (journal)
   "Return the service driver for JOURNAL."
   (list :ask (lambda (text _context callback)
                 (with-current-buffer (yeah-journal-buffer journal)
                   (yeah-service-ui--send-prompt text callback)))
+        :steer (lambda (text context callback)
+                 (with-current-buffer (yeah-journal-buffer journal)
+                   (yeah-service-ui--send-steering text context callback)))
         :cancel (lambda (callback)
                   (with-current-buffer (yeah-journal-buffer journal)
                     (yeah-service-ui--cancel))
                   (when (functionp callback) (funcall callback t)))
-        :capabilities '(:ask :cancel)))
+        :export (lambda (callback)
+                  (with-current-buffer (yeah-journal-buffer journal)
+                    (yeah-service-ui--export))
+                  (when (functionp callback) (funcall callback t)))
+        :capabilities '(:ask :steer :cancel :export)))
 
 ;;;###autoload
 (defun yeah-service (&optional name)
