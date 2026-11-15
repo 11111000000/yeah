@@ -106,6 +106,25 @@
                                  (yeah-edit-test--file-contents path)))))))
         (yeah-edit-test--cleanup path)))))
 
+(ert-deftest yeah-edit-a-guessed-tick-does-not-refuse-an-unchanged-file ()
+  "An edit of a file that no buffer visits is not refused for a guessed tick."
+  (yeah-edit-test--with-tools
+    (let ((path (make-temp-file "yeah-edit-guessed-" nil ".txt")))
+      (unwind-protect
+          (progn
+            (with-temp-file path
+              (insert "before after"))
+            ;; Nobody has the file open, so the model had no tick to read.
+            ;; The tick of a fresh buffer of Emacs is never zero, so a tick
+            ;; of zero is a guess and not the tick of any buffer.
+            (should-not (find-buffer-visiting path))
+            (let ((result (yeah-tools-call
+                           "edit" (list path "before" "changed" 0))))
+              (should (yeah-result-success-p result))
+              (should (equal "changed after"
+                             (yeah-edit-test--file-contents path)))))
+        (yeah-edit-test--cleanup path)))))
+
 (ert-deftest yeah-edit-nonunique-old-str-is-refused ()
   "Without replace_all, more than one exact match is refused."
   (yeah-edit-test--with-tools

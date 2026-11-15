@@ -74,12 +74,20 @@ asking a question that a batch Emacs cannot answer."
             (push (- (point) (length old-str)) positions))
           positions)))))
 
-(defun yeah-edit--edit-validated (path old-str new-str tick replace-all)
+(defun yeah-edit--edit-validated (path old-str new-str expected-tick replace-all)
   "Edit PATH replacing OLD-STR with NEW-STR.
-TICK is an optional expected modification tick.  REPLACE_ALL controls whether
-all matches or exactly one match are accepted."
-  (let ((expanded (expand-file-name path))
-        (buffer (find-buffer-visiting path)))
+EXPECTED-TICK is an optional expected modification tick.  REPLACE_ALL controls
+whether all matches or exactly one match are accepted."
+  ;; A tick is a promise about the state the model saw, and only a buffer
+  ;; that visits the file can hand out a tick.  When no buffer visits the
+  ;; file, the model had no tick to read, so the number it sends is a
+  ;; guess; comparing a guess with the counter of Emacs refuses an edit of
+  ;; a file that did not change.  A guessed tick is ignored, and the guard
+  ;; keeps the ticks that a read could have handed out.
+  (let* ((expanded (expand-file-name path))
+         (existing (find-buffer-visiting expanded))
+         (buffer existing)
+         (tick (if existing expected-tick nil)))
     (unless buffer
       (unless (file-exists-p expanded)
         (user-error "edit: file does not exist: %s" expanded))
@@ -187,7 +195,7 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
   (list
    (list :name "edit"
          :description
-         "Replace exact text in a file, guarded by an optional modification tick. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: when it is given it must equal the modification tick of the file, and the edit is refused if the file changed since that tick was taken; the refusal reports the current tick, so you can retry with it. Omit tick to edit without the guard. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
+         "Replace exact text in a file, guarded by an optional modification tick. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: pass the tick that the read of this file reported; the edit is refused when the file changed since that tick was taken, and the refusal reports the current tick, so you can retry with it. If the read of the file reported no tick, omit tick: a tick that no read handed out is ignored, and omitting tick edits the file without the guard. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
          :input (list (list :name "path" :type 'string)
                       (list :name "old_str" :type 'string)
                       (list :name "new_str" :type 'string)

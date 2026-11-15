@@ -1735,6 +1735,28 @@
       "register": "fact",
       "control": "sed -i 's|(yeah-turn--work-state-text turn)|\"\"|g' lib/yeah-turn.el",
       "waiver": null
+    },
+    {
+      "id": "a-guessed-tick-does-not-refuse-an-unchanged-file",
+      "text": "An edit of a file that no buffer visits is not refused because of a tick the model could not have read: only a buffer that visits the file hands out a tick, so a tick for a file nobody had open is a guess, and the guard keeps the ticks that a read handed out.",
+      "scope": [
+        "lib/yeah-edit.el", "tests/unit/test-yeah-edit.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-edit.el"
+        }
+      ],
+      "falsifier": "the edit of a file that no buffer visits is refused as stale although the file did not change, or the guard stops refusing a stale tick of a file that a buffer visits",
+      "register": "fact",
+      "control": "sed -i 's|(if existing expected-tick nil)|(if existing expected-tick expected-tick)|' lib/yeah-edit.el",
+      "waiver": null
     }
   ]
 }

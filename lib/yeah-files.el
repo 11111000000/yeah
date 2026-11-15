@@ -229,7 +229,7 @@ Return at most LIMIT path:line:text matches."
   "Return read, glob, and grep tool specifications for Yeah's registry."
   (list
    (list :name "read"
-         :description "Read a file from disk by its path, from a 1-based line offset, up to a line limit. Use it for source code and for any file stored on disk."
+         :description "Read a file from disk by its path, from a 1-based line offset, up to a line limit. Use it for source code and for any file stored on disk. When the file is open in Emacs, the result carries its modification tick; that tick is the guard of a later edit of the same file."
          :input (list (list :name "path" :type 'string)
                       (list :name "offset" :type 'integer :optional t)
                       (list :name "limit" :type 'integer :optional t))

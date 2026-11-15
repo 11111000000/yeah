@@ -1,0 +1,27 @@
+{
+  "id": "wave-26",
+  "title": "a guessed tick does not refuse an unchanged file",
+  "intent": "The third task of the pilot failed in the tools, and the journal says why: the model edited a file with the tick it believed it had read, and the edit was refused as stale although the file had not changed. The tick exists to catch a file that changed under the model, but only a buffer that visits the file hands out a tick, and the read of a file nobody has open returns none. The number the model sends for such a file is a guess, and comparing a guess with the counter of Emacs refuses an edit of an unchanged file. This wave makes the guard compare only the ticks a read could have handed out: a guessed tick is ignored, and the file that a buffer visits keeps the guard that catches a real change.",
+  "touches": [
+    "lib/yeah-edit.el",
+    "lib/yeah-files.el",
+    "tests/unit/test-yeah-edit.el",
+    "spec.json",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev ert tests/unit/test-yeah-edit.el",
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev bench --run"
+  ],
+  "claims": [
+    "a-guessed-tick-does-not-refuse-an-unchanged-file"
+  ],
+  "commitment": [],
+  "objection": "Ignoring a tick is a hole in the guard: if the file changed on disk between the read of the model and the edit, nothing refuses the edit, and the change of the file is applied to a text the model never saw. The edit still has to find the old text, so a change near the edit is caught by the match, but a change elsewhere in the file is not. The guard is also the reason a file that a buffer visits is protected, and a file that nobody keeps open is exactly the file of a batch run.",
+  "refuted_by": "The edit of a file that no buffer visits is refused as stale although the file did not change; or the guard stops refusing a stale tick of a file that a buffer visits; or a read of a file that is open in a buffer stops handing out the tick.",
+  "note": "The claim has a control that bites: with the old comparison restored, the new test fails on a real assertion (the edit of the unchanged file is refused as stale) and the other seven tests of the file keep passing, so the control changes this behaviour and nothing else. The tick of a fresh buffer of Emacs is never zero, so a tick of zero is a guess and not the tick of any buffer; the test says so in a comment. The open part of the wave is the contradiction with the architecture: D5 promises that every read that can lead to an edit returns the tick of the buffer, and the read of a file nobody has open returns no tick, so the guard of such a file has nothing to compare. That contradiction is recorded in the open work, with the candidate of a file version token that the edit can verify without a buffer; the wave does not pretend the contradiction away by weakening D5."
+}

@@ -1202,9 +1202,9 @@ fails in the tools, not in the turn: the `read` of a file nobody has edited
 yet returns no tick, the model passes a plausible one, and the `edit`
 refuses it as stale although the file has not changed.
 
-**Open, for the next wave:** the tick of a file — a model that has no tick
-must not be punished for guessing one — and the threshold of the parity,
-which remains a decision of the owner (Section 13).
+**Open, for the next wave:** the threshold of the parity, which remains a
+decision of the owner (Section 13).  The tick of a file — a model that has
+no tick must not be punished for guessing one — is the subject of 16.9.
 
 ### 16.8 Housekeeping — **done on 2026-11-15**
 
@@ -1223,6 +1223,31 @@ in `lib/yeah-acp.el', and the rest is the older base of `lib/yeah-journal.el',
 `lib/yeah-context.el' and `lib/yeah-ui.el'.  Both are deleted; their tips
 stay reachable under the tags `archive/async-approval-2026-11-15' and
 `archive/view-draft-2026-11-15'.
+
+### 16.9 The tick that the model could not have read — **the tools are done on 2026-11-15 (wave 26)**
+
+The third task of the pilot failed in the tools, and the journal says
+which: the model edited a file with a tick it had not read, and the edit
+was refused as stale although the file had not changed.  A tick is a
+promise about the state the model saw, and only a buffer that visits the
+file hands out a tick — the read of a file nobody has open returns none.
+The number the model sends for such a file is a guess, and comparing a
+guess with the counter of Emacs refuses an edit of an unchanged file.
+
+The wave makes the guard compare only the ticks a read could have handed
+out.  When no buffer visits the file, a guessed tick is ignored; when a
+buffer visits it, the tick is compared as before and a stale tick is still
+refused without a mutation.  The claim
+`a-guessed-tick-does-not-refuse-an-unchanged-file' has a control that
+bites: with the old comparison restored, the new test fails on a real
+assertion and the other seven tests of the file keep passing.
+
+**Open:** D5 promises that every read that can lead to an edit returns the
+tick of the buffer, and the read of a file nobody has open returns no
+tick, so the guard of such a file has nothing to compare.  The
+contradiction is recorded in `docs/PLAN-NEXT.md' with the candidate of a
+file version token that the edit can verify without a buffer; D5 stays the
+target and is not weakened to fit the code.
 
 ### The order
 
