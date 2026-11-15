@@ -37,6 +37,16 @@
 ;; refusal of a safe read stays a refusal.  The safe read answers itself,
 ;; and it says why in the decision, so the journal shows the reason the
 ;; person was not asked.
+;;
+;; The answerer may also answer LATER.  A question asked over a wire, or
+;; to a person who is not at the keyboard yet, is answered when the
+;; answer arrives and not when it is asked.  `yeah-approval-async' marks
+;; such an answerer: it is a function of (REQUEST DONE) that calls DONE
+;; with the decision whenever it has one.  `yeah-approval-resolve' takes
+;; either shape of answerer and settles the question exactly once: a
+;; second answer is ignored, and a failure, a decision that is not a
+;; decision, or a question that is not answered in time becomes a
+;; refusal that says why.
 
 ;;; Code:
 
@@ -169,6 +179,117 @@ ANSWER is a function of the REQUEST; it returns the reply, which is
         (signal 'user-error
                 (list (format "yeah-approval: %S is not an answer" reply))))
       (yeah-approval-reply-decision request reply))))
+
+(cl-defstruct (yeah-approval-async-answerer
+               (:constructor yeah-approval-async-answerer--make))
+  "An answerer that answers later.
+
+FUNCTION is a function of (REQUEST DONE): it asks the question and calls
+DONE with the decision whenever the answer arrives.  TIMEOUT is an
+optional positive number of seconds: a question that is not answered in
+time is refused."
+  function
+  timeout)
+
+(defun yeah-approval-async (answerer &optional timeout)
+  "Mark ANSWERER as an answerer that answers later, and return it.
+
+ANSWERER is a function of (REQUEST DONE): it asks the question and calls
+DONE with the decision whenever the answer arrives.  TIMEOUT is an
+optional positive number of seconds; a question that is not answered in
+time is refused.  Without a timeout the deadline of the run is the bound.
+
+The marked answerer is what `yeah-approval-resolve' takes: an ordinary
+answerer and a marked one answer the same request."
+  (unless (functionp answerer)
+    (signal 'user-error
+            (list "yeah-approval-async: ANSWERER must be a function")))
+  (when (and timeout (not (and (numberp timeout) (> timeout 0))))
+    (signal 'user-error
+            (list "yeah-approval-async: TIMEOUT must be positive seconds")))
+  (yeah-approval-async-answerer--make :function answerer :timeout timeout))
+
+(defun yeah-approval--deny (reason)
+  "Return the refusal of a question that could not be answered.
+REASON says why the question was refused."
+  (list :effect :deny :reply :reject :reason reason))
+
+(defun yeah-approval--decision-p (decision)
+  "Return non-nil when DECISION is a decision the kernel understands.
+A decision allows the call, refuses it, or defers it to an answer that
+comes later."
+  (and (listp decision)
+       (or (memq (plist-get decision :effect) '(:allow :deny))
+           (plist-get decision :defer))))
+
+(defun yeah-approval-resolve (answerer request callback)
+  "Answer REQUEST through ANSWERER and call CALLBACK with the decision.
+CALLBACK is called exactly once, with the decision of the answer.
+
+ANSWERER is either an ordinary answerer — a function of REQUEST that
+answers at once — or one marked by `yeah-approval-async': a function of
+(REQUEST DONE) that calls DONE with the decision whenever the answer
+arrives.  A second answer is ignored.  An answerer that fails, a
+decision that is not a decision, and a question that is not answered
+within the timeout of a marked answerer become refusals that say why.
+
+Return a function that ends the question: after it is called, an answer
+that arrives later is ignored and CALLBACK is not called again.  An
+ordinary answerer is answered before this function returns."
+  (unless (functionp callback)
+    (signal 'user-error
+            (list "yeah-approval-resolve: CALLBACK must be a function")))
+  (let ((settled nil)
+        (closed nil)
+        (timer nil))
+    (cl-labels
+        ((finish (decision)
+          (unless (or settled closed)
+            (setq settled t)
+            (when timer
+              (cancel-timer timer)
+              (setq timer nil))
+            (unless (yeah-approval--decision-p decision)
+              (setq decision
+                    (yeah-approval--deny
+                     (format "the answerer returned %S" decision))))
+            (funcall callback decision)))
+         (close ()
+          (setq closed t)
+          (when timer
+            (cancel-timer timer)
+            (setq timer nil))))
+      (cond
+       ((yeah-approval-async-answerer-p answerer)
+        (when-let ((timeout (yeah-approval-async-answerer-timeout answerer)))
+          (setq timer
+                (run-at-time
+                 timeout nil
+                 (lambda ()
+                   (finish (yeah-approval--deny
+                            "the answer did not come in time"))))))
+        (condition-case err
+            (funcall (yeah-approval-async-answerer-function answerer)
+                     request #'finish)
+          (error
+           (if settled
+               (signal (car err) (cdr err))
+             (finish (yeah-approval--deny
+                      (format "the answerer failed: %s"
+                              (error-message-string err))))))))
+       ((functionp answerer)
+        (let ((decision nil))
+          (condition-case err
+              (setq decision (funcall answerer request))
+            (error
+             (setq decision
+                   (yeah-approval--deny
+                    (format "the answerer failed: %s"
+                            (error-message-string err))))))
+          (finish decision)))
+       (t
+        (finish (yeah-approval--deny "there is no answerer"))))
+      (lambda () (close)))))
 
 (provide 'yeah-approval)
 ;;; yeah-approval.el ends here

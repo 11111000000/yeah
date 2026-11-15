@@ -9,6 +9,10 @@
 ;; it: that two runs in one Emacs do not share one truth, and that the
 ;; policy of a run answers from its own rules and asks the person only for
 ;; what the rules do not decide.
+;;
+;; The questions of a run are written into the log before they are asked:
+;; an answer that comes later — from a person or from another program —
+;; still finds its request there.
 
 ;;; Code:
 
@@ -17,6 +21,7 @@
 (require 'yeah-perm)
 (require 'yeah-run)
 (require 'yeah-session)
+(require 'yeah-tools)
 
 (defmacro yeah-run-test--with-rules (rules &rest body)
   "Run BODY with the global ruleset replaced by RULES."
@@ -142,6 +147,90 @@
     (should (yeah-run-context-cancelled-p context))
     (should-error (yeah-run-context-start context "the task")
                   :type 'user-error)))
+
+(defun yeah-run-test--tool-call (name args continuation)
+  "Return a gptel-shaped tool call for NAME with ARGS and CONTINUATION."
+  (list 'tool-call (list (list :name name) args continuation)))
+
+(defun yeah-run-test--types (session)
+  "Return the type of every record of SESSION, in the order they were written."
+  (mapcar (lambda (record) (plist-get record :type))
+          (yeah-session-records session)))
+
+(defun yeah-run-test--decisions (session)
+  "Return the effect of every permission decision of SESSION."
+  (mapcar (lambda (record) (plist-get record :effect))
+          (seq-filter (lambda (record)
+                        (equal "permission-decision" (plist-get record :type)))
+                      (yeah-session-records session))))
+
+(ert-deftest yeah-run-journals-the-request-before-the-question-is-asked ()
+  "The request is in the log before the person is asked about it."
+  (yeah-tools-reset-for-test)
+  (unwind-protect
+      (yeah-run-test--with-rules
+          nil
+        (let* ((session (yeah-run-test--session))
+               (seen nil))
+          (yeah-tools-register
+           (list :name "probe" :description "probe" :input nil
+                 :handler (lambda () "ok")))
+          (let ((context
+                 (yeah-run-context-create
+                  :placement 'batch
+                  :session session
+                  :transport
+                  (lambda (_prompt callback)
+                    (funcall callback
+                             (yeah-run-test--tool-call
+                              "probe" nil
+                              (lambda (_value) (funcall callback "done")))))
+                  :answerer
+                  (lambda (_request)
+                    ;; The question is asked now: the request is already
+                    ;; in the log, and nothing has been decided yet.
+                    (setq seen (yeah-run-test--types session))
+                    (list :effect :allow :reply :once)))))
+            (yeah-run-context-start context "the task")
+            (should (member "permission-request" seen))
+            (should-not (member "permission-decision" seen))
+            (should (equal '("header" "user-message" "tool-request"
+                             "permission-request")
+                           seen))
+            (should (equal '("allow") (yeah-run-test--decisions session))))))
+    (yeah-tools-reset-for-test)))
+
+(ert-deftest yeah-run-journals-the-decision-when-the-answer-comes-later ()
+  "A question that waits for an answer is decided when the answer arrives."
+  (yeah-tools-reset-for-test)
+  (unwind-protect
+      (yeah-run-test--with-rules
+          nil
+        (let* ((session (yeah-run-test--session))
+               (ran 0))
+          (yeah-tools-register
+           (list :name "probe" :description "probe" :input nil
+                 :handler (lambda () (cl-incf ran) "ok")))
+          (let* ((context
+                  (yeah-run-context-create
+                   :placement 'batch
+                   :session session
+                   :transport
+                   (lambda (_prompt callback)
+                     (funcall callback
+                              (yeah-run-test--tool-call
+                               "probe" nil
+                               (lambda (_value) (funcall callback "done")))))
+                   :answerer (lambda (_request) (list :defer "permission-1"))))
+                 (turn (yeah-run-context-start context "the task")))
+            (should (= 0 ran))
+            (should (equal '("defer") (yeah-run-test--decisions session)))
+            (yeah-turn-resume-permission
+             turn "permission-1" (list :effect :allow :reply :once))
+            (should (= 1 ran))
+            (should (equal '("defer" "allow")
+                           (yeah-run-test--decisions session))))))
+    (yeah-tools-reset-for-test)))
 
 (provide 'test-yeah-run)
 ;;; test-yeah-run.el ends here
