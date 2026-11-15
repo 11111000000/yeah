@@ -10,10 +10,10 @@
 ;;; Commentary:
 ;;
 ;; The editor is a client of a service Emacs.  This module is the client:
-;; it speaks ACP over a local socket, matches answers to requests by their
-;; id, and hands the session/update notifications to the caller.  The
-;; session's journal is the service's truth; the client renders the stream
-;; the service sends.
+;; it speaks ACP over a Unix-domain socket or a loopback TCP port, matches
+;; answers to requests by their id, and hands the session/update
+;; notifications to the caller.  The session's journal is the service's
+;; truth; the client renders the stream the service sends.
 
 ;;; Code:
 
@@ -23,6 +23,80 @@
 (defgroup yeah-client nil
   "The Yeah ACP client."
   :group 'yeah)
+
+(defcustom yeah-client-network-family nil
+  "Network family used to reach a Yeah service.
+Nil chooses automatically: `local' uses a Unix-domain socket on
+Unix-like systems, while `ipv4' uses a loopback TCP port on
+Windows-like systems.  Set this to `local' or `ipv4' to override the
+automatic choice; an IPv4 service publishes its port in a `.port'
+file next to the socket path."
+  :type '(choice (const :tag "Automatic" nil)
+                 (symbol :tag "Socket family"))
+  :group 'yeah-client)
+
+(defun yeah-client-automatic-network-family ()
+  "Return the network family selected for the current platform."
+  (if (memq system-type '(windows-nt ms-dos cygwin))
+      'ipv4
+    'local))
+
+(defun yeah-client-effective-network-family ()
+  "Return the configured network family for a Yeah service.
+Signal `user-error' when the override is not a supported family."
+  (let ((family (or yeah-client-network-family
+                   (yeah-client-automatic-network-family))))
+    (unless (memq family '(local ipv4))
+      (signal 'user-error
+              (list (format "yeah-client-network-family: unsupported family %S"
+                            family))))
+    family))
+
+(defun yeah-client-port-file (socket)
+  "Return the file that publishes the TCP port for SOCKET."
+  (concat socket ".port"))
+
+(defun yeah-client--read-port (socket)
+  "Return the TCP port published for SOCKET, or nil when it is unavailable."
+  (let ((file (yeah-client-port-file socket)))
+    (when (file-readable-p file)
+      (with-temp-buffer
+        (insert-file-contents file)
+        (let ((text (string-trim (buffer-string))))
+          (when (string-match-p "\\`[0-9]+\\'" text)
+            (let ((port (string-to-number text)))
+              (when (and (> port 0) (<= port 65535))
+                port))))))))
+
+(defun yeah-client-connection-params (socket)
+  "Return the network connection parameters for SOCKET.
+The result is a plist for `make-network-process'.  It is nil when an
+IPv4 service has not published its port yet."
+  (if (eq (yeah-client-effective-network-family) 'local)
+      (list :family 'local :service socket)
+    (let ((port (yeah-client--read-port socket)))
+      (when port
+        (list :family 'ipv4 :host "127.0.0.1" :service port)))))
+
+(defun yeah-client--open-connection (socket)
+  "Open one connection to SOCKET, or return nil when it is not ready."
+  (let ((params (yeah-client-connection-params socket)))
+    (when params
+      (if (eq (plist-get params :family) 'local)
+          (condition-case nil
+              (apply #'make-network-process
+                     :name (format "yeah-client-%s"
+                                    (file-name-nondirectory socket))
+                     :noquery t
+                     params)
+            (file-missing nil))
+        (condition-case nil
+            (apply #'make-network-process
+                   :name (format "yeah-client-%s"
+                                  (file-name-nondirectory socket))
+                   :noquery t
+                   params)
+          (file-error nil))))))
 
 (cl-defstruct (yeah-client (:constructor yeah-client--make))
   "One connection to a service Emacs.
@@ -61,11 +135,11 @@ request id."
              (id (plist-get message :id))
              (method (plist-get message :method)))
         (cond
-         ((and id (plist-get message :result))
+         ((and id (plist-member message :result))
           (when-let ((answer (gethash id (yeah-client-pending client))))
             (remhash id (yeah-client-pending client))
             (funcall answer (plist-get message :result) nil)))
-         ((and id (plist-get message :error))
+         ((and id (plist-member message :error))
           (when-let ((answer (gethash id (yeah-client-pending client))))
             (remhash id (yeah-client-pending client))
             (funcall answer nil (plist-get message :error))))
@@ -100,14 +174,7 @@ Waits up to TIMEOUT seconds (default 10) for the socket to appear."
   (let ((deadline (+ (float-time) (or timeout 10)))
         (connection nil))
     (while (and (null connection) (< (float-time) deadline))
-      (setq connection
-            (condition-case nil
-                (make-network-process
-                 :name (format "yeah-client-%s" (file-name-nondirectory socket))
-                 :family 'local
-                 :service socket
-                 :noquery t)
-              (file-missing nil)))
+      (setq connection (yeah-client--open-connection socket))
       (unless connection
         (accept-process-output nil 0.05)))
     (unless connection

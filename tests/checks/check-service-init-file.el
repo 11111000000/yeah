@@ -22,7 +22,24 @@
 (require 'yeah-service)
 (require 'yeah-client)
 
+
+(defun yeah-check--emacs ()
+  "Return the Emacs program that runs the service.
+The service runs the same Emacs as this one: the running binary when the
+platform can name it, so the check does not depend on the PATH of the
+process that starts it."
+  (or (and (getenv "EMACS") (file-executable-p (getenv "EMACS")) (getenv "EMACS"))
+      (executable-find "emacs")
+      (and (file-executable-p "/proc/self/exe") "/proc/self/exe")
+      (and (file-executable-p (expand-file-name "~/.nix-profile/bin/emacs"))
+           (expand-file-name "~/.nix-profile/bin/emacs"))))
+
+(defun yeah-check--service-emacs ()
+  "Bind the program of the service to the Emacs of this process."
+  (setq yeah-service-emacs (yeah-check--emacs)))
+
 (let ((failures nil)
+  (yeah-check--service-emacs)
       (data-home (make-temp-file "yeah-init" t))
       (name (format "init-%d" (random 1000000)))
       (init-file (make-temp-file "yeah-service-init" nil ".el"))
@@ -55,7 +72,7 @@
                       :prompt (vector (list :type "text" :text "hello")))
                 (lambda (result error)
                   (setq answered (or error result)))))))
-          (let ((deadline (+ (float-time) 15)))
+          (let ((deadline (+ (float-time) 8)))
             (while (and (null answered) (< (float-time) deadline))
               (accept-process-output nil 0.05)))
           (yeah-client-close client))

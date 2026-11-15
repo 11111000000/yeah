@@ -37,7 +37,7 @@
 
 (defun yeah-check--next-message (buffer &optional timeout)
   "Return the next JSON line in BUFFER, or nil."
-  (let ((deadline (+ (float-time) (or timeout 10)))
+  (let ((deadline (+ (float-time) (or timeout 5)))
         (message nil))
     (while (and (null message) (< (float-time) deadline))
       (accept-process-output nil 0.05)
@@ -64,7 +64,24 @@ writing; they are not journal records."
               (directory-files-recursively data-home "\\.jsonl\\'"))
              "\n"))
 
+
+(defun yeah-check--emacs ()
+  "Return the Emacs program that runs the service.
+The service runs the same Emacs as this one: the running binary when the
+platform can name it, so the check does not depend on the PATH of the
+process that starts it."
+  (or (and (getenv "EMACS") (file-executable-p (getenv "EMACS")) (getenv "EMACS"))
+      (executable-find "emacs")
+      (and (file-executable-p "/proc/self/exe") "/proc/self/exe")
+      (and (file-executable-p (expand-file-name "~/.nix-profile/bin/emacs"))
+           (expand-file-name "~/.nix-profile/bin/emacs"))))
+
+(defun yeah-check--service-emacs ()
+  "Bind the program of the service to the Emacs of this process."
+  (setq yeah-service-emacs (yeah-check--emacs)))
+
 (let ((failures nil)
+  (yeah-check--service-emacs)
       (data-home (make-temp-file "yeah-disconnect" t))
       (name (format "disconnect-%d" (random 1000000)))
       (buffer (generate-new-buffer "*yeah-disconnect*"))
@@ -101,7 +118,7 @@ writing; they are not journal records."
                                                       :text "write it")))))
             ;; wait for the question, then die without answering
             (let ((request nil)
-                  (deadline (+ (float-time) 15)))
+                  (deadline (+ (float-time) 8)))
               (while (and (null request) (< (float-time) deadline))
                 (let ((message (yeah-check--next-message buffer 1)))
                   (when (and message
@@ -115,7 +132,7 @@ writing; they are not journal records."
                 (setq connection nil)
                 ;; the run must die with a reason, not hang
                 (let ((cancelled nil)
-                      (deadline (+ (float-time) 15)))
+                      (deadline (+ (float-time) 8)))
                   (while (and (not cancelled) (< (float-time) deadline))
                     (let ((journal (yeah-check--journal data-home)))
                       (when (string-match-p

@@ -12,12 +12,18 @@
 ;; The primary placement: a dedicated Emacs process runs the harness, so
 ;; the editing Emacs never shares a thread with a long turn.  This module
 ;; starts such a service, connects to it and stops it.  The service
-;; serves ACP on a local socket (`yeah-acp-serve-socket'), where a cancel
-;; is handled while a prompt is still running.
+;; serves ACP on a Unix-domain socket, or on a loopback TCP port when the
+;; platform has no Unix socket; a cancel is handled while a prompt is still
+;; running.
+;;
+;; The service runs the same Emacs as the person: the program is resolved
+;; when the service starts, and the running binary is the fallback, so a
+;; service starts on a machine where `emacs' is not on PATH.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-client)
 (require 'yeah-wire-socket)
 
 (defgroup yeah-service nil
@@ -35,6 +41,27 @@
 
 (defvar yeah-service--processes (make-hash-table :test 'equal)
   "Map a service name to its process.")
+
+(defun yeah-service--emacs-program ()
+  "Return the program that runs the service Emacs.
+
+The service runs the SAME Emacs as the person: the binary that is
+running now, when the platform can name it.  A program name that the
+PATH does not carry would make the service impossible to start on a
+machine where Emacs lives in a profile, so the running binary is the
+fallback, and `EMACS' comes before it."
+  (let ((configured (or yeah-service-emacs "emacs")))
+    (cond
+     ((or (file-name-absolute-p configured)
+          (file-directory-p configured))
+      configured)
+     ((executable-find configured) (executable-find configured))
+     ((and (getenv "EMACS") (file-executable-p (getenv "EMACS")))
+      (getenv "EMACS"))
+     ((file-executable-p "/proc/self/exe") "/proc/self/exe")
+     ((file-executable-p (expand-file-name "~/.nix-profile/bin/emacs"))
+      (expand-file-name "~/.nix-profile/bin/emacs"))
+     (t configured))))
 
 (defun yeah-service--socket-directory ()
   "Return the user-private directory the service sockets live in.
@@ -61,6 +88,35 @@ user with mode 0700."
   "Return the socket path of the service NAME."
   (yeah-service-socket-path name))
 
+(defun yeah-service--reserve-loopback-port ()
+  "Return an unused loopback TCP port.
+The probe binds the port briefly so the service child can bind the same
+port without choosing a fixed, commonly occupied number."
+  (let ((probe
+         (make-network-process
+          :name (format "yeah-service-port-%d" (random 1000000000))
+          :server t
+          :family 'ipv4
+          :service 0
+          :noquery t)))
+    (unwind-protect
+        (let ((port (process-contact probe :service)))
+          (unless (and (integerp port) (> port 0) (<= port 65535))
+            (signal 'user-error
+                    (list "yeah-service-start: could not reserve a TCP port")))
+          port)
+      (when (process-live-p probe)
+        (delete-process probe)))))
+
+(defun yeah-service--write-port-file (socket port)
+  "Publish PORT for SOCKET in the port file next to its socket path.
+The file contains the port number only; it is not a credential."
+  (let ((file (yeah-client-port-file socket)))
+    (with-temp-file file
+      (insert (number-to-string port)))
+    (set-file-modes file #o600)
+    file))
+
 (defun yeah-service--lib-directory ()
   "Return the directory holding Yeah's Elisp modules."
   (file-name-directory (or (locate-library "yeah-acp") "yeah-acp.el")))
@@ -76,11 +132,13 @@ builds them; the service adds each of them to its own ruleset."
 ;;;###autoload
 (defun yeah-service-start (name &optional extra-eval data-home transport clean rules)
   "Start a service Emacs named NAME and return its process.
-The service serves ACP on a local socket.  EXTRA-EVAL is evaluated in the
-service before the server starts (to configure the model backend);
-DATA-HOME is the service's data directory; TRANSPORT is a form evaluating
-to the model transport of the service (nil uses the default).  A service
-with the same name is not started twice.
+The service serves ACP on a Unix-domain socket, or on a loopback TCP port
+when `yeah-client-network-family' selects `ipv4'.  In the TCP case the port
+number is published in a `.port' file next to the socket path.  EXTRA-EVAL
+is evaluated in the service before the server starts (to configure the
+model backend); DATA-HOME is the service's data directory; TRANSPORT is a
+form evaluating to the model transport of the service (nil uses the
+default).  A service with the same name is not started twice.
 CLEAN (the default) starts the service without the user's init; nil lets
 the service inherit the user's configuration, including the gptel backend.
 RULES is a list of permission rule plists: the standing permissions the
@@ -91,27 +149,43 @@ all."
       (signal 'user-error
               (list (format "yeah-service-start: %S is already running" name)))))
   (let* ((socket (yeah-service--socket-path name))
+         (family (yeah-client-effective-network-family))
+         (port (when (eq family 'ipv4)
+                 (yeah-service--reserve-loopback-port)))
+         (server-form
+          (if (eq family 'local)
+              (format "(yeah-acp-serve-socket %S %s)"
+                      socket
+                      (or transport "yeah-acp-default-transport"))
+            (format "(yeah-acp-serve-socket %d %s nil 'ipv4)"
+                    port
+                    (or transport "yeah-acp-default-transport"))))
          (buffer (generate-new-buffer (format " *yeah service %s*" name)))
          (process
           (make-process
            :name (format "yeah-service-%s" name)
            :buffer buffer
            :command
-           (append (list yeah-service-emacs)
+           (append (list (yeah-service--emacs-program))
                    (if clean (list "-Q" "--batch") (list "--batch"))
                    (list "-L" (yeah-service--lib-directory)
                          "-l" "yeah-acp"
                          "--eval"
-                         (format "(progn %s %s %s (yeah-acp-serve-socket %S %s))"
+                         (format "(progn %s %s %s %s)"
                                  (or extra-eval "")
                                  (if data-home
                                      (format "(setq yeah-data-home %S)" data-home)
                                    "")
                                  (yeah-service--rules-eval rules)
-                                 socket
-                                 (or transport "yeah-acp-default-transport"))))
+                                 server-form)))
            :connection-type 'pipe
            :noquery t)))
+    (when (eq family 'ipv4)
+      (condition-case error
+          (yeah-service--write-port-file socket port)
+        (error
+         (delete-process process)
+         (signal (car error) (cdr error)))))
     (puthash name process yeah-service--processes)
     process))
 
@@ -123,14 +197,7 @@ Waits up to TIMEOUT seconds (default 10) for the socket to appear."
         (deadline (+ (float-time) (or timeout 10)))
         (connection nil))
     (while (and (null connection) (< (float-time) deadline))
-      (setq connection
-            (condition-case nil
-                (make-network-process
-                 :name (format "yeah-service-client-%s" name)
-                 :family 'local
-                 :service socket
-                 :noquery t)
-              (file-missing nil)))
+      (setq connection (yeah-client--open-connection socket))
       (unless connection
         (accept-process-output nil 0.05)))
     connection))
@@ -148,7 +215,10 @@ Waits up to TIMEOUT seconds (default 10) for the socket to appear."
     (remhash name yeah-service--processes))
   (let ((socket (yeah-service--socket-path name)))
     (when (file-exists-p socket)
-      (ignore-errors (delete-file socket))))
+      (ignore-errors (delete-file socket)))
+    (let ((port-file (yeah-client-port-file socket)))
+      (when (file-exists-p port-file)
+        (ignore-errors (delete-file port-file)))))
   t)
 
 (provide 'yeah-service)

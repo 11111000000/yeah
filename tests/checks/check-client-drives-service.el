@@ -24,12 +24,29 @@
 
 (defun yeah-check--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE holds, at most TIMEOUT seconds."
-  (let ((deadline (+ (float-time) (or timeout 15))))
+  (let ((deadline (+ (float-time) (or timeout 8))))
     (while (and (not (funcall predicate)) (< (float-time) deadline))
       (accept-process-output nil 0.05))
     (funcall predicate)))
 
+
+(defun yeah-check--emacs ()
+  "Return the Emacs program that runs the service.
+The service runs the same Emacs as this one: the running binary when the
+platform can name it, so the check does not depend on the PATH of the
+process that starts it."
+  (or (and (getenv "EMACS") (file-executable-p (getenv "EMACS")) (getenv "EMACS"))
+      (executable-find "emacs")
+      (and (file-executable-p "/proc/self/exe") "/proc/self/exe")
+      (and (file-executable-p (expand-file-name "~/.nix-profile/bin/emacs"))
+           (expand-file-name "~/.nix-profile/bin/emacs"))))
+
+(defun yeah-check--service-emacs ()
+  "Bind the program of the service to the Emacs of this process."
+  (setq yeah-service-emacs (yeah-check--emacs)))
+
 (let ((failures nil)
+  (yeah-check--service-emacs)
       (name (format "check-%d" (random 1000000)))
       (data-home (make-temp-file "yeah-client-data" t))
       (client nil))
@@ -75,7 +92,7 @@
                    (list :sessionId session-id
                          :prompt (vector (list :type "text" :text "hi")))
                    (lambda (result _error) (setq answer result)))
-                  (unless (yeah-check--await (lambda () answer) 15)
+                  (unless (yeah-check--await (lambda () answer) 8)
                     (push "the prompt was not answered" failures))
                   (unless (equal "end_turn" (plist-get answer :stopReason))
                     (push (format "the prompt answered with %S"
