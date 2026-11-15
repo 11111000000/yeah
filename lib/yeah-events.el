@@ -53,6 +53,9 @@
     (:type "tool-end"
      :required (:tool :ok :payload)
      :optional (:details))
+    (:type "tool-dropped"
+     :required (:tool :reason)
+     :optional (:args))
     (:type "compaction"
      :required (:cut_point :summary :timestamp))
     (:type "pruning"

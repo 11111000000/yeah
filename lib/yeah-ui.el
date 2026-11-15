@@ -554,6 +554,11 @@ key."
                                                 t)))
       ("tool-end" (yeah-ui--end-call projection record index)
        (setf (yeah-ui--projection-state projection) 'running))
+      ("tool-dropped"
+       ;; The model said the same thing twice and the tool runs once.  The
+       ;; drop is visible in the journal, and it does not close the activity
+       ;; of the call that is still running.
+       (yeah-ui--generic projection record index))
       ("permission-request" (yeah-ui--request-approval projection record index))
       ("permission-decision" (yeah-ui--decide-approval projection record index))
       ("compaction"

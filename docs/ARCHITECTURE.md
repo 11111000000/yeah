@@ -101,10 +101,17 @@ Every journal event has a schema version, session id, event id and timestamp.
 Events that participate in execution also carry the relevant run, turn,
 tool-call and parent/correlation identifiers. The vocabulary includes not
 only messages and tools, but compaction, pruning, steering, nudges,
-cancellation, approvals and protocol errors.
+cancellation, approvals, dropped calls and protocol errors.
 
 A provider history that cannot be replayed safely is not silently repaired.
 The session becomes explicitly non-replayable and further execution stops.
+
+*Amended on 2026-11-15 (wave 30): a decision that was dropped as a repeat
+left no record, so a reader of the journal could not tell a repeated decision
+from a decision that never came, and the run looked different from what
+happened. The drop is a journal event now, carrying the tool, the reason and
+the arguments; the promise of the journal as the source of truth is kept and
+made explicit, not relaxed.*
 
 ### D2 — Yeah owns its execution state machine
 

@@ -1352,6 +1352,44 @@ describes the buffer that visits the file, so a model that presents only a
 tick can still edit a buffer it never saw; the write tool overwrites a whole
 file and takes no version, so a write can land on a file that changed.
 
+### 16.13 A decision that was dropped as a repeat — **done on 2026-11-15 (wave 30)**
+
+The journal is the source of truth of a run, and wave 28 made the turn ignore
+a repeated tool call instead of running it twice.  The consequence of that
+decision was invisible: the drop was written nowhere, so the log of a run in
+which the model said the same thing twice looked exactly like the log of a run
+in which the model said it once, and a reader of the log could not tell a
+repeated decision from a decision that never came.
+
+The drop is in the journal now.  The vocabulary of the journal gains the event
+`tool-dropped', which carries the tool that was dropped, the reason it was
+dropped ("the same call is already running") and the arguments of the dropped
+call.  The arguments of a repeated call are the arguments of the call that
+runs, and they are written in the form the request of that call was written,
+so a reader of the journal matches the drop with the request it refuses.  The
+event does not close the activity of the call that is still running, so the
+person reading the journal sees the running tool and the refusal at the same
+time.
+
+The wave does not change the drop itself: the tool still runs once, and the
+model is not told that its repetition was refused, because a tool that runs
+twice would repeat its side effect.
+
+D1 was amended and not weakened: the vocabulary it names now includes dropped
+calls.
+
+The claim of the wave has a control that bites and that changes the subject
+and not the check: with the writing of the drop removed, the tool still runs
+once and the run still ends, and the test fails on a real assertion because
+the journal of the run holds no `tool-dropped' record, while the other 27
+tests of the file keep passing.  The first form of the control was wrong and
+was replaced: it made the guard of the drop unconditional, so the drop was
+written every time and the check could not fail.
+
+**Open:** the model is not told that its repetition was refused, so it may
+repeat the call again; the identity of a call is still the tool and its
+arguments, because the transport offers no identity of its own.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then

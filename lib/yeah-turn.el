@@ -430,14 +430,38 @@ twice would repeat a side effect."
 (defun yeah-turn--accept-calls (turn calls)
   "Accept CALLS into TURN and return the calls that are not running yet.
 A call that already runs or already waits to run is dropped: the model
-said it twice, and the second saying changes nothing."
+said it twice, and the second saying changes nothing.  The drop is in the
+journal, so that a reader of the log can tell a repeated decision from a
+decision that never came."
   (let (new)
     (dolist (call calls)
-      (let ((key (yeah-turn--call-key call)))
+      (let ((key (yeah-turn--call-key call))
+            (accepted nil))
         (unless (cl-member key (yeah-turn-active-keys turn) :test #'equal)
+          (setq accepted t)
           (push call new)
-          (push key (yeah-turn-active-keys turn)))))
+          (push key (yeah-turn-active-keys turn)))
+        ;; The model said the same thing twice.  The tool runs once, and the
+        ;; second saying is in the log: a reader of the log must be able to
+        ;; tell it from a decision that never came.
+        (unless accepted
+          (yeah-turn--note-drop turn call))))
     (nreverse new)))
+
+(defun yeah-turn--note-drop (turn call)
+  "Write into the log of TURN that CALL was dropped as a repeat.
+The arguments are the arguments of the call that runs, and they are written
+in the form the request of that call was written, so that a reader of the
+journal matches the drop with the request it refuses."
+  (when (yeah-turn-session turn)
+    (let* ((name (yeah-turn--tool-name (nth 0 call)))
+           (args (yeah-tools-normalize-args name (nth 1 call))))
+      (yeah-turn--write turn "tool-dropped"
+                        (yeah-turn--context
+                         turn nil (yeah-turn-turn-event-id turn))
+                        :tool name
+                        :reason "the same call is already running"
+                        :args (format "%S" args)))))
 
 (defun yeah-turn--release-calls (turn calls)
   "Forget the keys of CALLS: they have settled and may run again."

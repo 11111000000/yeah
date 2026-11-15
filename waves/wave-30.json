@@ -1,0 +1,29 @@
+{
+  "id": "wave-30",
+  "title": "a dropped decision is in the journal",
+  "intent": "The journal is the source of truth of a run, and a reader of the log must be able to tell what the model decided from what never came.  Wave 28 made the turn ignore a repeated tool call instead of running it twice, and the consequence of that decision was invisible: the drop was written nowhere, so the log of a run in which the model said the same thing twice looked exactly like the log of a run in which the model said it once.  The reader could not tell a repeated decision from a decision that never came, and the repetition of the work was a silent change of the run.  This wave writes the drop into the journal.  The vocabulary of the journal gains the event `tool-dropped', which carries the tool that was dropped and the reason it was dropped.  The drop does not close the activity of the call that is still running, so the person reading the journal sees the running tool and the refusal at the same time.",
+  "touches": [
+    "lib/yeah-turn.el",
+    "lib/yeah-events.el",
+    "lib/yeah-ui.el",
+    "tests/unit/test-yeah-control.el",
+    "spec.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-control.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-events-are-typed.el"
+  ],
+  "claims": [
+    "a-dropped-decision-is-in-the-journal"
+  ],
+  "commitment": [],
+  "objection": "The drop is written by the turn and not by the tool, and the journal now holds a record that no tool produced: a reader of the log must learn a new kind of event, and a consumer that knows every event of the vocabulary has to handle one more.  The event carries the tool, the reason and the arguments of the dropped call; the arguments of a repeated call are the arguments of the call that runs, and they are written in the form the request of that call was written, so that a reader of the journal matches the drop with the request it refuses.  The wave does not change the drop itself: the tool still runs once, and the model is not told that its repetition was refused, because a tool that runs twice would repeat its side effect.  The identity of a call is still the tool and its arguments, and the event does not make the identity stronger than it is.",
+  "refuted_by": "the journal holds no record of the dropped decision, or the reader cannot tell the drop from a decision that never came",
+  "note": "The control of the claim removes the writing of the drop and keeps everything else: the tool still runs once, the run still ends, and the test fails on a real assertion, because the journal of the run holds no `tool-dropped' record.  Exactly one test of the file fails under the control, and the test of wave 28 keeps passing, so the control changes the subject and not the check.  The first form of the control was wrong and was replaced: it made the guard of the drop unconditional, and the drop was then written every time, so the check could not fail.  The test uses its own tool and its own captured decision, so that a failure of one test of the file does not leave a tool registered for the next one: a failing test that leaves the world changed breaks the tests that follow it, and that is a failure of the test, not of the subject.  The control of wave 28 still bites after this wave: it fails the test of wave 28 and the test of this wave, because the guard it removes is the guard that produces the drop."
+}

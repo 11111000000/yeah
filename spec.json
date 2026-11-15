@@ -1845,6 +1845,26 @@
       "register": "fact",
       "control": "sed -i 's|((not (equal current-version expected-version))|((not t)|' lib/yeah-edit.el",
       "waiver": null
+    },
+    {
+      "id": "a-dropped-decision-is-in-the-journal",
+      "text": "A tool call that is dropped as a repeat is written into the journal: a reader of the log tells a repeated decision from a decision that never came.",
+      "scope": [
+        "lib/yeah-turn.el", "lib/yeah-events.el", "lib/yeah-ui.el",
+        "tests/unit/test-yeah-control.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-control.el" }
+      ],
+      "falsifier": "the journal holds no record of the dropped decision, or the reader cannot tell the drop from a decision that never came",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-turn--note-drop turn call)|(ignore \"the drop is not written\")|' lib/yeah-turn.el",
+      "waiver": null
     }
   ]
 }

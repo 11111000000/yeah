@@ -433,6 +433,9 @@ starts the work over."
 (defvar yeah-turn-test--late-decision nil
   "The decision that arrives while a tool runs, captured while it runs.")
 
+(defvar yeah-turn-test--drop-decision nil
+  "The repeated decision of the drop test, captured while the tool runs.")
+
 (ert-deftest yeah-turn-a-tool-call-that-arrives-while-a-tool-runs-does-not-break-the-run ()
   "A decision that arrives while the tools run waits for them.
 The machine has no transition for a decision that arrives while the tools
@@ -542,6 +545,66 @@ The model said the same thing twice; the tool runs once."
       (yeah-tools-unregister "late-probe")
       (setq yeah-turn-test--late-decision nil)
       (ignore-errors (delete-directory root t t))))))
+
+(ert-deftest yeah-turn-a-dropped-repeat-is-in-the-journal ()
+  "A decision that repeats a call that is running is dropped, and the drop is
+in the journal: a reader of the log tells a repeated decision from a decision
+that never came."
+  (let* ((root (make-temp-file "yeah-repeat-log" t))
+         (session (yeah-session-open "repeat-log" root))
+         (ran nil)
+         (repeated nil))
+    (unwind-protect
+        (progn
+          (yeah-perm-rules-add (yeah-perm-rule-make "drop-probe" "*" 'allow))
+          (yeah-tools-register
+           (list :name "drop-probe"
+                 :description "A probe that lets the model repeat its call."
+                 :input nil
+                 :handler (lambda ()
+                            (push "drop-probe" ran)
+                            (when yeah-turn-test--drop-decision
+                              (funcall yeah-turn-test--drop-decision)))))
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq yeah-turn-test--drop-decision
+                                (lambda ()
+                                  (unless repeated
+                                    (setq repeated t)
+                                    ;; The model says the same thing again
+                                    ;; while the first call is still running.
+                                    (funcall callback
+                                             (list 'tool-call
+                                                   (list (list :name "drop-probe")
+                                                         (list)
+                                                         (lambda (_value) nil)))))))
+                          (funcall callback
+                                   (list 'tool-call
+                                         (list (list :name "drop-probe")
+                                               (list)
+                                               (lambda (_value)
+                                                 (funcall callback "the work is done"))))))
+                        nil 60000 0)))
+            (let ((deadline (+ (float-time) 5)))
+              (while (and (not (yeah-turn-done turn))
+                          (< (float-time) deadline))
+                (accept-process-output nil 0.05)))
+            (should (yeah-turn-done turn))
+            (should (equal '("drop-probe") ran))
+            ;; The drop is in the journal.
+            (let* ((records (yeah-session-records session))
+                   (dropped (cl-find-if
+                             (lambda (record)
+                               (equal "tool-dropped" (plist-get record :type)))
+                             records)))
+              (should dropped)
+              (should (equal "drop-probe" (plist-get dropped :tool)))
+              (should (string-match-p "already running"
+                                      (plist-get dropped :reason))))))
+      (yeah-tools-unregister "drop-probe")
+      (setq yeah-turn-test--drop-decision nil)
+      (ignore-errors (delete-directory root t t)))))
 
 (ert-deftest yeah-turn-finish-ends-the-run-with-the-summary ()
   "The model ends the run by calling the finish tool, not by talk."
