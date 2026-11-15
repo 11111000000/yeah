@@ -1,0 +1,32 @@
+{
+  "id": "wave-31",
+  "title": "the checks read the journals and not the lock files next to them",
+  "intent": "The verdict of the method on the code of wave 30 was `unknown': the check of the standing permissions ended with exit 255, Emacs aborted with `file-missing' instead of the check failing on its own assertion, and the method reads a crashed verifier as an error and not as a proven control, so the claim of the standing permissions came out `inconclusive'.  The check read every file of the data home whose name ends in `.jsonl', and Emacs leaves the lock file of a journal next to the journal itself while a process holds it open.  The lock file is not a journal: it carries no record, it exists only while the file is held, and it disappears without a warning.  The check caught it between the scan of the directory and the read, and the read of a file that was gone aborted Emacs.  The project knew the rule and two of the checks followed it (`tests/live/live-service-path.el' and `tests/checks/check-client-disconnect-during-permission.el' skip the files whose name starts with `.#'), and the other checks did not.  This wave gives the checks one reader of the journals: it skips the lock files and it survives a file that vanishes, so that a check fails on its assertion and not on the filesystem.",
+  "touches": [
+    "tests/support/yeah-journal-files.el",
+    "tests/unit/test-yeah-journal-files.el",
+    "tests/checks/check-service-permissions.el",
+    "tests/checks/check-wire-control.el",
+    "tests/checks/check-wire-cancel-preempts.el",
+    "tests/checks/check-wire-permission.el",
+    "tests/checks/check-service-ui-permission.el",
+    "tests/checks/check-service-init-file.el",
+    "tests/checks/check-service-lifecycle.el",
+    "tests/checks/check-concurrent-sessions.el",
+    "waves/wave-31.json",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-journal-files.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [],
+  "commitment": [],
+  "objection": "The wave changes the checks and not the product: nothing in `lib/' moves, and the claim of the standing permissions keeps its meaning, because the control of that claim still removes the rules of the service and the check still refuses with the same assertion.  The reader skips the lock files by their name, and the name of a lock file is not a contract of Emacs: a consumer that wanted a lock file to be read as a journal would read less after this wave, and no such consumer exists, because a lock file carries no record.  The wave does not make the race impossible: a journal that is written while it is read can still be read half-written, and the checks that wait for an event wait until they find it.  The wave does not touch the two checks that already skipped the lock files, because their rule was right and their reading is guarded by the service having stopped.",
+  "refuted_by": "a check reads a lock file as a journal, or a journal that vanishes between the scan and the read crashes the check instead of failing its assertion",
+  "note": "Measured on the code of wave 30: the check of the standing permissions ended with exit 255 and the message of Emacs `file-missing' on `/tmp/yeah-service-perm-.../sessions/.#session-1-....jsonl', and the method wrote `service-permissions: inconclusive' while every other claim of the run was `pass'.  The lock file appeared in the scan of the check 2 to 4 times per run on the code of wave 30 and 0 times on the code of wave 29; the change of wave 30 (the drop no longer closes the activity of the call that still runs) keeps the client reading the journal while the service still holds it.  With the reader of the journals the control of the claim ends with exit 1 and the assertion `the granted permission did not reach the service: (\"defer\" \"deny\")', which is a real assertion and not a crash.  The control of the reader (the filter of the lock files removed) fails exactly one test of the unit test, the test of the lock files, and the other three tests keep passing.  The reader has no claim of its own: the claim of the standing permissions was already in the specification, and what the wave does is to make its control provable instead of crashed."
+}

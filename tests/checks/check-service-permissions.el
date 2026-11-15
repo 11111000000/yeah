@@ -25,6 +25,7 @@
 (require 'yeah-service)
 (require 'yeah-client)
 (require 'yeah-perm)
+(load (expand-file-name "tests/support/yeah-journal-files.el") nil t)
 
 (defun yeah-check--transport (tool)
   "Return the source of a fake transport that asks for TOOL.
@@ -41,11 +42,8 @@ client about the second and answers the first by itself."
 (defun yeah-check--decisions (data-home)
   "Return the permission effects the service recorded, in journal order."
   (let (effects)
-    (dolist (file (directory-files-recursively data-home "\\.jsonl\\'"))
-      (dolist (line (split-string (with-temp-buffer
-                                    (insert-file-contents file)
-                                    (buffer-string))
-                                  "\n" t))
+    (dolist (file (yeah-journal-files--files data-home))
+      (dolist (line (split-string (yeah-journal-files--read file) "\n" t))
         (when (string-match-p "\"type\":\"permission-decision\"" line)
           (push (plist-get (json-parse-string line :object-type 'plist)
                            :effect)

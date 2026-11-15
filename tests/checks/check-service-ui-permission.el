@@ -26,6 +26,7 @@
 (require 'yeah-client)
 (require 'yeah-journal)
 (require 'yeah-service-ui)
+(load (expand-file-name "tests/support/yeah-journal-files.el") nil t)
 
 (defun yeah-check--transport-source (target)
   "Return the source of the fake transport: it asks for one write to TARGET."
@@ -128,11 +129,8 @@
         ;; the person allowed, so the write ran
         (let ((journal-text
                (mapconcat
-                (lambda (file)
-                  (with-temp-buffer
-                    (insert-file-contents file)
-                    (buffer-string)))
-                (directory-files-recursively data-home "\\.jsonl\\'")
+                #'yeah-journal-files--read
+                (yeah-journal-files--files data-home)
                 "\n")))
           (unless (string-match-p "\"tool\":\"write\".*\"ok\":true" journal-text)
             (push (format "the allowed write did not run:\n%s" journal-text)

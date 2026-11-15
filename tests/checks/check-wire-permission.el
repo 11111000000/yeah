@@ -22,6 +22,7 @@
 (require 'json)
 (require 'yeah-service)
 (require 'yeah-client)
+(load (expand-file-name "tests/support/yeah-journal-files.el") nil t)
 
 (defun yeah-check--transport-source (target)
   "Return the source of the fake transport: it asks for one write to TARGET.
@@ -120,17 +121,15 @@ outcome."
                   (let ((message (yeah-check--next-message buffer 1)))
                     (when (and message (equal (plist-get message :id) 3))
                       (setq answer message)))))
-              (with-temp-buffer
-                (insert-file-contents
-                 (car (directory-files-recursively data-home "\\.jsonl\\'")))
-                (let ((text (buffer-string)))
-                  (setq journal text)
+              (let ((text (yeah-journal-files--read
+                           (car (yeah-journal-files--files data-home)))))
+                (setq journal text)
                   (setq tool-result
                         (cond
                          ((string-match-p "\"tool\":\"write\".*\"ok\":true" text)
                           "allowed")
                          ((string-match-p "\"tool\":\"write\".*\"ok\":false" text)
-                          "refused"))))))))
+                          "refused")))))))
       (when connection (ignore-errors (delete-process connection)))
       (yeah-service-stop name)
       (ignore-errors (delete-directory data-home t)))

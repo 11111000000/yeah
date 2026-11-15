@@ -20,6 +20,7 @@
 (require 'cl-lib)
 (require 'json)
 (require 'yeah-service)
+(load (expand-file-name "tests/support/yeah-journal-files.el") nil t)
 
 (defvar yeah-check--buffer nil
   "The buffer collecting the messages the client received.")
@@ -126,13 +127,10 @@
                                            :stopReason))
                         failures)))
               ;; the journal of the service records the turn
-              (let ((journal (car (directory-files-recursively
-                                   data-home "\\.jsonl\\'"))))
+              (let ((journal (car (yeah-journal-files--files data-home))))
                 (unless (and journal
                              (string-match-p "assistant-message"
-                                             (with-temp-buffer
-                                               (insert-file-contents journal)
-                                               (buffer-string))))
+                                             (yeah-journal-files--read journal)))
                   (push "the service journal has no assistant message"
                         failures)))))))
     (when connection

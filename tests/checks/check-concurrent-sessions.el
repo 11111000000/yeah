@@ -29,23 +29,26 @@
 (require 'yeah-run)
 (require 'yeah-session)
 (require 'yeah-turn)
+(load (expand-file-name "tests/support/yeah-journal-files.el") nil t)
 
 (defvar yeah-check--data-home (make-temp-file "yeah-concurrent" t)
   "The data home of the two sessions.")
 
 (defun yeah-check--journal (session-id)
   "Return the records of the journal of SESSION-ID, or nil."
-  (let ((file (car (directory-files-recursively
-                    yeah-check--data-home
-                    (regexp-quote (concat session-id ".jsonl"))))))
+  (let ((file (car (seq-filter
+                    (lambda (candidate)
+                      (not (yeah-journal-files--lock-p candidate)))
+                    (directory-files-recursively
+                     yeah-check--data-home
+                     (regexp-quote (concat session-id ".jsonl")))))))
     (when file
       (delq nil
             (mapcar (lambda (line)
                       (unless (string-blank-p line)
                         (json-parse-string line :object-type 'plist)))
                     (split-string
-                     (with-temp-buffer (insert-file-contents file)
-                                       (buffer-string))
+                     (yeah-journal-files--read file)
                      "\n" t))))))
 
 (defun yeah-check--payloads (records)

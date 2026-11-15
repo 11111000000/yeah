@@ -21,6 +21,7 @@
 (require 'json)
 (require 'yeah-service)
 (require 'yeah-client)
+(load (expand-file-name "tests/support/yeah-journal-files.el") nil t)
 
 
 (defun yeah-check--emacs ()
@@ -78,11 +79,8 @@ process that starts it."
           (yeah-client-close client))
         (let ((journal
                (mapconcat
-                (lambda (file)
-                  (with-temp-buffer
-                    (insert-file-contents file)
-                    (buffer-string)))
-                (directory-files-recursively data-home "\\.jsonl\\'")
+                #'yeah-journal-files--read
+                (yeah-journal-files--files data-home)
                 "\n")))
           (unless (string-match-p
                    "the init file answers: hello" journal)

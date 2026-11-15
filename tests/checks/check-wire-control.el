@@ -41,6 +41,7 @@
 
 (require 'cl-lib)
 (require 'json)
+(load (expand-file-name "tests/support/yeah-journal-files.el") nil t)
 
 (defvar yeah-check--position nil
   "Position in the client buffer after the last line consumed.")
@@ -193,36 +194,25 @@ later check can look at them.  TIMEOUT defaults to 5 seconds."
 (defun yeah-check--journal-records-p (data-home type)
   "Return non-nil when a journal under DATA-HOME records an event of TYPE."
   (let ((found nil))
-    (when (file-directory-p data-home)
-      (dolist (file (directory-files-recursively data-home "\\.jsonl\\'"))
-        (when (and (not found)
-                   (string-match-p (format "\"type\"[[:space:]]*:[[:space:]]*\"%s\""
-                                           type)
-                                   (with-temp-buffer
-                                     (insert-file-contents file)
-                                     (buffer-string))))
-          (setq found t))))
+    (dolist (file (yeah-journal-files--files data-home))
+      (when (and (not found)
+                 (string-match-p (format "\"type\"[[:space:]]*:[[:space:]]*\"%s\"" type)
+                                 (yeah-journal-files--read file)))
+        (setq found t)))
     found))
 
 (defun yeah-check--journal-records (data-home)
   "Return the records of every journal under DATA-HOME."
   (let (records)
-    (when (file-directory-p data-home)
-      (dolist (file (directory-files-recursively data-home "\\.jsonl\\'"))
-        (with-temp-buffer
-          (insert-file-contents file)
-          (goto-char (point-min))
-          (while (not (eobp))
-            (let ((line (buffer-substring-no-properties
-                         (line-beginning-position) (line-end-position))))
-              (unless (string-empty-p (string-trim line))
-                (let ((record (json-parse-string line :object-type 'plist
-                                                :array-type 'list
-                                                :null-object nil
-                                                :false-object nil)))
-                  (when record
-                    (push record records)))))
-            (forward-line 1)))))
+    (dolist (file (yeah-journal-files--files data-home))
+      (dolist (line (split-string (yeah-journal-files--read file) "\n" t))
+        (unless (string-empty-p (string-trim line))
+          (let ((record (json-parse-string line :object-type 'plist
+                                          :array-type 'list
+                                          :null-object nil
+                                          :false-object nil)))
+            (when record
+              (push record records))))))
     (nreverse records)))
 
 (defun yeah-check--journal-names-p (data-home type id)
@@ -530,12 +520,9 @@ later check can look at them.  TIMEOUT defaults to 5 seconds."
       (with-current-buffer server-output
         (message "control: the server said:\n%s" (buffer-string))))
     (when failures
-      (dolist (file (ignore-errors
-                      (directory-files-recursively data-home "\\.jsonl\\'")))
+      (dolist (file (yeah-journal-files--files data-home))
         (message "control: journal %s:\n%s" file
-                 (with-temp-buffer
-                   (insert-file-contents file)
-                   (buffer-string)))))
+                 (yeah-journal-files--read file)))
     (ignore-errors (delete-directory data-home t))
     (ignore-errors (delete-file socket))
     (if failures
