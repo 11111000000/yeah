@@ -1172,11 +1172,32 @@ model passes (`tests/live/live-coding-task.el'), so the tools and the model
 work; what does not work is the turn that has to notice that the model has
 not advanced.
 
-**Open, for the next wave:** a claim with a biting control for the turn that
-accepts an empty answer as the end of the work.  Until it exists, the parity
-of this section cannot be measured honestly — the harness under measurement
-is the one that fails the tasks, and the cause of the failure is not yet
-understood to the end.
+**The defect is fixed (2026-11-15, wave 24).**  The claim
+`an-empty-answer-does-not-end-the-run` says that an answer which says
+nothing is not a result: with supervision the model is nudged into the
+action, the run writes the unfinished event when the budget of the nudges
+is spent, and a run without supervision fails instead of ending as a
+finished job.  Its control bites: with the silent-answer branch disabled
+the two tests of the claim fail on real assertions.
+
+**The pilot after the fix (2026-11-15).**  The same three tasks, the same
+provider, the same model and the same workspaces
+(`bench/results/20261115T142743Z.jsonl`): pi passed all three, Yeah passed
+one — `write-new-file`.  The journals show that the provider answers with an
+empty message after **every** batch of tool results, and that the model
+answers the nudge by exploring again rather than by finishing the work.
+
+**The nudge carries the state (2026-11-15, wave 25).**  The claim
+`a-silence-nudge-carries-the-state-of-the-work' says that the nudge which
+follows a silence names the tools the run already called and the results
+they returned, and does not name an unused tool as the next call — a nudge
+that says "call `read' now" after the model has read the file is what sent
+the pilot round in circles.  Its control bites: with the state removed from
+the nudge, the test of the claim fails and the other tests keep passing.
+
+**Open, for the next wave:** the evidence with a live provider for that
+nudge, and the threshold of the parity, which remains a decision of the
+owner (Section 13).
 
 ### 16.8 Housekeeping — **done on 2026-11-15**
 

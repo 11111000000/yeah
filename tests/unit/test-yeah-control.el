@@ -346,6 +346,48 @@ nothing is no answer: the run fails instead of ending as a finished job."
                    (yeah-session-records session))))
       (ignore-errors (delete-directory root t t)))))
 
+(ert-deftest yeah-turn-a-silence-nudge-carries-the-state-of-the-work ()
+  "A nudge that follows an empty answer carries the state of the work: the
+tools the run called and what they returned.  It does not name an unused
+tool as the next call, because a model that is told to repeat a call
+starts the work over."
+  (yeah-control-test--with-tools
+    (let* ((root (make-temp-file "yeah-silence-state" t))
+           (session (yeah-session-open "silence-state" root))
+           (round 0)
+           (nudges nil))
+      (unwind-protect
+          (progn
+            (yeah-tools-register
+             (list :name "probe" :description "probe" :input nil
+                   :handler (lambda ()
+                              (yeah-result-ok "the answer is 42" nil t))))
+            (let ((turn
+                   (yeah-turn-run
+                    session "state"
+                    (lambda (_prompt callback)
+                      (setq round (1+ round))
+                      (funcall callback
+                               (yeah-control-test--answer
+                                "probe" nil
+                                (lambda (_value)
+                                  (funcall callback
+                                           (if (= round 1) "" "the work is done"))))))
+                    nil 60000 2)))
+              (should (yeah-turn-done turn)))
+            (dolist (record (yeah-session-records session))
+              (when (equal "nudge" (plist-get record :type))
+                (push (plist-get record :payload) nudges)))
+            (setq nudges (nreverse nudges))
+            (should (= 1 (length nudges)))
+            (let ((nudge (nth 0 nudges)))
+              (should (string-match-p "last answer was empty" nudge))
+              (should (string-match-p "probe" nudge))
+              (should (string-match-p "42" nudge))
+              (should-not (string-match-p "Make this call now" nudge))
+              (should-not (string-match-p "not called these tools yet" nudge))))
+        (ignore-errors (delete-directory root t t))))))
+
 (defvar yeah-turn-test--late-callback nil
   "The answer callback of the model, captured while a tool runs.")
 

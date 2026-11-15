@@ -13,14 +13,14 @@ skip is not a pass, and a skip never turns into a claim.
 
 | Check | What it proves | Needs | How to run | Last recorded run |
 |---|---|---|---|---|
-| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-14, with a live provider |
-| `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-14, with a live provider |
-| `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-14, with MiniMax-M2.7 (the larger task with MiniMax-M3.1-Flash ends without the effect: the model narrates instead of acting, and the completion nudge does not force it) |
-| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-14, with MiniMax-M3.1-Flash (one earlier attempt failed at the provider — an intermittent refusal, not a harness defect) |
-| `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-14, with a live model (one child; a multi-step repair is not always reliable on the first attempt) |
-| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-14, against the published repository (this is what closed the public alpha gate) |
+| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-15, with MiniMax-M2.7: three calls in a row answered `OK', `OK' and an **empty** message — the silence of the provider is intermittent, and it is the provider that is silent, not the harness |
+| `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-15, with MiniMax-M2.7 — pass: the model repairs the project with the tools of Yeah and the test passes afterwards |
+| `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-15, with MiniMax-M2.7 — pass; it failed on the same day before the turn noticed the empty answer of the model (wave 24) |
+| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-15, with MiniMax-M2.7 — pass (one earlier attempt failed at the provider — an intermittent refusal, not a harness defect) |
+| `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-15, with MiniMax-M2.7 — pass, one child; it failed on the same day before the turn noticed the empty answer of the model (wave 24) |
+| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-15, against the published repository — pass: "the clean installation works" (this is what closed the public alpha gate) |
 | `tests/pixel/check-interface-is-seen.sh` | the interface is really on the screen: Emacs itself draws the journal and the approval view under a frame server, the screen is photographed, and the pictures are compared with each other and with the same buffer without the interface | a frame server (Xvfb), a terminal emulator, ImageMagick, Emacs — **no provider key** | `YEAH_XVFB=… YEAH_XTERM=… YEAH_MAGICK=… ./scripts/dev pixel` | 2026-11-15, pass — "the interface is on the screen: 767 colours, 16953 pixels between the journal and the approval view" |
-| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-15, with MiniMax-M2.7 and pi: pi passed 3 of 3 tasks, Yeah passed 0 of 3 — **not a verdict about parity** (see "The pilot of the parity") |
+| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-15, with MiniMax-M2.7 and pi: pi passed 3 of 3 tasks, Yeah passed 1 of 3 — **not a verdict about parity** (see "The pilot of the parity") |
 
 ## The environment
 
@@ -123,11 +123,60 @@ With `MiniMax-M3` and `MiniMax-M3.1-Flash` the same provider returns an empty
 answer through `gptel` even for the plain model call, so the model of the
 pilot is the one that both harnesses can be compared with.
 
-The open work is a claim with a biting control for the turn that accepts an
-empty answer as the end of the work.  Until it exists, the parity of
-`docs/PLAN.md` §16.7 cannot be measured honestly: the harness under
-measurement is the one that fails the tasks, and the cause of the failure is
-not yet understood to the end.
+The defect has been fixed (2026-11-15, wave 24, the claim
+`an-empty-answer-does-not-end-the-run`): an answer that says nothing is
+nudged into the action while the budget of the nudges lasts, the run says
+it did not finish when the budget is spent, and a run without supervision
+fails instead of ending as a finished job.  The claim has a control that
+bites: with the silent-answer branch disabled, the two tests of the claim
+fail on real assertions.
+
+## The pilot after the fix (2026-11-15)
+
+The pilot was run again on the fixed turn under the same conditions
+(`bench/results/20261115T142743Z.jsonl`):
+
+| Task | Yeah | pi |
+|---|---|---|
+| `read-answer` | failed — the answer was computed, the file was not written | passed |
+| `fix-failing-test` | failed — the test still fails | passed |
+| `write-new-file` | **passed** — the turn ended in completed | passed |
+
+The fix moved one task of three: the harness now keeps the work alive when
+the provider goes silent, and it says what it did not finish.  The number is
+still not a verdict about parity — the threshold is not decided, the sample
+is three tasks, and the difference that remains is still not a difference of
+quality.
+
+What the journals show now (`bench/results/20261115T142743Z/sessions/`): the
+provider answers with an empty message after **every** batch of tool
+results, not only at the end of the run.  Each silence costs one nudge of
+the budget of three, and the model tends to answer the nudge by exploring
+again rather than by finishing the work: in `read-answer` it computed the
+right total with `bash` and never wrote the file, and in `fix-failing-test`
+it read the two files of the project three times.  The open work is
+therefore not the turn any more but the **nudge**: it has to carry the state
+of the work, so that the model continues instead of starting over.
+
+The nudge does that now (wave 25, the claim
+`a-silence-nudge-carries-the-state-of-the-work`): the nudge that follows a
+silence carries the tools the run already called and the results they
+returned, and it does not name an unused tool as the next call.  A nudge
+that says "call `read' now" after the model has already read the file is
+what sent the pilot round in circles.  The claim has a control that bites:
+with the state removed from the nudge, the test of the claim fails and the
+other tests keep passing.
+
+The silence is the provider, not the harness: three plain model calls in a
+row answered `OK', `OK' and an **empty** message with HTTP 200
+(`tests/live/live-model-call.el`).  A provider that answers half of the
+time with nothing is a fact the turn has to live with, and the old turn did
+not live with it: it took the silence for the work.
+
+The parity of `docs/PLAN.md` §16.7 still cannot be measured honestly: the
+threshold is a decision of the owner, the sample is three tasks, and the
+difference the first pilot found was a defect of the turn rather than a
+difference of quality.
 
 ## What is still open
 

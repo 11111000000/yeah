@@ -276,7 +276,7 @@
     },
     {
       "id": "nudge-only-for-plans",
-      "text": "an answer that only announces the next step, or a result no tool backs, is nudged into the action; a result that a tool backs ends the run",
+      "text": "an answer that only announces the next step, an answer that says nothing, or a result no tool backs, is nudged into the action; a result that a tool backs ends the run",
       "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "kind": "acceptance",
@@ -289,7 +289,7 @@
           "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
         }
       ],
-      "falsifier": "the run ends without acting, or a run that acted is nudged anyway",
+      "falsifier": "the run ends without acting, or a run that acted and reported a result is nudged anyway",
       "register": "fact",
       "control": "sed -i 's|(and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))|(and nil (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))|' lib/yeah-turn.el",
       "waiver": null
@@ -1712,6 +1712,28 @@
       "falsifier": "a run that received an empty answer ends as a finished job without a nudge and without saying that it did not finish",
       "register": "fact",
       "control": "sed -i 's|(yeah-turn--silent-p answer)|nil|g' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "a-silence-nudge-carries-the-state-of-the-work",
+      "text": "A nudge that follows an empty answer carries the state of the work — the tools the run already called and the results they returned — and does not name an unused tool as the next call, so that the model continues instead of starting the work over.",
+      "scope": [
+        "lib/yeah-turn.el", "tests/unit/test-yeah-control.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+        }
+      ],
+      "falsifier": "the nudge that follows an empty answer names a tool as the next call and does not say what the run has already done",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-turn--work-state-text turn)|\"\"|g' lib/yeah-turn.el",
       "waiver": null
     }
   ]

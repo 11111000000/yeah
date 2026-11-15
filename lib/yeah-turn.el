@@ -65,7 +65,9 @@ CALLS is the number of tool calls dispatched. TURNS is the number of
 times the model was asked. DONE says whether the model has finished.
 ERROR holds the reason when the run stopped for a reason of its own.
 TOOLS-REGISTRY is the registry snapshot of this run, or nil for the
-shared one."
+shared one.  WORK-STATE holds what the tools of this run have done, the
+newest result first: the nudge that follows a silence of the model carries
+it, so that the model continues instead of starting the work over."
   (session nil)
   (state 'idle)
   (states nil)
@@ -86,6 +88,7 @@ shared one."
   (deadline-timer nil)
   (tools-registry nil)
   (tools-used nil)
+  (work-state nil)
   (transport nil)
   (answerer nil)
   (pending-answer nil)
@@ -545,7 +548,8 @@ PREPARED supplies stable ids and structured result details for every tool-end."
              (yeah-turn--context
               turn (plist-get slot :tool-call-id)
               (plist-get slot :request-event-id))
-             fields)))
+             fields)
+      (yeah-turn--remember-work turn (plist-get slot :name) result)))
   (let ((finish (yeah-turn--finish-result calls results)))
     (if finish
         (let ((finish-slot
@@ -723,6 +727,43 @@ takes it for a result ends without the effect and looks done."
          (used (yeah-turn-tools-used turn)))
     (seq-remove (lambda (name) (member name used)) names)))
 
+(defconst yeah-turn--work-state-limit 3
+  "How many results of the tools the nudge that follows a silence carries.
+Three results are enough to show what the run has done; more of them would
+crowd out the instruction to continue.")
+
+(defun yeah-turn--remember-work (turn name result)
+  "Remember that the tool NAME of TURN returned RESULT.
+The state of the work is what the nudge that follows a silence of the model
+carries: a model that is told to call a tool it has already called starts
+the work over."
+  (push (cons name (yeah-result-model-text result))
+        (yeah-turn-work-state turn))
+  (setf (yeah-turn-work-state turn)
+        (nthcdr (max 0 (- (length (yeah-turn-work-state turn))
+                           yeah-turn--work-state-limit))
+                (yeah-turn-work-state turn))))
+
+(defun yeah-turn--shorten (text)
+  "Return TEXT cut to a length that a nudge can carry."
+  (if (and (stringp text) (> (length text) 400))
+      (concat (substring text 0 400) " [...]")
+    (or text "")))
+
+(defun yeah-turn--work-state-text (turn)
+  "Return the text that tells the model what this run has already done."
+  (let ((state (yeah-turn-work-state turn)))
+    (if (null state)
+        ""
+      (concat "You have already called these tools, with these results:\n"
+              (mapconcat
+               (lambda (entry)
+                 (format "  %s -> %s" (car entry)
+                         (yeah-turn--shorten (cdr entry))))
+               state
+               "\n")
+              "\n"))))
+
 (defconst yeah-turn--path-regexp
   "\\(?:[A-Za-z0-9_.-]+/\\)?[A-Za-z0-9_.-]+\\.[A-Za-z0-9_]+\\b"
   "Regexp matching a file name in an answer of the model.")
@@ -760,36 +801,46 @@ because it is the cheapest safe way to touch the project for real."
 The nudge names the tools the run has not called yet and, when one of
 them takes a path, the exact call to make: a model that describes its
 next step is answered with the step itself, and a second nudge says
-that the next answer must contain the call, not a plan."
-  (let* ((unused (yeah-turn--unused-tools turn))
-         (tool (yeah-turn--unused-path-tool turn))
-         (path (yeah-turn--answer-path answer))
-         (repeated (> (yeah-turn-nudges turn) 1)))
-    (concat
-     (when (yeah-turn--silent-p answer)
-       "Your last answer was empty: you have said nothing, and the task is not done.\n\n")
-     (when repeated
-       "You have already been asked to act: your next answer must contain the tool call, not a plan.\n\n")
-     (if (null unused)
-         yeah-turn-nudge-message
-       (format (concat "%s\n\nYou have not called these tools yet: %s. "
-                       "Call one of them now, with the arguments it needs, "
-                       "or call `finish' with a summary when the task is done "
-                       "and verified. "
-                       "Do not describe what you are about to do instead of "
-                       "doing it.")
-               yeah-turn-nudge-message
-               (string-join unused ", ")))
-     (cond
-      ((and tool path)
-       (format (concat "\n\nMake this call now: `%s' on %s. "
-                       "Your next answer must be the tool call, not a plan.")
-               tool path))
-      (tool
-       (format (concat "\n\nMake this call now: `%s', with the `path' argument. "
-                       "Your next answer must be the tool call, not a plan.")
-               tool))
-      (t "")))))
+that the next answer must contain the call, not a plan.
+
+A silence is not a plan: the model said nothing, and the run does not
+know what it meant to do next.  The nudge of a silence carries the state
+of the work instead — the tools the run called and what they returned —
+and it does not name an unused tool as the next call, because a model
+that is told to repeat a call starts the work over."
+  (if (yeah-turn--silent-p answer)
+      (concat "Your last answer was empty: you have said nothing, and the task is not done.\n\n"
+              (yeah-turn--work-state-text turn)
+              (concat "Continue the work from there: do not repeat the calls you have "
+                      "already made with the same arguments. "
+                      "When the work is done, call `finish' with a summary.\n\n"))
+    (let* ((unused (yeah-turn--unused-tools turn))
+           (tool (yeah-turn--unused-path-tool turn))
+           (path (yeah-turn--answer-path answer))
+           (repeated (> (yeah-turn-nudges turn) 1)))
+      (concat
+       (when repeated
+         "You have already been asked to act: your next answer must contain the tool call, not a plan.\n\n")
+       (if (null unused)
+           yeah-turn-nudge-message
+         (format (concat "%s\n\nYou have not called these tools yet: %s. "
+                         "Call one of them now, with the arguments it needs, "
+                         "or call `finish' with a summary when the task is done "
+                         "and verified. "
+                         "Do not describe what you are about to do instead of "
+                         "doing it.")
+                 yeah-turn-nudge-message
+                 (string-join unused ", ")))
+       (cond
+        ((and tool path)
+         (format (concat "\n\nMake this call now: `%s' on %s. "
+                         "Your next answer must be the tool call, not a plan.")
+                 tool path))
+        (tool
+         (format (concat "\n\nMake this call now: `%s', with the `path' argument. "
+                         "Your next answer must be the tool call, not a plan.")
+                 tool))
+        (t ""))))))
 
 (defun yeah-turn--ask (turn prompt transport answerer)
   "Ask the model PROMPT with TRANSPORT, and continue TURN when it answers.

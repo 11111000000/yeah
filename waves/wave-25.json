@@ -1,0 +1,25 @@
+{
+  "id": "wave-25",
+  "title": "the nudge carries the state of the work",
+  "intent": "The pilot after the fix showed that the turn is no longer the problem: the provider answers with an empty message after every batch of tool results, and the nudge that followed named an unused tool as the next call. A model that is told to call a tool it has already called starts the work over: in the pilot it read the two files of the project three times and computed the right total without ever writing the file. This wave makes the nudge of a silence carry the state of the work — the tools the run called and the results they returned — and stops it from naming an unused tool as the next call.",
+  "touches": [
+    "lib/yeah-turn.el",
+    "tests/unit/test-yeah-control.el",
+    "spec.json",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md"
+  ],
+  "checks": [
+    "./scripts/dev ert tests/unit/test-yeah-control.el",
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev bench --run"
+  ],
+  "claims": [
+    "a-silence-nudge-carries-the-state-of-the-work"
+  ],
+  "commitment": [],
+  "objection": "The state of the work may be long: a tool that printed a file, a build or a test may return more text than a nudge can carry, and a truncated result may mislead the model into believing the work is done. The state also repeats what the conversation already holds, so the nudge may grow a paragraph of noise that the model reads instead of the task.",
+  "refuted_by": "The nudge that follows an empty answer names a tool as the next call and does not say what the run has already done; or the nudge grows without a bound and the state of the work crowds out the instruction to continue; or a plan that names a file loses the exact call it used to be answered with.",
+  "note": "The claim has a control that bites: with the state of the work removed from the nudge, the test of the claim fails on a real assertion and the other tests keep passing, so the control changes this behaviour and nothing else. The state is bounded to the three newest results and every result is cut to four hundred characters. The nudge of a plan is untouched: it still names the exact call to make, because a plan says what the model intends to do and a silence says nothing at all. The evidence with a live provider follows in the pilot: the same three tasks, the same provider, the same model."
+}
