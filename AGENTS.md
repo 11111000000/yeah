@@ -63,8 +63,15 @@ work item. Never resolve it by silently making documentation more optimistic.
   the code of wave 28, measured two tasks of three — Yeah passed both of them
   and pi passed all three — and the third was blocked, because the transport
   to the provider died.  The parity of that run is not measured either.  The
-  threshold of the parity is a decision of the owner (docs/PLAN.md §13), and
-  nobody may quote the pilot as a verdict about parity.
+  pilot of 17:06, on the code of waves 30+31, measured one task of three for
+  Yeah and two of three for pi: all three runs of Yeah ended `unfinished`,
+  because the provider goes silent, and the one task that failed in the tools
+  failed on the **version token** of the file — the model copied 58 of the 64
+  characters of the digest and the edit refused the edit of a file that had
+  not changed (docs/LIVE-EVIDENCE.md, "The pilot that measured the copy of the
+  version token").  The threshold of the parity is a decision of the owner
+  (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
+  parity.
 - A decision that arrives while the tools of the previous decision are still
   running no longer breaks the run: the turn keeps the calls, runs them when
   the running batch has settled, and gives the model the results of every
