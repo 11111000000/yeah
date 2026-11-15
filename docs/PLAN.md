@@ -1003,5 +1003,106 @@ it.
   shared and what is not.
 
 
+## 16. The work after v0.3.0
+
+v0.3.0 (2026-11-14) carries the Emacs-native interface and the permissions
+the kernel asks about: a read that changes nothing is not asked about, an
+answer of `always' is remembered, the question of the permission is asked
+in one place, and a run that ended without the effect says so.  67 claims
+hold, 331 ERT tests and 47 canaries pass, and both live paths pass with a
+real model.
+
+What follows is the distance to a product a person may keep using, and the
+distance to measuring the parity the vision asks for.
+
+### 16.1 The answerer that answers later
+
+The archived branch `ux/archive-async-approval' still holds one piece that
+is not in `main': an answerer may be asynchronous.  The kernel asks a
+question and gets the answer whenever it arrives; the request is journaled
+*before* the question is asked, so a person (or another program) that
+answers later still finds the request in the log; the adapter that takes
+either shape of answerer is bounded and settles once.
+
+**Work:** bring the two-argument answerer and the resolve-adapter over
+(`yeah-approval-async', `yeah-approval-resolve'), make the request carry
+the tool-call id and the normalized arguments, and journal the request
+before the decision.  A claim `an-answer-may-come-later' with a control
+that answers twice or answers after the run ended.
+
+### 16.2 The service path with the whole control
+
+The journal is shared by both paths; the control is not.  The attached
+path asks, steers, cancels, withdraws a steering and recovers a pending
+input; the service path asks and cancels.  The service has no replay of an
+earlier session either.
+
+**Work:** the wire grows the commands the person has: `session/steer',
+`session/withdraw', `session/recover', and a `session/load' that replays
+the journal into the editor's view.  The pending queue is a projection of
+the journal events (`input-queued', `input-taken', `input-withdrawn'),
+not a second state.  Every command gets a claim and a canary.
+
+### 16.3 The service as the default entry
+
+The decision of 2026-11-12 (`M-x yeah' defaults to the service placement)
+waits for the parity of 16.2.  When it lands, `M-x yeah' spawns or
+connects the service and drives it from the editor's buffer; the attached
+placement stays as the development and fallback path, and the bridge stays
+off until the operator turns it on.
+
+### 16.4 The platform without Unix sockets
+
+The socket transport can serve a loopback TCP port, but the editor always
+asks for a Unix socket, so the service placement cannot start where there
+are none.
+
+**Work:** the editor picks the family by platform and writes the port to a
+file when it is not a socket path; a canary covers both families.
+
+### 16.5 Evidence that the method cannot hold
+
+The live paths need a provider, so no control can bite without one: the
+five live tests and the UI fixtures stay outside the map, and the green
+verdict of 67 claims does not speak for them.  Two ways out: a register of
+evidence that has no claim, or a live environment the method can run in.
+The first is ours to build; the second is infrastructure.
+
+### 16.6 The picture with pixels
+
+The structural smoke covers the terminal, the light and dark faces, the
+Cyrillic text, the long output, the narrow header and the composer, but
+no pixel of the real interface was ever looked at.
+
+**Work:** a smoke under a virtual frame server, if one is available, that
+renders the journal and the approval view and compares the picture with a
+stored one.
+
+### 16.7 The parity that is measured, not claimed
+
+The vision asks for a harness competitive with opencode and pi, and the
+documents say the parity is a goal to measure.  Nothing is measured yet.
+
+**Work:** a task set (ten tasks of the kind a person actually asks for:
+read, edit, fix a failing test, write a file, answer a question) and a
+runner that gives the same tasks to Yeah and to the other harnesses, with
+the result recorded in the journal of the repository.  The acceptable
+threshold is a decision of the owner (Section 13).
+
+### 16.8 Housekeeping
+
+- `ux/archive-async-approval' is deleted once 16.1 has landed and the
+  archive holds nothing that `main' does not.
+- The evidence of the method is refreshed after the release commits, so
+  the map is green rather than `outdated'.
+
+### The order
+
+16.1 first (it is small and it is the last piece of the kernel), then
+16.2 and 16.3 together (the service becomes the default when the control
+is whole), then 16.4 and 16.6 (the product works everywhere and is seen),
+then 16.7 (the goal is measured), and 16.5 and 16.8 whenever.
+
+
 Re-opened when a person says so: the math-coding aim block in AGENTS.md is
 written by `mathc install` and is not edited by hand.
