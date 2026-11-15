@@ -1839,8 +1839,7 @@
       "owner": "p.b.kosov@yandex.ru",
       "review_on": [],
       "requirements": [
-        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-edit.el" },
-        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-files.el" }
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-edit.el tests/unit/test-yeah-files.el" }
       ],
       "falsifier": "the edit of a file that changed after the read is applied anyway, or the read hands out no version to guard the edit with",
       "register": "fact",

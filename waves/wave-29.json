@@ -18,8 +18,7 @@
   ],
   "checks": [
     "./scripts/dev byte-compile-all",
-    "./scripts/dev ert tests/unit/test-yeah-edit.el",
-    "./scripts/dev ert tests/unit/test-yeah-files.el",
+    "./scripts/dev ert tests/unit/test-yeah-edit.el tests/unit/test-yeah-files.el",
     "./scripts/dev ert tests/unit/*.el"
   ],
   "claims": [
