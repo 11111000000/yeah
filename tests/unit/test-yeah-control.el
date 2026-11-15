@@ -292,6 +292,60 @@ success."
                    (yeah-session-records session))))
       (ignore-errors (delete-directory root t t)))))
 
+(ert-deftest yeah-turn-an-empty-answer-is-nudged-into-the-action ()
+  "An answer that says nothing is not a result: with supervision the run
+nudges the model into the action instead of ending without the effect."
+  (let* ((root (make-temp-file "yeah-silent" t))
+         (session (yeah-session-open "silent" root))
+         (calls 0)
+         (nudges nil))
+    (unwind-protect
+        (progn
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq calls (1+ calls))
+                          (funcall callback ""))
+                        nil 60000 2)))
+            (should (yeah-turn-done turn))
+            (should (= 3 calls))
+            (should (= 2 (yeah-turn-nudges turn))))
+          (dolist (record (yeah-session-records session))
+            (when (equal "nudge" (plist-get record :type))
+              (push (plist-get record :payload) nudges)))
+          (setq nudges (nreverse nudges))
+          (should (= 2 (length nudges)))
+          (should (string-match-p "last answer was empty" (nth 0 nudges)))
+          ;; The budget is spent and the model still says nothing: the run
+          ;; says it did not finish instead of looking done.
+          (should (cl-some
+                   (lambda (record)
+                     (and (equal "unfinished" (plist-get record :type))
+                          (plist-get record :reason)))
+                   (yeah-session-records session))))
+      (ignore-errors (delete-directory root t t)))))
+
+(ert-deftest yeah-turn-an-empty-answer-without-supervision-fails-the-run ()
+  "Without supervision there is no nudge to give, and an answer that says
+nothing is no answer: the run fails instead of ending as a finished job."
+  (let* ((root (make-temp-file "yeah-silent-plain" t))
+         (session (yeah-session-open "silent-plain" root))
+         (turn nil))
+    (unwind-protect
+        (progn
+          (setq turn (yeah-turn-run session "start"
+                                     (lambda (_prompt callback)
+                                       (funcall callback ""))
+                                     nil 60000 0))
+          (should (yeah-turn-done turn))
+          (should (eq 'failed (yeah-turn-state turn)))
+          (should (yeah-turn-error turn))
+          (should (cl-some
+                   (lambda (record)
+                     (equal "error" (plist-get record :type)))
+                   (yeah-session-records session))))
+      (ignore-errors (delete-directory root t t)))))
+
 (defvar yeah-turn-test--late-callback nil
   "The answer callback of the model, captured while a tool runs.")
 

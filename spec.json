@@ -1691,6 +1691,28 @@
       "register": "fact",
       "control": "sed -i \"s|(if (eq (yeah-client-effective-network-family) 'local)|(if t|\" lib/yeah-client.el",
       "waiver": null
+    },
+    {
+      "id": "an-empty-answer-does-not-end-the-run",
+      "text": "An answer of the model that says nothing is not a result: with supervision the run nudges the model into the action, and without supervision the run fails instead of ending as a finished job.",
+      "scope": [
+        "lib/yeah-turn.el", "tests/unit/test-yeah-control.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+        }
+      ],
+      "falsifier": "a run that received an empty answer ends as a finished job without a nudge and without saying that it did not finish",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-turn--silent-p answer)|nil|g' lib/yeah-turn.el",
+      "waiver": null
     }
   ]
 }

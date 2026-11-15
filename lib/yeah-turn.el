@@ -593,46 +593,63 @@ PREPARED supplies stable ids and structured result details for every tool-end."
 
 (defun yeah-turn--answer-text (turn answer transport answerer)
   "Handle a text ANSWER from the model: record it, nudge it or end the run.
-A plan, and a result that no tool backs, are nudged into the action; a
-result that a tool backs ends the run."
-  (yeah-turn--tick turn 'stream-end)
-  (yeah-turn--tick turn 'no-tool-calls)
+A plan, an answer that says nothing, and a result that no tool backs, are
+nudged into the action; a result that a tool backs ends the run."
   (yeah-turn--write turn "assistant-message"
                     (yeah-turn--context
                      turn nil (yeah-turn-turn-event-id turn))
                     :payload answer)
-  (if (and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))
-            (or (yeah-turn--plan-p answer)
-                ;; A result that no tool backs is premature: the run
-                ;; has not touched anything yet.  And a run that is
-                ;; supervised ends through `finish', not through talk.
-                (null (yeah-turn-tools-used turn))))
-      (progn
-        (cl-incf (yeah-turn-nudges turn))
-        (let ((nudge (yeah-turn--nudge-text turn answer)))
-          (yeah-turn--write turn "nudge"
-                            (yeah-turn--context
-                             turn nil (yeah-turn-turn-event-id turn))
-                            :payload nudge)
-          (setf (yeah-turn-state turn) 'deciding)
-          (setf (yeah-turn-states turn)
-                (append (yeah-turn-states turn) (list 'deciding)))
-          (yeah-turn--ask turn nudge transport answerer)))
+  (if (and (yeah-turn--silent-p answer)
+           (= (yeah-turn-max-nudges turn) 0))
+      ;; Without supervision there is no nudge to give, and an answer that
+      ;; says nothing is no answer at all: the run fails instead of ending
+      ;; as if the work were done.
+      (yeah-turn--fail turn
+                       "the model answered with an empty message and the run is not done")
     (progn
-      ;; A supervised run that ends without the model finishing must say
-      ;; so: the nudge budget is spent and the model still describes its
-      ;; next step.  Ending as if it were done would be a false success.
-      (when (and (> (yeah-turn-max-nudges turn) 0)
-                 (or (yeah-turn--plan-p answer)
-                     (null (yeah-turn-tools-used turn))))
-        (yeah-turn--write turn "unfinished"
-                          (yeah-turn--context
-                           turn nil (yeah-turn-turn-event-id turn))
-                          :payload (format
-                                    "the model described its next step %d times and the run ended without an effect"
-                                    (yeah-turn-nudges turn))
-                          :reason "the nudge budget was spent"))
-      (yeah-turn--mark-done turn))))
+      (yeah-turn--tick turn 'stream-end)
+      (yeah-turn--tick turn 'no-tool-calls)
+      (if (and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))
+                (or (yeah-turn--plan-p answer)
+                    ;; An answer that says nothing is not a result: the
+                    ;; model has not advanced, and the run nudges it into
+                    ;; the action instead of taking the silence for the
+                    ;; work.
+                    (yeah-turn--silent-p answer)
+                    ;; A result that no tool backs is premature: the run
+                    ;; has not touched anything yet.  And a run that is
+                    ;; supervised ends through `finish', not through talk.
+                    (null (yeah-turn-tools-used turn))))
+          (progn
+            (cl-incf (yeah-turn-nudges turn))
+            (let ((nudge (yeah-turn--nudge-text turn answer)))
+              (yeah-turn--write turn "nudge"
+                                (yeah-turn--context
+                                 turn nil (yeah-turn-turn-event-id turn))
+                                :payload nudge)
+              (setf (yeah-turn-state turn) 'deciding)
+              (setf (yeah-turn-states turn)
+                    (append (yeah-turn-states turn) (list 'deciding)))
+              (yeah-turn--ask turn nudge transport answerer)))
+        (progn
+          ;; A supervised run that ends without the model finishing must
+          ;; say so: the nudge budget is spent and the model still
+          ;; describes its next step.  Ending as if it were done would be
+          ;; a false success.
+          (when (and (> (yeah-turn-max-nudges turn) 0)
+                     (or (yeah-turn--plan-p answer)
+                         (yeah-turn--silent-p answer)
+                         (null (yeah-turn-tools-used turn))))
+            (yeah-turn--write turn "unfinished"
+                              (yeah-turn--context
+                               turn nil (yeah-turn-turn-event-id turn))
+                              :payload (if (yeah-turn--silent-p answer)
+                                           (format "the model answered with an empty message %d times and the run ended without an effect"
+                                                   (yeah-turn-nudges turn))
+                                         (format "the model described its next step %d times and the run ended without an effect"
+                                                 (yeah-turn-nudges turn)))
+                              :reason "the nudge budget was spent"))
+          (yeah-turn--mark-done turn))))))
 
 (defun yeah-turn--answer (turn answer answerer &optional transport info)
   "Handle the model's ANSWER in TURN. The ANSWERER answers requests."
@@ -690,6 +707,13 @@ An answer that reports what was done is not a plan and ends the run."
        (not (string-blank-p answer))
        (string-match-p yeah-turn-plan-regexp answer)))
 
+(defun yeah-turn--silent-p (answer)
+  "Return non-nil when ANSWER says nothing at all.
+An empty answer is not a result: the model has not advanced, and a run that
+takes it for a result ends without the effect and looks done."
+  (and (stringp answer)
+       (string-blank-p answer)))
+
 (defun yeah-turn--unused-tools (turn)
   "Return the tools of TURN's registry that this run has not called yet."
   (let* ((registry (yeah-turn-tools-registry turn))
@@ -742,6 +766,8 @@ that the next answer must contain the call, not a plan."
          (path (yeah-turn--answer-path answer))
          (repeated (> (yeah-turn-nudges turn) 1)))
     (concat
+     (when (yeah-turn--silent-p answer)
+       "Your last answer was empty: you have said nothing, and the task is not done.\n\n")
      (when repeated
        "You have already been asked to act: your next answer must contain the tool call, not a plan.\n\n")
      (if (null unused)

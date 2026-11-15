@@ -1,0 +1,26 @@
+{
+  "id": "wave-24",
+  "title": "an empty answer is not the work",
+  "intent": "The pilot of the parity found a defect of the turn: after the results of the tool calls arrive, the provider answers with an empty message, the turn takes that silence for a result and ends without the effect, and the journal says nothing about it. A run that ends without the work must not look finished. This wave makes an answer that says nothing a thing the turn notices: with supervision the model is nudged into the action, and without supervision the run fails instead of ending as a finished job.",
+  "touches": [
+    "lib/yeah-turn.el",
+    "tests/unit/test-yeah-control.el",
+    "spec.json",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev ert tests/unit/test-yeah-control.el",
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev bench --run"
+  ],
+  "claims": [
+    "an-empty-answer-does-not-end-the-run"
+  ],
+  "commitment": [],
+  "objection": "The silence of the provider is not always a defect of the turn: a provider may answer with an empty message while the work is in fact done, and a turn that nudges on every silence would keep a finished run alive for the sake of a message that never comes. A run without supervision has no nudge to give, and failing it on a silence that the provider caused punishes the harness for the provider's answer.",
+  "refuted_by": "A run that received an empty answer ends as a finished job without a nudge and without saying that it did not finish; or a run that acted is nudged again although the model already finished the work; or the turn loops on the silence without the bound of the nudge budget.",
+  "note": "The claim has a control that bites: with the silent-answer branch disabled the two new tests fail on real assertions (the run ends completed instead of failed, and no nudge is written), so the check cannot pass by accident. The bound of the loop is the budget of the nudges that the run already had: a supervised run nudges at most as many times as it was allowed, writes the unfinished event when the budget is spent, and ends; an unsupervised run has no nudge to give and fails. The open part of the wave is the evidence with a live provider: the pilot of the parity has to be run again on this code, and the numbers have to say what the turn does now when the provider goes silent."
+}
