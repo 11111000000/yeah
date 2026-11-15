@@ -1431,6 +1431,49 @@ wave does is to make its control provable instead of crashed.
 half-written; the wave does not make that race impossible, and the checks that
 wait for an event wait until they find it.
 
+### 16.15 A version token a model can copy back — **done on 2026-11-15 (wave 32)**
+
+The pilot of 17:06 measured the copy of the version token, and it found a
+defect that the unit tests could not see.  The model read `calc.el` and
+received the token of the file, the digest of its bytes: 64 characters of
+hex.  It presented a token of 58 characters — the same digest with six
+characters lost in the middle — and the edit refused it, because a token
+that is not the version of the file now is refused.  That refusal was right.
+
+The file had not changed.  The sha256 of the file on disk was and remained
+`fe26cedb46546a55777dfddb00efcb86c41135cb25811737952f8388e5b0e165`, the very
+digest the read had handed out, and the token that the model presented was
+`fe26cedb46546a55777dfddb06c41135cb25811737952f8388e5b0e165`.  The guard of
+wave 29 did its work; the defect was in the token and in the diagnosis of the
+refusal.  A token of 64 characters of hex is too many for a model to copy
+back unchanged, and a refusal that says "the file changed since the read"
+sends the model looking for a change that did not happen.
+
+The token is short now: twelve characters of the digest, 48 bits, enough to
+tell two states of a file apart.  The refusal of a token that does not match
+names the token and not the file — "the file may be unchanged and the token
+may have been copied wrong" — and it reports the current token of the file,
+so that the model can retry with it, and the retry lands.  The description of
+the edit tool and of the read tool say the same thing: copy the token as it
+is.
+
+D5 was amended and not weakened: it names the short token and the honest
+refusal, and the promise of the guard — an edit never lands on a file the
+model did not read — is kept.
+
+The two claims of the wave have verifiers of their own and controls that
+bite and that change the subject and not the check: with the whole digest
+handed out again, exactly one test of `tests/unit/test-yeah-version.el` fails
+(the length of the token) and the other two keep passing; with the old
+sentence put back into the refusal, exactly one test of
+`tests/unit/test-yeah-version-guard.el` fails.  The control of wave 29 still
+bites on this code: it fails exactly one test of `tests/unit/test-yeah-edit.el`,
+the test of the stale version, and the new tests are not in the file it reads.
+
+**Open:** a model can still lose a character of twelve, and the harness
+cannot make the model retry; the path that presents only a tick keeps the old
+behaviour, and the write tool overwrites a whole file and takes no token.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then

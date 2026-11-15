@@ -171,6 +171,15 @@ promise could not hold for the file that nobody opened. The version of the
 file is the second form of that state; the promise is kept and made
 explicit, not relaxed.*
 
+*Amended on 2026-11-15 (wave 32): the version is a digest that a model has to
+copy back, and the pilot measured a digest of 64 characters of hex come back
+with six characters missing — the edit then refused a file that had not
+changed. The token is therefore short: twelve characters of the digest, 48
+bits, enough to tell two states of a file apart. A refusal of a token that is
+not the version of the file now names the token and reports the current one,
+because a token that was copied wrong does not mean that the file changed;
+the promise of the guard is kept and made honest, not relaxed.*
+
 ### D6 — Large output becomes an artifact; context is calibrated
 
 Tool output has explicit limits. Oversized output is written with private

@@ -97,6 +97,14 @@ work item. Never resolve it by silently making documentation more optimistic.
   version that no read handed out is ignored, like a tick that no read handed
   out. docs/ARCHITECTURE.md §D5 was amended, not weakened: it names the
   version as the second form of the state a read returns.
+- The version token is short (12 characters of the digest) and a refusal of a
+  token that does not match names the token, not the file, and reports the
+  current token so that the retry lands: the pilot of 17:06 measured a model
+  that copied 58 of the 64 characters of the digest and an edit that refused
+  a file that had not changed (wave 32, the claims
+  `a-version-token-is-short-enough-to-copy' and
+  `an-edit-refuses-a-wrong-token-with-the-current-one'). A model can still
+  lose a character of twelve, and the harness cannot make the model retry.
 - A decision that repeats a call that is already running is dropped, and the
   drop is now in the journal: the event `tool-dropped` carries the tool, the
   reason and the arguments, so a reader of the log tells a repeated decision
