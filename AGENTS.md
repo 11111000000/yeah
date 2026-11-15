@@ -75,11 +75,21 @@ work item. Never resolve it by silently making documentation more optimistic.
   for another reason: the model of the provider answers with an empty message
   and the run ends with the record "unfinished" — the work is not done, and
   the run says so.
-- The tick of a file guards only the files that a buffer visits: the read
-  of a file nobody has open returns no tick, and the edit of such a file
-  has no guard at all.  docs/ARCHITECTURE.md §D5 promises the tick for
-  every read that can lead to an edit; the contradiction and the candidate
-  of a file version token are open in docs/PLAN-NEXT.md.
+- The read of a file shows the file on disk, but the tick it hands out
+  belongs to the buffer that visits the file: when Emacs holds unsaved
+  changes of that file, the model sees the disk and the edit applies to the
+  buffer.  Wave 29 refuses that case when the model presents the version of
+  the read, but the path that presents only a tick keeps the old behaviour,
+  and the write tool overwrites a whole file and takes no version at all.
+  Both are open in docs/PLAN-NEXT.md.
+- Every read now hands the model the version of the file as well: the digest
+  of its bytes (lib/yeah-version.el). The edit checks that version and is
+  refused when the file changed after the read, so an edit never lands on a
+  file the model did not read; it is also refused when Emacs holds unsaved
+  changes of the file, because a read of the disk cannot show them. A
+  version that no read handed out is ignored, like a tick that no read handed
+  out. docs/ARCHITECTURE.md §D5 was amended, not weakened: it names the
+  version as the second form of the state a read returns.
 - Stage 7 is implemented offline: an agent preset is a file (a Markdown or
   Org header and a body), and a child runs for real in its own session with
   only the tools it was granted. The fixed-point demonstration passes with
