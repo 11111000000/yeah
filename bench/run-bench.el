@@ -19,12 +19,14 @@
 ;;   emacs -Q --batch -L lib -l bench/run-bench.el -- --self-check
 ;;   emacs -Q --batch -L lib -l bench/run-bench.el -- --run
 ;;
-;; `--self-check' proves two things without a model: every task exists, has a
+;; `--self-check' proves three things without a model: every task exists, has a
 ;; prompt, and has an executable `check.sh' that fails on an untouched
-;; workspace; and the runner records a harness that could not run as
-;; `skipped: no provider', never as a pass.  `--run' measures: it gives every
-;; task to every configured harness and records one JSON line per
-;; (task, harness) in `bench/results/<timestamp>.jsonl'.
+;; workspace; the runner records a harness that could not run as
+;; `skipped: no provider', never as a pass; and the filter of the measurement
+;; selects exactly the tasks it was asked for and refuses a name the set does
+;; not hold.  `--run' measures: it gives every task to every configured
+;; harness and records one JSON line per (task, harness) in
+;; `bench/results/<timestamp>.jsonl'.
 ;;
 ;; The runner reports measurements, never a verdict.  No acceptance threshold
 ;; for parity is declared, so no status below says that Yeah is as good as
@@ -37,6 +39,8 @@
 ;;   YEAH_TEST_MODEL           the model, for example MiniMax-M3
 ;;   YEAH_BENCH_EXTERNAL_COMMAND  the command template of the external harness
 ;;   YEAH_BENCH_EXTERNAL_NAME     the label of the external harness
+;;   YEAH_BENCH_TASKS          the tasks of the measurement, comma separated;
+;;                             every task of the set when it is not set
 ;;
 ;; Exit codes:
 ;;
@@ -114,6 +118,32 @@ being loaded is only bound during the load.")
 (defun yeah-bench--task-directory (task)
   "Return the directory of TASK."
   (expand-file-name (plist-get task :directory) (yeah-bench--root)))
+
+(defun yeah-bench--task-filter ()
+  "Return the ids of the tasks the environment asks for.
+The names come from `YEAH_BENCH_TASKS', comma separated.  The list is nil
+when the environment does not ask for a subset: then every task of the set
+is measured."
+  (let ((raw (getenv "YEAH_BENCH_TASKS")))
+    (when (and (stringp raw) (> (length (string-trim raw)) 0))
+      (let ((names (mapcar #'string-trim (split-string (string-trim raw) "," t))))
+        (unless (seq-every-p (lambda (name) (> (length name) 0)) names)
+          (error "the task filter names an empty task"))
+        names))))
+
+(defun yeah-bench--selected-tasks (tasks)
+  "Return the tasks of TASKS the environment asks for.
+A name the set does not hold is an error, never an empty run: a pilot that
+measured nothing would look like a pilot that measured everything."
+  (let ((filter (yeah-bench--task-filter)))
+    (if (null filter)
+        tasks
+      (let* ((known (mapcar (lambda (task) (plist-get task :id)) tasks))
+             (missing (seq-difference filter known)))
+        (when missing
+          (error "the task set does not hold the task(s) %s"
+                 (string-join missing ", ")))
+        (seq-filter (lambda (task) (member (plist-get task :id) filter)) tasks)))))
 
 ;;; The validation of the task set.
 
@@ -520,6 +550,36 @@ The keys of a record are the symbols of its fields."
 
 ;;; The honesty of the runner.
 
+(defun yeah-bench--filter-problems (tasks)
+  "Return the ways in which the filter of the measurement is not honest.
+The filter must select exactly the tasks it was asked for, must refuse a name
+the set does not hold, and must not drop a task when it is not asked to."
+  (let* ((problems nil)
+         (saved (getenv "YEAH_BENCH_TASKS"))
+         (known (mapcar (lambda (task) (plist-get task :id)) tasks))
+         (asked (cl-subseq known 0 (min 2 (length known)))))
+    (unwind-protect
+        (progn
+          (setenv "YEAH_BENCH_TASKS" (string-join asked ","))
+          (let ((selected (mapcar (lambda (task) (plist-get task :id))
+                                   (yeah-bench--selected-tasks tasks))))
+            (unless (equal selected asked)
+              (push (format "the filter selected %s instead of the tasks it was asked for: %s"
+                            (string-join selected ", ")
+                            (string-join asked ", "))
+                    problems)))
+          (setenv "YEAH_BENCH_TASKS" "no-such-task-in-the-set")
+          (unless (condition-case err
+                      (progn (yeah-bench--selected-tasks tasks) nil)
+                    (error t))
+            (push "the filter accepted a task that the set does not hold: a pilot that measured nothing would look like a pilot that measured everything"
+                  problems))
+          (setenv "YEAH_BENCH_TASKS" nil)
+          (unless (= (length (yeah-bench--selected-tasks tasks)) (length tasks))
+            (push "the filter dropped tasks when it was not asked to"
+                  problems)))
+      (setenv "YEAH_BENCH_TASKS" saved))))
+
 (defun yeah-bench--honesty-records (tasks)
   "Give every task of TASKS to the Yeah harness without credentials.
 Return the records the runner wrote.  The records go to a scratch results
@@ -628,16 +688,24 @@ a `passed' and never a `failed'."
           (princ (format "self-check: %s\n" problem)))
         (princ "self-check: the runner was not honest about a harness that could not run\n")
         (kill-emacs 1)))
+    (let ((dishonest (yeah-bench--filter-problems tasks)))
+      (when dishonest
+        (dolist (problem dishonest)
+          (princ (format "self-check: %s\n" problem)))
+        (princ "self-check: the filter of the measurement was not honest\n")
+        (kill-emacs 1)))
     (princ (format "self-check: %s tasks, every check fails before the work\n"
                    (length tasks)))
     (princ (format "self-check: %s tasks, every harness that could not run is recorded as skipped: no provider\n"
+                   (length tasks)))
+    (princ (format "self-check: %s tasks, the filter selects exactly the tasks it is asked for\n"
                    (length tasks)))
     (kill-emacs 0)))
 
 (defun yeah-bench--run-bench ()
   "Measure every task with every configured harness.
 Return a plist (:measurements LIST :file FILE)."
-  (let* ((tasks (yeah-bench--manifest))
+  (let* ((tasks (yeah-bench--selected-tasks (yeah-bench--manifest)))
          (timestamp (yeah-bench--timestamp))
          (file (yeah-bench--result-file timestamp))
          (session-root (expand-file-name timestamp (yeah-bench--results-directory)))
@@ -663,11 +731,18 @@ Return a plist (:measurements LIST :file FILE)."
      ((member "--self-check" arguments)
       (yeah-bench--self-check))
      ((member "--run" arguments)
-      (let* ((run (yeah-bench--run-bench))
-             (measurements (plist-get run :measurements)))
-        (yeah-bench--print-table measurements)
-        (princ (format "\nthe results are in %s\n" (plist-get run :file)))
-        (kill-emacs 0)))
+      (condition-case err
+          (let* ((run (yeah-bench--run-bench))
+                 (measurements (plist-get run :measurements)))
+            (yeah-bench--print-table measurements)
+            (princ (format "\nthe results are in %s\n" (plist-get run :file)))
+            (kill-emacs 0))
+        (error
+         ;; The task set and the filter are the input of the measurement: an
+         ;; unusable one is a blocked measurement, not a failed task.
+         (princ (format "the measurement cannot run: %s\n"
+                        (error-message-string err)))
+         (kill-emacs 2))))
      (t
       (princ "usage: emacs -Q --batch -L lib -l bench/run-bench.el -- [--self-check|--run]\n")
       (kill-emacs 2)))))

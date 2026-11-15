@@ -75,7 +75,7 @@ need_mathc() {
 # yesterday's code instead of today's. The bytecode is a build artifact, not
 # a part of the tree: it is removed before anything is loaded.
 clean_bytecode() {
-  rm -f lib/*.elc
+  rm -f lib/*.elc bench/*.elc
 }
 
 now_ms() {
@@ -207,7 +207,14 @@ EOF
       esac
     done
     # The task checks call emacs themselves: EMACS tells them which one.
-    EMACS="$emacs_bin" "$emacs_bin" -Q --batch -L lib -l bench/run-bench.el -- "$mode"
+    # gptel is not part of this repository: YEAH_BENCH_GPTEL_PATH names the
+    # directory it is installed in, so the Yeah harness can reach a provider.
+    clean_bytecode
+    gptel_args=()
+    if [ -n "${YEAH_BENCH_GPTEL_PATH:-}" ]; then
+      gptel_args=(-L "$YEAH_BENCH_GPTEL_PATH")
+    fi
+    EMACS="$emacs_bin" "$emacs_bin" -Q --batch "${gptel_args[@]}" -L lib -l bench/run-bench.el -- "$mode"
     exit $?
     ;;
 

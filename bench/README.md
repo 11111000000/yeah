@@ -76,6 +76,8 @@ text.
 | `YEAH_TEST_MODEL` | the model, for example `MiniMax-M3` |
 | `YEAH_BENCH_EXTERNAL_COMMAND` | the command template of the external harness |
 | `YEAH_BENCH_EXTERNAL_NAME` | the label of the external harness in the results (default `external`) |
+| `YEAH_BENCH_TASKS` | the tasks of the measurement, comma separated; every task of the set when it is not set |
+| `YEAH_BENCH_GPTEL_PATH` | the directory gptel is installed in — the Yeah harness reaches the provider through gptel, and gptel is not part of this repository |
 
 The Yeah harness drives Yeah through its own headless path, the way
 `tests/live/live-coding-task.el` does: the real tools, a real session, a real
