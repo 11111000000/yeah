@@ -55,13 +55,26 @@ work item. Never resolve it by silently making documentation more optimistic.
   has not changed; wave 26 makes a guessed tick ignored rather than
   refused (the claim
   `a-guessed-tick-does-not-refuse-an-unchanged-file'), and that task of the
-  pilot passes now.  The provider, however, is overloaded for hours (HTTP 529
-  to both harnesses), so the pilot of 15:02 measured one task of three and
-  two blocked runs: the runner records a run the provider stopped as
-  **blocked**, neither a pass nor a failure (the claim
-  `a-provider-failure-is-not-a-failure-of-the-agent').  The threshold of
-  the parity is a decision of the owner (docs/PLAN.md §13), and nobody may
-  quote the pilot as a verdict about parity.
+  pilot passes now.  The provider was overloaded for hours (HTTP 529 to both
+  harnesses), so the pilot of 15:02 measured one task of three and two
+  blocked runs: the runner records a run the provider stopped as **blocked**,
+  neither a pass nor a failure (the claim
+  `a-provider-failure-is-not-a-failure-of-the-agent').  The pilot of 15:39, on
+  the code of wave 28, measured two tasks of three — Yeah passed both of them
+  and pi passed all three — and the third was blocked, because the transport
+  to the provider died.  The parity of that run is not measured either.  The
+  threshold of the parity is a decision of the owner (docs/PLAN.md §13), and
+  nobody may quote the pilot as a verdict about parity.
+- A decision that arrives while the tools of the previous decision are still
+  running no longer breaks the run: the turn keeps the calls, runs them when
+  the running batch has settled, and gives the model the results of every
+  batch together (wave 28, the claims
+  `a-decision-that-arrives-while-the-tools-run-does-not-break-the-run' and
+  `the-same-tool-call-does-not-run-twice').  The live checks of 15:38 hold
+  no transition error at all.  The live coding task still fails, and it fails
+  for another reason: the model of the provider answers with an empty message
+  and the run ends with the record "unfinished" — the work is not done, and
+  the run says so.
 - The tick of a file guards only the files that a buffer visits: the read
   of a file nobody has open returns no tick, and the edit of such a file
   has no guard at all.  docs/ARCHITECTURE.md §D5 promises the tick for

@@ -1202,6 +1202,22 @@ fails in the tools, not in the turn: the `read` of a file nobody has edited
 yet returns no tick, the model passes a plausible one, and the `edit`
 refuses it as stale although the file has not changed.
 
+**The pilot after the tick (2026-11-15, wave 26).**  The same three tasks
+(`bench/results/20261115T150251Z.jsonl`): the task that the tick refused now
+passes — `fix-failing-test` — and the two others were blocked by an overload
+of the provider (HTTP 529).  pi passed all three.  The parity of that run is
+not measured either: one task of three says that Yeah does what pi does on
+it, and the two blocked tasks say nothing about either harness.
+
+**The pilot after the turn learned to wait (2026-11-15, wave 28).**  The same
+three tasks on the code of wave 28 (`bench/results/20261115T153957Z.jsonl`):
+Yeah passed `read-answer` and `write-new-file`; `fix-failing-test` was
+blocked, because the transport to the provider died ("Curl failed with exit
+code 28"), so the run was not measured at all.  pi passed all three.  Two
+tasks of three are measured for Yeah now, and both pass; the parity of the
+run is still not measured, because the third task says nothing about either
+harness.
+
 **Open, for the next wave:** the threshold of the parity, which remains a
 decision of the owner (Section 13).  The tick of a file — a model that has
 no tick must not be punished for guessing one — is the subject of 16.9.

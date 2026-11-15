@@ -245,6 +245,56 @@ fixed.  The check of the benchmark is the arbiter there, so the measurement
 is right; the outcome of a run that says "failed" after the work is done is
 an open question of the product.
 
+## The pilot after the turn learned to wait (2026-11-15, 15:39)
+
+The fifth run of the pilot, on the code of wave 28 (`6c139e5`), under the same
+conditions (`bench/results/20261115T153957Z.jsonl`):
+
+| Task | Yeah | pi |
+|---|---|---|
+| `read-answer` | **passed** — the check exits 0, the turn ends in completed | passed |
+| `fix-failing-test` | blocked — the transport to the provider died (curl, exit code 28) | passed |
+| `write-new-file` | **passed** — the check exits 0, the turn ends in completed | passed |
+
+Two tasks of three are measured for Yeah now, and both pass; the third is
+not measured at all: the journal of the run holds one line — "Curl failed
+with exit code 28" — and the runner records the run as **blocked**, neither
+a pass nor a failure of the agent (wave 27).
+
+The parity is therefore **not measured** on this run either: two tasks say
+that Yeah does what pi does on them, and the third says nothing about either
+harness.  What the run does say is that the provider answered at all — it was
+overloaded for hours before — and that the two tasks of the run that the
+provider answered, Yeah passed.
+
+## The live checks after the turn learned to wait (2026-11-15, 15:37)
+
+The live checks on the code of wave 28 (`6c139e5`), with a live provider:
+
+| Check | Exit | What it says |
+|---|---|---|
+| `live-model-call` | 0 | the provider answers |
+| `live-coding-task` | 1 | the model answered with an empty message and the run ended without an effect |
+| `live-interactive-path` | 0 | the interactive path works with a live model |
+| `live-service-path` | 0 | the service path works with a live model |
+| `live-fixed-point` | 0 | a child repaired a canary and the canary passes afterwards |
+| `live-clean-install` | 0 | the package installs into a clean Emacs |
+
+The defect of wave 28 is gone: **no journal of this run holds a transition
+error**.  The run of 15:11 died with "no transition from awaiting-tool on
+stream-end" and "no transition from failed on tool-call"; the run of 15:38
+holds none, and the interactive path, the service path and the fixed point
+all pass with a live model.
+
+The coding task still fails, and it fails for another reason.  The journal
+holds no error: the model answered with an empty message three times — it
+put its plan into the reasoning and emitted neither a text nor a tool call —
+and the run ended with the record `unfinished: the model answered with an
+empty message 3 times and the run ended without an effect`.  The file was
+not repaired, and the check of the task did not pass.  A run that says it
+ended without an effect is honest; what the provider does with the tools of
+a turn is not in the hands of the harness.
+
 ## A run of an overloaded provider (2026-11-15, 14:55)
 
 The run of 14:55 (`bench/results/20261115T145542Z.jsonl`) is **not** a
@@ -304,12 +354,18 @@ runner of today would be recorded as blocked.
 - The parity with other harnesses is measured on three tasks only, and the
   difference it found was a defect of one turn, not a difference of quality.
   The threshold is not decided (`docs/PLAN.md` §13), the sample is small, and
-  the two tasks of the last run were blocked by an overload of the provider —
-  so the parity of the last run is not measured at all.
+  the third task of the last run was blocked by a failure of the transport —
+  so the parity of the last run is not measured either.
 - The outcome of a run does not describe the work that was done: the run of
   `fix-failing-test` ended in "failed" because the provider failed after the
   edit, while the check of the task passed.  The check of the benchmark is the
   arbiter, so the measurement is right; the person is told something else.
+- The model of the provider goes silent after a batch of tool results: it puts
+  its plan into the reasoning and emits neither a text nor a tool call.  The
+  run then ends with the record "unfinished", which is honest, but the work is
+  not done: the live coding task of 15:38 repaired nothing.  The nudge carries
+  the state of the work (wave 25), and the harness cannot do more than ask
+  again; what the provider does with the tools of a turn is not in its hands.
 - The provider is overloaded for hours: HTTP 529 to both harnesses, and a
   plain model call that answers with nothing now and then.  A measurement of
   the parity needs a provider that answers; until then the runs that the
