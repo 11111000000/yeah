@@ -1390,6 +1390,47 @@ written every time and the check could not fail.
 repeat the call again; the identity of a call is still the tool and its
 arguments, because the transport offers no identity of its own.
 
+### 16.14 The checks read the journals and not the lock files next to them — **done on 2026-11-15 (wave 31)**
+
+The verdict of the method on the code of wave 30 was `unknown', and the reason
+was not the wave: the check of the standing permissions ended with exit 255.
+Emacs aborted with `file-missing' instead of the check failing on its own
+assertion, and the method reads a crashed verifier as an error and not as a
+proven control, so the claim came out `inconclusive' while every other claim of
+the run was `pass'.
+
+The check read every file of the data home whose name ends in `.jsonl'.  Emacs
+leaves the lock file of a journal next to the journal itself while a process
+holds it open.  The lock file is not a journal: it carries no record, it exists
+only while the file is held, and it disappears without a warning.  The check
+caught one between the scan of the directory and the read of the file, and the
+read of a file that was gone aborted Emacs.
+
+The rule was known in the project and two of the checks followed it
+(`tests/live/live-service-path.el' and
+`tests/checks/check-client-disconnect-during-permission.el' skip the files whose
+name starts with `.#'); the other checks did not.  There is one reader of the
+journals now (`tests/support/yeah-journal-files.el'): it skips the lock files
+and it survives a file that vanishes between the scan and the read, so that a
+check fails on its assertion and not on the filesystem.
+
+Measured: the lock file appeared in the scan of the check two to four times
+per run on the code of wave 30 and not once on the code of wave 29 — the change
+of wave 30, where the drop no longer closes the activity of the call that
+still runs, keeps the client reading the journal while the service still holds
+it.  With the reader of the journals the control of the claim of the standing
+permissions ends with exit 1 and the assertion "the granted permission did not
+reach the service", which is a real assertion and not a crash.
+
+The wave changes the checks and not the product: nothing in `lib/' moves, and
+the claim of the standing permissions keeps its meaning.  The reader has no
+claim of its own: that claim was already in the specification, and what the
+wave does is to make its control provable instead of crashed.
+
+**Open:** a journal that is written while it is read can still be read
+half-written; the wave does not make that race impossible, and the checks that
+wait for an event wait until they find it.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then

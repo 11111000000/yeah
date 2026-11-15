@@ -98,6 +98,12 @@ work item. Never resolve it by silently making documentation more optimistic.
   side effect; the identity of a call is still the tool and its arguments.
   docs/ARCHITECTURE.md §D1 was amended, not weakened: the vocabulary it
   names now includes dropped calls.
+- The checks read the journals through one reader
+  (`tests/support/yeah-journal-files.el`), and that reader skips the lock
+  files of Emacs (`.#`) next to a journal and survives a journal that
+  vanishes between the scan and the read. A check that crashes on the
+  filesystem does not fail on its assertion, and the method reads a crashed
+  verifier as an error and not as a proven control (wave 31).
 - Stage 7 is implemented offline: an agent preset is a file (a Markdown or
   Org header and a body), and a child runs for real in its own session with
   only the tools it was granted. The fixed-point demonstration passes with
