@@ -33,7 +33,7 @@
 
 (defun yeah-check--next-message (&optional timeout)
   "Return the next message the client received, or nil."
-  (let ((deadline (+ (float-time) (or timeout 10)))
+  (let ((deadline (+ (float-time) (or timeout 5)))
         (message nil))
     (while (and (null message) (< (float-time) deadline))
       (accept-process-output nil 0.05)
@@ -53,7 +53,7 @@
 
 (defun yeah-check--await (predicate &optional timeout)
   "Return the next message that satisfies PREDICATE."
-  (let ((deadline (+ (float-time) (or timeout 10)))
+  (let ((deadline (+ (float-time) (or timeout 5)))
         (message nil))
     (while (and (null message) (< (float-time) deadline))
       (let ((candidate (yeah-check--next-message 1)))
@@ -77,7 +77,7 @@
                  "(funcall callback \"done\"))")
          data-home
          "#'yeah-check--transport")
-        (setq connection (yeah-service-connect name 15))
+        (setq connection (yeah-service-connect name 6))
         (unless connection
           (push "the client could not connect to the service" failures))
         (when connection
@@ -117,7 +117,7 @@
                      :params (list :sessionId session-id
                                    :prompt (vector (list :type "text"
                                                          :text "hi")))))
-              (let ((answer (yeah-check--await (yeah-check--response 3) 15)))
+              (let ((answer (yeah-check--await (yeah-check--response 3) 5)))
                 (unless (equal "end_turn"
                                (plist-get (plist-get answer :result)
                                           :stopReason))

@@ -60,7 +60,7 @@ client about the second and answers the first by itself."
      (list :cwd data-home :mcpServers nil)
      (lambda (result _error)
        (setq session-id (plist-get result :sessionId))))
-    (let ((deadline (+ (float-time) 15)))
+    (let ((deadline (+ (float-time) 8)))
       (while (and (null session-id) (< (float-time) deadline))
         (accept-process-output nil 0.05)))
     (when session-id
@@ -69,7 +69,7 @@ client about the second and answers the first by itself."
        (list :sessionId session-id
              :prompt (vector (list :type "text" :text "read it")))
        (lambda (_result _error) nil)))
-    (let ((deadline (+ (float-time) 15)))
+    (let ((deadline (+ (float-time) 8)))
       (while (and (null (yeah-check--decisions data-home))
                   (< (float-time) deadline))
         (accept-process-output nil 0.05)))

@@ -50,7 +50,7 @@ Return the process and the buffer holding its output."
 
 (defun yeah-check--await-line (buffer &optional timeout)
   "Return the next complete JSON line in BUFFER, waiting at most TIMEOUT."
-  (let ((deadline (+ (float-time) (or timeout 10)))
+  (let ((deadline (+ (float-time) (or timeout 5)))
         (line nil))
     (while (and (null line) (< (float-time) deadline))
       (accept-process-output nil 0.05)

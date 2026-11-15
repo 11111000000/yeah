@@ -48,7 +48,7 @@
         (progn
           (yeah-service-start name nil data-home nil t nil)
           (let ((socket (yeah-service-socket-path name))
-                (deadline (+ (float-time) 15)))
+                (deadline (+ (float-time) 8)))
             (while (and (not (file-exists-p socket)) (< (float-time) deadline))
               (accept-process-output nil 0.05))
             (unless (file-exists-p socket)

@@ -64,7 +64,7 @@
 
 (defun yeah-check--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE holds, at most TIMEOUT seconds."
-  (let ((deadline (+ (float-time) (or timeout 20))))
+  (let ((deadline (+ (float-time) (or timeout 10))))
     (while (and (not (funcall predicate)) (< (float-time) deadline))
       (accept-process-output nil 0.05))
     (funcall predicate)))

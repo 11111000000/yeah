@@ -53,7 +53,7 @@ The tools are asynchronous: the result arrives through the continuation,
 so the event loop is pumped until it does."
   (let ((cell (list nil)))
     (yeah-tools-dispatch name args (lambda (result) (setf (car cell) result)))
-    (let ((deadline (+ (float-time) 30)))
+    (let ((deadline (+ (float-time) 15)))
       (while (and (null (car cell)) (< (float-time) deadline))
         (accept-process-output nil 0.05)))
     (or (car cell) (yeah-result-error "the tool never answered"))))

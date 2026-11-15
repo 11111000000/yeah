@@ -39,7 +39,7 @@
 
 (defun yeah-check--await (probe &optional timeout)
   "Wait until (funcall PROBE) is non-nil, up to TIMEOUT seconds."
-  (let ((deadline (+ (float-time) (or timeout 15))))
+  (let ((deadline (+ (float-time) (or timeout 8))))
     (while (and (not (funcall probe)) (< (float-time) deadline))
       (accept-process-output nil 0.05))
     (funcall probe)))

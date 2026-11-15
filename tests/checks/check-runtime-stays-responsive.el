@@ -38,7 +38,7 @@
       (unless (< elapsed 1.0)
         (message "responsive: the estimate took %.3f s for 10 MiB" elapsed)
         (kill-emacs 1))
-      (accept-process-output nil 3.0)
+      (accept-process-output nil 1.5)
       (let ((slack (and fired-at (- fired-at start))))
         (unless (and fired-at (< slack 3.0))
           (message "responsive: the timer fired late (%s s)" slack)

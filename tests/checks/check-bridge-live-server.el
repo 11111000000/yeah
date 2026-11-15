@@ -73,8 +73,8 @@
   (and (zerop (car (yeah-check--daemon-eval name "t"))) t))
 
 (defun yeah-check--daemon-await (name)
-  "Wait until the server NAME answers, at most 15 seconds."
-  (let ((deadline (+ (float-time) 15)))
+  "Wait until the server NAME answers, at most 8 seconds."
+  (let ((deadline (+ (float-time) 8)))
     (while (and (not (yeah-check--daemon-alive-p name))
                 (< (float-time) deadline))
       (accept-process-output nil 0.1))
@@ -91,7 +91,7 @@ A bridge call is killed after the bridge's own 2-second timeout, and on a
 loaded machine a single call can lose that race; the check asks for live
 state, not for one fast call, so it retries instead of reporting a slow
 server as a broken bridge."
-  (let ((deadline (+ (float-time) (or timeout 15)))
+  (let ((deadline (+ (float-time) (or timeout 8)))
         (got nil))
     (while (and (not (equal got expected)) (< (float-time) deadline))
       (setq got (condition-case nil

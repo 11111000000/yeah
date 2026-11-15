@@ -5,6 +5,7 @@
 #   smoke                 — print "yeah-dev ok" and exit 0
 #   byte-compile-all      — byte-compile every file under lib/ and the package entry
 #   ert FILE...           — run ERT test files (tests/unit/*.el)
+#   bench [--run]         — validate the benchmark task set, or run the benchmark
 #   map                   — the standing specification: claims, states, uncovered
 #   run                   — execute the checks, bind the evidence, write the trail
 #   gate                  — run, then map; the exit code is the verdict
@@ -76,6 +77,10 @@ clean_bytecode() {
   rm -f lib/*.elc
 }
 
+now_ms() {
+  printf '%s' "$(( $(date +%s%N) / 1000000 ))"
+}
+
 case "$cmd" in
   help|--help|-h)
     cat <<'EOF'
@@ -85,6 +90,7 @@ Subcommands:
   smoke                 — print "yeah-dev ok" and exit 0
   byte-compile-all      — byte-compile lib/*.el (including lib/yeah.el), no warnings
   ert FILE...           — run ERT test files (tests/unit/*.el)
+  bench [--run]         — validate the benchmark task set, or run the benchmark
   map                   — the standing specification: claims, states, uncovered
   run                   — execute the checks, bind the evidence, write the trail
   gate                  — run, then map; the exit code is the verdict
@@ -158,7 +164,9 @@ EOF
     }
     clean_bytecode
     rc=0
+    started="$(now_ms)"
     for f in "$@"; do
+      before="$(now_ms)"
       case "$f" in
         *.el)
           "$emacs_bin" -Q --batch -L lib -L . -l "$f" || rc=$?
@@ -171,8 +179,34 @@ EOF
           exit 2
           ;;
       esac
+      printf 'check: %6d ms  %s\n' "$(( $(now_ms) - before ))" "$f"
     done
+    printf 'check: %6d ms  total for %s file(s)\n' "$(( $(now_ms) - started ))" "$#"
     exit $rc
+    ;;
+
+  bench)
+    emacs_bin="$(find_emacs)" || {
+      echo "scripts/dev bench: emacs is not on PATH and EMACS is not set" >&2
+      exit 3
+    }
+    if [ ! -f bench/run-bench.el ]; then
+      echo "scripts/dev bench: bench/run-bench.el does not exist" >&2
+      exit 2
+    fi
+    mode="--self-check"
+    for arg in "$@"; do
+      case "$arg" in
+        --run) mode="--run" ;;
+        *)
+          echo "scripts/dev bench: unknown option: $arg" >&2
+          exit 2
+          ;;
+      esac
+    done
+    # The task checks call emacs themselves: EMACS tells them which one.
+    EMACS="$emacs_bin" "$emacs_bin" -Q --batch -L lib -l bench/run-bench.el -- "$mode"
+    exit $?
     ;;
 
   map)

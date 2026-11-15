@@ -60,7 +60,7 @@ loss is certain without the fix.")
          :connection-type 'pipe
          :noquery t)
         ;; wait for the server
-        (let ((deadline (+ (float-time) 15)))
+        (let ((deadline (+ (float-time) 8)))
           (while (and (< (float-time) deadline)
                       (not (zerop (with-temp-buffer
                                     (call-process yeah-check--emacsclient nil t nil

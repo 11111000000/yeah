@@ -72,7 +72,7 @@ answers every later prompt with text."
 (defun yeah-check--connect (socket)
   "Connect to the server on SOCKET and return the connection process.
 The connection is retried until the server is listening."
-  (let ((deadline (+ (float-time) 20))
+  (let ((deadline (+ (float-time) 10))
         (connection nil))
     (while (and (null connection) (< (float-time) deadline))
       (setq connection
@@ -99,8 +99,8 @@ The connection is retried until the server is listening."
 
 (defun yeah-check--next-message (&optional timeout)
   "Return the next message the client received, or nil.
-TIMEOUT defaults to 10 seconds."
-  (let ((deadline (+ (float-time) (or timeout 10)))
+TIMEOUT defaults to 5 seconds."
+  (let ((deadline (+ (float-time) (or timeout 5)))
         (message nil))
     (while (and (null message) (< (float-time) deadline))
       (accept-process-output nil 0.05)
@@ -116,7 +116,7 @@ TIMEOUT defaults to 10 seconds."
   "Return the next message that satisfies PREDICATE.
 Messages that do not satisfy it are skipped.  TIMEOUT defaults to 10
 seconds."
-  (let ((deadline (+ (float-time) (or timeout 10)))
+  (let ((deadline (+ (float-time) (or timeout 5)))
         (message nil))
     (while (and (null message) (< (float-time) deadline))
       (let ((candidate (yeah-check--next-message 1)))
@@ -202,7 +202,7 @@ seconds."
                  connection
                  (list :jsonrpc "2.0" :method "session/cancel"
                        :params (list :sessionId session-id)))
-                (let ((response (yeah-check--await (yeah-check--response 3) 10)))
+                (let ((response (yeah-check--await (yeah-check--response 3) 4)))
                   (unless (equal "cancelled"
                                  (plist-get (plist-get response :result)
                                             :stopReason))
@@ -218,7 +218,7 @@ seconds."
                        :params (list :sessionId session-id
                                      :prompt (vector (list :type "text"
                                                            :text "again")))))
-                (let ((response (yeah-check--await (yeah-check--response 4) 10)))
+                (let ((response (yeah-check--await (yeah-check--response 4) 4)))
                   (unless (equal "end_turn"
                                  (plist-get (plist-get response :result)
                                             :stopReason))

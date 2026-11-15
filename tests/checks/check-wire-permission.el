@@ -39,7 +39,7 @@ fail with \"file exists\", which is not a refusal."
 
 (defun yeah-check--next-message (buffer &optional timeout)
   "Return the next JSON line in BUFFER, or nil."
-  (let ((deadline (+ (float-time) (or timeout 10)))
+  (let ((deadline (+ (float-time) (or timeout 5)))
         (message nil))
     (while (and (null message) (< (float-time) deadline))
       (accept-process-output nil 0.05)
@@ -97,7 +97,7 @@ outcome."
                                   :prompt (vector (list :type "text" :text "write it")))))
             ;; the permission request arrives; answer it
             (let ((request nil))
-              (let ((deadline (+ (float-time) 15)))
+              (let ((deadline (+ (float-time) 8)))
                 (while (and (null request) (< (float-time) deadline))
                   (let ((message (yeah-check--next-message buffer 1)))
                     (when (and message
@@ -115,7 +115,7 @@ outcome."
                                           (list :outcome "cancelled")
                                         (list :optionId answer-option))))))
               ;; the prompt's answer
-              (let ((deadline (+ (float-time) 15)))
+              (let ((deadline (+ (float-time) 8)))
                 (while (and (null answer) (< (float-time) deadline))
                   (let ((message (yeah-check--next-message buffer 1)))
                     (when (and message (equal (plist-get message :id) 3))

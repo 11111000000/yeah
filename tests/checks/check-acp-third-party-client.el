@@ -73,7 +73,7 @@ research checkout in the user's home."
 
 (defun yeah-check--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT."
-  (let ((deadline (+ (float-time) (or timeout 20)))
+  (let ((deadline (+ (float-time) (or timeout 10)))
         (done nil))
     (while (and (not done) (< (float-time) deadline))
       (accept-process-output nil 0.05)
@@ -139,7 +139,7 @@ research checkout in the user's home."
                              (setq prompt-answer result))
                :on-failure (lambda (err) (push (format "prompt failed: %S" err)
                                                failures)))
-              (unless (yeah-check--await (lambda () prompt-answer) 20)
+              (unless (yeah-check--await (lambda () prompt-answer) 12)
                 (push "the prompt was not answered" failures))
               (unless (equal "end_turn" (map-elt (or prompt-answer '())
                                                  'stopReason))
