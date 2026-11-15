@@ -1779,6 +1779,52 @@
       "register": "fact",
       "control": "sed -i 's|^                            \"blocked\")$|                            \"failed\")|' bench/run-bench.el",
       "waiver": null
+    },
+    {
+      "id": "a-decision-that-arrives-while-the-tools-run-does-not-break-the-run",
+      "text": "A decision that arrives while the tools of the previous decision are still running waits for them: the run does not break, the decision is not lost, and the model sees the results of every batch together.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/unit/test-yeah-control.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+        }
+      ],
+      "falsifier": "a decision that arrives while the tools run ends the run in failure, or the decision is dropped and never runs",
+      "register": "fact",
+      "control": "sed -i \"s|((eq (yeah-turn-state turn) 'deciding)|((or (eq (yeah-turn-state turn) 'deciding) t)|\" lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-same-tool-call-does-not-run-twice",
+      "text": "A tool call that is already running is not run again: the model that says the same thing twice runs the tool once, because a tool that runs twice repeats its side effect.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/unit/test-yeah-control.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+        }
+      ],
+      "falsifier": "a tool call that is running runs a second time while it runs",
+      "register": "fact",
+      "control": "sed -i \"s|        (unless (cl-member key (yeah-turn-active-keys turn) :test #'equal)|        (unless nil|\" lib/yeah-turn.el",
+      "waiver": null
     }
   ]
 }

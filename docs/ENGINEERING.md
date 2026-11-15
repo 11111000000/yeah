@@ -103,6 +103,12 @@ sources or dependencies. Never load code from that directory in Yeah.
   A nil result is normalized before it reaches a provider serializer.
 - Waiting uses callbacks, timers or explicit states. Do not spin on
   `accept-process-output` in interactive execution paths.
+- A decision that arrives while the tools of the previous decision are still
+  running waits for them instead of breaking the run. The calls that are not
+  running yet are kept and run when the running batch has settled; the state
+  of the machine stays `awaiting-tool` until every batch has settled, and the
+  model receives the results of all of them together. A call that is already
+  running is not run again: a tool that runs twice repeats its side effect.
 - Cancellation is propagated to model requests, managed processes and pending
   callbacks. It does not claim transactional rollback, recursive process-tree
   termination or restoration of files.

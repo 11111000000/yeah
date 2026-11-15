@@ -1,0 +1,28 @@
+{
+  "id": "wave-28",
+  "title": "a decision that arrives too early does not break the run",
+  "intent": "The live check of 2026-11-15 at 15:11 failed with two errors in the journal of the run: \"yeah-loop-tick: no transition from awaiting-tool on stream-end\" and \"yeah-loop-tick: no transition from failed on tool-call\".  The run ended in failed although the model was working: the driver of the answer ticked the machine as if every decision arrived while the machine was deciding, and the machine has no transition for a decision that arrives while the tools of the previous decision are still running.  Such a decision is ordinary: the model asks for the next tool before the previous one has settled, and the transport may deliver the same decision twice.  The turn now keeps the calls that arrive too early, runs them when the running batch has settled, and delivers the results of every batch to the model together.  A call that is already running is not run again, because a tool that runs twice repeats its side effect.  A decision that arrives while the tools run is no longer a failure of the run, and it is no longer lost either.",
+  "touches": [
+    "lib/yeah-turn.el",
+    "tests/unit/test-yeah-control.el",
+    "spec.json",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "docs/ENGINEERING.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev ert tests/unit/test-yeah-control.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "a-decision-that-arrives-while-the-tools-run-does-not-break-the-run",
+    "the-same-tool-call-does-not-run-twice"
+  ],
+  "commitment": [],
+  "objection": "The turn decides that two calls are the same call by their tool and their arguments, not by an identity the transport gave.  A model that asks twice for the same tool with the same arguments in one turn therefore runs the tool once, and the second asking is dropped without a word in the journal.  Two calls that differ in their arguments are two calls, and both run.  The identity of the transport is not available to the harness: the pending calls of gptel carry a closure that is built anew for every delivery, so nothing stable identifies the call across two deliveries.  The silence about a dropped duplicate is recorded here as an open item: the journal of a run says nothing about the decision that was dropped, and a reader of the journal cannot tell it from a decision that never came.",
+  "refuted_by": "a decision that arrives while the tools run ends the run in failure, or the decision is dropped and never runs; or a tool call that is running runs a second time while it runs.",
+  "note": "Both claims have a control that bites and that changes the subject and not the check.  With the state of the machine no longer consulted, the decision that arrives too early is dispatched at once, the machine ticks a transition it does not have, and the test of the wave fails with a real assertion: the run ended in failed instead of completed, while the other 26 tests of the file keep passing.  With the guard against the repeated call removed, the probe of the second test runs twice and the test fails on the count of the runs (\"late-probe\" \"late-probe\"), and the other 26 tests keep passing.  The defect was found by the live check, not by a reading of the code: the journal of the run of 15:11 shows the model asking for the next tool while the previous one was still running, and the error that followed.  The fix keeps the shape of the machine: no new transition was added, and the counter of the transitions in tests/unit/test-yeah-loop.el stays at 20.  What the fix changes is the place where a decision that arrives too early waits."
+}

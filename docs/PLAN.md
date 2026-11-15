@@ -1264,6 +1264,40 @@ bites and that changes the subject and not the check: with the
 classification of a blocked run turned into a failure, the self-check of the
 task set fails with a real assertion.
 
+### 16.11 A decision that arrives too early does not break the run — **done on 2026-11-15 (wave 28)**
+
+The live check of 15:11 failed with two errors in the journal of the run:
+`yeah-loop-tick: no transition from awaiting-tool on stream-end` and
+`yeah-loop-tick: no transition from failed on tool-call`.  The run ended in
+failed although the model was working.  The driver of the answer ticked the
+machine as if every decision arrived while the machine was deciding; the
+machine has no transition for a decision that arrives while the tools of the
+previous decision are still running, and such a decision is ordinary: the
+model asks for the next tool before the previous one has settled, and the
+transport may deliver one decision twice.
+
+The turn now keeps the calls that arrive too early and runs them when the
+running batch has settled; the state of the machine stays `awaiting-tool'
+until every batch has settled, and the model sees the results of all of them
+together.  A call that is already running is not run again — a tool that runs
+twice repeats its side effect.  The shape of the machine did not change: no
+transition was added, and the counter of the transitions in
+`tests/unit/test-yeah-loop.el' stays at 20.
+
+Two claims carry the wave, and both have a control that bites and that
+changes the subject and not the check.  With the state of the machine no
+longer consulted, the decision that arrives too early is dispatched at once,
+the machine ticks a transition it does not have, and the test of the wave
+fails with a real assertion (the run ended in failed instead of completed)
+while the other 26 tests of the file keep passing.  With the guard against
+the repeated call removed, the probe of the second test runs twice and the
+test fails on the count of the runs.
+
+**Open:** the journal of a run says nothing about a decision that was dropped
+as a duplicate, so a reader of the journal cannot tell it from a decision
+that never came; the identity of the transport is not available to the
+harness, and the wave compares the tool and its arguments instead.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then

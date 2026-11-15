@@ -430,6 +430,119 @@ starts the work over."
       (setq yeah-turn-test--late-callback nil)
       (ignore-errors (delete-directory root t t)))))
 
+(defvar yeah-turn-test--late-decision nil
+  "The decision that arrives while a tool runs, captured while it runs.")
+
+(ert-deftest yeah-turn-a-tool-call-that-arrives-while-a-tool-runs-does-not-break-the-run ()
+  "A decision that arrives while the tools run waits for them.
+The machine has no transition for a decision that arrives while the tools
+run: the decision waits, the tools run, and the run does not break."
+  (let* ((root (make-temp-file "yeah-late-decision" t))
+         (session (yeah-session-open "late-decision" root))
+         (ran nil))
+    (unwind-protect
+        (progn
+          (yeah-perm-rules-add (yeah-perm-rule-make "late-probe" "*" 'allow))
+          (yeah-perm-rules-add (yeah-perm-rule-make "late-second" "*" 'allow))
+          (yeah-tools-register
+           (list :name "late-probe"
+                 :description "A probe that lets the model call again while it runs."
+                 :input nil
+                 :handler (lambda ()
+                            (when yeah-turn-test--late-decision
+                              (funcall yeah-turn-test--late-decision)))))
+          (yeah-tools-register
+           (list :name "late-second"
+                 :description "The tool the model asks for while the first one runs."
+                 :input nil
+                 :handler (lambda ()
+                            (push "late-second" ran))))
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq yeah-turn-test--late-decision
+                                (lambda ()
+                                  ;; The model asks for another tool while the
+                                  ;; first one is still running.
+                                  (funcall callback
+                                           (list 'tool-call
+                                                 (list (list :name "late-second")
+                                                       (list)
+                                                       (lambda (_value) nil))))))
+                          (funcall callback
+                                   (list 'tool-call
+                                         (list (list :name "late-probe")
+                                               (list)
+                                               (lambda (_value)
+                                                 (funcall callback "the work is done"))))))
+                        nil 60000 0)))
+            (let ((deadline (+ (float-time) 5)))
+              (while (and (not (yeah-turn-done turn))
+                          (< (float-time) deadline))
+                (accept-process-output nil 0.05)))
+            (should (yeah-turn-done turn))
+            (should (eq 'completed (yeah-turn-state turn)))
+            ;; The decision that arrived too early was not lost: it ran.
+            (should (equal '("late-second") ran))
+            (should-not (cl-find-if
+                         (lambda (record)
+                           (equal "error" (plist-get record :type)))
+                         (yeah-session-records session))))
+      (yeah-tools-unregister "late-probe")
+      (yeah-tools-unregister "late-second")
+      (setq yeah-turn-test--late-decision nil)
+      (ignore-errors (delete-directory root t t))))))
+
+(ert-deftest yeah-turn-the-same-tool-call-does-not-run-twice ()
+  "A decision that repeats a call that is running does not run it again.
+The model said the same thing twice; the tool runs once."
+  (let* ((root (make-temp-file "yeah-repeat" t))
+         (session (yeah-session-open "repeat" root))
+         (ran nil)
+         (repeated nil))
+    (unwind-protect
+        (progn
+          (yeah-perm-rules-add (yeah-perm-rule-make "late-probe" "*" 'allow))
+          (yeah-tools-register
+           (list :name "late-probe"
+                 :description "A probe that lets the model repeat its call."
+                 :input nil
+                 :handler (lambda ()
+                            (push "late-probe" ran)
+                            (when yeah-turn-test--late-decision
+                              (funcall yeah-turn-test--late-decision)))))
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq yeah-turn-test--late-decision
+                                (lambda ()
+                                  (unless repeated
+                                    (setq repeated t)
+                                    ;; The model says the same thing again
+                                    ;; while the first call is still running.
+                                    (funcall callback
+                                             (list 'tool-call
+                                                   (list (list :name "late-probe")
+                                                         (list)
+                                                         (lambda (_value) nil)))))))
+                          (funcall callback
+                                   (list 'tool-call
+                                         (list (list :name "late-probe")
+                                               (list)
+                                               (lambda (_value)
+                                                 (funcall callback "the work is done"))))))
+                        nil 60000 0)))
+            (let ((deadline (+ (float-time) 5)))
+              (while (and (not (yeah-turn-done turn))
+                          (< (float-time) deadline))
+                (accept-process-output nil 0.05)))
+            (should (yeah-turn-done turn))
+            (should (eq 'completed (yeah-turn-state turn)))
+            (should (equal '("late-probe") ran)))
+      (yeah-tools-unregister "late-probe")
+      (setq yeah-turn-test--late-decision nil)
+      (ignore-errors (delete-directory root t t))))))
+
 (ert-deftest yeah-turn-finish-ends-the-run-with-the-summary ()
   "The model ends the run by calling the finish tool, not by talk."
   (let* ((root (make-temp-file "yeah-finish" t))

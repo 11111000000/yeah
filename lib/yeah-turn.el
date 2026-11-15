@@ -67,7 +67,13 @@ ERROR holds the reason when the run stopped for a reason of its own.
 TOOLS-REGISTRY is the registry snapshot of this run, or nil for the
 shared one.  WORK-STATE holds what the tools of this run have done, the
 newest result first: the nudge that follows a silence of the model carries
-it, so that the model continues instead of starting the work over."
+it, so that the model continues instead of starting the work over.
+
+PENDING-CALLS holds the tool calls that arrived while another batch was
+running, in the order they arrived.  PENDING-RESULTS holds the batches that
+have settled and whose results the model has not seen yet.  ACTIVE-KEYS holds
+the keys of the calls that run or wait to run, so that the same call is never
+run twice."
   (session nil)
   (state 'idle)
   (states nil)
@@ -92,6 +98,9 @@ it, so that the model continues instead of starting the work over."
   (transport nil)
   (answerer nil)
   (pending-answer nil)
+  (pending-calls nil)
+  (pending-results nil)
+  (active-keys nil)
   (pending-permissions nil)
   (permissions 0)
   (settlements nil)
@@ -411,9 +420,94 @@ both are left out when there is nothing to say."
     (when reason (plist-put fields :reason reason))
     fields))
 
-(defun yeah-turn--continue-batch (turn calls results)
-  "Continue TURN after tool CALLS and RESULTS, compacting first if needed.
-Steering is delivered only after the entire batch has settled."
+(defun yeah-turn--call-key (call)
+  "Return the key that identifies CALL: its tool and its arguments.
+Two calls with the same key ask for the same work; running one of them
+twice would repeat a side effect."
+  (list (yeah-turn--tool-name (nth 0 call))
+        (nth 1 call)))
+
+(defun yeah-turn--accept-calls (turn calls)
+  "Accept CALLS into TURN and return the calls that are not running yet.
+A call that already runs or already waits to run is dropped: the model
+said it twice, and the second saying changes nothing."
+  (let (new)
+    (dolist (call calls)
+      (let ((key (yeah-turn--call-key call)))
+        (unless (cl-member key (yeah-turn-active-keys turn) :test #'equal)
+          (push call new)
+          (push key (yeah-turn-active-keys turn)))))
+    (nreverse new)))
+
+(defun yeah-turn--release-calls (turn calls)
+  "Forget the keys of CALLS: they have settled and may run again."
+  (dolist (call calls)
+    (let ((key (yeah-turn--call-key call)))
+      (setf (yeah-turn-active-keys turn)
+            (cl-delete key (yeah-turn-active-keys turn) :test #'equal)))))
+
+(defun yeah-turn--take-results (turn)
+  "Return the batches of TURN that have settled, and forget them."
+  (let ((batches (reverse (yeah-turn-pending-results turn))))
+    (setf (yeah-turn-pending-results turn) nil)
+    batches))
+
+(defun yeah-turn--take-calls (turn answerer transport calls)
+  "Take the tool calls CALLS that a response of the model brought.
+A batch that arrives while the turn is deciding runs at once.  A batch
+that arrives while another one is running waits: the calls that are not
+running yet are kept, and they run when the running batch has settled.
+The turn is not broken by such a decision: the machine has no transition
+for a decision that arrives while the tools run, and the decision is not
+lost either."
+  (let ((new (yeah-turn--accept-calls turn calls)))
+    (cond
+     ((null new)
+      nil)
+     ((eq (yeah-turn-state turn) 'deciding)
+      (yeah-turn--tick turn 'stream-end)
+      (yeah-turn--tick turn 'tool-call)
+      (yeah-turn--dispatch-batch turn answerer new transport))
+     (t
+      (setf (yeah-turn-pending-calls turn)
+            (append (yeah-turn-pending-calls turn) (list new)))
+      nil))))
+
+(defun yeah-turn--dispatch-next (turn transport)
+  "Dispatch the next batch of calls that waits in TURN."
+  (let ((calls (car (yeah-turn-pending-calls turn))))
+    (setf (yeah-turn-pending-calls turn)
+          (cdr (yeah-turn-pending-calls turn)))
+    (yeah-turn--dispatch-batch turn (yeah-turn-answerer turn) calls transport)))
+
+(defun yeah-turn--deliver-results (batches steering)
+  "Deliver the results of BATCHES to the model of the turn.
+STEERING is what the person said while the tools ran; it rides with the
+first result."
+  (let ((batch-index 0)
+        (clarification
+         (mapconcat (lambda (input)
+                      (concat "\n\nUser clarification: "
+                              (plist-get input :prompt)))
+                    steering "")))
+    (dolist (batch batches)
+      (let ((calls (car batch))
+            (results (cdr batch))
+            (index 0))
+        (dolist (call calls)
+          (let ((continue (nth 2 call))
+                (value (concat (yeah-result-model-text (aref results index))
+                               (if (zerop batch-index) clarification ""))))
+            (when continue
+              (funcall continue value)))
+          (setq index (1+ index)))
+        (setq batch-index (1+ batch-index))))))
+
+(defun yeah-turn--continue-batch (turn)
+  "Continue TURN after the tools it dispatched have settled.
+The results of every batch that has settled are delivered to the model
+together: the model continues when all of them are known.  Steering is
+delivered only after the entire batch has settled."
   (unless (yeah-turn-done turn)
     (let ((steering (and (functionp (yeah-turn-steer-source turn))
                          (funcall (yeah-turn-steer-source turn) turn))))
@@ -426,30 +520,32 @@ Steering is delivered only after the entire batch has settled."
         ('accumulating (yeah-turn--tick turn 'budget-ok))
         ('compacting (yeah-turn--tick turn 'compact-done)))
       (yeah-turn--tick turn 'continue)
-      (let ((pending (yeah-turn-pending-answer turn)))
+      (let ((answered nil)
+            (pending (yeah-turn-pending-answer turn)))
         (when pending
           ;; The model already said its last word while the tools were
           ;; running.  That answer ends the run now; asking again would
           ;; only repeat it.
           (setf (yeah-turn-pending-answer turn) nil)
+          (setq answered t)
           (yeah-turn--answer-text
-           turn pending (yeah-turn-transport turn) (yeah-turn-answerer turn))
-          (setq calls nil)))
-      (let ((index 0)
-            (clarification
-             (mapconcat (lambda (input)
-                          (concat "\n\nUser clarification: "
-                                  (plist-get input :prompt)))
-                        steering "")))
-        (dolist (call calls)
-          (let ((continue (nth 2 call))
-                (value (concat (yeah-result-model-text (aref results index))
-                               (if (zerop index) clarification ""))))
-            (when continue
-              (funcall continue value)))
-          (setq index (1+ index)))))))
+           turn pending (yeah-turn-transport turn) (yeah-turn-answerer turn)))
+        (cond
+         (answered
+          ;; The run ends with the answer of the model; the results of the
+          ;; tools are of no use to anybody now.
+          (setf (yeah-turn-pending-results turn) nil))
+         ((yeah-turn-pending-calls turn)
+          ;; A decision arrived while the results were being prepared: it
+          ;; runs now, and the results of every batch reach the model
+          ;; together.
+          (yeah-turn--tick turn 'stream-end)
+          (yeah-turn--tick turn 'tool-call)
+          (yeah-turn--dispatch-next turn (yeah-turn-transport turn)))
+         (t
+          (yeah-turn--deliver-results (yeah-turn--take-results turn) steering)))))))
 
-(defun yeah-turn--maybe-compact (turn transport calls results)
+(defun yeah-turn--maybe-compact (turn transport)
   "Compact TURN's session before continuing when its budget overflows."
   (if (yeah-context-overflow-p
        (yeah-context-project (yeah-turn-session turn))
@@ -464,9 +560,9 @@ Steering is delivered only after the entire batch has settled."
            (unless (yeah-turn-done turn)
              (if (plist-get result :error)
                  (yeah-turn--fail turn (plist-get result :error))
-               (yeah-turn--continue-batch turn calls results))))
+               (yeah-turn--continue-batch turn))))
          (lambda () (not (yeah-turn-done turn)))))
-    (yeah-turn--continue-batch turn calls results)))
+    (yeah-turn--continue-batch turn)))
 
 (defun yeah-turn--prepare-batch (turn answerer calls)
   "Return the prepared slots of CALLS, in the order of the calls.
@@ -525,7 +621,9 @@ handler and the concurrency the tool asks for."
 (defun yeah-turn--settle-batch (turn transport calls prepared runnable
                                       results refused settled)
   "Record the settled batch of TURN and continue it in CALLS request order.
-PREPARED supplies stable ids and structured result details for every tool-end."
+PREPARED supplies stable ids and structured result details for every tool-end.
+A batch that arrived while this one was running runs now, and the model sees
+the results of every batch together."
   (let ((i 0))
     (dolist (slot runnable)
       (aset results (plist-get slot :index) (aref settled i))
@@ -550,27 +648,37 @@ PREPARED supplies stable ids and structured result details for every tool-end."
               (plist-get slot :request-event-id))
              fields)
       (yeah-turn--remember-work turn (plist-get slot :name) result)))
+  (yeah-turn--release-calls turn calls)
+  (setf (yeah-turn-pending-results turn)
+        (append (yeah-turn-pending-results turn) (list (cons calls results))))
   (let ((finish (yeah-turn--finish-result calls results)))
-    (if finish
-        (let ((finish-slot
-               (cl-find-if (lambda (slot)
-                             (equal "finish" (plist-get slot :name)))
-                           prepared)))
-          (yeah-turn--write
-           turn "finish"
-           (if finish-slot
-               (yeah-turn--context
-                turn (plist-get finish-slot :tool-call-id)
-                (plist-get finish-slot :request-event-id))
-             (yeah-turn--context turn nil (yeah-turn-turn-event-id turn)))
-           :summary (yeah-result-model-text finish))
-          (yeah-turn--tick turn 'tool-end)
-          (yeah-turn--tick turn 'budget-ok)
-          (yeah-turn--tick turn 'no-tool-calls)
-          (yeah-turn--mark-done turn))
+    (cond
+     (finish
+      (let ((finish-slot
+             (cl-find-if (lambda (slot)
+                           (equal "finish" (plist-get slot :name)))
+                         prepared)))
+        (yeah-turn--write
+         turn "finish"
+         (if finish-slot
+             (yeah-turn--context
+              turn (plist-get finish-slot :tool-call-id)
+              (plist-get finish-slot :request-event-id))
+           (yeah-turn--context turn nil (yeah-turn-turn-event-id turn)))
+         :summary (yeah-result-model-text finish))
+        (yeah-turn--tick turn 'tool-end)
+        (yeah-turn--tick turn 'budget-ok)
+        (yeah-turn--tick turn 'no-tool-calls)
+        (yeah-turn--mark-done turn)))
+     ((yeah-turn-pending-calls turn)
+      ;; A batch that arrived while this one was running waits no longer:
+      ;; it runs now.  The state stays `awaiting-tool', and the results of
+      ;; both batches reach the model together.
+      (yeah-turn--dispatch-next turn transport))
+     (t
       (unless (yeah-turn-done turn)
-        (yeah-turn--tick turn 'tool-end)))
-    (yeah-turn--maybe-compact turn transport calls results)))
+        (yeah-turn--tick turn 'tool-end))
+      (yeah-turn--maybe-compact turn transport)))))
 
 (defun yeah-turn--dispatch-batch (turn answerer calls &optional transport)
   "Dispatch CALLS together, and continue the turn when they have settled."
@@ -688,9 +796,7 @@ nudged into the action; a result that a tool backs ends the run."
       ;; run and their results are on their way. The answer comes later.
       nil)
      ((and (consp answer) (eq (car answer) 'tool-call))
-      (yeah-turn--tick turn 'stream-end)
-      (yeah-turn--tick turn 'tool-call)
-      (yeah-turn--dispatch-batch turn answerer (cdr answer) transport))
+      (yeah-turn--take-calls turn answerer transport (cdr answer)))
      ((and (consp answer) (eq (car answer) 'error))
       (yeah-turn--fail turn (format "%s" (cdr answer))))
      (t
