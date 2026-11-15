@@ -13,14 +13,14 @@ skip is not a pass, and a skip never turns into a claim.
 
 | Check | What it proves | Needs | How to run | Last recorded run |
 |---|---|---|---|---|
-| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-15 17:03 UTC, on the code of waves 30+31, with MiniMax-M2.7: `status="HTTP/2 200" answer="OK"` |
-| `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-15 17:03 UTC, on the code of waves 30+31, with MiniMax-M2.7 — pass: the run ended `completed` and the test of the project passes afterwards |
-| `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-15 17:03 UTC, on the code of waves 30+31, with MiniMax-M2.7 — pass ("the interactive path works"); the model answered with an empty message four times and the run ended `unfinished`, and the journey itself — ask, cancel, quit, restart, recover — held |
-| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-15 17:03 UTC, on the code of waves 30+31, with MiniMax-M2.7 — pass ("the primary path works with a live model") |
-| `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-15 17:04 UTC, on the code of waves 30+31, with MiniMax-M2.7 — pass, one child: "the child repaired the canary"; the child's last run ended `unfinished` (empty answers), and the canary was repaired before that |
-| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-15 17:04 UTC, against the published repository, on the code of waves 30+31 — pass: "the clean installation works" (this is what closed the public alpha gate) |
+| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-15 17:23 UTC, on the code of wave 32, with MiniMax-M2.7 — pass on one of three attempts (`status="HTTP/2 200" answer="OK"`); the two other attempts got an empty answer from the provider, which is the silence of the provider and not a defect of the harness |
+| `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-15 17:21 UTC, on the code of wave 32, with MiniMax-M2.7 — pass: the model repaired the project with the tools of Yeah (the edit landed with the short token) and the test of the project passes afterwards; the run itself ended `unfinished`, because the provider went silent three times after the edit |
+| `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-15 17:21 UTC, on the code of wave 32, with MiniMax-M2.7 — pass ("the interactive path works"); the model answered with an empty message four times and the run ended `unfinished`, and the journey itself — ask, cancel, quit, restart, recover — held |
+| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-15 17:23 UTC, on the code of wave 32, with MiniMax-M2.7 — pass ("the primary path works with a live model"); the attempt of 17:21 failed because the provider answered with an empty message and the model refused, and the retry passed |
+| `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-15 17:21 UTC, on the code of wave 32, with MiniMax-M2.7 — pass, one child: "the child repaired the canary" |
+| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-15 17:21 UTC, against the published repository, on the code of wave 32 — pass: "the clean installation works" (this is what closed the public alpha gate) |
 | `tests/pixel/check-interface-is-seen.sh` | the interface is really on the screen: Emacs itself draws the journal and the approval view under a frame server, the screen is photographed, and the pictures are compared with each other and with the same buffer without the interface | a frame server (Xvfb), a terminal emulator, ImageMagick, Emacs — **no provider key** | `YEAH_XVFB=… YEAH_XTERM=… YEAH_MAGICK=… ./scripts/dev pixel` | 2026-11-15, pass — "the interface is on the screen: 767 colours, 16953 pixels between the journal and the approval view" |
-| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-15 17:06 UTC, on the code of waves 30+31, with MiniMax-M2.7 and pi: Yeah passed 1 of 3 tasks, pi passed 2 of 3 — **not a verdict about parity**; all three runs of Yeah ended `unfinished` (the provider answered with an empty message), and the pilot found a defect of the token of the file (see "The pilot that measured the copy of the version token") |
+| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-15 17:23 UTC, on the code of wave 32, with MiniMax-M2.7 and pi: Yeah passed 2 of 3 tasks, pi passed 3 of 3 — **not a verdict about parity** (the threshold is a decision of the owner, the sample is three tasks); the one task that Yeah failed ended with the model announcing the fix and calling no tool (see "The pilot after the token became short") |
 
 ## The environment
 
@@ -392,6 +392,48 @@ of the bench has none ("emacs: command not found").  Both harnesses failed
 that task, so the comparison is fair, but the task measures the environment
 as much as the agent.
 
+## The pilot after the token became short (2026-11-15, 17:23)
+
+The seventh run of the pilot (`bench/results/20261115T172343Z.jsonl`), on the
+code of wave 32, with MiniMax-M2.7 and pi as the second harness.  This time
+`emacs` was on PATH: the check of the task `fix-failing-test` judges the work
+with a real ERT run, and without an Emacs both harnesses failed that task for
+a reason that had nothing to do with either of them.
+
+| Task | Yeah | pi |
+|---|---|---|
+| `read-answer` | passed | passed |
+| `fix-failing-test` | failed — the test of the task still fails | passed |
+| `write-new-file` | passed | passed |
+
+Yeah passed 2 of 3, pi passed 3 of 3 — the run before measured 1 of 3 and 2
+of 3.  **The parity is still not measured**: the threshold is a decision of
+the owner (`docs/PLAN.md` §13) and the sample is three tasks.
+
+The token is short in the live path: the read of `calc.el` handed out
+`[version: fe26cedb4654]`, twelve characters, and the model used the tools
+with it.  The task that Yeah failed failed on the provider and not on the
+token: the model wrote "The bug is integer division. Fixing it to use
+floating-point division:" and called no tool, the turn ended there, and the
+file was never changed.  The harness cannot tell that a message which
+announces an action is not an answer; the nudge of wave 25 carries the state
+of the work, but it fires when the model is silent and not when the model
+talks without acting.
+
+The live checks of 17:21–17:23 on the same code pass: the model repaired the
+project of `live-coding-task` with the edit of Yeah (the edit landed with the
+short token) and the test of the project passes afterwards, the interactive
+path held, the service path works with a live model, the child repaired the
+canary, and the clean installation works.  The provider went silent in the
+middle of the batch: the run of `live-model-call` passed on one of three
+attempts, and the attempt of `live-service-path` of 17:21 failed with the
+empty answer of the provider and passed on the retry.
+
+The verdict of the method on this code is `green`, with 84 claims `holds
+(current)` — the two new ones among them:
+`a-version-token-is-short-enough-to-copy` and
+`an-edit-refuses-a-wrong-token-with-the-current-one`.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live
@@ -402,14 +444,20 @@ as much as the agent.
   buffer without the interface, not with a stored golden picture.
 - The parity with other harnesses is measured on three tasks only.  The
   threshold is not decided (`docs/PLAN.md` §13) and the sample is small, so
-  the parity of the last run is not measured either.  The difference the last
-  run found was a defect of the token of the file (the section above), not a
-  difference of quality: both harnesses failed `fix-failing-test`, and the two
-  tasks that Yeah failed ended `unfinished` because the provider went silent.
+  the parity of the last run is not measured either.  The last run measured
+  2 of 3 for Yeah and 3 of 3 for pi; the difference it found was not the
+  quality of the work but a model that announced the fix and called no tool.
 - The token of the file was 64 characters of hex and the model copied 58 of
   them, so the guard refused the edit of a file that had not changed.  Wave 32
   shortens the token and makes the refusal name the token instead of the
-  file; the next pilot will say how much of the difference that explains.
+  file; the pilot of 17:23 handed out a token of twelve characters and the
+  tasks that the model worked on passed.  A model can still lose a character
+  of twelve, and the harness cannot make the model retry.
+- A model can end its turn with a message that announces an action and call no
+  tool: the pilot of 17:23 measured "Fixing it to use floating-point
+  division:" and nothing after it.  The harness cannot tell that a message
+  which promises an action is not an answer, and the nudge of wave 25 fires
+  when the model is silent and not when the model talks without acting.
 - The outcome of a run does not describe the work that was done: the run of
   `fix-failing-test` ended in "failed" because the provider failed after the
   edit, while the check of the task passed.  The check of the benchmark is the

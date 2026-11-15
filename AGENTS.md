@@ -69,7 +69,13 @@ work item. Never resolve it by silently making documentation more optimistic.
   failed on the **version token** of the file — the model copied 58 of the 64
   characters of the digest and the edit refused the edit of a file that had
   not changed (docs/LIVE-EVIDENCE.md, "The pilot that measured the copy of the
-  version token").  The threshold of the parity is a decision of the owner
+  version token").  The pilot of 17:23, on the code of wave 32, measured two
+  tasks of three for Yeah and three of three for pi: the token of the file is
+  short now, the read handed out twelve characters, and the tasks the model
+  worked on passed.  The task that Yeah failed failed on the provider: the
+  model announced the fix ("Fixing it to use floating-point division:") and
+  called no tool (docs/LIVE-EVIDENCE.md, "The pilot after the token became
+  short").  The threshold of the parity is a decision of the owner
   (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
   parity.
 - A decision that arrives while the tools of the previous decision are still
