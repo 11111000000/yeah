@@ -104,13 +104,17 @@ optional expected version token of the file."
     ;; read that handed it out saw the file on disk, and the token says
     ;; which file that was; when the file changed since that read, the edit
     ;; would land on text the model never read, so it is refused.
+    ;;
+    ;; The refusal names the token and not the file: a token that was copied
+    ;; wrong does not mean that the file changed, and a model that is told
+    ;; about a change that did not happen goes looking for one.
     (when expected-version
       (let ((current-version (yeah-version-file expanded)))
         (cond
          ((not (equal current-version expected-version))
           (setq refusal
                 (yeah-result-error
-                 (format "edit: stale version for %s; the file changed since the read; read fresh state before retrying"
+                 (format "edit: stale version for %s; the version you present is not the version of the file now. The file may be unchanged and the token may have been copied wrong; read the file again and use the version it reports"
                          expanded)
                  (list :path expanded
                        :changed 0
@@ -227,7 +231,7 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
   (list
    (list :name "edit"
          :description
-         "Replace exact text in a file, guarded by an optional modification tick and an optional version token. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: pass the tick that the read of this file reported; the edit is refused when the file changed since that tick was taken, and the refusal reports the current tick, so you can retry with it. If the read of the file reported no tick, omit tick: a tick that no read handed out is ignored, and omitting tick edits the file without that guard. version is optional in the same way: pass the version that the read of this file reported, and the edit is refused when the file changed since that read, so an edit never lands on a file you did not read. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
+         "Replace exact text in a file, guarded by an optional modification tick and an optional version token. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: pass the tick that the read of this file reported; the edit is refused when the file changed since that tick was taken, and the refusal reports the current tick, so you can retry with it. If the read of the file reported no tick, omit tick: a tick that no read handed out is ignored, and omitting tick edits the file without that guard. version is optional in the same way: pass the short version token that the read of this file reported, and the edit is refused when that token is not the version of the file now, so an edit never lands on a file you did not read. A token that does not match may have been copied wrong and not mean that the file changed: the refusal names the token, reports the current one, and you can retry with it. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
          :input (list (list :name "path" :type 'string)
                       (list :name "old_str" :type 'string)
                       (list :name "new_str" :type 'string)

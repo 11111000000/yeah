@@ -1,0 +1,33 @@
+{
+  "id": "wave-32",
+  "title": "a version token a model can copy back",
+  "intent": "The pilot of 2026-11-15 measured the copy of the version token.  The model read `calc.el' and received the token of the file, the digest of its bytes: 64 characters of hex.  It presented a token of 58 characters -- the same digest with six characters lost in the middle -- and the edit refused it, because a token that is not the version of the file now is refused, and that refusal was right.  The file had not changed: the sha256 of the file on disk was and remained the very digest the read had handed out.  The guard of wave 29 did its work; the defect was that the token is too long for a model to copy back unchanged, and that the refusal blamed the file, which sent the model looking for a change that was not there.  This wave shortens the token to twelve characters of the digest and makes the refusal name the token: it says that the file may be unchanged and that the token may have been copied wrong, and it reports the current token so that the retry lands.",
+  "touches": [
+    "lib/yeah-version.el",
+    "lib/yeah-edit.el",
+    "lib/yeah-files.el",
+    "tests/unit/test-yeah-version.el",
+    "tests/unit/test-yeah-version-guard.el",
+    "spec.json",
+    "waves/wave-32.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-version.el",
+    "./scripts/dev ert tests/unit/test-yeah-version-guard.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "a-version-token-is-short-enough-to-copy",
+    "an-edit-refuses-a-wrong-token-with-the-current-one"
+  ],
+  "commitment": [],
+  "objection": "The token is shorter, and a shorter token tells two states of a file apart with fewer bits: twelve characters of a sha256 are 48 bits, and a collision between two states of one file is a matter of the next million edits, not of this session.  The wave does not make the copy of the token reliable -- a model can still lose a character of twelve -- and it does not make the model retry: the refusal tells the model what the token of the file is now, and whether the model uses it is the model.  The refusal no longer says that the file changed, and that is a loss of a sentence that was true in the case the guard was built for: when the file really changed, the refusal now says that the token is not the version of the file now, which is true in both cases and names neither.  The wave does not touch the path that presents only a tick, and it does not give the write tool a version: a write still overwrites a whole file and takes no token.",
+  "refuted_by": "the token of a read is too long for a model to copy back, or a refusal of a token that does not match tells the model that the file changed when it did not",
+  "note": "Measured on the code of waves 30+31: the journal of the pilot holds the version of `calc.el' as 64 characters, `fe26cedb46546a55777dfddb00efcb86c41135cb25811737952f8388e5b0e165', and the token that the model presented as 58 characters, `fe26cedb46546a55777dfddb06c41135cb25811737952f8388e5b0e165'; the sha256 of the file on disk is the first of the two, so the file had not changed.  The control of the first claim hands out the whole digest again and fails exactly one test of `tests/unit/test-yeah-version.el', the test of the length of the token, and the other two tests of the file keep passing.  The control of the second claim puts the old sentence back into the refusal and fails exactly one test of `tests/unit/test-yeah-version-guard.el'.  The two claims have verifiers of their own, so that the control of one does not break the check of the other.  The control of wave 29 still bites on this code: it fails exactly one test of `tests/unit/test-yeah-edit.el`, the test of the stale version, and the new tests are not in the file it reads."
+}

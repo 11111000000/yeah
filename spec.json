@@ -1865,6 +1865,54 @@
       "register": "fact",
       "control": "sed -i 's|(yeah-turn--note-drop turn call)|(ignore \"the drop is not written\")|' lib/yeah-turn.el",
       "waiver": null
+    },
+    {
+      "id": "a-version-token-is-short-enough-to-copy",
+      "text": "The version token that a read hands out is short enough for a model to copy it back unchanged: the token of the pilot of 2026-11-15 was 64 characters of hex, and the model presented 58 of them.",
+      "scope": [
+        "lib/yeah-version.el",
+        "lib/yeah-files.el",
+        "tests/unit/test-yeah-version.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-version.el"
+        }
+      ],
+      "falsifier": "the token of a read is longer than a model can copy back, or it does not change when the text changes",
+      "register": "fact",
+      "control": "sed -i 's|(substring (yeah-version--digest text) 0 yeah-version-length)|(yeah-version--digest text)|' lib/yeah-version.el",
+      "waiver": null
+    },
+    {
+      "id": "an-edit-refuses-a-wrong-token-with-the-current-one",
+      "text": "An edit that presents a version token which is not the version of the file now is refused, and the refusal names the token and reports the current one: a token that was copied wrong does not mean that the file changed, and the retry with the reported token lands.",
+      "scope": [
+        "lib/yeah-edit.el",
+        "lib/yeah-version.el",
+        "tests/unit/test-yeah-version-guard.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-version-guard.el"
+        }
+      ],
+      "falsifier": "the refusal does not report the current token of the file, or it tells the model that the file changed when it did not",
+      "register": "fact",
+      "control": "sed -i 's|The file may be unchanged and the token may have been copied wrong|The file changed since the read|' lib/yeah-edit.el",
+      "waiver": null
     }
   ]
 }
