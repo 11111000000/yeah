@@ -49,12 +49,24 @@ work item. Never resolve it by silently making documentation more optimistic.
   (the claim `a-silence-nudge-carries-the-state-of-the-work'), because the
   provider goes silent after every batch of tool results and the model was
   answering the nudge by starting the work over.  With that, Yeah passes
-  two tasks of three and pi passes three.  The third task fails in the
+  two tasks of three and pi passes three.  The third task failed in the
   tools: the `read` of a file nobody has edited yet returns no tick, and
-  the `edit` refuses the tick the model guessed as stale although the file
-  has not changed.  The threshold of the parity is a decision of the owner
-  (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
-  parity.
+  the `edit` refused the tick the model guessed as stale although the file
+  has not changed; wave 26 makes a guessed tick ignored rather than
+  refused (the claim
+  `a-guessed-tick-does-not-refuse-an-unchanged-file'), and that task of the
+  pilot passes now.  The provider, however, is overloaded for hours (HTTP 529
+  to both harnesses), so the pilot of 15:02 measured one task of three and
+  two blocked runs: the runner records a run the provider stopped as
+  **blocked**, neither a pass nor a failure (the claim
+  `a-provider-failure-is-not-a-failure-of-the-agent').  The threshold of
+  the parity is a decision of the owner (docs/PLAN.md §13), and nobody may
+  quote the pilot as a verdict about parity.
+- The tick of a file guards only the files that a buffer visits: the read
+  of a file nobody has open returns no tick, and the edit of such a file
+  has no guard at all.  docs/ARCHITECTURE.md §D5 promises the tick for
+  every read that can lead to an edit; the contradiction and the candidate
+  of a file version token are open in docs/PLAN-NEXT.md.
 - Stage 7 is implemented offline: an agent preset is a file (a Markdown or
   Org header and a body), and a child runs for real in its own session with
   only the tools it was granted. The fixed-point demonstration passes with

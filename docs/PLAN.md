@@ -1249,6 +1249,21 @@ contradiction is recorded in `docs/PLAN-NEXT.md' with the candidate of a
 file version token that the edit can verify without a buffer; D5 stays the
 target and is not weakened to fit the code.
 
+### 16.10 A provider failure is not a failure of the agent — **done on 2026-11-15 (wave 27)**
+
+The pilot of 14:55 reported Yeah 0/3 and pi 1/3 — and measured the provider:
+HTTP 529 (the cluster was overloaded) answered both harnesses, and the runner
+counted the runs as failures of the agents.  A pilot that reports a number
+computed over an outage measures the day, not the parity.
+
+The runner now reads the failure of the provider — from the journal of the run
+for Yeah, from the output of the run for an external harness — and records
+such a run as **blocked**: neither a pass nor a failure of the agent.  The
+claim `a-provider-failure-is-not-a-failure-of-the-agent` has a control that
+bites and that changes the subject and not the check: with the
+classification of a blocked run turned into a failure, the self-check of the
+task set fails with a real assertion.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then

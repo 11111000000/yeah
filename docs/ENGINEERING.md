@@ -112,8 +112,11 @@ sources or dependencies. Never load code from that directory in Yeah.
 
 ## 5. Buffer and file safety
 
-- Reads that lead to edits return a modification tick. Edits require a fresh
-  tick and exact expected content/ranges.
+- Reads of a file that a buffer visits return its modification tick.  An edit
+  compares the tick it is given with the tick of the buffer that visits the
+  file; a tick for a file that no buffer visits could not have been read, so
+  it is ignored rather than refused.  Edits require exact expected
+  content/ranges.
 - Validate every range before mutating. Apply multiple edits bottom-up and as
   one logical undo step.
 - Preserve user buffers, point, narrowing and unsaved changes unless the tool

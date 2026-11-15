@@ -55,11 +55,28 @@
 (require 'seq)
 (require 'subr-x)
 
-(defconst yeah-bench--statuses '("passed" "failed" "skipped" "not-available")
-  "The four statuses a measurement may carry.")
+(defconst yeah-bench--statuses '("passed" "failed" "blocked" "skipped" "not-available")
+  "The five statuses a measurement may carry.  `blocked' means that the
+provider failed and the agent was never measured; it is neither a pass nor a
+failure of the agent.")
 
 (defconst yeah-bench--outcomes '("ran" "skipped" "not-available")
   "The outcomes a harness may report before the check decides the status.")
+
+(defconst yeah-bench--provider-markers
+  '("overloaded_error" "rate_limit" "rate limit" "server_error"
+    "insufficient capacity" "service unavailable" "no available channel"
+    ":http_code \"5" "http_code 5" "http 5")
+  "Markers that name a failure of the provider in the text of a run.
+A provider that fails is not an agent that fails: the run it stops was never
+measured, and a measurement of nothing is not a failure of the agent.")
+
+(defun yeah-bench--provider-error (text)
+  "Return the marker that names a provider failure in TEXT, or nil."
+  (when (stringp text)
+    (let ((down (downcase text)))
+      (cl-find-if (lambda (marker) (string-match-p (regexp-quote marker) down))
+                  yeah-bench--provider-markers))))
 
 (defconst yeah-bench--yeah-tools
   '("read" "glob" "grep" "edit" "write" "bash" "job-status" "job-read"
@@ -320,6 +337,30 @@ measurement would then say more about the harness than about the agent."
       (accept-process-output nil 0.2))
     (yeah-turn-state turn)))
 
+(defun yeah-bench--journal-provider-error (path)
+  "Return the provider failure that the journal at PATH names, or nil.
+Only the error records count: a tool output that quotes a provider message
+is not a failure of the provider, and a run the provider stopped is a run
+that was never measured."
+  (when (and (stringp path) (file-exists-p path))
+    (with-temp-buffer
+      (let ((coding-system-for-read 'utf-8-unix))
+        (ignore-errors (insert-file-contents path)))
+      (goto-char (point-min))
+      (let ((found nil))
+        (while (and (not found) (not (eobp)))
+          (let* ((line (buffer-substring-no-properties
+                        (line-beginning-position) (line-end-position)))
+                 (record (and (not (string-empty-p (string-trim line)))
+                               (ignore-errors
+                                 (json-parse-string line :object-type 'alist)))))
+            (when (and (consp record)
+                       (equal (alist-get 'type record) "error"))
+              (setq found (yeah-bench--provider-error
+                           (format "%s" (alist-get 'payload record))))))
+          (forward-line 1))
+        found))))
+
 (defun yeah-bench--yeah-harness (task workspace prompt session-root)
   "Give TASK to Yeah in WORKSPACE with PROMPT and return the outcome.
 SESSION-ROOT is the directory that holds the journal of the run."
@@ -369,7 +410,9 @@ SESSION-ROOT is the directory that holds the journal of the run."
     (unless turn
       (error "the run did not start"))
     (list :outcome "ran"
-          :note (format "the turn ended in %s" (yeah-bench--wait turn)))))
+          :note (format "the turn ended in %s" (yeah-bench--wait turn))
+          :provider-error (yeah-bench--journal-provider-error
+                           (plist-get session :path)))))
 
 (defun yeah-bench--external-template ()
   "Return the command template of the external harness, or nil."
@@ -424,9 +467,14 @@ Return the outcome of the harness."
                                          (list "sh" "-c"
                                                (format "%s < /dev/null"
                                                        (string-join command " ")))
-                                         yeah-bench--turn-timeout)))
+                                         yeah-bench--turn-timeout))
+               (output (cdr result))
+               (tail (if (> (length output) 8000)
+                         (substring output (- (length output) 8000))
+                       output)))
           (list :outcome "ran"
-                :note (format "the external harness exited with %s" (car result))))))))
+                :note (format "the external harness exited with %s" (car result))
+                :provider-error (yeah-bench--provider-error tail)))))))
 
 ;;; The measurement.
 
@@ -455,7 +503,8 @@ Return the outcome of the harness."
                                  :reason (format "the harness could not run: %s"
                                                  (error-message-string err))))))
          (kind (or (plist-get outcome :outcome) "not-available"))
-         (reason (or (plist-get outcome :reason) (plist-get outcome :note) "")))
+         (reason (or (plist-get outcome :reason) (plist-get outcome :note) ""))
+         (provider-error (plist-get outcome :provider-error)))
     (unless (member kind yeah-bench--outcomes)
       (error "the harness %s returned the unknown outcome %s" name kind))
     (cond
@@ -476,6 +525,9 @@ Return the outcome of the harness."
              (exit (car result))
              (status (cond ((memq exit '(126 127)) "not-available")
                            ((= 0 exit) "passed")
+                           ((and (stringp provider-error)
+                                 (> (length provider-error) 0))
+                            "blocked")
                            (t "failed")))
              (why (cond
                    ((memq exit '(126 127))
@@ -484,6 +536,10 @@ Return the outcome of the harness."
                    ((= 0 exit)
                     (format "the check exited 0%s"
                             (if (> (length reason) 0) (format "; %s" reason) "")))
+                   ((and (stringp provider-error)
+                         (> (length provider-error) 0))
+                    (format "the provider failed, so the agent was not measured: %s; the check exited %s: %s"
+                            provider-error exit (yeah-bench--excerpt (cdr result))))
                    (t (format "the check exited %s: %s"
                               exit (yeah-bench--excerpt (cdr result)))))))
         (unless (member status yeah-bench--statuses)
@@ -655,6 +711,10 @@ a `passed' and never a `failed'."
             (push (format "%s: the runner skipped the task without naming the cause: %s"
                           task reason)
                   problems)))
+         ((equal status "blocked")
+          (push (format "%s: the runner recorded a provider failure for a harness that did not run"
+                        task)
+                problems))
          ((equal status "not-available")
           nil)
          (t
@@ -675,6 +735,42 @@ a `passed' and never a `failed'."
 
 ;;; The two modes.
 
+(defun yeah-bench--provider-problems (tasks)
+  "Return the ways in which the runner counts a provider failure as a failure
+of the agent.  A provider that fails is not an agent that fails: the run it
+stopped was never measured, and the measurement of nothing must not be
+recorded as a failure."
+  (let ((problems nil)
+        (task (car tasks)))
+    (when task
+      (let* ((root (make-temp-file "yeah-bench-provider-" t))
+             (journal (expand-file-name "bench.jsonl" root)))
+        (unwind-protect
+            (progn
+              (with-temp-file journal
+                (insert (json-encode
+                         (list (cons "type" "error")
+                               (cons "payload"
+                                     "(:type \"overloaded_error\" :http_code \"529\")")))
+                        "\n"))
+              (unless (yeah-bench--journal-provider-error journal)
+                (push "the journal of a provider failure was not read as a failure of the provider"
+                      problems))
+              (let* ((workspace (yeah-bench--workspace task))
+                     (measurement (yeah-bench--measure
+                                   "yeah"
+                                   (lambda (_task _workspace _prompt _session-root)
+                                     (list :outcome "ran"
+                                           :note "the turn ended in failed"
+                                           :provider-error "overloaded_error"))
+                                   task workspace "a prompt" root)))
+                (unless (equal (plist-get measurement :status) "blocked")
+                  (push (format "the runner recorded %s for a run the provider stopped"
+                                (plist-get measurement :status))
+                        problems))
+                (ignore-errors (delete-directory workspace t))))
+          (ignore-errors (delete-directory root t)))))
+    (nreverse problems)))
 (defun yeah-bench--self-check ()
   "Validate the task set without a model; exit 0 when it holds, 1 when it does not."
   (let* ((tasks (yeah-bench--manifest))
@@ -719,9 +815,17 @@ a `passed' and never a `failed'."
           (princ (format "self-check: %s\n" problem)))
         (princ "self-check: the filter of the measurement was not honest\n")
         (kill-emacs 1)))
+    (let ((dishonest (yeah-bench--provider-problems tasks)))
+      (when dishonest
+        (dolist (problem dishonest)
+          (princ (format "self-check: %s\n" problem)))
+        (princ "self-check: the runner counted a failure of the provider as a failure of the agent\n")
+        (kill-emacs 1)))
     (princ (format "self-check: %s tasks, every check fails before the work\n"
                    (length tasks)))
     (princ (format "self-check: %s tasks, every harness that could not run is recorded as skipped: no provider\n"
+                   (length tasks)))
+    (princ (format "self-check: %s tasks, a run the provider stopped is recorded as blocked, not as a failure of the agent\n"
                    (length tasks)))
     (princ (format "self-check: %s tasks, the filter selects exactly the tasks it is asked for\n"
                    (length tasks)))

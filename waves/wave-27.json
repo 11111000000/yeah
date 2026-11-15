@@ -1,0 +1,24 @@
+{
+  "id": "wave-27",
+  "title": "a provider failure is not a failure of the agent",
+  "intent": "The pilot of 2026-11-15 at 14:55 reported that Yeah passed no task of three and that pi passed one of three.  The run measured the provider, not the harnesses: the provider answered HTTP 529 (the cluster was overloaded) to both harnesses, and the runner counted the runs as failures of the agents.  A pilot that reports a number computed over an outage of the provider is not a measurement of parity; it is a measurement of the day.  The runner now reads the failure of the provider — from the journal of a run for Yeah, from the output of the run for an external harness — and records such a run as blocked: neither a pass nor a failure of the agent.  A blocked measurement is unknown, and unknown is not a pass.",
+  "touches": [
+    "bench/run-bench.el",
+    "spec.json",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev bench",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "a-provider-failure-is-not-a-failure-of-the-agent"
+  ],
+  "commitment": [],
+  "objection": "The runner now judges the text of a run for the words of a provider failure, and a word is not an event.  A tool output that quotes a provider message would turn a failure into a blocked run and hide it.  The journal is therefore read by its records and only the error records count, and the markers are the ones the provider itself uses.  The external harness is judged by its output, which is text; there the risk of a false positive stays, and it is recorded here rather than hidden.",
+  "refuted_by": "the runner records a run that the provider stopped as a failure of the agent or as a pass; or the journal of a run that the provider stopped is not read as a failure of the provider; or the self-check of the task set no longer proves that the check of every task fails before the work.",
+  "note": "The claim has a control that bites and that changes the subject and not the check: with the classification of a blocked run turned into a failure, the self-check of the task set fails with a real assertion — the runner recorded failed for a run the provider stopped — and the other lines of the self-check keep passing.  The pilot of 14:55 is kept in the register of live evidence as what it was: a run of an overloaded provider, not a measurement of the harnesses.  The next pilot on the same tasks says whether the third task passes now; the threshold of the parity remains a decision of the owner."
+}

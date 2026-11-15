@@ -1757,6 +1757,28 @@
       "register": "fact",
       "control": "sed -i 's|(if existing expected-tick nil)|(if existing expected-tick expected-tick)|' lib/yeah-edit.el",
       "waiver": null
+    },
+    {
+      "id": "a-provider-failure-is-not-a-failure-of-the-agent",
+      "text": "A run that the provider stopped is recorded as blocked and not as a failure of the agent: a provider that fails is not an agent that fails, and the measurement of nothing is not a failure.",
+      "scope": [
+        "bench/run-bench.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev bench"
+        }
+      ],
+      "falsifier": "the runner records a run that the provider stopped as a failure of the agent or as a pass",
+      "register": "fact",
+      "control": "sed -i 's|^                            \"blocked\")$|                            \"failed\")|' bench/run-bench.el",
+      "waiver": null
     }
   ]
 }

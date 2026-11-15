@@ -207,6 +207,72 @@ threshold is a decision of the owner, the sample is three tasks, and the
 difference the first pilot found was a defect of the turn rather than a
 difference of quality.
 
+## The pilot after the tick (2026-11-15, 15:02)
+
+The fourth run of the pilot, on the code of wave 26, under the same
+conditions (`bench/results/20261115T150251Z.jsonl`):
+
+| Task | Yeah | pi |
+|---|---|---|
+| `read-answer` | blocked — the provider failed (HTTP 529) | passed |
+| `fix-failing-test` | **passed** — the check of the task exits 0 | passed |
+| `write-new-file` | blocked — the provider failed (HTTP 529) | passed |
+
+The task that the tick refused now passes.  The journal says what happened
+(`bench/results/20261115T150251Z/sessions/bench-fix-failing-test.jsonl`): the
+model read `calc.el` and `calc-test.el`, asked for the edit with the tick it
+believed it had read, and the edit went through — "Replaced 1 occurrence;
+tick 23; saved."  On the code of wave 25 the same edit was refused with
+"stale tick for calc.el: expected 0, current 9".  The tick is meant to catch
+a file that changed under the model; it now catches that and nothing else
+(wave 26, the claim
+`a-guessed-tick-does-not-refuse-an-unchanged-file`).
+
+Two tasks were not measured at all: the provider was overloaded again, and
+the two journals hold nothing but the error of the provider.  The runner
+says so — **blocked**, neither a pass nor a failure (wave 27).  pi passed
+all three tasks of the run.
+
+The parity is therefore **not measured** on this run: one task of three says
+that Yeah does what pi does on it, and the two blocked tasks say nothing
+about either harness.  What the run does say is that the third task of the
+pilot — the one the tick refused — is no longer refused.
+
+One detail of the same journal: after the edit the provider failed, and the
+run ended in "failed" although the work was done and the check of the task
+passed.  The run tells the person that it failed when the file was in fact
+fixed.  The check of the benchmark is the arbiter there, so the measurement
+is right; the outcome of a run that says "failed" after the work is done is
+an open question of the product.
+
+## A run of an overloaded provider (2026-11-15, 14:55)
+
+The run of 14:55 (`bench/results/20261115T145542Z.jsonl`) is **not** a
+measurement of the harnesses.  The provider answered HTTP 529 — "the cluster
+is overloaded" — to both harnesses, and the runner counted the runs as
+failures of the agents: Yeah passed no task of three and pi passed one of
+three.  Those numbers measure the provider of that minute, not the two
+harnesses, and a pilot that reports a number computed over an outage is a
+measurement of the day, not of the parity.
+
+The journals show the outage without an interpretation (`bench/results/20261115T145542Z/sessions/`):
+the first turn of `fix-failing-test` ends with the error
+`(:type "overloaded_error" :message "The server cluster is currently under high load..." :http_code "529")`,
+and the run of `write-new-file` dies on the same error.  The check of
+`write-new-file` exits 255 because the file the task asks for was never
+written and the check of the task loads it — the crash belongs to the check
+of an empty workspace, not to the harness.
+
+The runner says so itself now (wave 27, the claim
+`a-provider-failure-is-not-a-failure-of-the-agent`): the failure of the
+provider is read from the journal of the run — for Yeah — and from the
+output of the run — for an external harness — and such a run is recorded as
+**blocked**: neither a pass nor a failure of the agent.  A blocked
+measurement is unknown, and unknown is not a pass.  The claim has a control
+that bites and that changes the subject and not the check: with the
+classification of a blocked run turned into a failure, the self-check of the
+task set fails with a real assertion.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live
@@ -216,6 +282,15 @@ difference of quality.
 - The picture of the interface is compared with itself and with the same
   buffer without the interface, not with a stored golden picture.
 - The parity with other harnesses is measured on three tasks only, and the
-  difference it found is a defect of one turn, not a difference of quality.
+  difference it found was a defect of one turn, not a difference of quality.
   The threshold is not decided (`docs/PLAN.md` §13), the sample is small, and
-  the defect itself has no claim with a biting control yet.
+  the two tasks of the last run were blocked by an overload of the provider —
+  so the parity of the last run is not measured at all.
+- The outcome of a run does not describe the work that was done: the run of
+  `fix-failing-test` ended in "failed" because the provider failed after the
+  edit, while the check of the task passed.  The check of the benchmark is the
+  arbiter, so the measurement is right; the person is told something else.
+- The provider is overloaded for hours: HTTP 529 to both harnesses, and a
+  plain model call that answers with nothing now and then.  A measurement of
+  the parity needs a provider that answers; until then the runs that the
+  provider stops are recorded as blocked and say nothing about the agents.
