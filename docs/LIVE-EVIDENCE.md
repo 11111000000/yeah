@@ -273,6 +273,26 @@ that bites and that changes the subject and not the check: with the
 classification of a blocked run turned into a failure, the self-check of the
 task set fails with a real assertion.
 
+## The pilot that found the gap in the apparatus (2026-11-15, 15:04)
+
+The run of 15:04 (`bench/results/20261115T150457Z.jsonl`) measured the
+apparatus and not the harnesses:
+
+| Task | Yeah | pi |
+|---|---|---|
+| `read-answer` | blocked — the provider failed (HTTP 529) | passed |
+| `fix-failing-test` | failed — the transport to the provider died | passed |
+| `write-new-file` | blocked — the provider failed (HTTP 529) | passed |
+
+The journal of `fix-failing-test` holds one line: "Curl failed with exit
+code 28. See Curl manpage for details."  The run was not measured — the
+transport to the provider died — but the first version of the markers of
+wave 27 knew only the overload of the provider, so the runner recorded the
+run as a failure of the agent.  The markers name the transport as well now,
+and the self-check of the task set proves both cases: the overload of the
+provider and the failure of the transport.  A run of 15:04 measured with the
+runner of today would be recorded as blocked.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live

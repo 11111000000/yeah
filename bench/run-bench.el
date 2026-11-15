@@ -66,10 +66,14 @@ failure of the agent.")
 (defconst yeah-bench--provider-markers
   '("overloaded_error" "rate_limit" "rate limit" "server_error"
     "insufficient capacity" "service unavailable" "no available channel"
-    ":http_code \"5" "http_code 5" "http 5")
-  "Markers that name a failure of the provider in the text of a run.
-A provider that fails is not an agent that fails: the run it stops was never
-measured, and a measurement of nothing is not a failure of the agent.")
+    ":http_code \"5" "http_code 5" "http 5"
+    "curl failed" "exit code 28" "connection timed out"
+    "could not resolve host" "connection refused" "network is unreachable"
+    "empty reply from server" "recv failure")
+  "Markers that name a failure of the provider or of the transport to it in
+the text of a run.  A provider that fails is not an agent that fails: the run
+it stopped was never measured, and a measurement of nothing is not a failure
+of the agent.")
 
 (defun yeah-bench--provider-error (text)
   "Return the marker that names a provider failure in TEXT, or nil."
@@ -747,15 +751,17 @@ recorded as a failure."
              (journal (expand-file-name "bench.jsonl" root)))
         (unwind-protect
             (progn
-              (with-temp-file journal
-                (insert (json-encode
-                         (list (cons "type" "error")
-                               (cons "payload"
-                                     "(:type \"overloaded_error\" :http_code \"529\")")))
-                        "\n"))
-              (unless (yeah-bench--journal-provider-error journal)
-                (push "the journal of a provider failure was not read as a failure of the provider"
-                      problems))
+              (dolist (payload '("(:type \"overloaded_error\" :http_code \"529\")"
+                                  "Curl failed with exit code 28. See Curl manpage for details."))
+                (with-temp-file journal
+                  (insert (json-encode
+                           (list (cons "type" "error")
+                                 (cons "payload" payload)))
+                          "\n"))
+                (unless (yeah-bench--journal-provider-error journal)
+                  (push (format "the journal of the failure %S was not read as a failure of the provider"
+                                payload)
+                        problems)))
               (let* ((workspace (yeah-bench--workspace task))
                      (measurement (yeah-bench--measure
                                    "yeah"

@@ -1760,7 +1760,7 @@
     },
     {
       "id": "a-provider-failure-is-not-a-failure-of-the-agent",
-      "text": "A run that the provider stopped is recorded as blocked and not as a failure of the agent: a provider that fails is not an agent that fails, and the measurement of nothing is not a failure.",
+      "text": "A run that the provider or the transport to it stopped is recorded as blocked and not as a failure of the agent: a provider that fails is not an agent that fails, and the measurement of nothing is not a failure.",
       "scope": [
         "bench/run-bench.el"
       ],
