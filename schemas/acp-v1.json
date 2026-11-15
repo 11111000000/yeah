@@ -76,6 +76,69 @@
         "sessionId": { "type": "string" }
       }
     },
+    "LoadRequest": {
+      "type": "object",
+      "required": ["sessionId", "cwd"],
+      "properties": {
+        "sessionId": { "type": "string", "description": "The id of the session to open again." },
+        "cwd": { "type": "string", "description": "Absolute working directory of the session." },
+        "mcpServers": { "type": ["array", "null"] }
+      }
+    },
+    "LoadResponse": {
+      "type": "object",
+      "required": ["sessionId"],
+      "properties": {
+        "sessionId": { "type": "string" },
+        "replayed": { "type": "integer", "description": "The number of journal records replayed to the client." }
+      }
+    },
+    "SteerRequest": {
+      "type": "object",
+      "required": ["sessionId", "prompt"],
+      "properties": {
+        "sessionId": { "type": "string" },
+        "prompt": { "type": "string", "description": "The clarification to queue for the running turn." }
+      }
+    },
+    "SteerResponse": {
+      "type": "object",
+      "required": ["inputId"],
+      "properties": {
+        "inputId": { "type": "string", "description": "The id of the queued input." }
+      }
+    },
+    "WithdrawRequest": {
+      "type": "object",
+      "required": ["sessionId", "inputId"],
+      "properties": {
+        "sessionId": { "type": "string" },
+        "inputId": { "type": "string", "description": "The id of the pending input to withdraw." }
+      }
+    },
+    "WithdrawResponse": {
+      "type": "object",
+      "required": ["inputId", "withdrawn"],
+      "properties": {
+        "inputId": { "type": "string" },
+        "withdrawn": { "type": "boolean", "description": "True when the input was pending and is withdrawn now." }
+      }
+    },
+    "RecoverRequest": {
+      "type": "object",
+      "required": ["sessionId"],
+      "properties": {
+        "sessionId": { "type": "string" }
+      }
+    },
+    "RecoverResponse": {
+      "type": "object",
+      "required": ["started"],
+      "properties": {
+        "inputId": { "type": ["string", "null"], "description": "The id of the input the run started, when one started." },
+        "started": { "type": "boolean", "description": "True when a run was started by the request." }
+      }
+    },
     "ContentBlock": {
       "type": "object",
       "required": ["type"],
@@ -97,15 +160,51 @@
           "properties": {
             "sessionUpdate": {
               "type": "string",
-              "enum": ["user_message_chunk", "agent_message_chunk", "tool_call", "tool_call_update"]
+              "enum": ["user_message_chunk", "agent_message_chunk", "tool_call", "tool_call_update", "input_queued", "input_taken", "input_recovered", "input_withdrawn"]
             },
             "content": { "type": "array" },
             "toolCallId": { "type": "string" },
             "title": { "type": "string" },
-            "status": { "type": "string" }
+            "status": { "type": "string" },
+            "inputId": { "type": "string", "description": "The id of the pending input the event names." },
+            "inputKind": { "type": "string", "description": "The kind of the input: `ask' or `steering'." },
+            "reason": { "type": "string", "description": "Why the input left the queue." }
           }
         }
       }
+    }
+  },
+  "methods": {
+    "initialize": {
+      "params": { "$ref": "#/definitions/InitializeRequest" },
+      "result": { "$ref": "#/definitions/InitializeResponse" }
+    },
+    "session/new": {
+      "params": { "$ref": "#/definitions/NewSessionRequest" },
+      "result": { "$ref": "#/definitions/NewSessionResponse" }
+    },
+    "session/load": {
+      "params": { "$ref": "#/definitions/LoadRequest" },
+      "result": { "$ref": "#/definitions/LoadResponse" }
+    },
+    "session/prompt": {
+      "params": { "$ref": "#/definitions/PromptRequest" },
+      "result": { "$ref": "#/definitions/PromptResponse" }
+    },
+    "session/cancel": {
+      "params": { "$ref": "#/definitions/CancelNotification" }
+    },
+    "session/steer": {
+      "params": { "$ref": "#/definitions/SteerRequest" },
+      "result": { "$ref": "#/definitions/SteerResponse" }
+    },
+    "session/withdraw": {
+      "params": { "$ref": "#/definitions/WithdrawRequest" },
+      "result": { "$ref": "#/definitions/WithdrawResponse" }
+    },
+    "session/recover": {
+      "params": { "$ref": "#/definitions/RecoverRequest" },
+      "result": { "$ref": "#/definitions/RecoverResponse" }
     }
   }
 }

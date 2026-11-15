@@ -7,6 +7,8 @@
 (require 'ert)
 (require 'cl-lib)
 (require 'yeah-acp)
+(require 'yeah-events)
+(require 'yeah-input)
 
 (defun yeah-acp-test--parse (json-string)
   "Parse JSON-STRING as a plist."
@@ -32,11 +34,69 @@
   "Return the stopReason carried by the response TEXT."
   (plist-get (plist-get (yeah-acp-test--parse text) :result) :stopReason))
 
+(defun yeah-acp-test--response (method params)
+  "Return the parsed JSON-RPC response of the ACP METHOD with PARAMS.
+A notification that answers nothing gives nil."
+  (let ((raw (yeah-acp-handle-message
+              (json-serialize (list :jsonrpc "2.0" :id 99 :method method
+                                    :params params)))))
+    (and raw (yeah-acp-test--parse raw))))
+
+(defun yeah-acp-test--result (method params)
+  "Return the result object of the response of the ACP METHOD with PARAMS."
+  (plist-get (yeah-acp-test--response method params) :result))
+
+(defun yeah-acp-test--update-objects (emitted)
+  "Return the update objects of the session/update notifications in EMITTED."
+  (mapcar (lambda (text)
+            (plist-get (plist-get (yeah-acp-test--parse text) :params) :update))
+          (seq-filter
+           (lambda (text)
+             (equal "session/update"
+                    (plist-get (yeah-acp-test--parse text) :method)))
+           emitted)))
+
+(defun yeah-acp-test--content-text (content)
+  "Return the text of CONTENT, one content block or a list of them."
+  (let ((blocks (cond ((vectorp content) (append content nil))
+                      ((and (listp content) (consp (car content))) content)
+                      (t (list content)))))
+    (string-join (mapcar (lambda (block) (or (plist-get block :text) ""))
+                         blocks)
+                 "")))
+
+(defun yeah-acp-test--pending-input (control id)
+  "Return the pending input ID of CONTROL, or nil."
+  (seq-find (lambda (input) (equal id (plist-get input :id)))
+            (yeah-control-pending control)))
+
+(defun yeah-acp-test--schema-path ()
+  "Return the path of the ACP schema, or nil when it cannot be found."
+  (seq-find
+   (lambda (path) (file-readable-p path))
+   (list (expand-file-name
+          "../schemas/acp-v1.json"
+          (file-name-directory (or (locate-library "yeah-acp") "yeah-acp.el")))
+         (expand-file-name "schemas/acp-v1.json" default-directory))))
+
+(defun yeah-acp-test--schema-methods ()
+  "Return the names of the methods the ACP schema declares."
+  (let ((path (yeah-acp-test--schema-path)))
+    (when path
+      (with-temp-buffer
+        (insert-file-contents path)
+        (let* ((schema (json-parse-string (buffer-string) :object-type 'alist))
+               (methods (cdr (assoc 'methods schema))))
+          (mapcar (lambda (method) (symbol-name (car method))) methods))))))
+
 (defmacro yeah-acp-test--with-server (&rest body)
-  "Run BODY with isolated ACP state, model transport and output."
+  "Run BODY with isolated ACP state, model transport and output.
+The pending queue of a session lives in the temporary directory too: a test
+must not write into the queue of the person who runs it."
   (declare (indent 0))
   `(let* ((directory (make-temp-file "yeah-acp-test" t))
           (yeah-data-home directory)
+          (yeah-input-directory (expand-file-name "pending/" directory))
           (yeah-acp--transport nil)
           (yeah-acp--answerer nil)
           (yeah-acp--output-function nil))
@@ -47,8 +107,12 @@
        (yeah-acp--reset-for-test)
        (ignore-errors (delete-directory directory t t)))))
 
-(defun yeah-acp-test--new-session ()
-  "Create a session in the isolated ACP test server and return its id."
+(defun yeah-acp-test--new-session (&optional transport)
+  "Create a session in the isolated ACP test server and return its id.
+TRANSPORT is the transport of the service: the controller of a session
+freezes it when the session is created."
+  (when transport
+    (setq yeah-acp--transport transport))
   (plist-get
    (yeah-acp-session-new (list :cwd (file-truename yeah-data-home)
                                :mcpServers nil))
@@ -91,10 +155,9 @@
 (ert-deftest yeah-acp-prompt-answers-with-end-turn-stop-reason ()
   (yeah-acp-test--with-server
     (let* ((emitted nil)
-           (session-id (yeah-acp-test--new-session)))
+           (session-id (yeah-acp-test--new-session
+                        (lambda (_prompt callback) (funcall callback "the answer")))))
       (setq yeah-acp--output-function (lambda (text) (push text emitted)))
-      (setq yeah-acp--transport
-            (lambda (_prompt callback) (funcall callback "the answer")))
       (should-not
        (yeah-acp-handle-message
         (yeah-acp-test--prompt-request 7 session-id "hello")))
@@ -108,9 +171,9 @@
 (ert-deftest yeah-acp-cancel-answers-prompt-with-cancelled ()
   (yeah-acp-test--with-server
     (let* ((emitted nil)
-           (session-id (yeah-acp-test--new-session)))
+           (session-id (yeah-acp-test--new-session
+                        (lambda (_prompt _callback) nil))))
       (setq yeah-acp--output-function (lambda (text) (push text emitted)))
-      (setq yeah-acp--transport (lambda (_prompt _callback) nil))
       (should-not
        (yeah-acp-handle-message
         (yeah-acp-test--prompt-request 9 session-id "wait")))
@@ -122,7 +185,8 @@
       (let ((response (yeah-acp-test--find-response emitted 9)))
         (should response)
         (should (equal "cancelled" (yeah-acp-test--stop-reason response))))
-      (should-not (gethash session-id yeah-acp--active-turns)))))
+      (should (yeah-control-done-p
+               (plist-get (yeah-acp--session-state session-id) :control))))))
 
 (ert-deftest yeah-acp-prompt-rejects-unsupported-content-block ()
   (yeah-acp-test--with-server
@@ -187,6 +251,163 @@ the session, so the same question is not asked a second time."
                                      (list :effect :allow :reply :always)))
       (should (eq :allow
                   (plist-get (funcall answerer request) :effect))))))
+
+(ert-deftest yeah-acp-steer-queues-an-input-and-answers-with-its-id ()
+  "A clarification waits in the queue of the session and is named by its id."
+  (yeah-acp-test--with-server
+    (let* ((session-id (yeah-acp-test--new-session
+                        (lambda (_prompt _callback) nil)))
+           (control (plist-get (yeah-acp--session-state session-id) :control)))
+      ;; a prompt the model never answers keeps the turn of the session running
+      (should-not
+       (yeah-acp-handle-message
+        (yeah-acp-test--prompt-request 7 session-id "hello")))
+      (let* ((result (yeah-acp-test--result
+                      "session/steer" (list :sessionId session-id
+                                            :prompt "focus on the tests")))
+             (input-id (plist-get result :inputId))
+             (input (yeah-acp-test--pending-input control input-id)))
+        (should (stringp input-id))
+        (should input)
+        (should (eq 'steering (plist-get input :kind)))
+        (should (equal "focus on the tests" (plist-get input :prompt)))))))
+
+(ert-deftest yeah-acp-withdraw-removes-a-pending-input ()
+  "A withdrawn input leaves the queue of the session and is not withdrawn twice."
+  (yeah-acp-test--with-server
+    (let* ((session-id (yeah-acp-test--new-session
+                        (lambda (_prompt _callback) nil)))
+           (control (plist-get (yeah-acp--session-state session-id) :control)))
+      (should-not
+       (yeah-acp-handle-message
+        (yeah-acp-test--prompt-request 7 session-id "hello")))
+      (let* ((input-id (plist-get (yeah-acp-test--result
+                                   "session/steer" (list :sessionId session-id
+                                                         :prompt "wait"))
+                                  :inputId))
+             (result (yeah-acp-test--result
+                      "session/withdraw" (list :sessionId session-id
+                                               :inputId input-id))))
+        (should (eq t (plist-get result :withdrawn)))
+        (should-not (yeah-acp-test--pending-input control input-id))
+        (should (eq :false
+                    (plist-get (yeah-acp-test--result
+                                "session/withdraw"
+                                (list :sessionId session-id
+                                      :inputId input-id))
+                               :withdrawn)))))))
+
+(ert-deftest yeah-acp-recover-starts-the-oldest-pending-ask ()
+  "Recovery is explicit: a pending input waits until the person asks for it."
+  (yeah-acp-test--with-server
+    (let* ((asked nil)
+           (session-id (yeah-acp-test--new-session
+                        (lambda (prompt callback)
+                          (setq asked prompt)
+                          (funcall callback "the answer"))))
+           (session (plist-get (yeah-acp--session-state session-id) :session)))
+      ;; the queue a restart left behind
+      (yeah-input-enqueue session (list :kind 'ask
+                                         :prompt "the pending one"
+                                         :frozen (list :cwd yeah-data-home)))
+      (let ((result (yeah-acp-test--result
+                     "session/recover" (list :sessionId session-id))))
+        (should (eq t (plist-get result :started)))
+        (should (stringp (plist-get result :inputId)))
+        (should (equal "the pending one" asked))))))
+
+(ert-deftest yeah-acp-load-replays-the-journal-into-the-editor-view ()
+  "Opening a session again replays its records as session/update messages."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session))
+           (session (plist-get (yeah-acp--session-state session-id) :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (yeah-events-write session "user-message" :payload "the earlier text")
+      (let* ((result (yeah-acp-test--result
+                      "session/load" (list :sessionId session-id
+                                            :cwd yeah-data-home
+                                            :mcpServers nil)))
+             (replayed (plist-get result :replayed)))
+        (should (equal session-id (plist-get result :sessionId)))
+        (should (> replayed 0))
+        (let ((updates (yeah-acp-test--update-objects
+                        (take replayed emitted))))
+          (should (= replayed (length updates)))
+          (should (cl-some (lambda (update)
+                             (equal "user_message_chunk"
+                                    (plist-get update :sessionUpdate)))
+                           updates))
+          (should (cl-some (lambda (update)
+                             (equal "the earlier text"
+                                    (yeah-acp-test--content-text
+                                     (plist-get update :content))))
+                           updates)))))))
+
+(ert-deftest yeah-acp-queue-events-reach-the-client-as-session-updates ()
+  "The pending queue of a session is visible in the wire: the events that
+move an input in or out of the queue have their own update kinds."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (listener (plist-get state :listener))
+           (session (plist-get state :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (funcall listener session "input-queued"
+               (list :input_id "input-1" :input_kind "ask"
+                     :prompt "the words") 1)
+      (funcall listener session "input-taken"
+               (list :input_id "input-1" :input_kind "ask") 2)
+      (funcall listener session "input-recovered"
+               (list :input_id "input-2" :input_kind "steering") 3)
+      (funcall listener session "input-withdrawn"
+               (list :input_id "input-2" :kind "steering"
+                     :reason "the run it was addressed to ended") 4)
+      (let ((updates (reverse (yeah-acp-test--update-objects emitted))))
+        (should (= 4 (length updates)))
+        (should (equal "input_queued" (plist-get (nth 0 updates) :sessionUpdate)))
+        (should (equal "input-1" (plist-get (nth 0 updates) :inputId)))
+        (should (equal "ask" (plist-get (nth 0 updates) :inputKind)))
+        (should (equal "the words"
+                       (yeah-acp-test--content-text
+                        (plist-get (nth 0 updates) :content))))
+        (should (equal "input_taken" (plist-get (nth 1 updates) :sessionUpdate)))
+        (should (equal "input_recovered"
+                       (plist-get (nth 2 updates) :sessionUpdate)))
+        (should (equal "input_withdrawn"
+                       (plist-get (nth 3 updates) :sessionUpdate)))
+        (should (equal "steering" (plist-get (nth 3 updates) :inputKind)))
+        (should (equal "the run it was addressed to ended"
+                       (plist-get (nth 3 updates) :reason)))))))
+
+(ert-deftest yeah-acp-an-unknown-session-is-an-error ()
+  "The wire does not answer a request for a session it does not know."
+  (yeah-acp-test--with-server
+    (dolist (method '("session/steer" "session/withdraw" "session/recover"))
+      (let ((response (yeah-acp-test--response method
+                                              (list :sessionId "no-such-session"
+                                                    :inputId "input-1"
+                                                    :prompt "hello"))))
+        (should (= -32602 (plist-get (plist-get response :error) :code)))
+        (should-not (plist-get response :result))))
+    (let ((response (yeah-acp-test--response
+                     "session/load" (list :sessionId "no-such-session"
+                                           :cwd yeah-data-home))))
+      (should (= -32602 (plist-get (plist-get response :error) :code)))
+      (should-not (plist-get response :result)))))
+
+(ert-deftest yeah-acp-dispatcher-routes-every-method-the-schema-declares ()
+  "The schema and the dispatcher agree: a method the schema names is routed.
+A request the dispatcher cannot accept is refused with -32602; a method it
+does not know is refused with -32601."
+  (yeah-acp-test--with-server
+    (let ((methods (yeah-acp-test--schema-methods)))
+      (should methods)
+      (dolist (method methods)
+        (let ((response (yeah-acp-test--response method nil)))
+          (should-not
+           (= -32601 (plist-get (plist-get response :error) :code))))))))
 
 (provide 'test-yeah-acp)
 ;;; test-yeah-acp.el ends here

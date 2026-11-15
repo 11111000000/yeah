@@ -11,6 +11,22 @@
 ;; state; session/cancel is a notification; journal events become
 ;; session/update notifications through `yeah-events-write-functions'.
 ;;
+;; A session is driven by a controller: the same one the attached path uses.
+;; The controller owns the session's turn and its persistent pending queue,
+;; so the wire can ask, steer, cancel, withdraw a pending input and recover
+;; one.  There is no second queue in this module: the pending inputs of a
+;; session are the ones the control keeps, and the queue the editor sees is
+;; a projection of the journal -- the events that move an input in or out of
+;; the queue reach the client as session/update notifications.
+;;
+;; `session/load' opens a session again and replays its journal: the records
+;; of the session become session/update notifications, so that an editor can
+;; rebuild the transcript of a session it opens a second time.
+;;
+;; An answer to a permission that arrives after the run that asked has ended
+;; is not applied: the journal shows the question as deferred and the run as
+;; ended, and the late answer changes nothing.
+;;
 ;; The protocol is spoken over two transports.  On stdio the server reads
 ;; standard input with a blocking read, so a notification that arrives
 ;; while a prompt is running is read only after the prompt settled.  On a
@@ -42,12 +58,6 @@
 
 (defvar yeah-acp--sessions (make-hash-table :test 'equal)
   "Map ACP session ids to their Yeah session state.")
-
-(defvar yeah-acp--active-turns (make-hash-table :test 'equal)
-  "Map ACP session ids to the list of their live turns.
-A session may have more than one turn: a client may start a second
-prompt before the first one settled, and the answer of a permission
-question belongs to the turn that asked it.")
 
 (defvar yeah-acp--pending-permissions (make-hash-table :test 'equal)
   "Map permission request ids to the question they ask.
@@ -148,6 +158,29 @@ to the gptel transport of the service's own configuration.")
 This variable is bound dynamically while a connection is served, so the
 messages of one connection do not reach another one.")
 
+(defun yeah-acp--session-answerer (state)
+  "Return the answerer of STATE: the client of the session over the wire.
+The rules of the session decide first; what they do not name is asked of
+the client as a `session/request_permission', and the call waits for the
+answer.  The question is asked of the connection the session belongs to."
+  (lambda (request)
+    (funcall (or yeah-acp--answerer
+                 (yeah-acp--client-answerer (plist-get state :id)
+                                             (yeah-acp--output-for state)))
+             request)))
+
+(defun yeah-acp--make-control (state)
+  "Return the controller of STATE.
+The controller owns the turn of the session and its persistent pending
+queue: the wire and the attached path share one queue, one set of journal
+events and one set of semantics.  The transport and the answerer are the
+service's, and the working directory travels with every input."
+  (yeah-control-new (plist-get state :session)
+                    (or yeah-acp--transport yeah-acp-default-transport)
+                    (yeah-acp--session-answerer state)
+                    nil nil
+                    (list :cwd (plist-get state :cwd))))
+
 (defun yeah-acp-version ()
   "Return the ACP protocol version spoken by Yeah."
   yeah-acp--protocol-version)
@@ -227,9 +260,11 @@ OUTPUT receives the serialized message and defaults to standard output."
                   :params (list :sessionId session-id :update update)))))
 
 (defun yeah-acp--content-chunk (kind text)
-  "Return an ACP content chunk of KIND containing TEXT."
+  "Return an ACP content chunk of KIND containing TEXT.
+The content of an ACP update is an array of content blocks, and the JSON
+encoder needs a vector to write one."
   (list :sessionUpdate kind
-        :content (list :type "text" :text (or text ""))))
+        :content (vector (list :type "text" :text (or text "")))))
 
 (defun yeah-acp--tool-call (tool-call-id name status &optional result)
   "Return a tool_call or tool_call_update ACP update for TOOL-CALL-ID."
@@ -241,41 +276,80 @@ OUTPUT receives the serialized message and defaults to standard output."
     (list :sessionUpdate "tool_call_update"
           :toolCallId tool-call-id
           :status (if (eq status 'failed) "failed" "completed")
-          :content (list (list :type "text" :text (or result ""))))))
+          :content (vector (list :type "text" :text (or result ""))))))
+
+(defun yeah-acp--input-update (kind fields)
+  "Return an ACP update of KIND for a queue event with FIELDS.
+The update names the input, its kind, the words the person wrote and, for a
+withdrawal, the reason the input left the queue.  A field the event does not
+carry is left out of the update."
+  (let ((update (list :sessionUpdate kind)))
+    (when-let ((input-id (plist-get fields :input_id)))
+      (plist-put update :inputId input-id))
+    (when-let ((input-kind (or (plist-get fields :input_kind)
+                                (plist-get fields :kind))))
+      (plist-put update :inputKind input-kind))
+    (when-let ((prompt (plist-get fields :prompt)))
+      (plist-put update :content (vector (list :type "text" :text prompt))))
+    (when-let ((reason (plist-get fields :reason)))
+      (plist-put update :reason reason))
+    update))
+
+(defun yeah-acp--update-for (type fields id)
+  "Return the ACP update for the journal event TYPE with FIELDS, or nil.
+ID names the record.  The pending queue of a session is visible in the log:
+the events that move an input in or out of the queue have their own kinds,
+so that the editor learns the queue from the journal and keeps no state of
+its own."
+  (pcase type
+    ("user-message"
+     (yeah-acp--content-chunk "user_message_chunk"
+                              (plist-get fields :payload)))
+    ("assistant-message"
+     (yeah-acp--content-chunk "agent_message_chunk"
+                              (plist-get fields :payload)))
+    ("tool-request"
+     (yeah-acp--tool-call
+      (or (plist-get fields :tool_call_id) id)
+      (plist-get fields :tool) 'started))
+    ("tool-end"
+     (yeah-acp--tool-call
+      (or (plist-get fields :tool_call_id) id)
+      (plist-get fields :tool)
+      (if (yeah-events-boolean-p (plist-get fields :ok))
+          'completed
+        'failed)
+      (plist-get fields :payload)))
+    ("input-queued" (yeah-acp--input-update "input_queued" fields))
+    ("input-taken" (yeah-acp--input-update "input_taken" fields))
+    ("input-recovered" (yeah-acp--input-update "input_recovered" fields))
+    ("input-withdrawn" (yeah-acp--input-update "input_withdrawn" fields))
+    (_ nil)))
 
 (defun yeah-acp--observe-event (state session type fields id)
   "Send ACP updates for journal events belonging to STATE's SESSION."
   (when (eq session (plist-get state :session))
-    (let ((session-id (plist-get state :id))
-          (output (yeah-acp--output-for state)))
-      (pcase type
-        ("user-message"
-         (yeah-acp--send-update
-          session-id (yeah-acp--content-chunk "user_message_chunk"
-                                              (plist-get fields :payload))
-          output))
-        ("assistant-message"
-         (yeah-acp--send-update
-          session-id (yeah-acp--content-chunk "agent_message_chunk"
-                                              (plist-get fields :payload))
-          output))
-        ("tool-request"
-         (yeah-acp--send-update
-          session-id (yeah-acp--tool-call
-                     (or (plist-get fields :tool_call_id) id)
-                     (plist-get fields :tool) 'started)
-          output))
-        ("tool-end"
-         (yeah-acp--send-update
-          session-id (yeah-acp--tool-call
-                     (or (plist-get fields :tool_call_id) id)
-                     (plist-get fields :tool)
-                     (if (yeah-events-boolean-p (plist-get fields :ok))
-                         'completed
-                       'failed)
-                     (plist-get fields :payload))
-          output))
-        (_ nil)))))
+    (let ((update (yeah-acp--update-for type fields id)))
+      (when update
+        (yeah-acp--send-update (plist-get state :id) update
+                               (yeah-acp--output-for state))))))
+
+(defun yeah-acp--replay (state session)
+  "Send the journal of SESSION to the client as session/update notifications.
+Return the number of records that were replayed.  The editor rebuilds its
+transcript from them: the messages, the tool calls and the queue events of
+the session, in the order the journal holds them."
+  (let ((output (yeah-acp--output-for state))
+        (count 0))
+    (dolist (record (yeah-session-records session))
+      (let ((update (yeah-acp--update-for
+                     (plist-get record :type)
+                     (yeah-session-record-fields record)
+                     (plist-get record :id))))
+        (when update
+          (yeah-acp--send-update (plist-get state :id) update output)
+          (setq count (1+ count)))))
+    count))
 
 (defun yeah-acp--output-for (state)
   "Return the output function of STATE: its connection's, or the global one."
@@ -288,16 +362,22 @@ The state carries the output function of the connection the session was
 created on, so its notifications reach that connection; when the session
 was created without a connection the current output function is used.
 The state also carries the rules the client remembered for this session:
-a decision of the client is remembered here and in no other session."
+a decision of the client is remembered here and in no other session.
+The state carries the controller of the session: its turn and its queue."
   (let* ((id (plist-get session :id))
+         (previous (gethash id yeah-acp--sessions))
          (state (list :id id :session session :cwd cwd :listener nil
                       :output yeah-acp--output
                       :connection yeah-acp--connection
-                      :rules nil
-                      :registry (yeah-tools-snapshot)))
+                      :rules nil))
          (listener (lambda (observed-session type fields event-id)
                      (yeah-acp--observe-event state observed-session type fields event-id))))
+    (when previous
+      (when-let ((old (plist-get previous :listener)))
+        (setq yeah-events-write-functions
+              (delete old yeah-events-write-functions))))
     (plist-put state :listener listener)
+    (plist-put state :control (yeah-acp--make-control state))
     (add-to-list 'yeah-events-write-functions listener)
     (puthash id state yeah-acp--sessions)
     state))
@@ -312,14 +392,21 @@ a decision of the client is remembered here and in no other session."
     (list :sessionId (plist-get session :id))))
 
 (defun yeah-acp-session-load (request)
-  "Load an existing session and replay no history, as session/resume semantics."
+  "Load an existing session and replay its journal into the editor's view.
+The records of the session become session/update notifications, so that the
+editor can rebuild the transcript of a session it opens again.  The answer
+names the session and the number of records that were replayed."
   (yeah-acp--validate-session-request request t)
   (let* ((cwd (file-truename (plist-get request :cwd)))
          (root (yeah-product-session-root cwd))
-         (session-id (plist-get request :sessionId))
-         (session (yeah-session-open session-id root)))
-    (yeah-acp--register-session session cwd)
-    (list :sessionId (plist-get session :id))))
+         (session-id (plist-get request :sessionId)))
+    (unless (file-exists-p (yeah-session--path-for session-id root))
+      (signal 'user-error
+              (list (format "unknown ACP session: %s" session-id))))
+    (let* ((session (yeah-session-open session-id root))
+           (state (yeah-acp--register-session session cwd)))
+      (list :sessionId (plist-get session :id)
+            :replayed (yeah-acp--replay state session)))))
 
 (defun yeah-acp--prompt-text (blocks)
   "Return prompt text from ACP content BLOCKS.
@@ -346,60 +433,136 @@ Text and resource_link blocks are supported; every other block is refused."
     ('interrupted "cancelled")
     (_ "refusal")))
 
-(defun yeah-acp--remember-turn (session-id turn)
-  "Remember TURN as a live turn of SESSION-ID."
-  (puthash session-id (cons turn (gethash session-id yeah-acp--active-turns))
-            yeah-acp--active-turns))
-
-(defun yeah-acp--forget-turn (session-id turn)
-  "Remove TURN from the live turns of SESSION-ID."
-  (let ((turns (gethash session-id yeah-acp--active-turns)))
-    (when turns
-      (let ((rest (cl-remove turn turns :test #'eq)))
-        (if rest
-            (puthash session-id rest yeah-acp--active-turns)
-          (remhash session-id yeah-acp--active-turns))))))
+(defun yeah-acp--completion-stop-reason (completion)
+  "Return the ACP stopReason of the control COMPLETION.
+A withdrawn input has no turn: it was cancelled before it ever ran."
+  (let ((turn (plist-get completion :turn)))
+    (if turn
+        (yeah-acp--stop-reason turn)
+      (pcase (plist-get completion :state)
+        ('completed "end_turn")
+        ('interrupted "cancelled")
+        ('cancelled "cancelled")
+        (_ "refusal")))))
 
 (defun yeah-acp-session-prompt (request id)
-  "Start a prompt for REQUEST and send its response later under request ID."
+  "Queue a prompt for REQUEST and send its response later under request ID.
+The prompt is an ordinary ask of the session's controller: it runs when the
+session is idle and waits in the queue of the session when a run is active.
+The response leaves when the run reaches a terminal state, and it carries the
+same stop reasons as before."
   (unless (listp request)
     (signal 'user-error (list "session/prompt params must be an object")))
   (let* ((session-id (plist-get request :sessionId))
          (state (yeah-acp--session-state session-id t))
-         (session (plist-get state :session))
          (output (yeah-acp--output-for state))
-         (prompt (yeah-acp--prompt-text (plist-get request :prompt)))
-         (frozen (list :kind 'ask :prompt prompt
-                       :frozen (list :cwd (plist-get state :cwd))))
-         (turn
-          (yeah-turn-run
-           session prompt yeah-acp--transport
-           (or yeah-acp--answerer
-               (yeah-acp--client-answerer session-id output))
-           nil nil
-           (lambda (finished)
-             (yeah-acp--forget-turn session-id finished)
-             (funcall
-              output
-              (json-serialize
-               (list :jsonrpc "2.0" :id id
-                     :result (list :stopReason
-                                   (yeah-acp--stop-reason finished))))))
-           nil frozen nil
-           (plist-get state :registry))))
-    (unless (yeah-turn-done turn)
-      (yeah-acp--remember-turn session-id turn))
-    nil))
+         (control (plist-get state :control))
+         (prompt (yeah-acp--prompt-text (plist-get request :prompt))))
+    (yeah-control-submit
+     control prompt nil
+     (lambda (completion)
+       (funcall
+        output
+        (json-serialize
+         (list :jsonrpc "2.0" :id id
+               :result (list :stopReason
+                             (yeah-acp--completion-stop-reason completion))))))))
+  nil)
 
 (defun yeah-acp-session-cancel (request)
-  "Handle the session/cancel notification REQUEST."
+  "Handle the session/cancel notification REQUEST.
+The cancel reaches the run of the session's controller: it stops the turn
+that runs now and leaves the pending inputs of the session for a later run."
   (unless (and (listp request) (stringp (plist-get request :sessionId)))
     (signal 'user-error (list "session/cancel needs sessionId")))
-  (dolist (turn (copy-sequence
-                 (gethash (plist-get request :sessionId)
-                          yeah-acp--active-turns)))
-    (yeah-turn-cancel turn "cancelled by ACP client"))
+  (let ((state (yeah-acp--session-state (plist-get request :sessionId))))
+    (when state
+      (yeah-control-cancel (plist-get state :control) "cancelled by ACP client")))
   nil)
+
+(defun yeah-acp--require-session-id (request method)
+  "Signal `user-error' unless REQUEST names a session for METHOD."
+  (unless (and (listp request) (stringp (plist-get request :sessionId)))
+    (signal 'user-error (list (format "%s needs sessionId" method)))))
+
+(defun yeah-acp--input-ids (control)
+  "Return the ids of the pending inputs of CONTROL."
+  (mapcar (lambda (input) (plist-get input :id))
+          (yeah-control-pending control)))
+
+(defun yeah-acp--queued-id (session)
+  "Return the id of the last input that entered the queue of SESSION.
+The journal names every input that enters the queue, so the id of a queued
+input is known even when the run it started has already ended."
+  (let ((record (seq-find
+                 (lambda (candidate)
+                   (equal "input-queued" (plist-get candidate :type)))
+                 (reverse (yeah-session-records session)))))
+    (and record (plist-get record :input_id))))
+
+(defun yeah-acp--steer-input-id (control session prompt)
+  "Queue PROMPT as steering in CONTROL and return the id of the new input.
+A steering that waits in the queue is named by the queue itself; a steering
+that the control turned into an ask (the session was idle) is named by the
+run it started."
+  (let* ((before (yeah-acp--input-ids control))
+         (turn (yeah-control-steer control prompt))
+         (fresh (seq-difference (yeah-acp--input-ids control) before #'equal)))
+    (or (car fresh)
+        (and turn (yeah-turn-id turn))
+        (yeah-acp--queued-id session))))
+
+(defun yeah-acp-session-steer (request)
+  "Queue a clarification for the running turn of REQUEST.
+The answer names the input the clarification waits as.  A clarification that
+the session cannot deliver to a running turn becomes an ordinary ask."
+  (yeah-acp--require-session-id request "session/steer")
+  (unless (stringp (plist-get request :prompt))
+    (signal 'user-error (list "session/steer needs a prompt")))
+  (let* ((state (yeah-acp--session-state (plist-get request :sessionId) t))
+         (control (plist-get state :control))
+         (session (plist-get state :session))
+         (input-id (yeah-acp--steer-input-id
+                    control session (plist-get request :prompt))))
+    (unless input-id
+      (signal 'user-error (list "session/steer: the clarification was not queued")))
+    (list :inputId input-id)))
+
+(defun yeah-acp-session-withdraw (request)
+  "Withdraw the pending input named by REQUEST and answer with the outcome.
+The answer names the input and says whether it was pending: an input that
+is not in the queue is not withdrawn twice."
+  (yeah-acp--require-session-id request "session/withdraw")
+  (unless (stringp (plist-get request :inputId))
+    (signal 'user-error (list "session/withdraw needs an inputId")))
+  (let* ((state (yeah-acp--session-state (plist-get request :sessionId) t))
+         (control (plist-get state :control))
+         (input-id (plist-get request :inputId))
+         (input (yeah-control-withdraw control input-id)))
+    (list :inputId input-id
+          :withdrawn (if input t :false))))
+
+(defun yeah-acp-session-recover (request)
+  "Start the oldest pending input of REQUEST and answer with the outcome.
+Recovery is explicit: a pending input waits until the person asks for it,
+and the journal says that it was recovered.
+
+A run that is already active is not an error of the protocol: nothing is
+recovered then, and the answer says so.  The answer names the INPUT that
+was recovered, not the turn that carries it."
+  (yeah-acp--require-session-id request "session/recover")
+  (let* ((state (yeah-acp--session-state (plist-get request :sessionId) t))
+         (control (plist-get state :control))
+         (active (yeah-control-active-turn control))
+         (input (seq-find (lambda (candidate)
+                            (eq 'ask (plist-get candidate :kind)))
+                          (yeah-control-pending control))))
+    (if (and active (not (yeah-turn-done active)))
+        (list :started :false)
+      (let ((turn (yeah-control-recover-next control)))
+        (if turn
+            (list :started t :inputId (and input (plist-get input :id)))
+          (list :started :false))))))
 
 (defun yeah-acp--permission-decision (message)
   "Return the permission decision carried by client RESPONSE MESSAGE.
@@ -430,12 +593,15 @@ cancelled request, a protocol error, or an unknown option refuses it."
 
 (defun yeah-acp--turn-waiting-for (session-id request-id)
   "Return the turn of SESSION-ID that waits for the answer of REQUEST-ID.
-The answer may arrive after another prompt of the same session started: the
-turn that asked the question is the one that gets the answer."
-  (seq-find (lambda (turn)
-              (and (not (yeah-turn-done turn))
-                   (gethash request-id (yeah-turn-pending-permissions turn))))
-            (gethash session-id yeah-acp--active-turns)))
+The turn of a session is the one its controller runs: the answer of a
+permission question reaches the turn that asked it."
+  (let* ((state (yeah-acp--session-state session-id))
+         (control (and state (plist-get state :control)))
+         (turn (and control (yeah-control-active-turn control))))
+    (when (and turn
+               (not (yeah-turn-done turn))
+               (gethash request-id (yeah-turn-pending-permissions turn)))
+      turn)))
 
 (defun yeah-acp--remember-decision (question decision)
   "Remember an `always' DECISION for QUESTION in the rules of its session.
@@ -484,9 +650,10 @@ of the dead connection are dropped."
       (dolist (id stale)
         (remhash id yeah-acp--pending-permissions)))
     (dolist (session-id sessions)
-      (dolist (turn (copy-sequence
-                     (gethash session-id yeah-acp--active-turns)))
-        (yeah-turn-cancel turn "the client disconnected")))))
+      (let* ((state (yeah-acp--session-state session-id))
+             (control (and state (plist-get state :control))))
+        (when control
+          (yeah-control-cancel control "the client disconnected"))))))
 
 (defun yeah-acp--dispatch (method params id)
   "Dispatch ACP METHOD with PARAMS and request ID.
@@ -503,6 +670,12 @@ and asynchronously answered prompts."
      (yeah-acp-session-prompt params id))
     ("session/cancel"
      (yeah-acp-session-cancel params))
+    ("session/steer"
+     (yeah-acp--response id (yeah-acp-session-steer params)))
+    ("session/withdraw"
+     (yeah-acp--response id (yeah-acp-session-withdraw params)))
+    ("session/recover"
+     (yeah-acp--response id (yeah-acp-session-recover params)))
     (_
      (yeah-acp--error id -32601 (format "Method not found: %s" method)))))
 
@@ -528,6 +701,20 @@ and asynchronously answered prompts."
   "Read one line from standard input, or nil at end of file."
   (yeah-wire-read-line))
 
+(defun yeah-acp--live-turns ()
+  "Return the turns that run now, one per session at most.
+The turn of a session is the one its controller runs: the wire drives the
+sessions through their controllers, so the controllers know what runs."
+  (let (turns)
+    (maphash
+     (lambda (_id state)
+       (let ((control (plist-get state :control)))
+         (when-let ((turn (and control (yeah-control-active-turn control))))
+           (unless (yeah-turn-done turn)
+             (push turn turns)))))
+     yeah-acp--sessions)
+    turns))
+
 ;;;###autoload
 (defun yeah-acp-serve (&optional transport answerer output-function)
   "Serve ACP over standard input/output until EOF.
@@ -552,7 +739,7 @@ limit."
               (when response
                 (funcall yeah-acp--output-function response)))
             (yeah-wire-pump-until
-             (lambda () (zerop (hash-table-count yeah-acp--active-turns)))))))))
+             (lambda () (null (yeah-acp--live-turns)))))))))
   nil)
 
 ;;;###autoload
@@ -578,7 +765,7 @@ served at the same time."
    #'yeah-acp--connection-closed))
 
 (defun yeah-acp--reset-for-test ()
-  "Clear ACP sessions, listeners and active turns for tests."
+  "Clear ACP sessions, listeners and pending questions for tests."
   (maphash
    (lambda (_id state)
      (when-let ((listener (plist-get state :listener)))
@@ -586,7 +773,7 @@ served at the same time."
              (delete listener yeah-events-write-functions))))
    yeah-acp--sessions)
   (clrhash yeah-acp--sessions)
-  (clrhash yeah-acp--active-turns)
+  (clrhash yeah-acp--pending-permissions)
   (setq yeah-acp--counter 0))
 
 (provide 'yeah-acp)
