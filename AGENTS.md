@@ -43,8 +43,9 @@ work item. Never resolve it by silently making documentation more optimistic.
   only the tools it was granted. The fixed-point demonstration passes with
   a live model: a child repairs a Yeah canary and the canary passes
   afterwards (tests/live/live-fixed-point.el, one child). Parallel
-  children, the cheaper child model and the Org projection are not
-  implemented yet.
+  children and the cheaper child model are not implemented yet; an Org
+  preset header and the Org export of a session are (lib/yeah-agent.el,
+  lib/yeah-org.el).
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
@@ -146,7 +147,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-55 claim(s).
+74 claim(s).
 
 ```sh
 mathc run

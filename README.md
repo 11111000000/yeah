@@ -113,19 +113,28 @@ kernel and its Emacs-native interface:
   permanent text fallback, and a separate multiline composer with bounded
   in-memory history and explicit file/buffer context;
 - `M-x yeah' with ask/steer/cancel/recover, withdrawal, diff review, Org
-  export and `M-x yeah-doctor';
+  export and `M-x yeah-doctor'; the service placement is the default entry
+  point, and the attached placement stays reachable as `yeah-attached';
 - tested interaction components for read-only Edit/Write previews, an
   approval view, Doctor diagnostics and a session list;
 - an ACP v1 agent over newline JSON-RPC on stdio, with real sessions, journal
   updates, streaming tool calls and cancellation — and over a local socket,
   where a cancel is handled while the prompt is still running;
+- the whole control of a session on both paths: the wire carries
+  `session/steer', `session/withdraw' and `session/recover', a `session/load'
+  replays the journal of an earlier session, and the pending queue of the
+  person is a projection of the journal events, not a second state;
+- a permission request is written into the journal before the question is
+  asked, and an answer that comes later settles the question exactly once;
 - an MCP server publishing the read-only `emacs__*` surface, and an MCP client
   that imports the tools of a foreign server under a namespaced name;
 - a run context that owns the session, the transport, the answerer and the
   rules of one run, and three placements: attached, service and batch;
 - a service lifecycle: a dedicated Emacs is started, connected to and
   stopped as a service, serving ACP over a local socket in a user-private
-  directory — and the editor side of it: an ACP client that connects,
+  directory — or over a loopback TCP port, whose number the service
+  publishes in a file, where the platform has no Unix sockets — and the
+  editor side of it: an ACP client that connects,
   matches answers to requests, answers the service's permission requests
   (`session/request_permission') and sees the streamed updates; `M-x
   yeah-service' opens a buffer that drives such a service, the person
@@ -138,7 +147,7 @@ kernel and its Emacs-native interface:
 - agent presets read from files, and a delegation that runs a child for
   real: its own session, its own permissions, its own journal.
 
-After Stage 7, byte compilation is clean and 331 ERT unit tests pass, and
+After Stage 7, byte compilation is clean and 358 ERT unit tests pass, and
 the fixed-point demonstration is verified with a real model.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
@@ -147,7 +156,7 @@ socket, where a cancel preempts a running prompt), the placements
 (the same task in three real processes, compared event by event), the
 journey of a person (ask, steer, quit, restart, withdraw, recover, cancel),
 and the shared attached/service journal.  The math-coding v5 map/run/gate
-result is green for all 67 declared claims, each with a negative control
+result is green for all 74 declared claims, each with a negative control
 shown to bite.
 A real model (MiniMax-M3.1-Flash) finishes the Stage 1 coding task, and the
 interactive path works against a live provider: the journal mode, the cancel,
@@ -171,19 +180,29 @@ Do not infer a working product from the presence of a module:
   while a prompt is running is read after that prompt reaches a terminal
   state.  The socket transport (`lib/yeah-wire-socket.el`) does not have
   this limit — a cancel is handled while the prompt is still running;
-- `M-x yeah' still opens the attached placement.  The service placement has
-  the same journal and composer, but switching the default entry point is
-  deliberately deferred until session replay, steering, pending-input
-  recovery and mode changes have the same service/attached behaviour;
-- the service journal receives the live ACP stream, but `session/load' does
-  not yet replay an earlier session into it, and the service path does not
-  yet expose the attached path's pending queue, steering, withdrawal and
-  recovery commands;
+- `M-x yeah' opens the service placement; the attached placement stays
+  reachable by name (`yeah-attached') as the development path and the
+  fallback when the service cannot start.  The bridge to the buffers of an
+  attached Emacs is still off until the operator turns it on;
+- the service path carries the whole control: `session/steer',
+  `session/withdraw', `session/recover' and a `session/load' that replays the
+  journal of an earlier session, and the pending queue of the session reaches
+  the editor as `session/update' notifications.  The queue of the person is a
+  projection of the journal events (`input-queued', `input-taken',
+  `input-recovered', `input-withdrawn'), not a second state.  What the service
+  still does not have: the mode changes of the attached path, and a client
+  that opens an earlier session by name;
 - the permission question is asked in one place: the shared approval view,
   which names the action, its target, the arguments and the diff of the
   change, and which both the attached and the service path open.  The
-  preview is a read-only text diff, not the full `diff-mode' surface, and
-  the wire answer `always' is not remembered by the kernel yet;
+  preview is a read-only text diff, not the full `diff-mode' surface; the
+  answer `always' is remembered — over the wire for the session, and on the
+  attached path as a rule the policy reads — while the standing rules of the
+  service are not touched by a client's answer;
+- the live checks under `tests/live/` are evidence without a claim: they need
+  a provider, so no control can bite and the green verdict of the 74 claims
+  says nothing about them.  What each of them proves, how to run it and when
+  it was last recorded is in `docs/LIVE-EVIDENCE.md`;
 - `nerd-icons' is optional decoration only.  Without it, without multiple
   fonts, or with `yeah-icons' set to `never', every label remains readable
   text; no icon package is required;

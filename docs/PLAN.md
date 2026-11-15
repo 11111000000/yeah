@@ -12,12 +12,13 @@
 
 ## 1. Current baseline
 
-Verified on 2026-11-14 in the `feat/emacs-ux-v3` integration branch:
+Verified on 2026-11-15 on `main` (the numbers of 2026-11-14 in the integration
+branch were 319/319, 46 and 55):
 
 - all 53 Elisp files under `lib/` byte-compile without warnings;
-- 319/319 ERT unit tests pass;
-- all 46 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
-- the installed math-coding v5 tool runs the standing specification: all 55
+- 358/358 ERT unit tests pass;
+- all 53 canaries pass when run directly (`./scripts/dev check tests/checks/*`);
+- the installed math-coding v5 tool runs the standing specification: all 74
   claims hold, and every negative control changes its scoped subject and
   makes the verifier fail with an assertion;
 - live provider behavior remains verified on 2026-11-12: the live coding task
@@ -1015,7 +1016,16 @@ real model.
 What follows is the distance to a product a person may keep using, and the
 distance to measuring the parity the vision asks for.
 
-### 16.1 The answerer that answers later
+**What has landed since (2026-11-15).**  16.1, 16.2, 16.3 and 16.4 are
+implemented; the register of 16.5 and the apparatus of 16.7 are built; 16.8 is
+done.  16.6 waits for a virtual frame server, and the measurements of 16.7
+wait for a provider and for a decision of the owner.  The wave is
+`waves/wave-21.json', the review that started it is
+`docs/REVIEW-2026-11-15.md', and the map holds 74 claims; 358 ERT tests and 53
+canaries pass.  The review of the session that carried the wave, and the plan of
+the work that follows it, are in `docs/PLAN-NEXT.md'.
+
+### 16.1 The answerer that answers later — **done on 2026-11-15**
 
 The archived branch `ux/archive-async-approval' still holds one piece that
 is not in `main': an answerer may be asynchronous.  The kernel asks a
@@ -1030,7 +1040,15 @@ the tool-call id and the normalized arguments, and journal the request
 before the decision.  A claim `an-answer-may-come-later' with a control
 that answers twice or answers after the run ended.
 
-### 16.2 The service path with the whole control
+**What landed:** `yeah-approval-async' and `yeah-approval-resolve' are in
+`lib/yeah-approval.el'; the prepare path of `lib/yeah-turn.el' writes the
+`tool-request' and the `permission-request' before the answerer is asked, and
+the answer settles the question exactly once — a second answer, an answer
+after the run ended and a question that is not answered in time are all
+refused with a reason.  Claim `an-answer-may-come-later' with the canary
+`tests/checks/check-approval-answers-later.el'.
+
+### 16.2 The service path with the whole control — **done on 2026-11-15**
 
 The journal is shared by both paths; the control is not.  The attached
 path asks, steers, cancels, withdraws a steering and recovers a pending
@@ -1040,10 +1058,19 @@ earlier session either.
 **Work:** the wire grows the commands the person has: `session/steer',
 `session/withdraw', `session/recover', and a `session/load' that replays
 the journal into the editor's view.  The pending queue is a projection of
-the journal events (`input-queued', `input-taken', `input-withdrawn'),
+the journal events (`input-queued', `input-taken', `input-recovered', `input-withdrawn'),
 not a second state.  Every command gets a claim and a canary.
 
-### 16.3 The service as the default entry
+**What landed:** the ACP session runs on the same controller as the attached
+path (`lib/yeah-acp.el'), so the queue and its journal events are one truth;
+the wire grew `session/steer', `session/withdraw', `session/recover' and a
+`session/load' that replays the journal; the queue events reach the editor
+as `session/update' notifications, and `lib/yeah-service-ui.el' projects them
+and offers the same keys as the attached path.  Claims
+`pending-queue-is-in-the-journal', `the-wire-carries-the-control' and
+`the-service-carries-the-control'.
+
+### 16.3 The service as the default entry — **done on 2026-11-15**
 
 The decision of 2026-11-12 (`M-x yeah' defaults to the service placement)
 waits for the parity of 16.2.  When it lands, `M-x yeah' spawns or
@@ -1051,7 +1078,11 @@ connects the service and drives it from the editor's buffer; the attached
 placement stays as the development and fallback path, and the bridge stays
 off until the operator turns it on.
 
-### 16.4 The platform without Unix sockets
+**What landed:** `M-x yeah' opens the service placement and falls back to the
+attached one, in the open, when the service cannot start; `yeah-attached'
+opens the attached path by name.  Claim `yeah-opens-the-service'.
+
+### 16.4 The platform without Unix sockets — **done on 2026-11-15**
 
 The socket transport can serve a loopback TCP port, but the editor always
 asks for a Unix socket, so the service placement cannot start where there
@@ -1060,13 +1091,23 @@ are none.
 **Work:** the editor picks the family by platform and writes the port to a
 file when it is not a socket path; a canary covers both families.
 
-### 16.5 Evidence that the method cannot hold
+**What landed:** the family is chosen by the platform
+(`lib/yeah-client.el'), the service publishes the port of a loopback TCP
+socket in `<socket-path>.port' and removes the file when it stops, and the
+Unix behaviour is unchanged.  Claim `the-editor-finds-the-service'.
+
+### 16.5 Evidence that the method cannot hold — **the register is done on 2026-11-15**
 
 The live paths need a provider, so no control can bite without one: the
-five live tests and the UI fixtures stay outside the map, and the green
-verdict of 67 claims does not speak for them.  Two ways out: a register of
+six live tests and the UI fixtures stay outside the map, and the green
+verdict of 74 claims does not speak for them.  Two ways out: a register of
 evidence that has no claim, or a live environment the method can run in.
 The first is ours to build; the second is infrastructure.
+
+**What landed:** `docs/LIVE-EVIDENCE.md' says what each live check proves,
+how to run it, when it was last recorded and what is still open; the README
+points at it.  The live environment is still infrastructure, and nobody may
+quote the green verdict of the map as if it covered these checks.
 
 ### 16.6 The picture with pixels
 
@@ -1078,7 +1119,7 @@ no pixel of the real interface was ever looked at.
 renders the journal and the approval view and compares the picture with a
 stored one.
 
-### 16.7 The parity that is measured, not claimed
+### 16.7 The parity that is measured, not claimed — **the apparatus is done on 2026-11-15**
 
 The vision asks for a harness competitive with opencode and pi, and the
 documents say the parity is a goal to measure.  Nothing is measured yet.
@@ -1089,12 +1130,30 @@ runner that gives the same tasks to Yeah and to the other harnesses, with
 the result recorded in the journal of the repository.  The acceptable
 threshold is a decision of the owner (Section 13).
 
-### 16.8 Housekeeping
+**What landed:** `bench/' holds the ten tasks, the manifest and the runner;
+`./scripts/dev bench' proves that every task has a prompt and a check that
+fails on an untouched workspace, and the runner records a harness that could
+not run as `skipped' or `not-available', never as a pass.  No threshold is
+declared, and no measurement has been made: that needs a provider, a second
+harness and the decision of the owner.
+
+### 16.8 Housekeeping — **done on 2026-11-15**
 
 - `ux/archive-async-approval' is deleted once 16.1 has landed and the
   archive holds nothing that `main' does not.
+- `ux/archive-view-draft' is a stale snapshot of an earlier `main': it is
+  reviewed the same way and deleted when it holds nothing that `main' does
+  not.
 - The evidence of the method is refreshed after the release commits, so
   the map is green rather than `outdated'.
+
+**What landed:** both branches held nothing that `main' does not — the
+asynchronous answerer and the two-phase prepare are in `main' now, the
+session-rules owner of the archive is superseded by the rules of the session
+in `lib/yeah-acp.el', and the rest is the older base of `lib/yeah-journal.el',
+`lib/yeah-context.el' and `lib/yeah-ui.el'.  Both are deleted; their tips
+stay reachable under the tags `archive/async-approval-2026-11-15' and
+`archive/view-draft-2026-11-15'.
 
 ### The order
 

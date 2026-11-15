@@ -65,7 +65,7 @@
       ],
       "falsifier": "a cancel that arrives during a running prompt is read only after the prompt settles",
       "register": "fact",
-      "control": "sed -i 's/(yeah-turn-cancel turn \"cancelled by ACP client\")/(progn)/' lib/yeah-acp.el",
+      "control": "sed -i 's/(yeah-control-cancel (plist-get state :control) \"cancelled by ACP client\")/(progn)/' lib/yeah-acp.el",
       "waiver": null
     },
     {
@@ -248,7 +248,7 @@
       ],
       "falsifier": "the client cannot connect, or the prompt is not answered, or no update arrives",
       "register": "fact",
-      "control": "sed -i 's|(and id (plist-get message :result))|nil|' lib/yeah-client.el",
+      "control": "sed -i 's|(funcall answer (plist-get message :result) nil)|nil|' lib/yeah-client.el",
       "waiver": null
     },
     {
@@ -590,7 +590,7 @@
       ],
       "falsifier": "the clean service has no model: the init file it loaded is ignored",
       "register": "fact",
-      "control": "sed -i 's|(or transport \"yeah-acp-default-transport\")|(or transport \"nil\")|' lib/yeah-service.el",
+      "control": "sed -i 's|(or extra-eval \"\")|\"\"|' lib/yeah-service.el",
       "waiver": null
     },
     {
@@ -1004,7 +1004,7 @@
       ],
       "falsifier": "the run still waits for an answer after its client disconnected, or the write ran although nobody allowed it",
       "register": "fact",
-      "control": "sed -i 's|(yeah-turn-cancel turn \"the client disconnected\")|nil|' lib/yeah-acp.el",
+      "control": "sed -i 's|(yeah-control-cancel control \"the client disconnected\")|nil|' lib/yeah-acp.el",
       "waiver": null
     },
     {
@@ -1523,6 +1523,173 @@
       "falsifier": "the decision is allowed but forgotten, so the person is asked the same question twice",
       "register": "fact",
       "control": "sed -i 's|(let ((session-id (plist-get question :session-id)))|(let ((session-id nil))|' lib/yeah-acp.el",
+      "waiver": null
+    }
+,
+
+    {
+      "id": "pending-queue-is-in-the-journal",
+      "text": "The pending queue of a session is a projection of the journal: every input that is queued, starts a run, is recovered or is withdrawn is written into the session log with its id, and the pending list of the editor agrees with the queue of the controller.",
+      "scope": [
+        "lib/yeah-control.el", "lib/yeah-events.el",
+        "tests/checks/check-input-queue-events.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-input-queue-events.el"
+        }
+      ],
+      "falsifier": "the journal carries no queue event, or the wrong input id, or a withdrawn input stays in the pending list of the editor",
+      "register": "fact",
+      "control": "sed -i 's/(yeah-control--write-withdrawn control input \"withdrawn by the person\")/(ignore input)/' lib/yeah-control.el",
+      "waiver": null
+    },
+
+    {
+      "id": "an-answer-may-come-later",
+      "text": "A permission request is written into the journal before the question is asked, and an answer that comes later settles the question exactly once.",
+      "scope": [
+        "lib/yeah-approval.el", "lib/yeah-turn.el",
+        "tests/checks/check-approval-answers-later.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-approval-answers-later.el"
+        }
+      ],
+      "falsifier": "the request is not in the log when the answerer is asked, or a second answer changes the decision, or a question that is not answered in time is not refused with a reason",
+      "register": "fact",
+      "control": "sed -i 's/(unless (or settled closed)/(unless closed/' lib/yeah-approval.el",
+      "waiver": null
+    },
+
+    {
+      "id": "the-wire-carries-the-control",
+      "text": "The ACP wire carries the control of a session: a client steers a running turn, withdraws a pending input, recovers one, opens the session again with its journal replayed, and the pending queue of the session reaches the client as session/update notifications.",
+      "scope": [
+        "lib/yeah-acp.el", "lib/yeah-control.el", "schemas/acp-v1.json",
+        "tests/checks/check-wire-control.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-wire-control.el"
+        }
+      ],
+      "falsifier": "the steer, the withdraw or the recover is not answered, the replay carries no earlier record, or the pending queue of the session does not reach the client as a session/update",
+      "register": "fact",
+      "control": "sed -i 's/(\"session\\/steer\"/(\"session\\/steer-off\"/' lib/yeah-acp.el",
+      "waiver": null
+    },
+
+    {
+      "id": "bench-task-set-is-measurable",
+      "text": "The self-check proves every task of the task set has a prompt and an executable check that fails on an untouched workspace, and the runner records a harness that could not run as skipped or not-available, never as a pass.",
+      "scope": [
+        "bench/manifest.el", "bench/run-bench.el", "bench/tasks/"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev bench"
+        }
+      ],
+      "falsifier": "a check of the task set passes on an untouched workspace, or a harness that could not run is recorded as a pass",
+      "register": "fact",
+      "control": "printf '#!/bin/sh\\nexit 0\\n' > bench/tasks/read-answer/check.sh",
+      "waiver": null
+    },
+
+    {
+      "id": "yeah-opens-the-service",
+      "text": "The command `M-x yeah' opens the service placement, and falls back to the attached placement when the service cannot start.",
+      "scope": [
+        "lib/yeah.el", "tests/checks/check-yeah-opens-the-service.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-yeah-opens-the-service.el"
+        }
+      ],
+      "falsifier": "the entry point opens the attached placement while the service is available, or the service fails and the attached path does not open",
+      "register": "fact",
+      "control": "sed -i 's/(yeah-service)/(yeah--open-attached)/' lib/yeah.el",
+      "waiver": null
+    },
+
+    {
+      "id": "the-service-carries-the-control",
+      "text": "The editor sends the control requests of a service session — steer, withdraw and recover — over the wire, and the queue notifications that arrive populate its pending-input view.",
+      "scope": [
+        "lib/yeah-service-ui.el", "lib/yeah-client.el",
+        "tests/checks/check-service-control.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-service-control.el"
+        }
+      ],
+      "falsifier": "a control request is absent or carries the wrong parameters, or a queued event that arrives over the wire is absent from the pending-input view",
+      "register": "fact",
+      "control": "sed -i 's|\"session/steer\"|\"session/steer-disabled\"|' lib/yeah-service-ui.el",
+      "waiver": null
+    },
+
+    {
+      "id": "the-editor-finds-the-service",
+      "text": "The editor finds a service through a Unix-domain socket on Unix and through a numeric port file on a loopback TCP port when IPv4 is selected.",
+      "scope": [
+        "lib/yeah-client.el", "lib/yeah-service.el",
+        "tests/checks/check-service-tcp.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-service-tcp.el"
+        }
+      ],
+      "falsifier": "the IPv4 service publishes no numeric port file, the client cannot connect through it, or the file remains after the service stops",
+      "register": "fact",
+      "control": "sed -i \"s|(if (eq (yeah-client-effective-network-family) 'local)|(if t|\" lib/yeah-client.el",
       "waiver": null
     }
   ]

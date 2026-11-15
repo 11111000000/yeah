@@ -1,0 +1,75 @@
+{
+  "id": "wave-21",
+  "title": "the whole control of a session, on both paths",
+  "intent": "A person must not lose the commands of a session when the agent moves from the attached placement to a service Emacs. The kernel asks a question that may be answered later, the queue of the person is written into the journal instead of living in a second state, the wire carries steer, withdraw and recover, a session opened again replays its journal, the service is the default entry point, the editor finds the service on a platform without Unix sockets, and the parity with other harnesses has an apparatus that measures instead of claiming.",
+  "touches": [
+    "lib/yeah-approval.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-control.el",
+    "lib/yeah-events.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-service-ui.el",
+    "lib/yeah-client.el",
+    "lib/yeah-service.el",
+    "lib/yeah.el",
+    "schemas/acp-v1.json",
+    "bench/",
+    "tests/checks/",
+    "tests/unit/",
+    "scripts/dev",
+    "spec.json",
+    "waves/",
+    "README.md",
+    "AGENTS.md",
+    "docs/"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*",
+    "./scripts/dev bench",
+    "./scripts/dev run"
+  ],
+  "claims": [
+    "an-answer-may-come-later",
+    "pending-queue-is-in-the-journal",
+    "the-wire-carries-the-control",
+    "the-service-carries-the-control",
+    "the-editor-finds-the-service",
+    "yeah-opens-the-service",
+    "bench-task-set-is-measurable"
+  ],
+  "commitment": [
+    {
+      "claim": "an-answer-may-come-later",
+      "state": "holds"
+    },
+    {
+      "claim": "pending-queue-is-in-the-journal",
+      "state": "holds"
+    },
+    {
+      "claim": "the-wire-carries-the-control",
+      "state": "holds"
+    },
+    {
+      "claim": "the-service-carries-the-control",
+      "state": "holds"
+    },
+    {
+      "claim": "the-editor-finds-the-service",
+      "state": "holds"
+    },
+    {
+      "claim": "yeah-opens-the-service",
+      "state": "holds"
+    },
+    {
+      "claim": "bench-task-set-is-measurable",
+      "state": "holds"
+    }
+  ],
+  "objection": "A shared control can hide a placement-specific truth: the editor may show a pending input that the service never queued, a steering may be delivered to a run that ended, a session replayed may carry events in another order than the live stream, and the service may become the default before the parity it promises is measured.",
+  "refuted_by": "The journal and the queue of the editor disagree, a question is settled twice or a late answer mutates a finished run, the wire does not answer steer, withdraw or recover, a replay carries no earlier record, the editor cannot find the service over TCP, `M-x yeah' opens the attached path while the service is available, a harness that could not run is recorded as a pass, or a control that changes the scoped subject leaves the verifier green.",
+  "note": "The request of a permission is journaled before the question is asked, and the adapter settles it exactly once. The pending queue is a projection of the journal events `input-queued`, `input-taken`, `input-recovered` and `input-withdrawn`. The ACP session runs on the same controller as the attached path, so the wire and the editor share one queue. `M-x yeah' opens the service placement and falls back to the attached one, in the open, when the service cannot start; `yeah-attached' opens the attached path by name; the bridge stays off. The family of the socket is chosen by the platform, and the port of a loopback TCP service is published in a file that holds the port number only. The live checks stay outside the map and are registered in docs/LIVE-EVIDENCE.md; the measurement apparatus in bench/ declares no threshold, because that threshold is a decision of the owner. The picture with pixels (16.6) and the measurements themselves (16.7) are still open."
+}

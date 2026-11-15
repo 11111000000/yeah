@@ -318,9 +318,10 @@ wording, per D10: decision changes are recorded explicitly with their
 document update. The identity invariant still holds — there is no agent
 runtime in another language; in the service deployment both sides are
 Emacs, so "Emacs is not a client to an agent living somewhere else" remains
-true. The honest limits stand: the bridge has so far been checked only
-against a stub program, and the stdio wire server answers one request at a
-time.
+true. The honest limits stand: the bridge is checked against a real Emacs
+server (tests/checks/check-bridge-live-server.el), but not yet against a
+person's Emacs in day-to-day use, and the stdio wire server answers one
+request at a time.
 
 ## 8. Security model
 
@@ -340,8 +341,10 @@ process boundary and its own adversarial verification.
 
 ## 9. Product and interface
 
-`M-x yeah` currently opens the attached placement; the primary deployment
-is driven through ACP/MCP clients and orchestrators against a service Emacs.
+`M-x yeah` opens the service placement; the attached placement stays
+reachable as `yeah-attached', the development path and the fallback when the
+service cannot start.  The primary deployment is also driven through ACP/MCP
+clients and orchestrators against a service Emacs.
 The editor side of the service and the attached placement use the same
 person-facing transcript: `yeah-ui.el` projects the canonical events,
 `yeah-journal.el` renders that projection as a read-only outline-structured
@@ -355,9 +358,11 @@ block and preserve the reader's position.
 Semantic faces inherit the active theme. `nerd-icons` and `markdown-mode`
 are optional adapters: icons never replace the readable state text, and
 plain text remains a complete baseline. `yeah-approval-ui.el` and
-`yeah-diff.el` own standalone approval and read-only preview surfaces;
-wiring one approval question into both placements remains open, so neither
-path may claim that the other is its UI.
+`yeah-diff.el` own the approval and read-only preview surfaces, and the
+question of the permission is asked in one place: the shared approval view,
+which both the attached and the service path open (claim
+`one-approval-surface`). The preview is a read-only text diff, not the full
+`diff-mode` surface.
 
 Emacs UI libraries are adapters, not kernel dependencies. magit-section,
 transient, tabulated-list and the user's completing-read framework are
