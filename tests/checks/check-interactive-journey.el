@@ -29,8 +29,8 @@
 (require 'yeah-ui)
 
 (defconst yeah-journey--expected-events
-  '("header" "user-message" "tool-request" "permission-request"
-    "permission-decision" "tool-end" "assistant-message")
+  '("header" "input-queued" "input-taken" "user-message" "tool-request"
+    "permission-request" "permission-decision" "tool-end" "assistant-message")
   "The events of the work, in order.")
 
 (defun yeah-journey--register-probe ()

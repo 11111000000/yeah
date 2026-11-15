@@ -10,6 +10,11 @@
 ;; Inputs carry frozen configuration captured at submission.  Steering is
 ;; consumed only at tool-batch boundaries.  Loading pending work never starts
 ;; a model request; recovery is always explicit.
+;;
+;; The pending queue is written into the journal as it changes: an input that
+;; enters the queue, starts a run, is recovered or is withdrawn is named in
+;; the log by its id.  The editor's view of the queue is therefore a
+;; projection of the records and not a second, invisible state.
 
 ;;; Code:
 
@@ -55,14 +60,66 @@ FROZEN is additional serializable configuration recorded with each input."
 
 (defun yeah-control--steering-batch (control)
   "Pop all currently queued steering inputs from CONTROL.
-Ordinary asks retain their FIFO positions."
+Ordinary asks retain their FIFO positions.
+
+The batch itself writes nothing into the journal: the caller says what
+happened to the inputs — delivered to a run, or withdrawn with it."
   (let ((inputs nil))
     (dolist (input (yeah-input-pending (yeah-control-session control)))
       (when (eq 'steering (plist-get input :kind))
-        (push (yeah-input-withdraw (yeah-control-session control)
-                                   (plist-get input :id))
-              inputs)))
+        (let ((taken (yeah-input-withdraw (yeah-control-session control)
+                                          (plist-get input :id))))
+          (when taken
+            (push taken inputs)))))
     (nreverse inputs)))
+
+(defun yeah-control--deliver-steering (control)
+  "Return the steering of CONTROL that a running turn may take now.
+The inputs leave the queue because a run takes them: the journal says
+`input-taken' for each of them."
+  (mapc (lambda (input) (yeah-control--write-taken control input))
+        (yeah-control--steering-batch control)))
+
+(defun yeah-control--journal-kind (input)
+  "Return the kind of INPUT as the string the journal holds."
+  (format "%s" (or (plist-get input :kind) 'ask)))
+
+(defun yeah-control--write-queued (control input)
+  "Write the `input-queued' event of INPUT into the journal of CONTROL.
+The frozen configuration of the input belongs to the event.  A frozen
+configuration the journal cannot represent is left out of it: the queue
+event still tells the truth about the queue, and the run it belongs to
+must not stop because of it."
+  (let* ((session (yeah-control-session control))
+         (fields (list :input_id (plist-get input :id)
+                       :input_kind (yeah-control--journal-kind input)
+                       :prompt (plist-get input :prompt)))
+         (frozen (plist-get input :frozen)))
+    (if frozen
+        (condition-case nil
+            (apply #'yeah-events-write session "input-queued"
+                   (append fields (list :frozen frozen)))
+          (error
+           (apply #'yeah-events-write session "input-queued" fields)))
+      (apply #'yeah-events-write session "input-queued" fields))))
+
+(defun yeah-control--write-taken (control input &optional recovered)
+  "Write the `input-taken' event of INPUT into the journal of CONTROL.
+A RECOVERED input was started explicitly by the person, after a restart
+or a cancellation: the journal then says `input-recovered'."
+  (yeah-events-write (yeah-control-session control)
+                     (if recovered "input-recovered" "input-taken")
+                     :input_id (plist-get input :id)
+                     :input_kind (yeah-control--journal-kind input)))
+
+(defun yeah-control--write-withdrawn (control input reason)
+  "Write the `input-withdrawn' event of INPUT into the journal of CONTROL.
+REASON says why the input left the queue.  The id of the input is part of
+the event: a withdrawn input must leave the pending list of the editor."
+  (yeah-events-write (yeah-control-session control) "input-withdrawn"
+                     :input_id (plist-get input :id)
+                     :kind (yeah-control--journal-kind input)
+                     :reason reason))
 
 (defun yeah-control--release-steering (control)
   "Withdraw the steering that the run which just ended never delivered.
@@ -71,9 +128,8 @@ steering is not handed to the next one: it is withdrawn, and the
 withdrawal is written into the journal, so that the person can see
 that their words were not used."
   (dolist (input (yeah-control--steering-batch control))
-    (yeah-events-write (yeah-control-session control) "input-withdrawn"
-                       :kind (format "%s" (or (plist-get input :kind) 'steering))
-                       :reason "the run it was addressed to ended"))
+    (yeah-control--write-withdrawn
+     control input "the run it was addressed to ended"))
   nil)
 
 (defun yeah-control-add-completion-listener (control input-id callback)
@@ -109,16 +165,19 @@ Multiple listeners run in registration order and are removed before running."
                   (error-message-string err)))))
     completion))
 
-(defun yeah-control--start-next (control)
+(defun yeah-control--start-next (control &optional recovered)
   "Start the oldest pending ask in CONTROL when no turn is active.
 A steering is not a task: it belongs to a run, and it is delivered at
 a tool-batch boundary, never started on its own.
+When RECOVERED is non-nil, the input was started explicitly by the
+person and the journal says `input-recovered' instead of `input-taken'.
 Return the active turn or nil when the queue holds no ask."
   (let ((active (yeah-control-active-turn control)))
     (when (and active (not (yeah-turn-done active)))
       (user-error "yeah-control: a turn is already active"))
     (let ((input (yeah-input-take (yeah-control-session control) 'ask)))
       (when input
+        (yeah-control--write-taken control input recovered)
         (let ((turn
                (yeah-turn-run
                 (yeah-control-session control)
@@ -135,7 +194,7 @@ Return the active turn or nil when the queue holds no ask."
                   (yeah-control--notify-completion control input finished)
                   (yeah-control--start-next control))
                 (lambda (_turn)
-                  (yeah-control--steering-batch control))
+                  (yeah-control--deliver-steering control))
                 input
                 (plist-get (plist-get input :frozen) :deadline-seconds))))
           (unless (yeah-turn-done turn)
@@ -151,6 +210,7 @@ notification, and withdrawing it reports state `cancelled' with a nil turn."
   (let ((input (yeah-input-enqueue
                 (yeah-control-session control)
                 (yeah-control--frozen control 'ask prompt frozen))))
+    (yeah-control--write-queued control input)
     (when on-complete
       (yeah-control-add-completion-listener control (plist-get input :id)
                                             on-complete))
@@ -170,9 +230,11 @@ finished synchronously.  Use `yeah-control-submit' to obtain the input id."
 Steering is delivered after the current tool batch, never between tools."
   (let ((active (yeah-control-active-turn control)))
     (if (and active (not (yeah-turn-done active)))
-        (yeah-input-enqueue
-         (yeah-control-session control)
-         (yeah-control--frozen control 'steering prompt frozen))
+        (let ((input (yeah-input-enqueue
+                      (yeah-control-session control)
+                      (yeah-control--frozen control 'steering prompt frozen))))
+          (yeah-control--write-queued control input)
+          input)
       (yeah-control-ask control prompt frozen)))
   (yeah-control-active-turn control))
 
@@ -182,16 +244,22 @@ Steering is delivered after the current tool batch, never between tools."
     (yeah-turn-cancel active reason)))
 
 (defun yeah-control-recover-next (control)
-  "Explicitly start the oldest pending input after a restart or cancellation."
-  (yeah-control--start-next control))
+  "Explicitly start the oldest pending input after a restart or cancellation.
+The journal says `input-recovered': the input was started by the person,
+not by the automatic continuation of a run."
+  (yeah-control--start-next control t))
 
 (defun yeah-control-pending (control)
   "Return CONTROL's pending inputs without executing them."
   (yeah-input-pending (yeah-control-session control)))
 
 (defun yeah-control-withdraw (control id)
-  "Withdraw pending input ID and complete its runtime listeners as cancelled."
+  "Withdraw pending input ID and complete its runtime listeners as cancelled.
+The journal records the withdrawal with the id of the input: the pending
+list of the editor is a projection of the journal, and a withdrawn input
+must leave it."
   (when-let ((input (yeah-input-withdraw (yeah-control-session control) id)))
+    (yeah-control--write-withdrawn control input "withdrawn by the person")
     (yeah-control--notify-completion control input nil 'cancelled)
     input))
 

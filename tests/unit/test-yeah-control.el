@@ -698,5 +698,140 @@ does not bring it back."
             (should (yeah-control-done-p control))))
       (ignore-errors (delete-directory root t t)))))
 
+(defun yeah-control-test--queue-events (session)
+  "Return the records of SESSION that belong to the pending queue."
+  (seq-filter (lambda (record)
+                (member (plist-get record :type)
+                        '("input-queued" "input-taken" "input-recovered"
+                          "input-withdrawn")))
+              (yeah-session-records session)))
+
+(ert-deftest yeah-control-the-pending-queue-is-written-into-the-journal ()
+  "The queue of the person is visible in the journal: what entered it, what
+started a run, and in which order."
+  (let* ((root (make-temp-file "yeah-queue-journal" t))
+         (yeah-input-directory root)
+         (session (yeah-session-open "queue-journal" root))
+         (callbacks nil)
+         (control nil))
+    (unwind-protect
+        (progn
+          (setq control
+                (yeah-control-new
+                 session
+                 (lambda (prompt callback)
+                   (push (cons prompt callback) callbacks))
+                 nil 60000 0))
+          (let* ((first (yeah-control-submit control "first"))
+                 (second (yeah-control-submit control "second"))
+                 (events (yeah-control-test--queue-events session)))
+            ;; the journal holds the queue, in the order it changed
+            (should (equal (mapcar (lambda (record) (plist-get record :type))
+                                    events)
+                           '("input-queued" "input-taken" "input-queued")))
+            (should (equal (plist-get (nth 0 events) :input_id) first))
+            (should (equal (plist-get (nth 0 events) :input_kind) "ask"))
+            (should (equal (plist-get (nth 0 events) :prompt) "first"))
+            (should (plist-get (plist-get (nth 0 events) :frozen) :budget))
+            ;; the first input started the run
+            (should (equal (plist-get (nth 1 events) :input_id) first))
+            ;; the second one is still waiting
+            (should (equal (plist-get (nth 2 events) :input_id) second))
+            (should (= 1 (length (yeah-control-pending control))))
+            ;; the run ends: the waiting input starts
+            (funcall (cdr (assoc "first" callbacks)) "first done")
+            (let ((taken (cl-find-if (lambda (record)
+                                        (and (equal "input-taken"
+                                                    (plist-get record :type))
+                                             (equal second
+                                                    (plist-get record :input_id))))
+                                      (yeah-session-records session))))
+              (should taken)
+              (should (equal "ask" (plist-get taken :input_kind))))))
+      (ignore-errors (delete-directory root t t)))))
+
+(ert-deftest yeah-control-an-explicit-recovery-is-written-as-input-recovered ()
+  "The automatic continuation of a run is `input-taken'.  An input that the
+person starts explicitly, after a restart, is `input-recovered'."
+  (let* ((root (make-temp-file "yeah-recover-journal" t))
+         (yeah-input-directory root)
+         (session (yeah-session-open "recover-journal" root))
+         (silent (lambda (_prompt _callback) nil))
+         (control (yeah-control-new session silent nil 60000 0)))
+    (unwind-protect
+        (progn
+          (let* ((first (yeah-control-submit control "first"))
+                 (second (yeah-control-submit control "second")))
+            (should (= 1 (length (yeah-control-pending control))))
+            ;; the person cancels the run: the queue continues by itself
+            (yeah-control-cancel control "the person changed their mind")
+            (should (cl-some (lambda (record)
+                               (and (equal "input-taken" (plist-get record :type))
+                                    (equal second (plist-get record :input_id))))
+                             (yeah-session-records session)))
+            (should-not (cl-some (lambda (record)
+                                   (equal "input-recovered"
+                                          (plist-get record :type)))
+                                 (yeah-session-records session)))
+            ;; the person asks once more and quits
+            (let ((third (yeah-control-submit control "third")))
+              (should (= 1 (length (yeah-control-pending control))))
+              ;; the person comes back: the queue survived the restart
+              (let* ((again (yeah-session-open "recover-journal" root))
+                     (other (yeah-control-new again silent nil 60000 0)))
+                (should (yeah-control-done-p other))
+                (should (= 1 (length (yeah-control-pending other))))
+                (yeah-control-recover-next other)
+                (let ((records (yeah-session-records again)))
+                  (should (cl-some (lambda (record)
+                                     (and (equal "input-recovered"
+                                                 (plist-get record :type))
+                                          (equal third (plist-get record :input_id))))
+                                   records))
+                  ;; a recovery is not the continuation of a run
+                  (should-not (cl-some (lambda (record)
+                                         (and (equal "input-taken"
+                                                     (plist-get record :type))
+                                              (equal third
+                                                     (plist-get record :input_id))))
+                                       records))
+                  ;; the first input was taken by the run it started
+                  (should (cl-some (lambda (record)
+                                     (and (equal "input-taken"
+                                                 (plist-get record :type))
+                                          (equal first (plist-get record :input_id))))
+                                   records)))))))
+      (ignore-errors (delete-directory root t t)))))
+
+(ert-deftest yeah-control-a-withdrawal-is-written-with-the-id-of-the-input ()
+  "A withdrawn input is written into the journal with its id: the pending
+list of the editor is a projection of the journal, and a withdrawn input
+must leave it."
+  (let* ((root (make-temp-file "yeah-withdraw-journal" t))
+         (yeah-input-directory root)
+         (session (yeah-session-open "withdraw-journal" root))
+         (silent (lambda (_prompt _callback) nil))
+         (control (yeah-control-new session silent nil 60000 0)))
+    (unwind-protect
+        (progn
+          (let* ((first (yeah-control-submit control "first"))
+                 (second (yeah-control-submit control "second")))
+            (should (= 1 (length (yeah-control-pending control))))
+            (yeah-control-withdraw control second)
+            ;; the input is gone from the queue
+            (should (= 0 (length (yeah-control-pending control))))
+            ;; and the journal says so, with the id of the input
+            (let ((withdrawn (cl-find-if (lambda (record)
+                                           (equal "input-withdrawn"
+                                                  (plist-get record :type)))
+                                         (yeah-session-records session))))
+              (should withdrawn)
+              (should (equal second (plist-get withdrawn :input_id)))
+              (should (equal "ask" (plist-get withdrawn :kind)))
+              (should (stringp (plist-get withdrawn :reason)))
+              ;; the run that is under way is not the withdrawn input
+              (should-not (equal first (plist-get withdrawn :input_id))))))
+      (ignore-errors (delete-directory root t t)))))
+
 (provide 'test-yeah-control)
 ;;; test-yeah-control.el ends here

@@ -13,6 +13,11 @@
 ;; event-specific payload before `yeah-session' adds the common envelope.
 ;; Readers continue to accept older records without that envelope.
 ;;
+;; The pending queue of a session is visible in the log: `input-queued',
+;; `input-taken', `input-recovered' and `input-withdrawn' name the input
+;; they concern, so the queue of the person is a projection of the records
+;; and not a second state.
+;;
 ;; `yeah-events-write' retains its original calling convention.
 ;; `yeah-events-write-with-context' additionally takes explicit correlation
 ;; metadata; no ambient current-run variable is consulted.
@@ -62,8 +67,18 @@
      :required (:child :role :depth))
     (:type "child-end"
      :required (:child :role :ok :summary))
+    (:type "input-queued"
+     :required (:input_id :input_kind :prompt)
+     :optional (:frozen))
+    (:type "input-taken"
+     :required (:input_id)
+     :optional (:input_kind :prompt))
+    (:type "input-recovered"
+     :required (:input_id)
+     :optional (:input_kind :prompt))
     (:type "input-withdrawn"
-     :required (:kind :reason))
+     :required (:kind :reason)
+     :optional (:input_id))
     (:type "usage"
      :required (:input :output))
     (:type "todo"
