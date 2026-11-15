@@ -1017,13 +1017,15 @@ What follows is the distance to a product a person may keep using, and the
 distance to measuring the parity the vision asks for.
 
 **What has landed since (2026-11-15).**  16.1, 16.2, 16.3 and 16.4 are
-implemented; the register of 16.5 and the apparatus of 16.7 are built; 16.8 is
-done.  16.6 waits for a virtual frame server, and the measurements of 16.7
-wait for a provider and for a decision of the owner.  The wave is
+implemented; the register of 16.5 and the apparatus of 16.7 are built; 16.6 is
+done — the interface is photographed under a virtual frame server — and 16.8
+is done.  The measurements of 16.7 wait for a provider and for a decision of
+the owner.  The wave is
 `waves/wave-21.json', the review that started it is
 `docs/REVIEW-2026-11-15.md', and the map holds 74 claims; 358 ERT tests and 53
 canaries pass.  The review of the session that carried the wave, and the plan of
-the work that follows it, are in `docs/PLAN-NEXT.md'.
+the work that follows it, are in `docs/PLAN-NEXT.md'.  The picture of the
+interface is the wave `waves/wave-22.json'.
 
 ### 16.1 The answerer that answers later — **done on 2026-11-15**
 
@@ -1109,7 +1111,7 @@ how to run it, when it was last recorded and what is still open; the README
 points at it.  The live environment is still infrastructure, and nobody may
 quote the green verdict of the map as if it covered these checks.
 
-### 16.6 The picture with pixels
+### 16.6 The picture with pixels — **done on 2026-11-15**
 
 The structural smoke covers the terminal, the light and dark faces, the
 Cyrillic text, the long output, the narrow header and the composer, but
@@ -1118,6 +1120,22 @@ no pixel of the real interface was ever looked at.
 **Work:** a smoke under a virtual frame server, if one is available, that
 renders the journal and the approval view and compares the picture with a
 stored one.
+
+**What landed:** `tests/pixel/` draws the journal and the approval view in
+Emacs itself, in a terminal under a virtual frame server, and photographs
+the screen with ImageMagick; `./scripts/dev pixel` compares the three
+pictures with each other.  Nothing is compared with a stored picture: a
+stored picture fails on every machine whose fonts differ, and a check that
+fails for that reason teaches nobody anything.  What the comparison rules
+out is a blank screen, a renderer that draws a heading and nothing else,
+and an approval view that looks like the journal.  The check can fail: with
+the renderer broken it fails with "the interface does not change the screen".
+
+The check needs a frame server, a terminal emulator and ImageMagick, and no
+provider key; it therefore lives outside the map, like the live checks, and
+is registered in `docs/LIVE-EVIDENCE.md`.  A stored golden picture is still
+open: it is a decision about the reference machine and its fonts, not a
+technical obstacle.
 
 ### 16.7 The parity that is measured, not claimed — **the apparatus is done on 2026-11-15**
 

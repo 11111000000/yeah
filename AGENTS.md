@@ -72,6 +72,13 @@ work item. Never resolve it by silently making documentation more optimistic.
   clean-Emacs install path is network-tested against the published
   repository (tests/live/live-clean-install.el): the public alpha gate is
   closed; v0.2.0 carries the Emacs-native interface.
+- The interface is seen, not only described: `tests/pixel/` draws the journal
+  and the approval view in Emacs itself under a virtual frame server and
+  photographs the screen; `./scripts/dev pixel` compares the pictures with
+  each other and with the same buffer without the interface.  It needs a
+  frame server, a terminal emulator and ImageMagick but no provider key, so
+  it lives outside the map — like the live checks — and is registered in
+  `docs/LIVE-EVIDENCE.md`.  A stored golden picture is still open.
 - Stage 3 is implemented offline: the Plan and Build permission profiles,
   a persistent pending FIFO, frozen inputs,
   steering at batch boundaries, cancellation, nudges and deadlines have

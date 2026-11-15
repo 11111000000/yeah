@@ -11,3 +11,4 @@ dist/
 _target/
 .math/
 bench/results/
+tests/artifacts/

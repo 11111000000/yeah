@@ -294,11 +294,17 @@ failure.
 ./scripts/dev map                   # claims, states and uncovered surface
 ./scripts/dev run                   # execute checks and bind evidence
 ./scripts/dev gate                  # run, then map; exit code is the verdict
+./scripts/dev bench                 # the benchmark task set is measurable
+./scripts/dev pixel                 # photograph the real interface, compare two pictures
 ```
 
 `scripts/dev` needs Emacs on `PATH` (or `EMACS`). Map/run/gate also need a
 compatible math-coding binary on `PATH` or in `MATHC`. If the installed tool
 does not support the CLI used by the script, the result is blocked — not pass.
+
+`pixel` needs a frame server, a terminal emulator and ImageMagick
+(`YEAH_XVFB`, `YEAH_XTERM`, `YEAH_MAGICK`); without them it is blocked — not
+pass. The pictures land in `tests/artifacts/` and are not kept in git.
 
 Real provider tests exist separately and require environment credentials:
 

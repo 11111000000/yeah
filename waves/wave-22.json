@@ -1,0 +1,23 @@
+{
+  "id": "wave-22",
+  "title": "the interface, seen",
+  "intent": "No pixel of the real interface had ever been looked at: the structural smoke proves the shape of the journal and the approval view, not that anything is drawn. This wave draws the journal and the approval view in Emacs itself under a virtual frame server, photographs the screen, and compares the pictures with each other and with the same buffer without the interface. The result is evidence without a claim, because the check needs a frame server the environment of the method does not have.",
+  "touches": [
+    "tests/pixel/render-interface.el",
+    "tests/pixel/check-interface-is-seen.sh",
+    "scripts/dev",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PLAN.md",
+    "README.md",
+    "AGENTS.md",
+    ".gitignore"
+  ],
+  "checks": [
+    "./scripts/dev pixel"
+  ],
+  "claims": [],
+  "commitment": [],
+  "objection": "A picture of an interface may be taken of the wrong thing: the renderer may draw a heading and nothing else, the frame may be captured before the view is on the screen, and the check may pass on a blank screen that happens to hold a few colours. A stored golden picture would settle all of this and would also fail on every machine whose fonts differ.",
+  "refuted_by": "The journal picture and the picture of the same buffer without the interface differ by no more than the pixels of a heading, the journal and the approval view are the same screen, the journal picture holds fewer than four colours, the view is never drawn and the check waits for a marker that never comes, or the check passes on a machine with no frame server at all.",
+  "note": "No claim enters the map with this wave. The check needs a frame server, a terminal emulator and ImageMagick; without them it is blocked, and blocked is not pass, so a claim bound to it would turn the verdict of the map unknown on every machine that lacks them. It is registered in `docs/LIVE-EVIDENCE.md` next to the live checks, and the green verdict of the map says nothing about it. The comparison is structural and not pixel-perfect on purpose: it rules out a blank screen, a renderer that draws a heading and nothing else, and an approval view that looks like the journal, and it survives the fonts of another machine. The control bites: with `yeah-journal--apply-view` replaced by `nil` the check fails with 'the interface does not change the screen' (343 pixels differ, the threshold is 2000). A stored golden picture is still open; it is a decision about the reference machine and its fonts, not a technical obstacle."
+}

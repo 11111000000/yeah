@@ -6,6 +6,7 @@
 #   byte-compile-all      — byte-compile every file under lib/ and the package entry
 #   ert FILE...           — run ERT test files (tests/unit/*.el)
 #   bench [--run]         — validate the benchmark task set, or run the benchmark
+#   pixel                 — photograph the real interface and compare two pictures
 #   map                   — the standing specification: claims, states, uncovered
 #   run                   — execute the checks, bind the evidence, write the trail
 #   gate                  — run, then map; the exit code is the verdict
@@ -91,6 +92,7 @@ Subcommands:
   byte-compile-all      — byte-compile lib/*.el (including lib/yeah.el), no warnings
   ert FILE...           — run ERT test files (tests/unit/*.el)
   bench [--run]         — validate the benchmark task set, or run the benchmark
+  pixel                 — photograph the real interface and compare two pictures
   map                   — the standing specification: claims, states, uncovered
   run                   — execute the checks, bind the evidence, write the trail
   gate                  — run, then map; the exit code is the verdict
@@ -206,6 +208,16 @@ EOF
     done
     # The task checks call emacs themselves: EMACS tells them which one.
     EMACS="$emacs_bin" "$emacs_bin" -Q --batch -L lib -l bench/run-bench.el -- "$mode"
+    exit $?
+    ;;
+
+  pixel)
+    if [ ! -f tests/pixel/check-interface-is-seen.sh ]; then
+      echo "scripts/dev pixel: tests/pixel/check-interface-is-seen.sh does not exist" >&2
+      exit 2
+    fi
+    clean_bytecode
+    bash tests/pixel/check-interface-is-seen.sh
     exit $?
     ;;
 
