@@ -63,8 +63,12 @@
 
 (defconst yeah-bench--yeah-tools
   '("read" "glob" "grep" "edit" "write" "bash" "job-status" "job-read"
-    "elisp-check" "introspect")
-  "The tools the Yeah harness may use in a benchmark task.")
+    "elisp-check" "introspect" "finish")
+  "The tools the Yeah harness may use in a benchmark task.
+`finish' is in the list because the system prompt of the harness asks the
+model to end the run with it, and the run layer allows it anyway; a tool the
+prompt names and the permission refuses is a contradiction the model pays
+for in turns.")
 
 (defconst yeah-bench--check-timeout 300
   "Seconds a task check may run before the runner stops it.")
@@ -78,6 +82,8 @@
 (declare-function yeah-control-ask "yeah-control" (control prompt &optional frozen))
 (declare-function yeah-control-active-turn "yeah-control" (control))
 (declare-function yeah-gptel-request "yeah-gptel" (prompt callback &rest args))
+(declare-function yeah-tools-names "yeah-tools" ())
+(declare-function yeah-gptel-tool-for "yeah-gptel" (name))
 (declare-function yeah-turn-done "yeah-turn" (turn))
 (declare-function yeah-turn-state "yeah-turn" (turn))
 (declare-function gptel-make-openai "gptel-openai" (name &rest args))
@@ -296,6 +302,17 @@ STATUS is the exit code of the command, or 124 when it had to be stopped."
           (string-join yeah-bench--yeah-tools ", ")
           workspace))
 
+(defun yeah-bench--yeah-tool-objects ()
+  "Return the gptel descriptions of the tools the benchmark permits.
+The harness offers the model exactly the tools it may use: a model that is
+offered a tool it may not use spends its turns on refusals, and the
+measurement would then say more about the harness than about the agent."
+  (require 'yeah-tools)
+  ;; The registry registers the built-in tools when it is asked for their
+  ;; names; the descriptions need them to be there.
+  (yeah-tools-names)
+  (mapcar #'yeah-gptel-tool-for yeah-bench--yeah-tools))
+
 (defun yeah-bench--wait (turn)
   "Wait for TURN to finish and return the state it ended in."
   (let ((deadline (+ (float-time) yeah-bench--turn-timeout)))
@@ -343,7 +360,8 @@ SESSION-ROOT is the directory that holds the journal of the run."
              (yeah-gptel-request request callback
                                  :backend backend
                                  :model (intern model)
-                                 :system system))
+                                 :system system
+                                 :tools (yeah-bench--yeah-tool-objects)))
            #'yeah-bench--answerer
            nil 3))
     (yeah-control-ask control prompt)
@@ -397,8 +415,15 @@ Return the outcome of the harness."
                 :reason (format "the external harness %s is not installed"
                                 (car (split-string template))))
         (let* ((command (yeah-bench--external-command template workspace prompt))
+               ;; The harness gets the end of its standard input at once.  A
+               ;; harness that reads it waits for the end of the pipe, and the
+               ;; pipe of the runner never ends: the harness would wait for
+               ;; the whole turn timeout and be counted as a failure that the
+               ;; harness never had a chance to avoid.
                (result (yeah-bench--run workspace
-                                         (list "sh" "-c" (string-join command " "))
+                                         (list "sh" "-c"
+                                               (format "%s < /dev/null"
+                                                       (string-join command " ")))
                                          yeah-bench--turn-timeout)))
           (list :outcome "ran"
                 :note (format "the external harness exited with %s" (car result))))))))

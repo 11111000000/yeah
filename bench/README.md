@@ -61,6 +61,24 @@ the runner creates a fresh temporary workspace, copies `setup/` into it, hands
 the task to the harness, and then runs the task's `check.sh` in that
 workspace.  The check decides the outcome; the runner never decides it.
 
+## The fairness of the apparatus
+
+A measurement that hurts one of the participants because of the apparatus says
+nothing about the agents.  Two rules are therefore built into the runner:
+
+- **A harness is offered exactly the tools it may use.**  The Yeah harness is
+  announced the permitted tools and nothing else.  A model that is offered a
+  tool the permission layer refuses spends its turns on refusals, and the
+  measurement would then say more about the harness than about the agent.
+- **A harness gets the end of its standard input at once.**  The external
+  harness is run with `< /dev/null`.  A harness that reads its input waits for
+  the end of the pipe, and the pipe of the runner never ends: it would wait
+  for the whole turn timeout and be counted as a failure it never had a chance
+  to avoid.
+
+Both rules were found by the pilot of 2026-11-15 and were fixed before the
+numbers of that pilot were taken.
+
 The prompt of a task holds the literal text `%workspace%`.  The runner
 replaces it with the absolute path of the task workspace before the prompt
 reaches any harness, so that every harness gets an absolute path and the task
@@ -73,7 +91,7 @@ text.
 |---|---|
 | `YEAH_TEST_KEY` | the provider key of the Yeah harness; without it the task is `skipped: no provider` |
 | `YEAH_TEST_HOST` | the provider host, for example `api.minimax.io` |
-| `YEAH_TEST_MODEL` | the model, for example `MiniMax-M3` |
+| `YEAH_TEST_MODEL` | the model, for example `MiniMax-M2.7` (the model the live evidence was recorded with) |
 | `YEAH_BENCH_EXTERNAL_COMMAND` | the command template of the external harness |
 | `YEAH_BENCH_EXTERNAL_NAME` | the label of the external harness in the results (default `external`) |
 | `YEAH_BENCH_TASKS` | the tasks of the measurement, comma separated; every task of the set when it is not set |
