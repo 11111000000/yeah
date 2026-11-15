@@ -1314,6 +1314,44 @@ as a duplicate, so a reader of the journal cannot tell it from a decision
 that never came; the identity of the transport is not available to the
 harness, and the wave compares the tool and its arguments instead.
 
+### 16.12 An edit that lands on a file the model never read — **done on 2026-11-15 (wave 29)**
+
+D5 promised that every read that can lead to an edit returns the state the
+model saw, and wave 26 closed the half of that promise that a buffer can
+carry: a tick exists only when a buffer visits the file.  A file that nobody
+opened had no tick, so the read handed the model nothing to guard an edit
+with, and the edit landed on whatever the file held at that moment.  The
+contradiction was open work with a named candidate — a version token of the
+file that the edit checks without a buffer — and wave 29 built it.
+
+Every file has a version now: the digest of its bytes.  The read hands the
+token out next to the tick, the model passes it to a later edit, and the edit
+is refused when the file changed after the read; the refusal names the file
+and reports the current version, so the model can reread and retry.  An edit
+that presents a version is also refused when Emacs holds unsaved changes of
+the file, because a read of the file on disk cannot show them.
+
+The token is the digest of the bytes and not of a decoded text: the file with
+the bytes `C3 A9` and the file with the single byte `E9` have two different
+tokens, and the token of a file with CRLF is the digest of the file with CRLF.
+The read and the edit compute the token by the same function of the same
+bytes, so a guarded edit of an unchanged file is not refused by mistake.
+
+D5 was amended and not weakened: it names the version as the second form of
+the state that a read returns, and it says that a presented tick or version
+that is no longer current is refused, while a state that no read handed out
+is ignored.
+
+The claim of the wave has a control that bites and that changes the subject
+and not the check: with the comparison of the versions removed, the stale
+edit is applied and the test fails on a real assertion, while the other ten
+tests of the file keep passing.
+
+**Open:** the read shows the file on disk while the tick of that read
+describes the buffer that visits the file, so a model that presents only a
+tick can still edit a buffer it never saw; the write tool overwrites a whole
+file and takes no version, so a write can land on a file that changed.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then

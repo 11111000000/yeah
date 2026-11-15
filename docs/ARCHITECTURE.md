@@ -143,15 +143,26 @@ Batch helper operations are preferred over unrestricted programmatic tool
 calling: one Edit call can apply a validated list of replacements without
 giving the model a general evaluator.
 
-### D5 — Buffer edits use optimistic concurrency
+### D5 — Edits use optimistic concurrency
 
-Every read that can lead to an edit returns the buffer's
-`buffer-chars-modified-tick`. An edit requires a current tick and exact old
-text/ranges. All ranges are validated before mutation; edits apply bottom-up;
-a logical edit is one undo step; a no-op does not add undo history.
+Every read that can lead to an edit returns the state the model saw: the
+`buffer-chars-modified-tick` of the buffer that visits the file, and the
+version of the file itself — the digest of its bytes on disk — for a file that
+no buffer visits. An edit presents the tick or the version that a read handed
+out, together with exact old text/ranges. A presented tick or version that is
+no longer current is refused; a state that no read handed out is ignored, and
+the edit says so. All ranges are validated before mutation; edits apply
+bottom-up; a logical edit is one undo step; a no-op does not add undo history.
 
 Stale input is rejected and reread. The agent never guesses offsets after the
-user or another tool has changed the buffer.
+user or another tool has changed the file, and it does not edit a file whose
+unsaved changes in the editor a read cannot show.
+
+*Amended on 2026-11-15 (wave 29): the decision named only the tick of a
+buffer, and the tick exists only when a buffer visits the file, so the
+promise could not hold for the file that nobody opened. The version of the
+file is the second form of that state; the promise is kept and made
+explicit, not relaxed.*
 
 ### D6 — Large output becomes an artifact; context is calibrated
 

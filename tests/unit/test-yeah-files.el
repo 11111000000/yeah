@@ -71,6 +71,35 @@
         (should (equal (plist-get last :content) "three\n"))
         (should-not (plist-get last-metadata :truncated))))))
 
+(ert-deftest yeah-files-read-hands-out-a-version-token ()
+  "A read gives the model a version token of the file, and the token of a
+changed file is another one."
+  (yeah-files-test--with-directory root
+    (let* ((path (yeah-files-test--write root "versioned.txt" "alpha\n"))
+           (first (plist-get (plist-get (yeah-files-test--call "read" path)
+                                        :metadata)
+                             :version))
+           (again (plist-get (plist-get (yeah-files-test--call "read" path)
+                                         :metadata)
+                              :version)))
+      (should (stringp first))
+      (should (> (length first) 0))
+      (should (equal first again))
+      (with-temp-file path (insert "beta\n"))
+      (let ((changed (plist-get (plist-get (yeah-files-test--call "read" path)
+                                            :metadata)
+                                  :version)))
+        (should-not (equal first changed))))))
+
+(ert-deftest yeah-files-read-shows-the-version-to-the-model ()
+  "The version token of a read reaches the model in the text of the result."
+  (yeah-files-test--with-directory root
+    (let* ((path (yeah-files-test--write root "shown.txt" "alpha\n"))
+           (result (yeah-files-test--call "read" path))
+           (version (plist-get (plist-get result :metadata) :version)))
+      (should (string-match-p (format "\\[version: %s\\]" version)
+                              (yeah-result-model-text result))))))
+
 (ert-deftest yeah-files-read-preserves-utf8-and-newlines ()
   "Read retains UTF-8 text, CRLF newlines, and an unterminated last line."
   (yeah-files-test--with-directory root

@@ -14,6 +14,7 @@
 
 (require 'cl-lib)
 (require 'yeah-result)
+(require 'yeah-version)
 
 (defconst yeah-files--ignored-directories
   '(".git" ".hg" ".svn"
@@ -106,9 +107,10 @@
        (with-temp-buffer
          (let ((coding-system-for-read 'utf-8-unix))
            (insert-file-contents canonical))
-         (let ((total-lines (if (= (point-min) (point-max))
+         (let* ((total-lines (if (= (point-min) (point-max))
                                 0
-                              (count-lines (point-min) (point-max)))))
+                              (count-lines (point-min) (point-max))))
+                (version (yeah-version-text (buffer-string))))
            (when (> actual-offset (max 1 total-lines))
              (user-error "offset %d exceeds the file's %d lines"
                          actual-offset total-lines))
@@ -128,6 +130,7 @@
                                     :limit actual-limit
                                     :total-lines total-lines
                                     :tick tick
+                                    :version version
                                     :truncated truncated)))
                (yeah-result-ok content metadata truncated)))))))))
 
@@ -229,7 +232,7 @@ Return at most LIMIT path:line:text matches."
   "Return read, glob, and grep tool specifications for Yeah's registry."
   (list
    (list :name "read"
-         :description "Read a file from disk by its path, from a 1-based line offset, up to a line limit. Use it for source code and for any file stored on disk. When the file is open in Emacs, the result carries its modification tick; that tick is the guard of a later edit of the same file."
+         :description "Read a file from disk by its path, from a 1-based line offset, up to a line limit. Use it for source code and for any file stored on disk. The result carries a version token of the file: pass that version to a later edit of the same file, and the edit is refused when the file changed in between. When the file is open in Emacs, the result carries its modification tick as well, and that tick guards the edit in the same way."
          :input (list (list :name "path" :type 'string)
                       (list :name "offset" :type 'integer :optional t)
                       (list :name "limit" :type 'integer :optional t))

@@ -1825,6 +1825,27 @@
       "register": "fact",
       "control": "sed -i \"s|        (unless (cl-member key (yeah-turn-active-keys turn) :test #'equal)|        (unless nil|\" lib/yeah-turn.el",
       "waiver": null
+    },
+    {
+      "id": "an-edit-does-not-land-on-a-file-that-changed-under-the-model",
+      "text": "A read hands the model a version token of the file it read, and an edit that presents that token is refused when the file changed after the read: an edit never lands on a file the model did not read.",
+      "scope": [
+        "lib/yeah-version.el", "lib/yeah-files.el", "lib/yeah-edit.el", "lib/yeah-result.el",
+        "tests/unit/test-yeah-files.el", "tests/unit/test-yeah-edit.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-edit.el" },
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-files.el" }
+      ],
+      "falsifier": "the edit of a file that changed after the read is applied anyway, or the read hands out no version to guard the edit with",
+      "register": "fact",
+      "control": "sed -i 's|((not (equal current-version expected-version))|((not t)|' lib/yeah-edit.el",
+      "waiver": null
     }
   ]
 }

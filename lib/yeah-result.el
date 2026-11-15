@@ -111,10 +111,15 @@ legacy strings and scheduler error plists are accepted for compatibility."
            (metadata (plist-get value :metadata))
            (tick (or (plist-get value :tick)
                      (and (listp metadata)
-                          (plist-get metadata :tick)))))
+                          (plist-get metadata :tick))))
+           (version (or (plist-get value :version)
+                        (and (listp metadata)
+                             (plist-get metadata :version)))))
       (concat base
               (when (and tick (integerp tick))
                 (format "\n[tick: %d]" tick))
+              (when (and version (stringp version))
+                (format "\n[version: %s]" version))
               (when truncated "\n[Output truncated.]")
               (when artifacts
                 (concat "\n[Full output: "

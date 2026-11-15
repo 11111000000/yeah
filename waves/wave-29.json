@@ -1,0 +1,32 @@
+{
+  "id": "wave-29",
+  "title": "an edit does not land on a file that changed under the model",
+  "intent": "The normative decision D5 promises that every read that can lead to an edit returns the state the model saw, and that stale input is rejected and reread.  The code could keep that promise only for a file that a buffer visits: the tick of that buffer is the state, and the tick exists exactly when Emacs holds the file open.  A file that nobody opened has no tick, so the read handed the model nothing to guard an edit with, and the edit landed on whatever the file held at that moment -- text the model never read.  The promise of D5 and the behaviour of the tools therefore contradicted each other, and the contradiction was recorded as open work with a named candidate: a version token of the file that the edit checks without a buffer.  This wave builds that token.  Every file has a version: the digest of its bytes.  A read hands the token out with the tick, the model passes it to a later edit, and the edit is refused when the file changed after the read.  An edit that presents a version is also refused when Emacs holds unsaved changes of the file, because a read of the file on disk cannot show them.  The guard of an edit no longer depends on a buffer being open.",
+  "touches": [
+    "lib/yeah-version.el",
+    "lib/yeah-files.el",
+    "lib/yeah-edit.el",
+    "lib/yeah-result.el",
+    "tests/unit/test-yeah-files.el",
+    "tests/unit/test-yeah-edit.el",
+    "spec.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/ENGINEERING.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-edit.el",
+    "./scripts/dev ert tests/unit/test-yeah-files.el",
+    "./scripts/dev ert tests/unit/*.el"
+  ],
+  "claims": [
+    "an-edit-does-not-land-on-a-file-that-changed-under-the-model"
+  ],
+  "commitment": [],
+  "objection": "The guard is opt-in, and the wave does not change that: an edit that presents no version is not guarded by the version, in the same way that an edit that presents no tick is not guarded by the tick.  A model that wants the guard has to pass the token that the read gave it; a model that does not pass it edits the file as before.  The token is the digest of the bytes of the file, so two files whose bytes differ have two tokens, and a file that cannot be read has no token at all.  The read shows the file on disk while the tick of that read describes the buffer that visits the file: when Emacs holds unsaved changes, the model sees the disk and the tick does not describe what the model saw.  The wave refuses that case when a version is presented, but the path that presents only a tick keeps the old behaviour; the contradiction is recorded here as an open item rather than papered over.  The write tool overwrites a whole file and takes no version: a write can still land on a file that changed, and that is left open as well.",
+  "refuted_by": "the edit of a file that changed after the read is applied anyway, or the read hands out no version to guard the edit with.",
+  "note": "The control of the claim changes the subject and not the check: with the comparison of the versions removed, the stale edit is applied and the test fails on a real assertion (the file was rewritten to \"gamma omega\" while the test expects the refusal and the untouched text), and the other ten tests of the file keep passing.  The version was checked against the digest of the bytes of the file and not against the digest of a decoded text: the file with the bytes C3 A9 and the file with the single byte E9 give two different tokens, and the token of a file with CRLF is the digest of the file with CRLF.  The token of the read and the token of the edit are the same function of the same bytes, so a guarded edit of an unchanged file is not refused by mistake.  D5 was amended and not weakened: the decision now names the version token as the second form of the state that a read returns, and the sentence that says that an edit requires a current tick now says that a presented tick or version that is no longer current is refused, while a state that no read handed out is ignored."
+}

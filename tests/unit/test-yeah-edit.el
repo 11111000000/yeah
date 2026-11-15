@@ -9,7 +9,9 @@
 
 (require 'ert)
 (require 'yeah-edit)
+(require 'yeah-files)
 (require 'yeah-tools)
+(require 'yeah-version)
 
 (defmacro yeah-edit-test--with-tools (&rest body)
   "Register the edit tools around BODY and restore the test registry."
@@ -232,6 +234,73 @@
             (should (file-exists-p path))
             (should (equal "new λ\n" (yeah-edit-test--file-contents path)))
             (should-not (plist-get (plist-get result :metadata) :overwritten)))
+        (yeah-edit-test--cleanup path)))))
+
+(ert-deftest yeah-edit-a-stale-version-is-refused ()
+  "An edit that presents the version of an earlier read is refused when the
+file changed after that read, and the file keeps the text it has now."
+  (yeah-edit-test--with-tools
+    (let ((path (make-temp-file "yeah-edit-stale-version-" nil ".txt")))
+      (unwind-protect
+          (progn
+            (with-temp-file path (insert "alpha beta"))
+            (let* ((version (plist-get (plist-get (yeah-files--read path)
+                                                 :metadata)
+                                       :version)))
+              (should (stringp version))
+              ;; The file changes under the model after the read.
+              (with-temp-file path (insert "gamma delta"))
+              (let ((refused (yeah-tools-call
+                              "edit" (list path "gamma" "omega" nil nil version))))
+                (should-not (yeah-result-success-p refused))
+                (should (string-match-p "stale version"
+                                        (plist-get refused :error)))
+                (should (equal "gamma delta"
+                               (yeah-edit-test--file-contents path))))))
+        (yeah-edit-test--cleanup path)))))
+
+(ert-deftest yeah-edit-a-current-version-is-accepted ()
+  "An edit that presents the version of the read it follows is applied, and
+the result carries the version of the file it left behind."
+  (yeah-edit-test--with-tools
+    (let ((path (make-temp-file "yeah-edit-version-" nil ".txt")))
+      (unwind-protect
+          (progn
+            (with-temp-file path (insert "alpha beta"))
+            (let* ((version (plist-get (plist-get (yeah-files--read path)
+                                                 :metadata)
+                                       :version))
+                   (result (yeah-tools-call
+                            "edit" (list path "beta" "omega" nil nil version))))
+              (should (yeah-result-success-p result))
+              (should (equal "alpha omega"
+                             (yeah-edit-test--file-contents path)))
+              (should (equal (yeah-version-file path)
+                             (plist-get (plist-get result :metadata) :version)))))
+        (yeah-edit-test--cleanup path)))))
+
+(ert-deftest yeah-edit-a-version-is-refused-when-the-file-has-unsaved-changes ()
+  "An edit that presents a version is refused when Emacs holds unsaved changes
+of the file, because a read of the file cannot show them."
+  (yeah-edit-test--with-tools
+    (let ((path (make-temp-file "yeah-edit-unsaved-" nil ".txt")))
+      (unwind-protect
+          (progn
+            (with-temp-file path (insert "alpha beta"))
+            (let* ((version (plist-get (plist-get (yeah-files--read path)
+                                                 :metadata)
+                                       :version))
+                   (buffer (find-file-noselect path)))
+              (with-current-buffer buffer
+                (goto-char (point-max))
+                (insert " gamma"))
+              (let ((refused (yeah-tools-call
+                              "edit" (list path "beta" "omega" nil nil version))))
+                (should-not (yeah-result-success-p refused))
+                (should (string-match-p "unsaved changes"
+                                        (plist-get refused :error)))
+                (should (equal "alpha beta gamma"
+                               (with-current-buffer buffer (buffer-string)))))))
         (yeah-edit-test--cleanup path)))))
 
 (provide 'test-yeah-edit)

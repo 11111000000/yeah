@@ -18,6 +18,7 @@
 (require 'cl-lib)
 (require 'yeah-result)
 (require 'yeah-undo)
+(require 'yeah-version)
 
 (defcustom yeah-edit-save-after-edit t
   "Non-nil means `edit' saves the buffer after a guarded edit.
@@ -58,6 +59,7 @@ asking a question that a batch Emacs cannot answer."
          (list :path path
                :changed changed
                :tick tick
+               :version (yeah-version-file path)
                :saved (and saved t)
                :modified (buffer-modified-p)))))))
 
@@ -74,10 +76,11 @@ asking a question that a batch Emacs cannot answer."
             (push (- (point) (length old-str)) positions))
           positions)))))
 
-(defun yeah-edit--edit-validated (path old-str new-str expected-tick replace-all)
+(defun yeah-edit--edit-validated (path old-str new-str expected-tick replace-all expected-version)
   "Edit PATH replacing OLD-STR with NEW-STR.
 EXPECTED-TICK is an optional expected modification tick.  REPLACE_ALL controls
-whether all matches or exactly one match are accepted."
+whether all matches or exactly one match are accepted.  EXPECTED-VERSION is an
+optional expected version token of the file."
   ;; A tick is a promise about the state the model saw, and only a buffer
   ;; that visits the file can hand out a tick.  When no buffer visits the
   ;; file, the model had no tick to read, so the number it sends is a
@@ -87,7 +90,8 @@ whether all matches or exactly one match are accepted."
   (let* ((expanded (expand-file-name path))
          (existing (find-buffer-visiting expanded))
          (buffer existing)
-         (tick (if existing expected-tick nil)))
+         (tick (if existing expected-tick nil))
+         (refusal nil))
     (unless buffer
       (unless (file-exists-p expanded)
         (user-error "edit: file does not exist: %s" expanded))
@@ -96,50 +100,76 @@ whether all matches or exactly one match are accepted."
       (unless (verify-visited-file-modtime buffer)
         (user-error "edit: %s changed on disk; read fresh state before retrying"
                     expanded)))
-    (with-current-buffer buffer
-      (let ((current-tick (buffer-chars-modified-tick)))
-        (if (and tick (/= tick current-tick))
-            (yeah-result-error
-             (format
-              "edit: stale tick for %s: expected %d, current %d; read fresh state before retrying"
-              expanded tick current-tick)
-             (list :path expanded
-                   :changed 0
-                   :tick current-tick
-                   :modified (buffer-modified-p)))
-          (if (string= old-str new-str)
-              (yeah-edit--ok expanded buffer 0)
-            (let ((positions (yeah-edit--match-positions old-str)))
-              (cond
-               ((null positions)
+    ;; A version token is the guard of the file that no buffer visits.  The
+    ;; read that handed it out saw the file on disk, and the token says
+    ;; which file that was; when the file changed since that read, the edit
+    ;; would land on text the model never read, so it is refused.
+    (when expected-version
+      (let ((current-version (yeah-version-file expanded)))
+        (cond
+         ((not (equal current-version expected-version))
+          (setq refusal
                 (yeah-result-error
-                 (format "edit: old_str not found in %s; read fresh state before retrying"
+                 (format "edit: stale version for %s; the file changed since the read; read fresh state before retrying"
                          expanded)
-                 (list :path expanded :changed 0 :tick current-tick)))
-               ((and (not replace-all) (cdr positions))
+                 (list :path expanded
+                       :changed 0
+                       :version current-version))))
+         ((with-current-buffer buffer (buffer-modified-p))
+          (setq refusal
                 (yeah-result-error
-                 (format
-                  "edit: old_str must match exactly once in %s (found %d); read fresh state before retrying"
-                  expanded (length positions))
-                 (list :path expanded :changed 0 :tick current-tick)))
-               (t
-                (save-restriction
-                  (widen)
-                  (save-excursion
-                    (yeah-undo-around-buffer
-                     buffer
-                     (lambda ()
-                       (atomic-change-group
-                         (dolist (start positions)
-                           (goto-char start)
-                           (delete-region start (+ start (length old-str)))
-                           (insert new-str)))))))
-                (yeah-edit--ok expanded buffer (length positions)))))))))))
+                 (format "edit: %s has unsaved changes in Emacs that a read cannot show; ask the person to save them before editing"
+                         expanded)
+                 (list :path expanded
+                       :changed 0)))))))
+    (if refusal
+        refusal
+      (with-current-buffer buffer
+        (let ((current-tick (buffer-chars-modified-tick)))
+          (if (and tick (/= tick current-tick))
+              (yeah-result-error
+               (format
+                "edit: stale tick for %s: expected %d, current %d; read fresh state before retrying"
+                expanded tick current-tick)
+               (list :path expanded
+                     :changed 0
+                     :tick current-tick
+                     :modified (buffer-modified-p)))
+            (if (string= old-str new-str)
+                (yeah-edit--ok expanded buffer 0)
+              (let ((positions (yeah-edit--match-positions old-str)))
+                (cond
+                 ((null positions)
+                  (yeah-result-error
+                   (format "edit: old_str not found in %s; read fresh state before retrying"
+                           expanded)
+                   (list :path expanded :changed 0 :tick current-tick)))
+                 ((and (not replace-all) (cdr positions))
+                  (yeah-result-error
+                   (format
+                    "edit: old_str must match exactly once in %s (found %d); read fresh state before retrying"
+                    expanded (length positions))
+                   (list :path expanded :changed 0 :tick current-tick)))
+                 (t
+                  (save-restriction
+                    (widen)
+                    (save-excursion
+                      (yeah-undo-around-buffer
+                       buffer
+                       (lambda ()
+                         (atomic-change-group
+                           (dolist (start positions)
+                             (goto-char start)
+                             (delete-region start (+ start (length old-str)))
+                             (insert new-str)))))))
+                  (yeah-edit--ok expanded buffer (length positions))))))))))))
 
-(defun yeah-edit--edit (path old-str new-str &optional tick replace-all)
+(defun yeah-edit--edit (path old-str new-str &optional tick replace-all version)
   "Return a structured result for a guarded edit of PATH.
 OLD_STR must be nonempty.  NEW_STR may be empty.  TICK, when non-nil, must
-match `buffer-chars-modified-tick'.  REPLACE_ALL permits multiple matches."
+match `buffer-chars-modified-tick'.  REPLACE_ALL permits multiple matches.
+VERSION, when non-nil, must be the version token of the file as a read
+reported it."
   (condition-case err
       (progn
         (unless (and (stringp path) (not (string= path "")))
@@ -152,7 +182,9 @@ match `buffer-chars-modified-tick'.  REPLACE_ALL permits multiple matches."
           (user-error "edit: tick must be an integer"))
         (when (and replace-all (not (booleanp replace-all)))
           (user-error "edit: replace_all must be a boolean"))
-        (yeah-edit--edit-validated path old-str new-str tick replace-all))
+        (when (and version (not (stringp version)))
+          (user-error "edit: version must be a string"))
+        (yeah-edit--edit-validated path old-str new-str tick replace-all version))
     (error
      (yeah-result-error (error-message-string err)))))
 
@@ -195,12 +227,13 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
   (list
    (list :name "edit"
          :description
-         "Replace exact text in a file, guarded by an optional modification tick. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: pass the tick that the read of this file reported; the edit is refused when the file changed since that tick was taken, and the refusal reports the current tick, so you can retry with it. If the read of the file reported no tick, omit tick: a tick that no read handed out is ignored, and omitting tick edits the file without the guard. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
+         "Replace exact text in a file, guarded by an optional modification tick and an optional version token. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: pass the tick that the read of this file reported; the edit is refused when the file changed since that tick was taken, and the refusal reports the current tick, so you can retry with it. If the read of the file reported no tick, omit tick: a tick that no read handed out is ignored, and omitting tick edits the file without that guard. version is optional in the same way: pass the version that the read of this file reported, and the edit is refused when the file changed since that read, so an edit never lands on a file you did not read. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
          :input (list (list :name "path" :type 'string)
                       (list :name "old_str" :type 'string)
                       (list :name "new_str" :type 'string)
                       (list :name "tick" :type 'integer :optional t)
-                      (list :name "replace_all" :type 'boolean :optional t))
+                      (list :name "replace_all" :type 'boolean :optional t)
+                      (list :name "version" :type 'string :optional t))
          :handler #'yeah-edit--edit
          :concurrency 'exclusive)
    (list :name "write"

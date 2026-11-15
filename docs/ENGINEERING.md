@@ -123,6 +123,14 @@ sources or dependencies. Never load code from that directory in Yeah.
   file; a tick for a file that no buffer visits could not have been read, so
   it is ignored rather than refused.  Edits require exact expected
   content/ranges.
+- Every read also returns the version of the file: the digest of its bytes.
+  The version is the guard of the file that no buffer visits, and it is
+  computed from the bytes and not from a decoded text, so two files with
+  different bytes have different versions.  An edit that presents a version
+  is refused when the file changed after the read, and it is refused when
+  Emacs holds unsaved changes of the file, because a read of the file on disk
+  cannot show them.  A version that no read handed out is ignored, like a
+  tick that no read handed out.
 - Validate every range before mutating. Apply multiple edits bottom-up and as
   one logical undo step.
 - Preserve user buffers, point, narrowing and unsaved changes unless the tool
