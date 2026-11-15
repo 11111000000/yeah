@@ -48,9 +48,13 @@ work item. Never resolve it by silently making documentation more optimistic.
   moved one task of three; the nudge now carries the state of the work
   (the claim `a-silence-nudge-carries-the-state-of-the-work'), because the
   provider goes silent after every batch of tool results and the model was
-  answering the nudge by starting the work over.  The threshold of the
-  parity is a decision of the owner (docs/PLAN.md §13), and nobody may quote
-  the pilot as a verdict about parity.
+  answering the nudge by starting the work over.  With that, Yeah passes
+  two tasks of three and pi passes three.  The third task fails in the
+  tools: the `read` of a file nobody has edited yet returns no tick, and
+  the `edit` refuses the tick the model guessed as stale although the file
+  has not changed.  The threshold of the parity is a decision of the owner
+  (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
+  parity.
 - Stage 7 is implemented offline: an agent preset is a file (a Markdown or
   Org header and a body), and a child runs for real in its own session with
   only the tools it was granted. The fixed-point demonstration passes with

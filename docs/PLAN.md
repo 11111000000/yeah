@@ -1195,9 +1195,16 @@ that says "call `read' now" after the model has read the file is what sent
 the pilot round in circles.  Its control bites: with the state removed from
 the nudge, the test of the claim fails and the other tests keep passing.
 
-**Open, for the next wave:** the evidence with a live provider for that
-nudge, and the threshold of the parity, which remains a decision of the
-owner (Section 13).
+**The pilot after the nudge (2026-11-15).**  The same three tasks, the same
+provider, the same model (`bench/results/20261115T144021Z.jsonl`): pi passed
+all three, Yeah passed two — `read-answer` and `write-new-file`.  The third
+fails in the tools, not in the turn: the `read` of a file nobody has edited
+yet returns no tick, the model passes a plausible one, and the `edit`
+refuses it as stale although the file has not changed.
+
+**Open, for the next wave:** the tick of a file — a model that has no tick
+must not be punished for guessing one — and the threshold of the parity,
+which remains a decision of the owner (Section 13).
 
 ### 16.8 Housekeeping — **done on 2026-11-15**
 

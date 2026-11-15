@@ -167,6 +167,35 @@ what sent the pilot round in circles.  The claim has a control that bites:
 with the state removed from the nudge, the test of the claim fails and the
 other tests keep passing.
 
+## The pilot after the nudge carries the state (2026-11-15)
+
+The third run of the pilot, on the code of wave 25, under the same
+conditions (`bench/results/20261115T144021Z.jsonl`):
+
+| Task | Yeah | pi |
+|---|---|---|
+| `read-answer` | **passed** — the turn ended in completed | passed |
+| `fix-failing-test` | failed — the edit was refused | passed |
+| `write-new-file` | **passed** — the turn ended in completed | passed |
+
+Two tasks of three now pass: the silence of the provider no longer ends the
+work, and the nudge that follows it carries the state, so the model
+continues instead of starting over.  The third task fails for a different
+reason, and the journal says which: the model read the file of the project,
+edited it with the tick it believed it had read, and the edit was refused —
+"edit: stale tick for calc.el: expected 0, current 9; read fresh state
+before retrying".
+
+That refusal is the next defect, and it is in the tools, not in the turn.
+The `read` tool reports the tick of the buffer that visits the file, and
+there is no such buffer until an `edit` opens it: the read of a file
+nobody has edited yet returns no tick at all, and the tick of a buffer that
+opens later is an arbitrary number of the global counter of Emacs (9 in this
+run).  A model that has no tick and passes a plausible one — 0 — is refused
+for a file that has not changed at all.  The tick is meant to catch a file
+that changed under the model; as it stands it also catches a model that
+guessed.
+
 The silence is the provider, not the harness: three plain model calls in a
 row answered `OK', `OK' and an **empty** message with HTTP 200
 (`tests/live/live-model-call.el`).  A provider that answers half of the
