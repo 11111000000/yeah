@@ -32,6 +32,14 @@
 ;; for parity is declared, so no status below says that Yeah is as good as
 ;; another harness; that decision belongs to the owner (docs/PLAN.md, 13).
 ;;
+;; The reason of a row names the cause of the verdict, and not only the
+;; verdict: a run that did not finish is told in the words of the journal of
+;; the run -- the model answered with an empty message N times, or it
+;; described its next step N times and called no tool.  The status of such a
+;; row does not change: whether a run that did not finish is a failure of the
+;; agent or a run that was never measured is a decision of the owner
+;; (docs/PLAN.md, 17.2), and the runner does not take it.
+;;
 ;; Environment:
 ;;
 ;;   YEAH_TEST_KEY             the provider key of the Yeah harness
@@ -341,29 +349,65 @@ measurement would then say more about the harness than about the agent."
       (accept-process-output nil 0.2))
     (yeah-turn-state turn)))
 
-(defun yeah-bench--journal-provider-error (path)
-  "Return the provider failure that the journal at PATH names, or nil.
-Only the error records count: a tool output that quotes a provider message
-is not a failure of the provider, and a run the provider stopped is a run
-that was never measured."
+(defun yeah-bench--journal-records (path)
+  "Return the records of the journal at PATH, as alists.
+A journal that is not there is no records, and a line that is not a record
+is skipped: a reader of a journal must not die on a journal that a run left
+half written."
   (when (and (stringp path) (file-exists-p path))
     (with-temp-buffer
       (let ((coding-system-for-read 'utf-8-unix))
         (ignore-errors (insert-file-contents path)))
       (goto-char (point-min))
-      (let ((found nil))
-        (while (and (not found) (not (eobp)))
+      (let (records)
+        (while (not (eobp))
           (let* ((line (buffer-substring-no-properties
                         (line-beginning-position) (line-end-position)))
                  (record (and (not (string-empty-p (string-trim line)))
                                (ignore-errors
                                  (json-parse-string line :object-type 'alist)))))
-            (when (and (consp record)
-                       (equal (alist-get 'type record) "error"))
-              (setq found (yeah-bench--provider-error
-                           (format "%s" (alist-get 'payload record))))))
+            (when (consp record)
+              (push record records)))
           (forward-line 1))
-        found))))
+        (nreverse records)))))
+
+(defun yeah-bench--journal-provider-error (path)
+  "Return the provider failure that the journal at PATH names, or nil.
+Only the error records count: a tool output that quotes a provider message
+is not a failure of the provider, and a run the provider stopped is a run
+that was never measured."
+  (cl-find-if
+   (lambda (record)
+     (and (equal (alist-get 'type record) "error")
+          (yeah-bench--provider-error
+           (format "%s" (alist-get 'payload record)))))
+   (yeah-bench--journal-records path)))
+
+(defun yeah-bench--journal-unfinished (path)
+  "Return the shape of the run that did not finish, as the journal at PATH names it.
+The journal of a run that did not finish says what the model did: it
+answered with an empty message N times, or it described its next step N
+times, and the run ended without an effect.  The pilot must show that shape
+and not only a verdict, so that a reader of the results sees the cause of a
+failed check.  Nil when the journal names no such run."
+  (let ((record (cl-find-if
+                 (lambda (candidate)
+                   (equal (alist-get 'type candidate) "unfinished"))
+                 (yeah-bench--journal-records path))))
+    (when record
+      (let ((payload (alist-get 'payload record)))
+        (and (stringp payload)
+             (> (length (string-trim payload)) 0)
+             payload)))))
+
+(defun yeah-bench--unfinished-clause (unfinished)
+  "Return the clause that names the shape of the run that did not finish.
+UNFINISHED is the shape the journal of the run names, or nil.  The clause is
+empty when the run ended in its own way, and it says what the model did when
+the run did not finish."
+  (if (and (stringp unfinished) (> (length (string-trim unfinished)) 0))
+      (format "the run did not finish: %s; " unfinished)
+    ""))
 
 (defun yeah-bench--yeah-harness (task workspace prompt session-root)
   "Give TASK to Yeah in WORKSPACE with PROMPT and return the outcome.
@@ -416,7 +460,9 @@ SESSION-ROOT is the directory that holds the journal of the run."
     (list :outcome "ran"
           :note (format "the turn ended in %s" (yeah-bench--wait turn))
           :provider-error (yeah-bench--journal-provider-error
-                           (plist-get session :path)))))
+                           (plist-get session :path))
+          :unfinished (yeah-bench--journal-unfinished
+                       (plist-get session :path)))))
 
 (defun yeah-bench--external-template ()
   "Return the command template of the external harness, or nil."
@@ -508,7 +554,9 @@ Return the outcome of the harness."
                                                  (error-message-string err))))))
          (kind (or (plist-get outcome :outcome) "not-available"))
          (reason (or (plist-get outcome :reason) (plist-get outcome :note) ""))
-         (provider-error (plist-get outcome :provider-error)))
+         (provider-error (plist-get outcome :provider-error))
+         (unfinished (plist-get outcome :unfinished))
+         (shape (yeah-bench--unfinished-clause unfinished)))
     (unless (member kind yeah-bench--outcomes)
       (error "the harness %s returned the unknown outcome %s" name kind))
     (cond
@@ -542,10 +590,10 @@ Return the outcome of the harness."
                             (if (> (length reason) 0) (format "; %s" reason) "")))
                    ((and (stringp provider-error)
                          (> (length provider-error) 0))
-                    (format "the provider failed, so the agent was not measured: %s; the check exited %s: %s"
-                            provider-error exit (yeah-bench--excerpt (cdr result))))
-                   (t (format "the check exited %s: %s"
-                              exit (yeah-bench--excerpt (cdr result)))))))
+                    (format "%sthe provider failed, so the agent was not measured: %s; the check exited %s: %s"
+                            shape provider-error exit (yeah-bench--excerpt (cdr result))))
+                   (t (format "%sthe check exited %s: %s"
+                              shape exit (yeah-bench--excerpt (cdr result)))))))
         (unless (member status yeah-bench--statuses)
           (error "the measurement has the unknown status %s" status))
         (list :task (plist-get task :id)

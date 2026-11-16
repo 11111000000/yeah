@@ -1,0 +1,29 @@
+{
+  "id": "wave-38",
+  "title": "the pilot names the shape of a run that did not finish",
+  "intent": "The pilot of wave 37 measured a task of Yeah that failed because the model went silent: the model read the file, ran the tool and then answered with an empty message three times, the harness nudged it three times with the state of the work, and the file was never written.  The row of that run in the results said only that the check exited 1.  A reader of the pilot saw a verdict and no cause, and the cause is what the journal of the run already holds: the record `unfinished' names the shape of the run - the model answered with an empty message N times, or it described its next step N times and called no tool.  Wave 38 makes the runner read that record and name the shape in the reason of the row, so that the pilot shows the cause of a failed check and not only its verdict.  The status of the row does not change: whether a run that did not finish is a failure of the agent or a run that was never measured is a decision of the owner (docs/PLAN.md 17.2), and the naming must not take that decision away.",
+  "touches": [
+    "bench/run-bench.el",
+    "tests/checks/check-bench-names-the-unfinished-shape.el",
+    "spec.json",
+    "waves/wave-38.json",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev check tests/checks/check-bench-names-the-unfinished-shape.el",
+    "./scripts/dev check tests/checks/*",
+    "./scripts/dev bench"
+  ],
+  "claims": [
+    "the-pilot-names-the-shape-of-a-run-that-did-not-finish"
+  ],
+  "commitment": [],
+  "objection": "The runner names the shape of a run that did not finish, but the shape it names is the shape the journal of the run holds, and the journal holds the shape in the words of the kernel: the number of the nudges, and whether the model answered with an empty message or described its next step.  A reader of the pilot therefore sees what the run did and not why the model did it, and the reason of the row still says that the check failed.  The naming does not change the status of the row, so a run that the provider silenced still counts against the agent until the owner decides otherwise.  The runner reads the shape of a run of the Yeah harness only: the other harness reports what its own output says, and nothing of it is read from a journal of Yeah.  A journal that is not there names no shape, and a row of such a run carries no clause: the naming is never a decoration of every row.",
+  "refuted_by": "the row of a run that did not finish does not name the shape of the failure, or the naming of the shape changes the status of the row",
+  "note": "The control of the claim takes the naming out of the reason of the row: the row of a run that did not finish says only that the check exited 1, and the check fails on that row.  The control drops exactly one check, and the bench self-check still holds under it, so the two claims of the bench keep their evidence.  The check fails on the code of wave 37 as well, and it fails there with a message and not with a crash: the runner of that code does not name the shape of a run that did not finish."
+}

@@ -2203,6 +2203,29 @@
       "register": "fact",
       "control": "sed -i 's|(yeah-delegate--journal-depth session)|nil|' lib/yeah-delegate.el",
       "waiver": null
+    },
+    {
+      "id": "the-pilot-names-the-shape-of-a-run-that-did-not-finish",
+      "text": "The row of a run that did not finish names the shape of the failure: the reason of the measurement says what the journal of the run holds - the model answered with an empty message N times, or it described its next step N times - so that a reader of the pilot sees the cause of the failed check and not only its verdict. The status of the row does not change: whether such a run is a failure of the agent or a run that was never measured is a decision of the owner.",
+      "scope": [
+        "bench/run-bench.el",
+        "tests/checks/check-bench-names-the-unfinished-shape.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-bench-names-the-unfinished-shape.el"
+        }
+      ],
+      "falsifier": "the row of a run that did not finish does not name the shape of the failure, or the naming of the shape changes the status of the row",
+      "register": "fact",
+      "control": "sed -i 's|(format \"the run did not finish: %s; \" unfinished)|\"\"|' bench/run-bench.el",
+      "waiver": null
     }
   ]
 }
