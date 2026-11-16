@@ -180,6 +180,15 @@ not the version of the file now names the token and reports the current one,
 because a token that was copied wrong does not mean that the file changed;
 the promise of the guard is kept and made honest, not relaxed.*
 
+*Amended on 2026-11-15 (wave 33): the decision promised that the agent does
+not edit a file whose unsaved changes in the editor a read cannot show, and
+the code kept that refusal only for the edits that presented a version. The
+refusal is now the answer of every edit, with a version or without one: a
+read shows the disk, and the changes of the person live in the buffer. The
+write of a whole file takes the same short version token as the edit, so a
+write never lands on a file the model did not read; the promise is kept and
+made explicit, not relaxed.*
+
 ### D6 — Large output becomes an artifact; context is calibrated
 
 Tool output has explicit limits. Oversized output is written with private

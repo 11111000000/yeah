@@ -91,10 +91,18 @@ work item. Never resolve it by silently making documentation more optimistic.
 - The read of a file shows the file on disk, but the tick it hands out
   belongs to the buffer that visits the file: when Emacs holds unsaved
   changes of that file, the model sees the disk and the edit applies to the
-  buffer.  Wave 29 refuses that case when the model presents the version of
-  the read, but the path that presents only a tick keeps the old behaviour,
-  and the write tool overwrites a whole file and takes no version at all.
-  Both are open in docs/PLAN-NEXT.md.
+  buffer.  Wave 29 refused that case when the model presents the version of
+  the read; wave 33 makes the refusal the answer of every edit, with a
+  version or without one, because a read of the disk cannot show the changes
+  of the person (the claim
+  `an-edit-never-lands-on-a-file-with-unsaved-changes').  The write takes the
+  same short version token and is refused when the file changed after the
+  read that handed it out (the claim
+  `a-write-never-lands-on-a-file-that-changed'); the token of the write is
+  optional, so a model that presents no version writes without that guard.
+  A write of a file that Emacs holds unsaved changes of is not refused: the
+  write goes to the disk and the buffer becomes stale — that is open in
+  docs/PLAN-NEXT.md.
 - Every read now hands the model the version of the file as well: the digest
   of its bytes (lib/yeah-version.el). The edit checks that version and is
   refused when the file changed after the read, so an edit never lands on a

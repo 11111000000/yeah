@@ -1474,6 +1474,49 @@ the test of the stale version, and the new tests are not in the file it reads.
 cannot make the model retry; the path that presents only a tick keeps the old
 behaviour, and the write tool overwrites a whole file and takes no token.
 
+### 16.16 An edit never lands on a file the model did not read — **done on 2026-11-15 (wave 33)**
+
+The open work of §16.12 had two parts, and both were promises that D5 already
+made and the code did not keep.
+
+The first: D5 says that the agent "does not edit a file whose unsaved changes
+in the editor a read cannot show", and the code refused that edit only when
+the model presented a version.  A model that presented only a tick — the path
+that wave 29 left open — could still land an edit on the buffer that holds
+the unsaved changes of the person: the read showed the disk, the edit landed
+on the buffer, and the changes of the person were overwritten with text the
+model never read.  The refusal is now the answer of every edit, with a
+version or without one.
+
+The second: the write tool replaced a whole file and took no version, so a
+write could land on a file that changed after the read of that file.  The
+write takes the same short version token as the edit now, and a write that
+replaces a file whose token does not match is refused with the current token,
+so that the retry lands.
+
+The order of the refusals is the order of their exactness: a stale version is
+named first, a stale tick next, and the unsaved changes of the person when
+nothing else is stale.  The meaning of the existing check of the stale tick
+is unchanged, and the control of wave 29 still bites on this code: it fails
+exactly one test of `tests/unit/test-yeah-edit.el`.
+
+D5 was amended and not weakened: it says that the refusal of the unsaved
+changes is the answer of every edit, and that the write of a whole file takes
+the version too.
+
+The two claims of the wave have verifiers of their own and controls that
+bite and that change the subject and not the check: with the refusal of the
+unsaved changes switched off, exactly one test of
+`tests/unit/test-yeah-unsaved-guard.el` fails; with the version taken out of
+the condition of the write, exactly one test of
+`tests/unit/test-yeah-write-guard.el` fails and the test of the current
+version keeps passing.
+
+**Open:** the refusal does not tell whose changes the buffer holds, so with
+`yeah-edit-save-after-edit` set to nil a second edit of the same file is
+refused as well; a write of a file that Emacs holds unsaved changes of is
+not refused, and the buffer of the person becomes stale.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then
