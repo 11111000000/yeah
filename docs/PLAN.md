@@ -1517,6 +1517,49 @@ version keeps passing.
 refused as well; a write of a file that Emacs holds unsaved changes of is
 not refused, and the buffer of the person becomes stale.
 
+### 16.17 An edit never runs the code of the project — **done on 2026-11-16 (wave 34)**
+
+The open item of the table in `docs/PLAN-NEXT.md` §6: the edit tool opened
+the file of the edit with `find-file-noselect` and nothing else, and Emacs
+runs the local variables of a file and the directory-local variables of its
+directory when it opens it.  That code belongs to the project, and the
+project is untrusted input.
+
+The two vectors are sharp.  A `mode:` entry of the local variables names a
+function that Emacs calls when it sets the mode, and the name may be a
+function of the project.  An `eval:` entry is Elisp that Emacs evaluates.
+The directory-local file (`.dir-locals.el`) puts the same code into every
+file of a directory, and the directory is chosen by the project, not by the
+person.
+
+The new module `lib/yeah-untrusted.el` opens a file with that machinery
+neutralized: `enable-local-variables`, `enable-local-eval` and
+`enable-dir-local-variables` are bound to nil for the opening, so neither
+the local variables of the file nor the directory-local variables of its
+directory are executed, whatever the configuration of that Emacs is.  The
+edit tool opens the file of an edit through it.
+
+What is left is the choice of Emacs: the major mode of the buffer comes
+from the name of the file (`auto-mode-alist`), and that is Emacs' code, not
+the code of the project.  The mode line of the file is part of the content
+of the file, so it is ignored: a file whose mode differs from the mode of
+its name comes up in the mode of its name.
+
+§8 of `docs/ARCHITECTURE.md` was amended and not weakened: it now says that
+the harness does not run the code of the project, and the price of that —
+the mode line of the file is ignored — is named there and in the objection
+of the wave.
+
+The claim of the wave has a verifier of its own and a control that changes
+the subject and not the check: with the guard switched off, exactly one
+test of `tests/unit/test-yeah-untrusted.el` fails, and it fails on its
+assertion that the mode of the file was not called.
+
+**Open:** the buffer of the person shows the file in the mode of its name,
+not in the mode that the file asks for, and the person has to set the mode
+by hand; a file that the person opens by hand is still opened the way Emacs
+opens it, and the harness does not change that.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then

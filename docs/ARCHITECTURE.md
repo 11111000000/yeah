@@ -370,10 +370,23 @@ untrusted inputs. Security is capability-based:
 - deny-by-default headless policy;
 - bounded time, tokens, output, pending input and child depth;
 - no secret files or credentials in logs, examples or test fixtures;
-- no claim that regex/whitelist evaluation is a complete sandbox.
+- no claim that regex/whitelist evaluation is a complete sandbox;
+- the code of the project is never run: a file that the harness opens for an
+  edit comes up with the local variables of the file and the directory-local
+  variables of its directory neutralized.
 
 General untrusted evaluation, if ever offered, requires a separately designed
 process boundary and its own adversarial verification.
+
+*Amended on 2026-11-16 (wave 34): the model opens the files of the project
+on behalf of the agent, and Emacs runs the local variables of a file and the
+directory-local variables of its directory when it opens one. That code is
+the code of the project, and the project is untrusted input. The harness now
+opens the file of an edit with that machinery neutralized, whatever the
+configuration of that Emacs is. The price is named, not hidden: the mode line
+of the file is part of its content, so it is ignored, and the buffer of the
+person shows the file in the mode of its name. The rule is added, and the
+security model is made explicit, not relaxed.*
 
 ## 9. Product and interface
 

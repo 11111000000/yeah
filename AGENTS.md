@@ -103,6 +103,17 @@ work item. Never resolve it by silently making documentation more optimistic.
   A write of a file that Emacs holds unsaved changes of is not refused: the
   write goes to the disk and the buffer becomes stale — that is open in
   docs/PLAN-NEXT.md.
+- The harness opens the files of the project on behalf of the model, and
+  Emacs runs the local variables of a file and the directory-local variables
+  of its directory when it opens one.  That code is the code of the project,
+  and the project is untrusted input: a `mode:` entry names a function that
+  Emacs calls, and an `eval:` entry is Elisp that Emacs evaluates.  The edit
+  opens the file through `yeah-untrusted-open-file` (lib/yeah-untrusted.el),
+  where that machinery is neutralized whatever the configuration of the
+  Emacs is (wave 34, the claim
+  `an-edit-never-runs-the-local-variables-of-the-project').  The price is
+  named: the mode line of the file is part of its content, so it is ignored,
+  and the buffer of the person shows the file in the mode of its name.
 - Every read now hands the model the version of the file as well: the digest
   of its bytes (lib/yeah-version.el). The edit checks that version and is
   refused when the file changed after the read, so an edit never lands on a
