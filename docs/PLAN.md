@@ -1697,6 +1697,40 @@ life: the journal says that the child was delegated and what became of it, and
 the work of that child is lost, because nobody restarts it.  The tools of the
 delegation are still not in `yeah-builtins-specs`.
 
+### 16.21 The pilot names the shape of a run that did not finish — **done on 2026-11-16 (wave 38)**
+
+The pilot of wave 37 measured a task of Yeah that failed, and the row of that
+run in the results said only that the check exited 1.  The cause was in the
+journal of the run and nowhere else: the record `unfinished` says that the
+model answered with an empty message three times and that the run ended
+without an effect.  A reader of the pilot saw a verdict and no cause.
+
+Wave 38 makes the runner read that record and name the shape in the reason of
+the row.  The reason of a run that did not finish begins with what the
+journal of the run holds: the model answered with an empty message N times, or
+it described its next step N times and called no tool.  The row still says
+what the check said, and the two are read together.
+
+The status of the row does not change, and that is deliberate.  Whether a run
+that the provider silenced is a failure of the agent or a run that was never
+measured is a decision of the owner (§17.2), and a runner that changed the
+status would take that decision away.  The wave names the cause and leaves
+the verdict alone.
+
+The wave has one claim with a verifier of its own and a control that changes
+the subject of the claim and not the check.  With the naming taken out of the
+reason of the row, exactly one check fails, and it fails on the row that does
+not name the shape.  The self-check of the bench still holds under that
+control, so the two claims of the bench keep their evidence.  The check fails
+on the code of wave 37 as well, with a message and not with a crash: the
+runner of that code does not name the shape of a run that did not finish.
+
+**Open:** the runner names the shape of a run of the Yeah harness, because
+only that harness has a journal of Yeah; the row of the other harness says
+what its own output says.  The shape is what the journal holds — the number of
+the nudges, and whether the model answered with an empty message or described
+its next step — and not why the model did it.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then
@@ -1707,7 +1741,7 @@ then 16.7 (the goal is measured), and 16.5 and 16.8 whenever.
 
 ## 17. What is left, and who decides it
 
-The work of waves 24–37 is closed and bound to fresh evidence.  What follows is
+The work of waves 24–38 is closed and bound to fresh evidence.  What follows is
 everything that is still open, written down in one place, so that nobody has
 to reconstruct it from the history of the sessions.  The first list is work an
 agent may do; the second list is the work only the owner may decide, and no
@@ -1763,6 +1797,10 @@ agent may decide it silently (`docs/PLAN.md` §13).
   decision of the owner (§17.2), because it changes the number of every
   pilot (docs/LIVE-EVIDENCE.md, "The live checks and the pilot after wave
   37").
+- The reason of the row of such a run names the shape of it since wave 38:
+  the model answered with an empty message N times, or it described its next
+  step N times and called no tool.  The shape is what the journal of the run
+  holds, and the verdict of the row is still the verdict.
 - The outcome of a run does not describe the work that was done: a run of
   `fix-failing-test` ended in "failed" because the provider failed after the
   edit, while the check of the task passed.  The check of the benchmark is the
@@ -1790,8 +1828,8 @@ agent may decide it silently (`docs/PLAN.md` §13).
 **The measurement.**
 
 - The pilot is three tasks.  The sample is small, and the numbers of the runs
-  of waves 33, 34, 35, 36 and 37 (2 of 3, 1 of 3, 2 of 3 and one blocked, 2 of
-  3, 2 of 3) differ by the noise of the provider and of the model.
+  of waves 33, 34, 35, 36, 37 and 38 (2 of 3, 1 of 3, 2 of 3 and one blocked,
+  2 of 3, 2 of 3) differ by the noise of the provider and of the model.
 - The second harness is `pi` 1.1.0, which is checked in the environment;
   `opencode` is not installed here.
 
@@ -1825,16 +1863,17 @@ None of these may be decided by an agent.  Each of them is recorded with
 
 ### 17.3 The order, if the owner says nothing
 
-1. **Wave 38 — the pilot names the shape of the run that did not finish.**  The
-   row of a run that the provider silenced must say so: the reason of the row
-   names what the journal holds (the model answered with an empty message N
-   times; the model described its next step N times and called no tool), so
-   that a reader of the pilot sees the cause of the failed check and not only
-   its verdict.  Whether such a run is a failure of the agent or a run that was
-   never measured is the decision of the owner (§17.2), because it changes the
-   number of every pilot.
-2. **The pilot again**, with a larger set of tasks, when the provider answers.
-3. **The pixel check**, when the owner names the place of the frame server.
+1. **The pilot again**, with a larger set of tasks, when the provider answers.
+   The row of a run that did not finish names the shape of it since wave 38,
+   so a reader of the pilot sees the cause of a failed check and not only its
+   verdict.  Whether such a run is a failure of the agent or a run that was
+   never measured is still the decision of the owner (§17.2), because it
+   changes the number of every pilot.
+2. **The pixel check**, when the owner names the place of the frame server.
+
+Wave 38 closed the naming of the shape: the reason of the row of a run that
+did not finish says what the journal of the run holds, and the verdict of the
+row is not touched by that.
 
 Wave 37 closed the depth of the tree: the children of a run and their depth are
 in the journal now, and a restart of the harness finds the child of a run again

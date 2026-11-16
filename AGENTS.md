@@ -103,7 +103,16 @@ work item. Never resolve it by silently making documentation more optimistic.
   failed in the tools the same way — the model read the file, ran `bash`,
   and then answered with an empty message; the harness nudged it with the
   state of the work, and the model went silent again (docs/LIVE-EVIDENCE.md,
-  "The live checks and the pilot after wave 37").  The threshold of the
+  "The live checks and the pilot after wave 37").  The pilot of 13:12, on the
+  code of wave 38, measured one task of three for Yeah and three of three for
+  pi: two tasks of Yeah failed in the same shape — the model read the files,
+  and then answered with an empty message three times, and the run ended
+  "unfinished" with the nudge budget spent.  The row of such a run names the
+  shape of it since wave 38, so the reader of the pilot sees the cause of the
+  failed check and not only its verdict; the verdict of the row is still the
+  verdict, because the classification of a run that did not finish is a
+  decision of the owner (docs/LIVE-EVIDENCE.md, "The live checks and the
+  pilot after wave 38").  The threshold of the
   parity is a decision of the owner (docs/PLAN.md §13), and nobody may quote
   the pilot as a verdict about parity.
 - A decision that arrives while the tools of the previous decision are still
@@ -222,6 +231,16 @@ work item. Never resolve it by silently making documentation more optimistic.
   `a-session-knows-its-depth-from-the-journal'; docs/PLAN.md §16.20).
   Not implemented: a child that was running when the Emacs died is not
   brought back to life — the work of that child is lost.
+- Wave 38 made the pilot name the shape of a run that did not finish: the
+  reason of the row begins with what the journal of the run holds — the model
+  answered with an empty message N times, or it described its next step N
+  times and called no tool — so that a reader of the pilot sees the cause of
+  a failed check and not only its verdict.  The status of the row does not
+  change: whether such a run is a failure of the agent or a run that was never
+  measured is a decision of the owner (docs/PLAN.md §17.2), and the runner does
+  not take it (bench/run-bench.el; the claim
+  `the-pilot-names-the-shape-of-a-run-that-did-not-finish'; docs/PLAN.md
+  §16.21).
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
@@ -335,7 +354,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-96 claim(s).
+97 claim(s).
 
 ```sh
 mathc run
@@ -343,6 +362,33 @@ mathc run
 
 Every verb: mathc help mathc init mathc goal mathc add mathc run mathc map mathc next mathc context mathc waive mathc record mathc install mathc doctor mathc adopt mathc import-adr mathc import-junit mathc authorize mathc re-evaluate mathc review-source mathc mcp
 <!-- math-coding:end -->
+
+## Task recording for the Math Coding field pilot
+
+This project takes part in a measurement of the method itself. A task that ends
+with a handoff is recorded in the field lab; without that record the pilot has
+no data and the method cannot be judged.
+
+At the end of the task, create a draft — the machine fields are filled for you:
+
+```sh
+~/Projects/math-coding-field-lab/scripts/record draft yeah --kind <kind> --base <revision-at-task-start>
+```
+
+Fill the fields marked `TODO`: the model, the time, the counters. Leave `outcome`
+as `pending` and `accepted_by` empty — the owner decides the outcome and records
+the acceptance, and that is not the agent's call. Then write the record:
+
+```sh
+~/Projects/math-coding-field-lab/scripts/record commit yeah --task-id <id>
+```
+
+Rules: do not choose tasks by their result, do not rewrite a written record to
+make it look better, and do not drop unsuccessful ones — the pilot publishes
+every outcome. The lab records every task that starts after the declared rule:
+it never stops asking and it never filters by result. If the lab is not
+available, finish the task as usual: a missing record is a gap in the
+measurement, not a reason to change the work.
 
 ## Working rules
 
