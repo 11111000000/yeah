@@ -1731,6 +1731,43 @@ what its own output says.  The shape is what the journal holds — the number of
 the nudges, and whether the model answered with an empty message or described
 its next step — and not why the model did it.
 
+### 16.22 The kernel supervises a run by default — **done on 2026-11-16 (wave 39)**
+
+The live run of the service path failed in a way that no offline check had caught:
+the model was asked to write a file, it described its next step instead of taking
+it, and the ACP route answered `end_turn` — the reason that says the work is
+done.  Nothing had been done.  The cause was the default of the completion
+supervision: `yeah-turn-default-max-nudges` was zero, so a run of the kernel was
+not supervised at all and the branch that reports a run without an effect was
+never reached.
+
+Wave 39 changes the default to a positive budget (three — the number the live
+coding task was measured with), so that a run of Yeah is supervised unless the
+caller asks for no supervision at all.  The interactive path takes the same
+number from the kernel now: `yeah-product-open` does not carry its own four.
+
+The wave also changes the state of a run that spent its budget: such a run ends
+in the state `failed`, and not in a state a reader of the wire would take for a
+finished job.  The ACP route answers it with the stop reason `refusal`; the
+batch placement exits with 1; a child of a delegation is marked failed.  The
+journal of the run carries the record `unfinished` as before, and now the state
+of the turn agrees with it.
+
+The second part of the wave repairs the live stand of the transport.  The stand
+stopped at the first line that arrived, and the empty string that a reasoning
+model sends between its thinking and its answer was the absence of an answer: a
+provider that had answered was reported as silent.  The stand now waits for a
+terminal form, and the decision what counts as an answer lives in
+`tests/support/yeah-live-answer.el`, where it is tested offline — a stand that
+needs a key cannot be the test of its own decision.  Text with content and a
+tool call are answers; the empty string, the streaming sentinel and the
+reasoning are not.
+
+**Open:** the budget of a child of a delegation is a separate default
+(`yeah-subagent-max-nudges` is still zero), and the wave did not change it: a
+child that never calls `finish` would then be marked failed, and the claims of
+the delegation do not say that yet (§17.2).
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then
@@ -1779,7 +1816,17 @@ agent may decide it silently (`docs/PLAN.md` §13).
 - A model can end its turn with a message that announces an action and call no
   tool ("I'll look at the current state of calc.el.").  The harness cannot tell
   a promise of an action from an answer: the completion nudge fires when the
-  model is silent and not when the model talks without acting.
+  model is silent and not when the model talks without acting.  Since wave 39 a
+  run of the kernel is supervised by default, so such a model is nudged into
+  the action; a model that spends the budget without an effect ends the run as
+  a failed run, and the ACP route answers `refusal` and not `end_turn`.
+- A caller that wants the old behaviour of the kernel (a run that ends as soon
+  as the model answers with text) must now say so with an explicit budget of
+  zero.  The default changed for every caller at once.
+- The budget of a child of a delegation is a separate default and is still
+  zero: a child that only talks still ends as a completed child.  Whether a
+  child that never calls `finish` is a failed child is a decision of the owner
+  (§17.2).
 - The provider answers with an empty message after a batch of tool results,
   with the status of a success (HTTP 200, `answer=""`).  The run then ends
   with the record "unfinished", which is honest, and the work is not done.
@@ -1860,6 +1907,13 @@ None of these may be decided by an agent.  Each of them is recorded with
 - The access of the service to the personal buffers of the person.
 - The channels of the distribution and the signing of the packages.
 - The compatibility with Apache-2.0 of every optional integration.
+- The budget of the completion supervision of a child of a delegation.  The
+  default of the kernel is positive since wave 39, and the default of the child
+  is still zero: a child that only talks and never calls `finish` ends as a
+  completed child today.  The wave did not change the default of the child,
+  because the claims of the delegation (§17.1) do not say that a child that
+  never finishes is a failed child, and a silent change of that meaning would
+  make the claims of wave 35–37 untrue.
 
 ### 17.3 The order, if the owner says nothing
 

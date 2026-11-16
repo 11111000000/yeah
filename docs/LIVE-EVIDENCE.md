@@ -13,10 +13,10 @@ skip is not a pass, and a skip never turns into a claim.
 
 | Check | What it proves | Needs | How to run | Last recorded run |
 |---|---|---|---|---|
-| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-16 13:10 UTC, on the code of wave 38, with MiniMax-M2.7 — pass on the second attempt; the attempt before it was answered by the provider with an empty message (`status="HTTP/2 200" answer=""`) ||
+| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-16 16:05 UTC, on the code of wave 39 — pass on all four models: M2.5 and M2.7 answer with a tool call, M3 and M3.1-Flash answer with the text (`shape=text answer="OK"`); the status is `HTTP/2 200` every time.  The run before the repair of the stand (13:10 UTC, wave 38) failed on the stand and not on the provider (§ "The live checks of the ACP route") ||
 | `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-16 13:10 UTC, on the code of wave 38, with MiniMax-M2.7 — pass on the first attempt: the model repaired the project with the edit of Yeah and the test of the project passes afterwards ||
 | `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-16 13:10 UTC, on the code of wave 38, with MiniMax-M2.7 — pass on the first attempt ("the interactive path works") ||
-| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-16 13:10 UTC, on the code of wave 38, with MiniMax-M2.7 — pass on the second attempt ("the primary path works with a live model"); the attempt before it failed at the provider: the model answered with an empty message and then refused (`:stopReason "refusal"`) ||
+| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-16 16:08 UTC, on the code of wave 39 — pass on the first attempt ("the primary path works with a live model"): the harness nudges the model that only announced the file, the write is approved over the wire, and the file holds `42`.  The run of 14:34 UTC (wave 38) failed with `end_turn` and nothing done: the budget of the supervision of the kernel was zero, and the run of a model that only announced its next step was marked finished (§ "The live checks of the ACP route") ||
 | `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-16 13:10 UTC, on the code of wave 38, with MiniMax-M2.7 — pass on the first attempt ("the child repaired the canary") ||
 | `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-16 13:11 UTC, against the published repository (revision `0c07695`), on the code of wave 38 — pass: "the clean installation works" ||
 | `tests/pixel/check-interface-is-seen.sh` | the interface is really on the screen: Emacs itself draws the journal and the approval view under a frame server, the screen is photographed, and the pictures are compared with each other and with the same buffer without the interface | a frame server (Xvfb), a terminal emulator, ImageMagick, Emacs — **no provider key** | `YEAH_XVFB=… YEAH_XTERM=… YEAH_MAGICK=… ./scripts/dev pixel` | 2026-11-15, pass — "the interface is on the screen: 767 colours, 16953 pixels between the journal and the approval view" |
@@ -817,6 +817,97 @@ of the runs of waves 36 and 37 (2 of 3 each), and the cause is the same
 provider that silenced the model in those runs; what this run adds is that the
 rows say so.
 
+## The live checks of the ACP route (2026-11-16, 14:34–15:11)
+
+These runs were made for a different question than the waves above: not
+"does Yeah work", but "does the ACP route — the way an orchestrator drives
+an agent — report the truth".  The provider was MiniMax-M3.1-Flash (and
+M2.5, M2.7, M3 for the cross-checks), the key came from the environment and
+is in no repository, and the transport was the socket one: a service Emacs
+serving ACP to a client that answers `session/request_permission`.
+
+| Check | Outcome |
+|---|---|
+| `live-model-call` | **fail** — and the check is at fault, not the provider (§ below) |
+| `live-coding-task` | pass on the first attempt: `state=completed`, the project repaired, the test of the project green |
+| `live-service-path` | **fail** — the model announced the file and the run ended `end_turn` with nothing done and no permission asked |
+
+The failure of `live-service-path` is the finding.  Its journal holds six
+records and nothing else:
+
+```text
+header → input-queued → input-taken → user-message → usage → assistant-message
+```
+
+where the assistant message is "I'll create that file now.".  The client
+received `stopReason: "end_turn"` — the run looked finished and was not.
+The cause is in the default of the route, not in the provider:
+`yeah-turn-default-max-nudges` is 0 (`lib/yeah-turn.el:118`), the frozen
+input carries it (`lib/yeah-control.el:51-59`), and with a budget of zero
+the turn neither nudges a model that only announces its next step nor
+writes the record `unfinished` — it marks the run done
+(`lib/yeah-turn.el:755`, `:782`, `:795`).  The behaviour is deliberate and
+is fixed by an offline test (`tests/unit/test-yeah-control.el:190`).
+
+With `(setq yeah-turn-default-max-nudges 3)` in the init form of the same
+service, the same live task works: the model announces the file, the
+harness nudges it ("You have not called these tools yet: …"), the model
+calls `write`, the file appears, the model ends the run with `finish`.  The
+nudge fires on the announcement itself — `yeah-turn-plan-regexp` matches
+"I'll write the file with that content." and "I'll create that file now."
+(checked by running it), so the harness does tell a promise from an
+answer; it is the budget of the route that stops it from acting on that
+knowledge.
+
+Two more measurements of the same runs:
+
+- The `cwd` of the session does not reach the tools.  The model was told to
+  write the relative path `answer.txt`; the file landed in the working
+  directory of the service process, not in the `cwd` of the session
+  (measured twice, in two independent runs).
+- `live-model-call` fails with `answer=""` on M2.5, M2.7 and M3, and the
+  provider is innocent: a direct request to the provider returns HTTP 200
+  and a non-empty `content` for all four models, and the same request
+  through `yeah-gptel-request` without tools answers "OK".  The check stops
+  waiting at the first string it receives — the empty string that arrives
+  between the reasoning block and the tool call — and it counts a tool
+  call as no answer.  A model that answers with the `finish` tool, as the
+  prelude of Yeah asks it to, is not a model that failed to answer.
+
+## The live checks after the kernel began to supervise (2026-11-16, 16:05–16:10)
+
+These runs repeat the live checks of the ACP route on the code of wave 39.  The
+provider was MiniMax-M3.1-Flash (and M2.5, M2.7, M3 for the cross-checks), the
+key came from the environment and is in no repository.
+
+| Check | Outcome |
+|---|---|
+| `live-model-call` | pass on all four models: M2.5 and M2.7 answer with a tool call (`shape=tool-call`), M3 and M3.1-Flash answer with the text (`shape=text answer="OK"`); the status is `HTTP/2 200` every time |
+| `live-service-path` | **pass** — "the primary path works with a live model"; the file appears in the working directory of the service and holds `42` |
+| `live-coding-task` | pass: the project is repaired and the test of the project is green |
+| `live-fixed-point` | pass: the child repaired the canary |
+
+Two things changed, and both are visible here.
+
+**The stand of the transport was at fault, and the provider was innocent.**  The
+stand stopped waiting at the first string it received, and the empty string
+that a reasoning model sends between its thinking and its answer was the
+absence of an answer; a tool call was no answer either.  The stand now waits
+for a terminal form, and the decision what counts as an answer lives in
+`tests/support/yeah-live-answer.el` and is tested offline.  The row above is
+the proof that the provider answers all four models: the M2.5 and the M2.7
+answer with a tool call, and the stand now calls that an answer.
+
+**The route of the ACP does not call a run without an effect finished.**  The
+run of `live-service-path` of 14:34 answered `end_turn` after the model had
+only announced the file.  On the code of wave 39 the same task works: the
+harness nudges the model, the model calls `write`, the write is approved over
+the wire, the file appears, and the model ends the run with `finish`.  The
+budget of the supervision of the kernel is positive now
+(`yeah-turn-default-max-nudges` is 3), so a run is supervised unless the
+caller asks for no supervision at all, and a run that spends its budget ends
+in the state `failed` and is answered with the stop reason `refusal`.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live
@@ -877,6 +968,16 @@ rows say so.
   wave 34 measured it twice more: "I'll look at the current state of
   calc.el." without a tool call after it, and a model that computed the sum of
   a table and never called the write.
+  **The live checks of the ACP route of 14:34–15:11 corrected the second half
+  of that sentence.**  The harness does tell a promise from an answer:
+  `yeah-turn-plan-regexp` matches "I'll write the file with that content."
+  and "I'll create that file now.", and a run that asks for supervision is
+  nudged on such an announcement — measured with a live model.  What is left
+  is the budget: the ACP route runs with `yeah-turn-default-max-nudges` = 0,
+  so there is nobody to nudge it, the record `unfinished` is not written
+  either, and the run ends as `completed` — `stopReason: "end_turn"` for a
+  run that did nothing.  Whether the default of the route changes is a
+  decision of the owner (`docs/PLAN.md` §17.2).
 - The outcome of a run does not describe the work that was done: the run of
   `fix-failing-test` ended in "failed" because the provider failed after the
   edit, while the check of the task passed.  The check of the benchmark is the
