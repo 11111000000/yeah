@@ -33,7 +33,6 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'yeah-product)
 
 (defgroup yeah-agent nil
   "Yeah declarative agent presets."

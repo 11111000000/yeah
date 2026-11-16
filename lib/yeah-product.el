@@ -16,6 +16,7 @@
 (require 'yeah-approval)
 (require 'yeah-approval-ui)
 (require 'yeah-control)
+(require 'yeah-delegate)
 (require 'yeah-doctor-ui)
 (require 'yeah-events)
 (require 'yeah-input)

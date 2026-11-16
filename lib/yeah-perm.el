@@ -92,10 +92,11 @@ Returns RULE. Signals `user-error' if RULE is malformed."
   "Return all current permission rules in registration order."
   yeah-perm--rules)
 
-(defconst yeah-perm--mutating-tools '("edit" "write" "bash" "job-cancel")
+(defconst yeah-perm--mutating-tools '("edit" "write" "bash" "job-cancel" "delegate")
   "The tools that change the world.
 They are the tools a permission profile has an opinion about; every
-other tool is read-only or harmless.")
+other tool is read-only or harmless.  A delegation is one of them: a
+child of a plan would change the world behind the plan.")
 
 (defun yeah-perm-profiles ()
   "Return the names of the permission profiles."

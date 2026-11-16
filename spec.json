@@ -1984,6 +1984,79 @@
       "register": "fact",
       "control": "sed -i 's|(enable-local-variables nil)|(enable-local-variables t)|' lib/yeah-untrusted.el",
       "waiver": null
+    },
+    {
+      "id": "a-child-runs-with-the-model-and-the-tools-of-its-preset",
+      "text": "A delegated child runs on the model of the preset that named it, with the tools of that preset and with the instructions of that preset, and every tool outside the preset is refused to it: a child of Yeah never reaches further than the agent it was given.",
+      "scope": [
+        "lib/yeah-delegate.el",
+        "lib/yeah-agent.el",
+        "lib/yeah-subagent.el",
+        "tests/unit/test-yeah-delegate-preset.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-preset.el"
+        }
+      ],
+      "falsifier": "the child runs on another model, or with other tools, or with other instructions than those of the preset, or a tool outside the preset is not refused to it",
+      "register": "fact",
+      "control": "sed -i 's|(funcall yeah-delegate--transport-factory model system tools)|(funcall yeah-delegate--transport-factory nil system tools)|' lib/yeah-delegate.el",
+      "waiver": null
+    },
+    {
+      "id": "a-delegation-does-not-hold-the-turn-of-its-parent",
+      "text": "A delegation answers at once with the id of the child, and the turn of the parent goes on while the child works: the child answers on its own, later, and the journal of the parent says what became of it.",
+      "scope": [
+        "lib/yeah-delegate.el",
+        "lib/yeah-subagent.el",
+        "tests/unit/test-yeah-delegate-asynchronous.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-asynchronous.el"
+        }
+      ],
+      "falsifier": "the turn of the parent waits for the child, or the child never ends on its own",
+      "register": "fact",
+      "control": "sed -i 's|    (puthash (yeah-delegate--id record) record yeah-delegate--children)|    (yeah-subagent-wait (plist-get record :id) 5) (puthash (yeah-delegate--id record) record yeah-delegate--children)|' lib/yeah-delegate.el",
+      "waiver": null
+    },
+    {
+      "id": "the-plan-profile-denies-a-delegation",
+      "text": "The Plan profile denies a delegation: a plan reaches the world through no child, and the denial of the profile is what the journal of the run says.",
+      "scope": [
+        "lib/yeah-perm.el",
+        "lib/yeah-delegate.el",
+        "tests/unit/test-yeah-delegate-plan-profile.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-plan-profile.el"
+        }
+      ],
+      "falsifier": "the Plan profile allows a delegation, or the refusal of the run does not come from the profile",
+      "register": "fact",
+      "control": "sed -i 's|\"bash\" \"job-cancel\" \"delegate\"|\"bash\" \"job-cancel\"|' lib/yeah-perm.el",
+      "waiver": null
     }
   ]
 }

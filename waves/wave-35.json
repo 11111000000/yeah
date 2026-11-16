@@ -1,0 +1,37 @@
+{
+  "id": "wave-35",
+  "title": "a child agent runs on the preset that named it",
+  "intent": "The harness could spawn a sub-agent, but nothing in the model-facing surface could ask for one: the tool that hands a task to a child did not exist, and the preset of an agent was a file that nothing read.  A delegation is the way a parent model uses the whole of Yeah for a part of its work: the child runs in a session of its own, on the model of its preset, with the tools of its preset and with the instructions of its preset, and every other tool is refused to it.  The parent is not held while the child works: the `delegate' tool answers at once with the id of the child, the child answers on its own, and the `delegate-result' tool reports what became of it.  A delegation is a change of the world -- a child of a plan would do the work that the plan was supposed to forbid -- so the Plan profile denies it and the Build profile asks the person.",
+  "touches": [
+    "lib/yeah-delegate.el",
+    "lib/yeah-agent.el",
+    "lib/yeah-perm.el",
+    "lib/yeah-product.el",
+    "tests/unit/test-yeah-delegate-preset.el",
+    "tests/unit/test-yeah-delegate-asynchronous.el",
+    "tests/unit/test-yeah-delegate-plan-profile.el",
+    "spec.json",
+    "waves/wave-35.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-preset.el",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-asynchronous.el",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-plan-profile.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "a-child-runs-with-the-model-and-the-tools-of-its-preset",
+    "a-delegation-does-not-hold-the-turn-of-its-parent",
+    "the-plan-profile-denies-a-delegation"
+  ],
+  "commitment": [],
+  "objection": "The id of a child is the id of its session, and the model has to copy it into `delegate-result'; a copy that is wrong is refused by name, and the model has to try again -- the same trouble the version token of a read brought, and it is not solved here.  The rules of the child are the allow-rules of the tools of the preset and nothing else: a child that asks for a tool outside the preset is refused with the reason that the rules ask about it and nobody answers, because a child is unattended and never asks.  The system prompt of the child is the prelude of Yeah followed by the body of the preset: the prelude says how a model of Yeah acts, the body says who the child is, and a preset that wants another voice has to live with the prelude in front of it.  The tools of the delegation are not the tools of the kernel and are not in `yeah-builtins-specs', so a reader of that list does not see them; the module is loaded by the product and registers them itself, the way the bridge does.  A child of a child is possible up to the depth that the preset names and up to the depth limit of the sub-agent, and the depth of the tree is kept in a table of the running Emacs, not in the journal: a restart of the harness forgets the depth of the children that are still running.  The child of a delegation is a run of the service placement: it writes its own journal, and the parent is told what became of it, but nobody waits for it and nobody cancels it.",
+  "refuted_by": "the child runs on another model, or with other tools, or with other instructions than those of the preset, or a tool outside the preset is not refused to it, or the turn of the parent waits for the child, or the Plan profile allows a delegation",
+  "note": "Each control of the three claims breaks the subject of the claim and not the check, and each of them fails exactly one test.  The control of the first claim gives the child of the transport factory no model, so the child no longer runs on the model of its preset; the test of the preset fails on the model and the other two tests still pass.  The control of the second claim makes the delegate wait for the child before it answers, so the turn of the parent waits for the child; the test of the asynchronous delegation fails on the status of the children, which are done when the turn of the parent is over, and the other two tests still pass.  The control of the third claim takes the delegation out of the tools that change the world, so the Plan profile has no opinion about it any more; the refusal of the run then comes from the silence of an absent person and not from the profile, and the test of the Plan profile fails on the reason of the refusal.  The three tests run a real turn of Yeah with a fake model: the continuation of a tool call calls the model back, as gptel does, because a fake transport that keeps the continuation to itself ends the turn of the parent with the first tool and no second delegation happens."
+}
