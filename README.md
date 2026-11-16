@@ -145,9 +145,15 @@ kernel and its Emacs-native interface:
 - an emacsclient bridge to the live buffers of an attached Emacs, approved
   separately and off by default;
 - agent presets read from files, and a delegation that runs a child for
-  real: its own session, its own permissions, its own journal.
+  real: its own session, its own permissions, its own journal.  The model of
+  the parent asks for the child with the `delegate' tool, which names the
+  preset: the child runs on the model of the preset, with the tools of the
+  preset and with the instructions of the preset, and every tool outside the
+  preset is refused to it.  The turn of the parent is not held: `delegate'
+  answers at once with the id of the child, the child answers on its own, and
+  `delegate-result' reports what became of it.
 
-After Stage 7, byte compilation is clean and 358 ERT unit tests pass, and
+After Stage 7, byte compilation is clean and 385 ERT unit tests pass, and
 the fixed-point demonstration is verified with a real model.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
@@ -156,7 +162,7 @@ socket, where a cancel preempts a running prompt), the placements
 (the same task in three real processes, compared event by event), the
 journey of a person (ask, steer, quit, restart, withdraw, recover, cancel),
 and the shared attached/service journal.  The math-coding v5 map/run/gate
-result is green for all 74 declared claims, each with a negative control
+result is green for all 90 declared claims, each with a negative control
 shown to bite.
 A real model (MiniMax-M3.1-Flash) finishes the Stage 1 coding task, and the
 interactive path works against a live provider: the journal mode, the cancel,
@@ -199,8 +205,16 @@ Do not infer a working product from the presence of a module:
   answer `always' is remembered — over the wire for the session, and on the
   attached path as a rule the policy reads — while the standing rules of the
   service are not touched by a client's answer;
+- the delegation of a child is a tool of the kernel (`delegate',
+  `delegate-result'), and the child runs with the model, the tools and the
+  instructions of the preset that named it.  Three things are still open: the
+  id of the child is the id of its session, and the model has to copy it
+  into `delegate-result' — a copy that is wrong is refused by name; the
+  depth of the tree of the children lives in the running Emacs and not in the
+  journal, so a restart forgets the depth of the children that still work;
+  and several children in one turn are not implemented yet;
 - the live checks under `tests/live/` are evidence without a claim: they need
-  a provider, so no control can bite and the green verdict of the 74 claims
+  a provider, so no control can bite and the green verdict of the 90 claims
   says nothing about them.  What each of them proves, how to run it and when
   it was last recorded is in `docs/LIVE-EVIDENCE.md`;
 - the parity with other harnesses was piloted on 2026-11-15 on three tasks

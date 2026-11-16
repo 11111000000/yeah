@@ -82,7 +82,13 @@ work item. Never resolve it by silently making documentation more optimistic.
   the harness: the model read the files of the task and never called the tool
   that would change them, while the guards of waves 29, 32, 33 and 34 were
   never in the way (docs/LIVE-EVIDENCE.md, "The live checks and the pilot after
-  wave 34").  The threshold of the parity is a decision of the owner
+  wave 34").  The pilot of 08:07, on the code of wave 35, measured two tasks of
+  three for Yeah and three of three for pi, and the third task of Yeah was
+  blocked: the transport to the provider died with "Curl failed with exit code
+  28" after the model had read the file and computed the sum.  A run that the
+  provider stops is blocked and not a failure of the agent, and it says
+  nothing about either harness (docs/LIVE-EVIDENCE.md, "The live checks and the
+  pilot after wave 35").  The threshold of the parity is a decision of the owner
   (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
   parity.
 - A decision that arrives while the tools of the previous decision are still
@@ -159,6 +165,17 @@ work item. Never resolve it by silently making documentation more optimistic.
   children and the cheaper child model are not implemented yet; an Org
   preset header and the Org export of a session are (lib/yeah-agent.el,
   lib/yeah-org.el).
+- The delegation of a child is a tool of the kernel (wave 35): `delegate`
+  names an agent preset and a task, and the child runs in a session of its
+  own, on the model of the preset, with the tools of the preset and with
+  the instructions of the preset; every tool outside the preset is refused
+  to it. The turn of the parent is not held: `delegate` answers at once
+  with the id of the child, the child answers on its own, and
+  `delegate-result` reports what became of it. A delegation changes the
+  world, so the Plan profile denies it. Not implemented: several children
+  in one turn, and the depth of the tree of the children is kept in the
+  running Emacs and not in the journal (lib/yeah-delegate.el,
+  docs/PLAN.md §16.18).
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the

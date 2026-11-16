@@ -1560,6 +1560,56 @@ not in the mode that the file asks for, and the person has to set the mode
 by hand; a file that the person opens by hand is still opened the way Emacs
 opens it, and the harness does not change that.
 
+### 16.18 A child agent runs on the preset that named it — **done on 2026-11-16 (wave 35)**
+
+Stage 7 said that an agent preset is a file and that a child runs for real in
+its own session with only the tools it was granted, and the fixed-point check
+proved it with one child that a person wrote by hand.  But nothing in the
+model-facing surface could ask for a child: the tool that hands a task to a
+child did not exist, and the presets of the agents were files that only that
+check read.  D8 named a sub-agent, and it did not name the way a parent model
+reaches one.
+
+The module `lib/yeah-delegate.el` closes that gap with two tools.  `delegate`
+takes the name of an agent preset and a task; it starts a child in a session of
+its own, through the machinery of the sub-agent, on the model of that preset,
+with the tools of that preset, and with the system prompt of the preset: the
+prelude of Yeah followed by the body of the preset.  Every tool outside the
+preset is refused to the child, and the refusal is in the journal of the child.
+`delegate-result` takes the id of a child and reports what became of it.
+
+The parent is not held.  `delegate` answers at once with the id of the child —
+the id of the session of that child — and the turn of the parent goes on while
+the child works; the child answers on its own, later, and the journal of the
+parent holds the `spawn` event and the `child-end` event.  The waiting is the
+choice of the parent: it may ask for the result of the child when it wants it.
+
+A delegation changes the world — a child of a plan would do the work that the
+plan was supposed to forbid — so `delegate` is one of the tools that change the
+world: the Plan profile denies it and the Build profile asks the person.  The
+denial of the profile is what the journal of the run says, not the silence of an
+absent person.
+
+The wave has three claims, each with a verifier of its own and a control that
+changes the subject of the claim and not the check.  With the model of the
+preset taken away, exactly one test fails, and it fails on the model of the
+child.  With the delegation made to wait for the child, exactly one test
+fails, and it fails on the status of the children, which are done when the turn
+of the parent is over.  With the delegation taken out of the tools that change
+the world, exactly one test fails, and it fails on the reason of the refusal:
+the Plan profile has no opinion about the delegation any more, and the run
+refuses it because nobody answers, not because the profile forbids it.
+
+**Open:** the id of a child is the id of its session, and the model has to copy
+it into `delegate-result`; a copy that is wrong is refused by name, and the
+model has to try again — the same trouble the version token of a read brought,
+and it is not solved here.  The depth of the tree of the children is kept in a
+table of the running Emacs and not in the journal, so a restart of the harness
+forgets the depth of the children that are still running.  The tools of the
+delegation are not in `yeah-builtins-specs` (the built-ins are the tools of the
+kernel, and the delegation is a tool of the product), so a reader of that list
+does not see them; the module registers them itself, the way the bridge does.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then

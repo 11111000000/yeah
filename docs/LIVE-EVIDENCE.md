@@ -13,14 +13,14 @@ skip is not a pass, and a skip never turns into a claim.
 
 | Check | What it proves | Needs | How to run | Last recorded run |
 |---|---|---|---|---|
-| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-16 07:00 UTC, on the code of wave 34, with MiniMax-M2.7 — pass on the second attempt (`status="HTTP/2 200" answer="OK"`); the first attempt answered `status="HTTP/2 200" answer=""`, an empty answer of the provider |
-| `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-16 06:58 UTC, on the code of wave 34, with MiniMax-M2.7 — pass on the first attempt: the model repaired the project with the edit of Yeah and the test of the project passes afterwards |
-| `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-16 06:58 UTC, on the code of wave 34, with MiniMax-M2.7 — pass ("the interactive path works") |
-| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-16 07:02 UTC, on the code of wave 34, with MiniMax-M2.7 — pass on the fourth attempt ("the primary path works with a live model"); the three attempts before it failed on the model, which refused the task three times (`:stopReason "refusal"`, "the model did not create the file") |
-| `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-16 06:58 UTC, on the code of wave 34, with MiniMax-M2.7 — pass, one child: "the child repaired the canary" |
-| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-16 06:59 UTC, against the published repository, on the code of wave 34 — pass: "the clean installation works" |
+| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-16 08:04 UTC, on the code of wave 35, with MiniMax-M2.7 — pass on the third attempt (`status="HTTP/2 200" answer="OK"`); the two attempts before it answered `status="HTTP/2 200" answer=""`, an empty answer of the provider |
+| `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-16 08:00 UTC, on the code of wave 35, with MiniMax-M2.7 — pass on the first attempt: the model repaired the project with the edit of Yeah and the test of the project passes afterwards |
+| `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-16 08:04 UTC, on the code of wave 35, with MiniMax-M2.7 — pass ("the interactive path works"); the attempt before it ended with an empty answer of the provider |
+| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-16 08:00 UTC, on the code of wave 35, with MiniMax-M2.7 — pass on the first attempt ("the primary path works with a live model") |
+| `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-16 08:07 UTC, on the code of wave 35, with MiniMax-M2.7 — pass on the third attempt, one child: "the child repaired the canary"; the two attempts before it failed on the provider: an empty answer and a transport that died ("Curl failed with exit code 28") |
+| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-16 08:00 UTC, against the published repository, on the code of wave 35 — pass: "the clean installation works" |
 | `tests/pixel/check-interface-is-seen.sh` | the interface is really on the screen: Emacs itself draws the journal and the approval view under a frame server, the screen is photographed, and the pictures are compared with each other and with the same buffer without the interface | a frame server (Xvfb), a terminal emulator, ImageMagick, Emacs — **no provider key** | `YEAH_XVFB=… YEAH_XTERM=… YEAH_MAGICK=… ./scripts/dev pixel` | 2026-11-15, pass — "the interface is on the screen: 767 colours, 16953 pixels between the journal and the approval view" |
-| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-16 07:08 UTC, on the code of wave 34, with MiniMax-M2.7 and pi: Yeah passed 1 of 3 tasks, pi passed 3 of 3 — **not a verdict about parity** (the threshold is a decision of the owner, the sample is three tasks); both tasks that Yeah failed failed on the model, which never called the write or the edit (see "The live checks and the pilot after wave 34") |
+| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-16 08:07 UTC, on the code of wave 35, with MiniMax-M2.7 and pi: Yeah passed 2 of 3 tasks and 1 was blocked (the provider failed, so the agent was not measured), pi passed 3 of 3 — **not a verdict about parity** (the threshold is a decision of the owner, the sample is three tasks); the task that was blocked says nothing about either harness (see "The live checks and the pilot after wave 35") |
 
 ## The environment
 
@@ -546,6 +546,60 @@ its plan into the text of the answer and emits neither a text nor a tool call
 (`docs/ARCHITECTURE.md` §D1 names it).  The harness cannot tell that a message
 which promises an action is not an answer.
 
+## The live checks and the pilot after wave 35 (2026-11-16, 07:59–08:14)
+
+Wave 35 made the delegation of a child a tool of the kernel: `delegate` names
+an agent preset and hands the model of the preset, the tools of the preset and
+the instructions of the preset to a child that runs in a session of its own,
+and `delegate-result` reports what became of it.  The verdict of the method on
+that code is `green`, with 90 claims `holds (current)` — the three new ones
+among them:
+
+- `a-child-runs-with-the-model-and-the-tools-of-its-preset`
+- `a-delegation-does-not-hold-the-turn-of-its-parent`
+- `the-plan-profile-denies-a-delegation`
+
+Each of the three has a control that breaks the subject and not the check, and
+each of them fails exactly one test.
+
+The live checks of 07:59–08:07 pass, all six of them:
+
+| Check | Outcome |
+|---|---|
+| `live-model-call` | pass on the third attempt (`status="HTTP/2 200" answer="OK"`); the two attempts before it answered `status="HTTP/2 200" answer=""` |
+| `live-coding-task` | pass on the first attempt |
+| `live-interactive-path` | pass ("the interactive path works"); the attempt before it ended with an empty answer of the provider |
+| `live-service-path` | pass on the first attempt ("the primary path works with a live model") |
+| `live-fixed-point` | pass on the third attempt, one child ("the child repaired the canary"); the two attempts before it failed on the provider: an empty answer and a transport that died ("Curl failed with exit code 28") |
+| `live-clean-install` | pass ("the clean installation works") |
+
+Three of the six needed a second attempt or more, and every one of those
+attempts failed on the provider and not on the harness: empty answers with the
+status of a success, and a transport that timed out.  That is the shape the
+provider has had for two days.
+
+The pilot ran once on this code and measured **Yeah passed 2 of 3 tasks and 1
+was blocked, pi passed 3 of 3.**
+
+| Task | Yeah | pi |
+|---|---|---|
+| `read-answer` | blocked — the provider failed: the model had read the file and computed the sum with `bash`, and the transport to the provider died with "Curl failed with exit code 28" | passed |
+| `fix-failing-test` | **passed** | passed |
+| `write-new-file` | **passed** | passed |
+
+**The parity is still not measured**: the threshold is a decision of the owner
+(`docs/PLAN.md` §13) and the sample is three tasks.  The blocked task is not a
+failure of the agent: the runner records a run that the provider stopped as
+blocked, and it says nothing about either harness.
+
+The two tasks that Yeah worked on passed, and they are the first two of a row
+after the runs of waves 33 and 34 measured 2 of 3 and 1 of 3.  The difference
+between the runs is the noise of the provider and of the model, and not a
+regression of the code: the guards of waves 29, 32, 33 and 34 were never in the
+way, no edit was refused, and no delegation was attempted — the benchmark has a
+fixed set of tools, and the delegation is not among them, so the pilot measured
+the parent alone.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live
@@ -556,10 +610,19 @@ which promises an action is not an answer.
   buffer without the interface, not with a stored golden picture.
 - The parity with other harnesses is measured on three tasks only.  The
   threshold is not decided (`docs/PLAN.md` §13) and the sample is small, so
-  the parity of the last run is not measured either.  The run of wave 34
-  measured 1 of 3 for Yeah and 3 of 3 for pi, the run of wave 33 measured
-  2 of 3 and 3 of 3.  The difference the runs found was not the quality of the
-  work but a model that announced the fix and called no tool.
+  the parity of the last run is not measured either.  The run of wave 35
+  measured 2 of 3 for Yeah and 3 of 3 for pi, and the third task of Yeah was
+  blocked by the provider; the run of wave 34 measured 1 of 3 for Yeah and 3
+  of 3 for pi, the run of wave 33 measured 2 of 3 and 3 of 3.  The difference
+  the runs found was not the quality of the work but a model that announced
+  the fix and called no tool.
+- The delegation of wave 35 is not exercised by a live model in the pilot:
+  the benchmark gives its runs a fixed set of tools, and the delegation is not
+  among them.  The live evidence of a child that works is the fixed-point
+  check, and that is one child and one task.  The id of a child is the id of
+  its session, and a model that has to copy it into `delegate-result` can
+  lose a character of it, the same way it lost a character of the version
+  token of a file before wave 32 shortened it.
 - The token of the file was 64 characters of hex and the model copied 58 of
   them, so the guard refused the edit of a file that had not changed.  Wave 32
   shortens the token and makes the refusal name the token instead of the

@@ -221,6 +221,23 @@ A sub-agent has a child run context, an explicit parent event, a restricted
 tool set, a depth limit and a budget. Its intermediate events remain
 inspectable; a summary alone is not an audit trail.
 
+A parent model asks for a child through the `delegate` tool, which names an
+agent preset: the child runs in a session of its own, on the model of that
+preset, with the tools of that preset and with the instructions of that preset,
+and every tool outside the preset is refused to it. The `delegate` tool answers
+at once with the id of the child, so the turn of the parent is not held; the
+child answers on its own, later, and the `delegate-result` tool reports what
+became of it. A delegation is a change of the world, and the Plan profile
+denies it.
+
+*Amended on 2026-11-16 (wave 35): the decision named a sub-agent but not the
+way a parent model reaches one, and the presets of the agents were files that
+nothing in the model-facing surface read. The delegation is now a tool of the
+kernel: it names a preset, it hands the model of the preset, the tools of the
+preset and the instructions of the preset to the child, it refuses every tool
+outside the preset, and it keeps the turn of the parent free while the child
+works. The promises above are kept and made explicit, not relaxed.*
+
 ### D9 — Plan and Build are permission profiles
 
 Plan mode is a read-oriented rule profile. Build mode enables the normal
