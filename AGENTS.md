@@ -98,9 +98,14 @@ work item. Never resolve it by silently making documentation more optimistic.
   the shape the provider has had for two days, and `write-new-file` passed in
   the same pilot, so the write path of the code of wave 36 works (docs/
   LIVE-EVIDENCE.md, "The live checks and the pilot after wave 36").  The
-  threshold of the parity is a decision of the owner
-  (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
-  parity.
+  pilot of 10:44, on the code of wave 37, measured the same: two tasks of
+  three for Yeah and three of three for pi, and the third task of Yeah
+  failed in the tools the same way — the model read the file, ran `bash`,
+  and then answered with an empty message; the harness nudged it with the
+  state of the work, and the model went silent again (docs/LIVE-EVIDENCE.md,
+  "The live checks and the pilot after wave 37").  The threshold of the
+  parity is a decision of the owner (docs/PLAN.md §13), and nobody may quote
+  the pilot as a verdict about parity.
 - A decision that arrives while the tools of the previous decision are still
   running no longer breaks the run: the turn keeps the calls, runs them when
   the running batch has settled, and gives the model the results of every
@@ -198,9 +203,25 @@ work item. Never resolve it by silently making documentation more optimistic.
   preset, 900 seconds by default): a child that ran out of time is cancelled,
   and the parent is told why. Several children in one turn of the parent work
   already — the audit proved it, and the plan that said otherwise was wrong.
-  Not implemented: the depth of the tree of the children and the children
-  themselves are kept in the running Emacs and not in the journal
-  (docs/PLAN.md §16.19, §17.1).
+  Not implemented then: the depth of the tree of the children and the children
+  themselves were kept in the running Emacs and not in the journal; wave 37
+  moved the tree into the journal (docs/PLAN.md §16.19, §16.20, §17.1).
+- Wave 37 moved the tree of the children into the journal: the journal of the
+  run holds the short id, the session and the depth of every child, and the
+  journal of the child holds where that child stands in the tree (its parent,
+  its depth and the id the model calls it by). A harness that starts again
+  reads the tree from there: the child of a run is found by the id the model
+  was given, what became of it is told, and a child the journal holds no end
+  of is not reported as a child that still works — the restart ends the child
+  as well, because the child runs in the same Emacs. The depth of a child is
+  read from its own journal, so a child of depth one does not look like a root
+  after a restart and is refused the delegation that would put the grandchild
+  at the depth two, when the agent of the child allows the depth one
+  (lib/yeah-delegate.el, lib/yeah-subagent.el, lib/yeah-events.el; the claims
+  `a-child-is-found-after-the-harness-restarts' and
+  `a-session-knows-its-depth-from-the-journal'; docs/PLAN.md §16.20).
+  Not implemented: a child that was running when the Emacs died is not
+  brought back to life — the work of that child is lost.
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
@@ -314,7 +335,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-94 claim(s).
+96 claim(s).
 
 ```sh
 mathc run

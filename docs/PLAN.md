@@ -1654,15 +1654,48 @@ the children taken out of the refusal, exactly one test fails, and it fails on
 the message.  With the time of the child taken away, exactly one test fails,
 and it fails on the child that did not end.
 
-**Open:** the depth of the tree of the children is still kept in a table of the
-running Emacs and not in the journal, so a restart of the harness forgets the
-depth of the children that are still running.  The children of a run are kept
-in the memory of the running Emacs as well.  The tools of the delegation are
-not in `yeah-builtins-specs` (the built-ins are the tools of the kernel, and
-the delegation is a tool of the product), so a reader of that list does not see
-them; the module registers them itself, the way the bridge does.  Several
-children in one turn of the parent work already — the audit proved it — and
-the plan that said otherwise was wrong.
+**Open:** wave 37 closed the two points that were open here — the depth of the
+tree of the children and the children of a run are in the journal now, and a
+restart of the harness forgets neither.  What is still open: the tools of the
+delegation are not in `yeah-builtins-specs` (the built-ins are the tools of the
+kernel, and the delegation is a tool of the product), so a reader of that list
+does not see them; the module registers them itself, the way the bridge does.
+Several children in one turn of the parent work already — the audit proved it —
+and the plan that said otherwise was wrong.
+
+### 16.20 The tree of the children is in the journal — **done on 2026-11-16 (wave 37)**
+
+The objection of wave 36 named what was still missing: the depth of the tree
+of the children was kept in a table of the running Emacs and not in the
+journal, so a restart of the harness forgot the children that still work and
+the depth they stand at.
+
+The tree belongs in the journal, and it is in two places.  The journal of the
+run holds the short id of every child, the session of the child and the depth
+of the child; the journal of the child holds where the child stands in the
+tree — its parent, its depth and the id the model calls it by.  A harness that
+starts again reads the tree from there.
+
+What that buys is observable.  A child of a run is found after a restart by the
+id that the model was given, and what became of it is told.  A child that the
+journal holds no end of is not reported as a child that still works: the
+restart ends the child as well, because the child runs in the same Emacs, and
+the harness does not say that a child works when it does not.  And the depth of
+a child is read from its own journal, so a child of depth one does not look
+like a root after a restart: it is refused the delegation that would put the
+grandchild at the depth two, when the agent of the child allows the depth one.
+
+The wave has two claims, each with a verifier of its own and a control that
+changes the subject of the claim and not the check.  With the children taken
+out of the journal, exactly one test fails, and it fails on the refused call
+of the model.  With the depth taken out of the journal, exactly one test
+fails, and it fails on the delegation that was not refused.  Both tests fail
+on the code of wave 36 as well: the defect was real, and the tests find it.
+
+**Open:** a child that was running when the Emacs died is not brought back to
+life: the journal says that the child was delegated and what became of it, and
+the work of that child is lost, because nobody restarts it.  The tools of the
+delegation are still not in `yeah-builtins-specs`.
 
 ### The order
 
@@ -1674,7 +1707,7 @@ then 16.7 (the goal is measured), and 16.5 and 16.8 whenever.
 
 ## 17. What is left, and who decides it
 
-The work of waves 24–36 is closed and bound to fresh evidence.  What follows is
+The work of waves 24–37 is closed and bound to fresh evidence.  What follows is
 everything that is still open, written down in one place, so that nobody has
 to reconstruct it from the history of the sessions.  The first list is work an
 agent may do; the second list is the work only the owner may decide, and no
@@ -1690,12 +1723,15 @@ agent may decide it silently (`docs/PLAN.md` §13).
 - The model of the child is the model of the preset, and the preset names it;
   no child of a live provider has run yet on a model other than the model of
   its parent.
-- The depth of the tree of the children is kept in a table of the running Emacs
-  and not in the journal, so a restart of the harness forgets the depth of the
-  children that are still working.
-- The children of a run are kept in the memory of the running Emacs as well: a
-  restart of the harness forgets the children that are still working, and the
-  model of the parent that comes back cannot ask for them.
+- The depth of the tree of the children and the children of a run are in the
+  journal since wave 37: the journal of the run holds the short id, the
+  session and the depth of every child, and the journal of the child holds
+  where the child stands in the tree.  A restart of the harness finds the
+  child of a run again and tells what became of it, and a child that the
+  journal holds no end of is not reported as a child that still works.
+- A child that was running when the Emacs died is not brought back to life: the
+  journal says that the child was delegated and what became of it, and the
+  work of that child is lost, because nobody restarts it.
 - The live checks do not exercise the delegation: the benchmark gives its runs
   a fixed set of tools, and the delegation is not among them.  The live
   evidence of a child that works is the fixed point, and that is one child and
@@ -1721,11 +1757,12 @@ agent may decide it silently (`docs/PLAN.md` §13).
   not told apart by the runner of the benchmark: the silence is not an error
   record of the journal, so the runner records it as a failure of the agent,
   and a run that was never measured counts against the agent.  The pilot of
-  wave 36 measured the third task of Yeah in that shape (the sum was computed,
-  the file was never written).  Whether that shape is a failure of the agent
-  or a run that was never measured is not decided, and the decision changes
-  the number of every pilot (docs/LIVE-EVIDENCE.md, "The live checks and the
-  pilot after wave 36").
+  wave 36 and the pilot of wave 37 measured the third task of Yeah in that
+  shape (the sum was computed, the file was never written).  Whether that
+  shape is a failure of the agent or a run that was never measured is a
+  decision of the owner (§17.2), because it changes the number of every
+  pilot (docs/LIVE-EVIDENCE.md, "The live checks and the pilot after wave
+  37").
 - The outcome of a run does not describe the work that was done: a run of
   `fix-failing-test` ended in "failed" because the provider failed after the
   edit, while the check of the task passed.  The check of the benchmark is the
@@ -1753,8 +1790,8 @@ agent may decide it silently (`docs/PLAN.md` §13).
 **The measurement.**
 
 - The pilot is three tasks.  The sample is small, and the numbers of the runs
-  of waves 33, 34 and 35 (2 of 3, 1 of 3, 2 of 3 and one blocked) differ by
-  the noise of the provider and of the model.
+  of waves 33, 34, 35, 36 and 37 (2 of 3, 1 of 3, 2 of 3 and one blocked, 2 of
+  3, 2 of 3) differ by the noise of the provider and of the model.
 - The second harness is `pi` 1.1.0, which is checked in the environment;
   `opencode` is not installed here.
 
@@ -1766,6 +1803,13 @@ None of these may be decided by an agent.  Each of them is recorded with
 - The threshold of the parity, and the final set of the tasks of the benchmark
   (`docs/PLAN.md` §13).  Until the threshold is decided, the parity is not
   claimed anywhere, and the pilot stays a measurement.
+- Whether a run that the provider silenced is a failure of the agent or a run
+  that was never measured.  The runner of the benchmark knows a run that the
+  provider failed from the error records of the journal; the silence of the
+  provider is not an error record, so such a run counts against the agent
+  today.  The decision changes the number of every pilot, and the pilot of
+  wave 36 measured a task of Yeah in that shape (docs/LIVE-EVIDENCE.md, "The
+  live checks and the pilot after wave 36").
 - The second harness of the comparison, if it is not `pi`.
 - The placement of the frame server for the pixel check.  The check is outside
   the map of the method: without a frame server it is blocked, and not a pass.
@@ -1781,12 +1825,20 @@ None of these may be decided by an agent.  Each of them is recorded with
 
 ### 17.3 The order, if the owner says nothing
 
-1. **Wave 37 — the depth of the tree in the journal**, so that a restart of
-   the harness does not forget the children that still work.  The children of a
-   run and their depth belong in the journal, and not only in the memory of the
-   running Emacs.
+1. **Wave 38 — the pilot names the shape of the run that did not finish.**  The
+   row of a run that the provider silenced must say so: the reason of the row
+   names what the journal holds (the model answered with an empty message N
+   times; the model described its next step N times and called no tool), so
+   that a reader of the pilot sees the cause of the failed check and not only
+   its verdict.  Whether such a run is a failure of the agent or a run that was
+   never measured is the decision of the owner (§17.2), because it changes the
+   number of every pilot.
 2. **The pilot again**, with a larger set of tasks, when the provider answers.
 3. **The pixel check**, when the owner names the place of the frame server.
+
+Wave 37 closed the depth of the tree: the children of a run and their depth are
+in the journal now, and a restart of the harness finds the child of a run again
+and tells what became of it.
 
 Wave 36 was the plan above that said otherwise: it was to be the parallel
 children of the delegation, and the audit proved that several children in one

@@ -160,7 +160,7 @@ kernel and its Emacs-native interface:
   in the preset, 900 seconds by default), and a child that ran out of time is
   cancelled and the parent is told why.
 
-After Stage 7, byte compilation is clean and 389 ERT unit tests pass, and
+After Stage 7, byte compilation is clean and 391 ERT unit tests pass, and
 the fixed-point demonstration is verified with a real model.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
@@ -215,24 +215,27 @@ Do not infer a working product from the presence of a module:
 - the delegation of a child is a tool of the kernel (`delegate',
   `delegate-result'), and the child runs with the model, the tools and the
   instructions of the preset that named it.  A delegation belongs to the run
-  that asked for it, and the id of a child is short.  Two things are still
-  open: the depth of the tree of the children and the children themselves live
-  in the running Emacs and not in the journal, so a restart forgets the
-  children that still work; and no child of a live provider has run yet on a
-  model other than the model of its parent;
+  that asked for it, and the id of a child is short.  The tree of the children
+  is in the journal: the journal of the run holds the short id, the session
+  and the depth of every child, and the journal of the child holds where that
+  child stands in the tree, so a restart of the harness finds the child of a
+  run again and tells what became of it.  Two things are still open: a child
+  that was running when the Emacs died is not brought back to life — its work
+  is lost; and no child of a live provider has run yet on a model other than
+  the model of its parent;
 - the live checks under `tests/live/` are evidence without a claim: they need
-  a provider, so no control can bite and the green verdict of the 94 claims
+  a provider, so no control can bite and the green verdict of the 96 claims
   says nothing about them.  What each of them proves, how to run it and when
   it was last recorded is in `docs/LIVE-EVIDENCE.md`;
 - the parity with other harnesses was piloted on three tasks with a live
-  provider (`MiniMax-M2.7`) and `pi`: the last run, on the code of wave 36,
+  provider (`MiniMax-M2.7`) and `pi`: the last run, on the code of wave 37,
   measured `pi` passing all three tasks and Yeah passing two of them; the
-  third task of Yeah failed because the model read the file, computed the sum
-  and then answered with an empty message three times.  That is not a verdict
-  — the threshold is a decision of the owner (`docs/PLAN.md` §13), three tasks
-  are a sample, and the difference the pilot found is a defect of one turn (an
-  empty answer of the model ends the turn without the effect).  The numbers
-  and the conditions are in `docs/LIVE-EVIDENCE.md`;
+  third task of Yeah failed because the model read the file, ran `bash` and
+  then answered with an empty message.  That is not a verdict — the threshold
+  is a decision of the owner (`docs/PLAN.md` §13), three tasks are a sample,
+  and the difference the pilot found is a defect of one turn (an empty answer
+  of the model ends the turn without the effect).  The numbers and the
+  conditions are in `docs/LIVE-EVIDENCE.md`;
 - `nerd-icons' is optional decoration only.  Without it, without multiple
   fonts, or with `yeah-icons' set to `never', every label remains readable
   text; no icon package is required;

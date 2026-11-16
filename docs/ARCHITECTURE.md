@@ -248,6 +248,19 @@ with an error; a wrong id names the children that do exist. A child has a time
 of its own, and a child that ran out of time is cancelled and the parent is
 told why. The promises above are kept and made explicit, not relaxed.*
 
+*Amended on 2026-11-16 (wave 37): the tree of the children was kept in the
+memory of the running Emacs and not in the journal, so a restart of the
+harness forgot the children that still worked. The tree belongs in the
+journal: the journal of the run holds the short id, the session and the depth
+of every child, and the journal of the child holds where the child stands in
+the tree. A harness that starts again reads the tree from there — the child of
+a run is found by the id the model was given, what became of it is told, and a
+child the journal holds no end of is not reported as a child that still works,
+because the restart ends the child as well. The depth of a child is read from
+its own journal, so a child of depth one does not look like a root after a
+restart and is refused the delegation that would go deeper than the agent of
+the child allows. The promises above are kept and made explicit, not relaxed.*
+
 ### D9 — Plan and Build are permission profiles
 
 Plan mode is a read-oriented rule profile. Build mode enables the normal
