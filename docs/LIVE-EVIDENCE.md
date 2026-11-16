@@ -13,14 +13,14 @@ skip is not a pass, and a skip never turns into a claim.
 
 | Check | What it proves | Needs | How to run | Last recorded run |
 |---|---|---|---|---|
-| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-15 17:23 UTC, on the code of wave 32, with MiniMax-M2.7 — pass on one of three attempts (`status="HTTP/2 200" answer="OK"`); the two other attempts got an empty answer from the provider, which is the silence of the provider and not a defect of the harness |
-| `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-15 17:21 UTC, on the code of wave 32, with MiniMax-M2.7 — pass: the model repaired the project with the tools of Yeah (the edit landed with the short token) and the test of the project passes afterwards; the run itself ended `unfinished`, because the provider went silent three times after the edit |
-| `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-15 17:21 UTC, on the code of wave 32, with MiniMax-M2.7 — pass ("the interactive path works"); the model answered with an empty message four times and the run ended `unfinished`, and the journey itself — ask, cancel, quit, restart, recover — held |
-| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-15 17:23 UTC, on the code of wave 32, with MiniMax-M2.7 — pass ("the primary path works with a live model"); the attempt of 17:21 failed because the provider answered with an empty message and the model refused, and the retry passed |
-| `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-15 17:21 UTC, on the code of wave 32, with MiniMax-M2.7 — pass, one child: "the child repaired the canary" |
-| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-15 17:21 UTC, against the published repository, on the code of wave 32 — pass: "the clean installation works" (this is what closed the public alpha gate) |
+| `tests/live/live-model-call.el` | a real model answers through `yeah-gptel-request` — the one place where Yeah calls the model | provider key | `emacs -Q --batch -L lib -l tests/live/live-model-call.el` | 2026-11-16 06:35 UTC, on the code of wave 33, with MiniMax-M2.7 — pass on the first attempt (`status="HTTP/2 200" answer="OK"`) |
+| `tests/live/live-coding-task.el` | the harness fixes a small broken project with its own tools (read, edit, run), and the project's test passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-coding-task.el` | 2026-11-16 06:43 UTC, on the code of wave 33, with MiniMax-M2.7 — pass on the third attempt: the model repaired the project with the edit of Yeah and the test of the project passes afterwards; the two attempts before it failed on the provider (HTTP 529, `overloaded_error`), and in the first of them the edit had landed and the file was already correct, so the run ended `failed` only because the provider failed at the next turn |
+| `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-16 06:35 UTC, on the code of wave 33, with MiniMax-M2.7 — pass ("the interactive path works") |
+| `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-16 06:35 UTC, on the code of wave 33, with MiniMax-M2.7 — pass ("the primary path works with a live model") |
+| `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-16 06:35 UTC, on the code of wave 33, with MiniMax-M2.7 — pass, one child: "the child repaired the canary" |
+| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-16 06:36 UTC, against the published repository, on the code of wave 33 — pass: "the clean installation works" |
 | `tests/pixel/check-interface-is-seen.sh` | the interface is really on the screen: Emacs itself draws the journal and the approval view under a frame server, the screen is photographed, and the pictures are compared with each other and with the same buffer without the interface | a frame server (Xvfb), a terminal emulator, ImageMagick, Emacs — **no provider key** | `YEAH_XVFB=… YEAH_XTERM=… YEAH_MAGICK=… ./scripts/dev pixel` | 2026-11-15, pass — "the interface is on the screen: 767 colours, 16953 pixels between the journal and the approval view" |
-| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-15 17:23 UTC, on the code of wave 32, with MiniMax-M2.7 and pi: Yeah passed 2 of 3 tasks, pi passed 3 of 3 — **not a verdict about parity** (the threshold is a decision of the owner, the sample is three tasks); the one task that Yeah failed ended with the model announcing the fix and calling no tool (see "The pilot after the token became short") |
+| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-16 06:48 UTC, on the code of wave 33, with MiniMax-M2.7 and pi: Yeah passed 2 of 3 tasks, pi passed 3 of 3 — **not a verdict about parity** (the threshold is a decision of the owner, the sample is three tasks); the task that Yeah failed failed on the model, which read the files of the task and never called the edit (see "The live checks and the pilot after wave 33") |
 
 ## The environment
 
@@ -434,6 +434,60 @@ The verdict of the method on this code is `green`, with 84 claims `holds
 `a-version-token-is-short-enough-to-copy` and
 `an-edit-refuses-a-wrong-token-with-the-current-one`.
 
+## The live checks and the pilot after wave 33 (2026-11-16, 06:29–06:50)
+
+Wave 33 made the refusal of the unsaved changes the answer of every edit and
+gave the write of a whole file the version token of the read.  The verdict of
+the method on that code is `green`, with 86 claims `holds (current)` — the two
+new ones among them: `an-edit-never-lands-on-a-file-with-unsaved-changes` and
+`a-write-never-lands-on-a-file-that-changed`, and the method proved the
+negative control of each of them itself.
+
+The live checks of 06:35–06:43 pass, all six of them:
+
+| Check | Outcome |
+|---|---|
+| `live-model-call` | pass on the first attempt (`status="HTTP/2 200" answer="OK"`) |
+| `live-coding-task` | pass on the third attempt; the two attempts before it failed on the provider (HTTP 529, `overloaded_error`) |
+| `live-interactive-path` | pass ("the interactive path works") |
+| `live-service-path` | pass ("the primary path works with a live model") |
+| `live-fixed-point` | pass, one child ("the child repaired the canary") |
+| `live-clean-install` | pass ("the clean installation works") |
+
+The first attempt of `live-coding-task` is worth naming: the edit of Yeah
+landed and the file was already correct, and the run still ended `failed`,
+because the provider answered the next turn with HTTP 529.  The check of the
+task looks at the state of the run as well as at the file, so it failed.  The
+third attempt passed.  The failure is the failure of the provider and not a
+defect of the harness, and the two are told apart here.
+
+The pilot ran twice on this code, because the first run had a task that the
+provider stopped.  The two runs together measured the same result: **Yeah
+passed 2 of 3 tasks, pi passed 3 of 3.**
+
+| Task | Run of 06:43 (Yeah) | Run of 06:48 (Yeah) | pi (both runs) |
+|---|---|---|---|
+| `read-answer` | blocked — the provider failed (`overloaded_error`) | passed | passed |
+| `fix-failing-test` | passed | failed — the test of the task still fails | passed |
+| `write-new-file` | passed | passed | passed |
+
+A blocked task is neither a pass nor a failure of the agent, so the first run
+measured two tasks and not three.  **The parity is still not measured**: the
+threshold is a decision of the owner (`docs/PLAN.md` §13) and the sample is
+three tasks.
+
+The task that Yeah failed in the second run failed on the model and not on the
+harness.  The session shows four turns: the model read `calc.el` and the test
+of the task, ran the test, read the files again and ran the test again — and
+never called the edit.  The provider answered with an empty message twice, so
+the nudge of wave 25 fired and carried the state of the work, and the run
+ended with the workspace unchanged and the test of the task still failing.
+The guard of waves 29 and 32 was never in the way: no edit was refused, no
+edit was attempted.  This is the same shape as the failure of the pilot of
+17:23 — the model that announces an action and calls no tool — and the
+harness still cannot tell that a message which promises an action is not an
+answer.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live
@@ -444,8 +498,8 @@ The verdict of the method on this code is `green`, with 84 claims `holds
   buffer without the interface, not with a stored golden picture.
 - The parity with other harnesses is measured on three tasks only.  The
   threshold is not decided (`docs/PLAN.md` §13) and the sample is small, so
-  the parity of the last run is not measured either.  The last run measured
-  2 of 3 for Yeah and 3 of 3 for pi; the difference it found was not the
+  the parity of the last run is not measured either.  The last runs measured
+  2 of 3 for Yeah and 3 of 3 for pi; the difference they found was not the
   quality of the work but a model that announced the fix and called no tool.
 - The token of the file was 64 characters of hex and the model copied 58 of
   them, so the guard refused the edit of a file that had not changed.  Wave 32
@@ -457,7 +511,10 @@ The verdict of the method on this code is `green`, with 84 claims `holds
   tool: the pilot of 17:23 measured "Fixing it to use floating-point
   division:" and nothing after it.  The harness cannot tell that a message
   which promises an action is not an answer, and the nudge of wave 25 fires
-  when the model is silent and not when the model talks without acting.
+  when the model is silent and not when the model talks without acting.  The
+  pilot of 2026-11-16 measured the same shape in a longer form: the model
+  read the files of the task four times, ran the test twice, never called the
+  edit, and the provider answered with an empty message twice.
 - The outcome of a run does not describe the work that was done: the run of
   `fix-failing-test` ended in "failed" because the provider failed after the
   edit, while the check of the task passed.  The check of the benchmark is the
