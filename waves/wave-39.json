@@ -1,0 +1,48 @@
+{
+  "id": "wave-39",
+  "title": "the kernel supervises a run by default, and a run that did not finish is not a success",
+  "intent": "The live measurement of the service path failed in a way that no offline check had caught: the model was asked to write a file, it described its next step instead of taking it, and the ACP route answered `end_turn' — the reason that says the work is done.  Nothing had been done.  The cause was the default of the completion supervision: `yeah-turn-default-max-nudges' was zero, so a run of the kernel was not supervised at all, and the branch that reports a run without an effect was never reached.  Wave 39 changes the default to a positive budget, so that a run of Yeah is supervised unless the caller asks for no supervision, and it changes the state of a run that spent its budget: such a run now ends in the state `failed' instead of a state that a reader of the wire would take for a finished job.  The ACP route answers such a run with the stop reason `refusal'.  The second part of the wave repairs the live stand of the transport: the stand stopped at the first line that arrived and called the empty string that a reasoning model sends between its thinking and its answer the absence of an answer, so a provider that answered was reported as silent.  The decision what counts as an answer now lives in `tests/support/yeah-live-answer.el' and is tested offline, because a stand that needs a key cannot be the test of its own decision.",
+  "touches": [
+    "lib/yeah-turn.el",
+    "lib/yeah-product.el",
+    "tests/support/yeah-live-answer.el",
+    "tests/unit/test-yeah-live-answer.el",
+    "tests/live/live-model-call.el",
+    "tests/unit/test-yeah-acp.el",
+    "tests/unit/test-yeah-placement.el",
+    "tests/unit/test-yeah-run.el",
+    "tests/checks/check-supervision-is-the-default.el",
+    "tests/checks/check-a-run-that-did-not-finish-is-not-a-success.el",
+    "tests/checks/check-acp-dispatcher-routes-every-method.el",
+    "tests/checks/check-acp-third-party-client.el",
+    "tests/checks/check-client-drives-service.el",
+    "tests/checks/check-model-turn-runs.el",
+    "tests/checks/check-service-lifecycle.el",
+    "tests/checks/check-service-ui.el",
+    "tests/checks/check-wire-cancel-preempts.el",
+    "tests/checks/check-wire-control.el",
+    "spec.json",
+    "waves/wave-39.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PASEO-INTEGRATION.md",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-supervision-is-the-default.el",
+    "./scripts/dev check tests/checks/check-a-run-that-did-not-finish-is-not-a-success.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "supervision-is-the-default",
+    "a-run-that-did-not-finish-is-not-a-success",
+    "the-live-stand-waits-for-an-answer"
+  ],
+  "commitment": [],
+  "objection": "The default of the supervision is a decision about every run of the kernel, and the wave takes it for every caller at once: a caller that wanted the old behaviour must now say so with an explicit budget of zero.  The budget of three is the number the live coding task was measured with, and a run that spends it without an effect now ends as a failed run — the batch placement exits with 1, a child of the delegation is marked failed, and the ACP wire answers `refusal'.  That is a sharper verdict than before, and a caller who counted a described next step as a finished job sees a change it did not ask for.  The wave does not touch the separate budget of a child (`yeah-subagent-max-nudges' is still zero), because a child that never calls `finish' would then be marked failed, and the claims of the delegation do not say that yet: that decision is open in docs/PLAN.md 17 and belongs to the owner.  The stand of the transport is repaired, but the stand is not in the suite: the check of the decision is offline, and the stand itself still needs a key, so the proof that the stand asks the provider and gets an answer is a live run and not a claim.",
+  "refuted_by": "the default budget of the supervision is not positive, or a run that took the default budget ended as a completed job without a nudge; the turn that spent its budget ends in a state other than 'failed', or the wire answers the run that did not finish with 'end_turn'; the stand calls an empty answer an answer, or it calls a tool call no answer",
+  "note": "Each control of the three claims was run against the code of this wave and bit.  The control of `supervision-is-the-default' puts the default back to zero: the check then fails on three of its assertions (the default is not positive, the model was not nudged, the turn ended in `completed' and not in `failed').  The control of `a-run-that-did-not-finish-is-not-a-success' takes the state `failed' out of the terminal state of the run: the check then fails on the state of the turn, and the wire still answers `refusal', because the state it looks at is the one the turn was left in.  The control of `the-live-stand-waits-for-an-answer' makes the empty string a text: the unit test of the decision then fails on the empty string.  The wave also repairs a defect that is older than it: `tests/checks/check-client-drives-service.el' carried an extra closing parenthesis since the commit 6be02ec, and the check passed only because the process died at `(kill-emacs 0)' before the reader reached the tail of the file.  The file now reads to its end.  The offline tests that the change of the default broke were made explicit rather than weakened: a test whose subject is not the supervision names its budget (`tests/unit/test-yeah-run.el' asks for no supervision at all), and a test of a route drives a fake model that ends the run through the `finish' tool, which the permission rules allow without a question to the person."
+}

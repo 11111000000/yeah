@@ -106,7 +106,11 @@ kernel and its Emacs-native interface:
   not through talk, and a run that spends its nudge budget without
   finishing says so in the journal instead of looking done; and a model
   that answers while the harness is still
-  waiting for a tool no longer breaks the state machine;
+  waiting for a tool no longer breaks the state machine.  Supervision is the
+  default of the kernel: a run is supervised unless the caller asks for no
+  supervision at all (a budget of zero), and a run that spent its budget
+  ends in the state `failed' — the ACP route answers it with `refusal' and
+  never with `end_turn';
 - a shared read-only journal for the attached and service placements: one
   event-derived view, incremental block updates that preserve the reading
   position, outline folding, semantic faces, optional `nerd-icons' with a

@@ -52,12 +52,23 @@
   (unwind-protect
       (progn
         ;; --- the attached placement ---------------------------------------
-        (let ((yeah-data-home attached-home))
+        (let ((yeah-data-home attached-home)
+              (asked 0))
           (setq attached-buffer
                 (yeah-product-open
                  attached-root
                  (lambda (_prompt callback)
-                   (funcall callback "the answer"))
+                   ;; A supervised run does not end through talk: the model
+                   ;; answers, the harness nudges it, and the model finishes
+                   ;; the run with the `finish' tool.
+                   (setq asked (1+ asked))
+                   (if (= asked 1)
+                       (funcall callback "the answer")
+                     (funcall callback
+                              (list 'tool-call
+                                    (list (list :name "finish")
+                                          (list "done")
+                                          (lambda (_value) nil))))))
                  (lambda (_request)
                    (list :effect :allow :reply :once)))))
         (with-current-buffer attached-buffer
@@ -88,8 +99,14 @@
         ;; --- the service placement ------------------------------------------
         (yeah-service-start
          name
-         (concat "(defun yeah-check--transport (prompt callback) "
-                 "(funcall callback \"the answer\"))")
+         (concat "(defvar yeah-check--asked 0) "
+                 "(defun yeah-check--transport (prompt callback) "
+                 "(setq yeah-check--asked (1+ yeah-check--asked)) "
+                 "(if (= yeah-check--asked 1) "
+                 "(funcall callback \"the answer\") "
+                 "(funcall callback (list 'tool-call "
+                 "(list (list :name \"finish\") (list \"done\") "
+                 "(lambda (_value) nil)))))) ")
          data-home
          "#'yeah-check--transport"
          t)

@@ -95,7 +95,9 @@ research checkout in the user's home."
                              (format
                               (concat "(progn (setq yeah-data-home %S) "
                                       "(defun yeah-check--transport (prompt callback) "
-                                      "(funcall callback \"done\")) "
+                                      "(funcall callback (list 'tool-call "
+                                      "(list (list :name \"finish\") (list \"done\") "
+                                      "(lambda (_value) nil))))) "
                                       "(yeah-acp-serve #'yeah-check--transport))")
                               yeah-check--data-home)))))
           (acp-subscribe-to-notifications

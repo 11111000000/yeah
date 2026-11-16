@@ -241,6 +241,25 @@ work item. Never resolve it by silently making documentation more optimistic.
   not take it (bench/run-bench.el; the claim
   `the-pilot-names-the-shape-of-a-run-that-did-not-finish'; docs/PLAN.md
   §16.21).
+- Wave 39 made the kernel supervise a run by default: the budget of the
+  completion nudges is positive (`yeah-turn-default-max-nudges` is 3), so a run
+  of Yeah is supervised unless the caller asks for no supervision at all (a
+  budget of zero).  Before the change, the ACP route answered `end_turn` for a
+  run in which the model had only described its next step — the wire said the
+  work was done, and nothing had been done.  A run that spends its budget
+  without an effect now ends in the state `failed`, and the ACP route answers
+  it with the stop reason `refusal` (the claims
+  `supervision-is-the-default' and
+  `a-run-that-did-not-finish-is-not-a-success'; docs/PLAN.md §16.22).  The
+  budget of a child of a delegation is a separate default and is still zero:
+  that decision belongs to the owner (docs/PLAN.md §17.2).
+- The live stand of the transport was at fault, and not the provider: it stopped
+  waiting at the first line that arrived, and the empty string that a
+  reasoning model sends between its thinking and its answer was the absence of
+  an answer.  The decision what counts as an answer now lives in
+  tests/support/yeah-live-answer.el and is tested offline — text with content
+  and a tool call are answers, the empty string, the streaming sentinel and the
+  reasoning are not (the claim `the-live-stand-waits-for-an-answer').
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
@@ -354,7 +373,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-97 claim(s).
+100 claim(s).
 
 ```sh
 mathc run

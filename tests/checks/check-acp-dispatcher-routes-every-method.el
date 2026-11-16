@@ -114,7 +114,12 @@
               yeah-acp--output-function
               (lambda (text) (push text yeah-check--emitted))
               yeah-acp--transport
-              (lambda (_prompt callback) (funcall callback "the answer")))
+              (lambda (_prompt callback)
+                (funcall callback
+                         (list 'tool-call
+                               (list (list :name "finish")
+                                     (list "the answer")
+                                     (lambda (_value) nil))))))
         (setq failure (yeah-check--run cwd)))
     (yeah-acp--reset-for-test)
     (delete-directory home t t))

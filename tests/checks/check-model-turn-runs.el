@@ -132,15 +132,19 @@ Returns a list of failures; an empty list means the turn behaved."
     (let* ((turn (yeah-turn-run session "do the thing"
                                     (yeah-check--fake-model asked)))
            (records (yeah-check--log-records root "denied")))
-      (unless (eq 'completed (yeah-turn-state turn))
-        (push (format "the refused turn ended in %S, not completed"
+      ;; The run is supervised: the model asks for the tool again, the
+      ;; harness nudges it, and the run that never finished does not end as
+      ;; a completed job.
+      (unless (eq 'failed (yeah-turn-state turn))
+        (push (format "the refused turn ended in %S, not failed"
                       (yeah-turn-state turn))
               failures))
       (when (car ran)
         (push "the refused tool ran anyway" failures))
-      (unless (= 7 (length records))
-        (push (format "the log holds %d records, expected 7" (length records))
-              failures))
+      (unless (cl-some (lambda (record)
+                          (equal "unfinished" (plist-get record :type)))
+                        records)
+        (push "the run that did not finish is not in the log" failures))
       (when (>= (length records) 6)
         (unless (equal "deny: probe on /tmp/probe-target"
                        (plist-get (nth 5 records) :payload))

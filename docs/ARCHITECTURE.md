@@ -209,7 +209,11 @@ it does not pretend to roll back arbitrary effects or kill every descendant.
 
 Completion nudges are bounded, visible events. They ask the model to verify
 completion criteria instead of stopping prematurely; they are not an infinite
-hidden loop.
+hidden loop. Supervision is the default of the kernel: the budget of the
+completion nudges is positive, and a caller that wants no supervision at all
+asks for it with a budget of zero. A run that spends its budget without an
+effect ends in the state `failed`, and the journal of the run says so; a run
+that did not do the work is never presented as a finished one.
 
 ### D8 — Agents and skills are declarative
 

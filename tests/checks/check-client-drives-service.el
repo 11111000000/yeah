@@ -55,7 +55,9 @@ process that starts it."
         (yeah-service-start
          name
          (concat "(defun yeah-check--transport (prompt callback) "
-                 "(funcall callback \"done\"))")
+                 "(funcall callback (list 'tool-call "
+                 "(list (list :name \"finish\") (list \"done\") "
+                 "(lambda (_value) nil)))))")
          data-home
          "#'yeah-check--transport")
         (let ((notifications nil))
@@ -113,6 +115,6 @@ process that starts it."
       (message "client: %s" failure))
     (if failures
         (kill-emacs 1)
-      (kill-emacs 0))))
+      (kill-emacs 0)))
 
 ;;; check-client-drives-service.el ends here

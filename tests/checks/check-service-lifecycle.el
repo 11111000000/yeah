@@ -74,8 +74,14 @@
         ;; start a service with a fake model
         (yeah-service-start
          name
-         (concat "(defun yeah-check--transport (prompt callback) "
-                 "(funcall callback \"done\"))")
+         (concat "(defvar yeah-check--asked 0) "
+                 "(defun yeah-check--transport (prompt callback) "
+                 "(setq yeah-check--asked (1+ yeah-check--asked)) "
+                 "(if (= yeah-check--asked 1) "
+                 "(funcall callback \"the answer\") "
+                 "(funcall callback (list 'tool-call "
+                 "(list (list :name \"finish\") (list \"done\") "
+                 "(lambda (_value) nil)))))) ")
          data-home
          "#'yeah-check--transport")
         (setq connection (yeah-service-connect name 6))
