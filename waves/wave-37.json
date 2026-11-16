@@ -1,0 +1,35 @@
+{
+  "id": "wave-37",
+  "title": "the tree of the children is in the journal",
+  "intent": "Wave 36 gave a delegation the run that asked for it, and the objection of that wave named what is still missing: the depth of the tree of the children is kept in a table of the running Emacs and not in the journal, so a restart of the harness forgets the children that still work.  The tree belongs in the journal: the journal of the run holds the short id of every child, the session of the child and the depth of the child, and the journal of the child holds where the child stands in the tree.  A harness that starts again reads them from there: the child of a run is found by the id the model was given, what became of it is told, and a child that the journal holds no end of is not reported as a child that still works.  The depth of a child is read from its own journal, so a child of depth one does not look like a root after a restart and is not allowed to delegate deeper than the agent of the child allows.",
+  "touches": [
+    "lib/yeah-delegate.el",
+    "lib/yeah-subagent.el",
+    "lib/yeah-events.el",
+    "tests/unit/test-yeah-delegate-restart.el",
+    "tests/unit/test-yeah-delegate-depth-journal.el",
+    "spec.json",
+    "waves/wave-37.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md",
+    "README.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-restart.el",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-depth-journal.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "a-child-is-found-after-the-harness-restarts",
+    "a-session-knows-its-depth-from-the-journal"
+  ],
+  "commitment": [],
+  "objection": "The children of a run are read from the journal of that run, and the depth of a child is read from the journal of the child: the two journals are read apart, and the journal of a child is found by the id of the session of the child, which the journal of the parent names.  A child that the journal holds no end of is reported as a child the harness does not know the fate of, and not as a child that still works: a restart of the harness ends the child as well, because the child runs in the same Emacs, and the harness does not say that it works when it does not.  The depth of the tree is still counted in the memory of the running Emacs while the Emacs runs, and the journal is the second copy and not the only one: a reader of the journal sees the tree, and the harness does not lose it when the Emacs dies.  The depth of a run that no journal names is zero, and a run that was never a child is a root.  A child that a restart forgot is not brought back to life: the journal says that the child was delegated and what became of it, and the work of a child that was running when the Emacs died is lost, because nobody restarts it.",
+  "refuted_by": "a restart of the harness forgets the children of a run, or a child that the journal holds no end of is reported as a child that still works, or a child of depth one may delegate a grandchild to an agent that allows the depth one after a restart",
+  "note": "The control of the first claim takes the children of the run out of the journal: after the restart the harness finds no child and refuses the call of the model, and the test of the restart fails on the refused call.  The control of the second claim takes the depth out of the journal: the child reads its depth as zero, the delegation of the grandchild is allowed, and the test of the depth fails on the delegation that was not refused.  Each control drops exactly one test, and the two tests fail on the code of wave 36 as well: the defect was real, and the tests find it."
+}

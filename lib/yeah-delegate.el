@@ -34,6 +34,14 @@
 ;; waits for it and nobody cancels it.  The child has a time of its own:
 ;; when the time is up the child is cancelled and the parent is told why.
 ;;
+;; The tree of the children is in the journal and not only in the memory of
+;; the running Emacs.  The journal of the run holds the short id, the session
+;; and the depth of every child; the journal of the child holds where that
+;; child stands in the tree.  A harness that starts again reads the tree from
+;; there: the child of a run is found by the id the model was given, what
+;; became of it is told, and a child the journal holds no end of is not
+;; reported as a child that still works.
+;;
 ;; The tools of this module are registered when the module is loaded, and
 ;; not through `yeah-builtins-specs': the built-ins are the tools of the
 ;; kernel, and this module needs the run and the session of Yeah, which
@@ -134,10 +142,25 @@ parent never learns that the child is still there."
   (let ((number (yeah-delegate--count (plist-get preset :depth))))
     (when (and number (>= number 0)) number)))
 
+(defun yeah-delegate--journal-depth (session)
+  "Return the depth of SESSION, read from its own journal, or nil.
+The journal of a child says where it stands in the tree of delegations, and
+the journal outlives the Emacs that wrote it: a restart of the harness must
+not make a child of depth three look like a root."
+  (let ((depth nil))
+    (dolist (record (yeah-session-records session))
+      (when (equal (plist-get record :type) "child-start")
+        (setq depth (plist-get record :depth))))
+    depth))
+
 (defun yeah-delegate--depth-of (session)
   "Return the depth of SESSION in the tree of delegations.
-The run that started the tree is at the depth zero."
-  (or (gethash (plist-get session :id) yeah-delegate--depths) 0))
+The run that started the tree is at the depth zero.  The depth of a child
+that this Emacs delegated is in the memory of the Emacs; the depth of a child
+that a restart of the harness forgot is in its own journal."
+  (or (gethash (plist-get session :id) yeah-delegate--depths)
+      (yeah-delegate--journal-depth session)
+      0))
 
 (defun yeah-delegate--check-depth (preset depth)
   "Refuse the delegation of PRESET when the child would be deeper than it allows.
@@ -211,17 +234,72 @@ Return the record of the child."
                   :tools tools
                   :budget (yeah-delegate--budget preset)
                   :timeout (yeah-delegate--timeout preset)
+                  :short-id (yeah-delegate--short-id ordinal)
                   :transport (yeah-delegate--transport model system tools)))
     (setq record (plist-put record :short-id (yeah-delegate--short-id ordinal)))
     (setq record (plist-put record :ordinal ordinal))
     (setq record (plist-put record :parent-session session))
+    (setq record (plist-put record :child-session-id (yeah-delegate--id record)))
     (puthash (yeah-delegate--id record) record yeah-delegate--children)
     (puthash (yeah-delegate--id record) depth yeah-delegate--depths)
     record))
 
+(defun yeah-delegate--session-id-of (record)
+  "Return the id of the session of the child RECORD.
+The record of a child that this Emacs delegated holds the session itself; the
+record that the journal holds holds the id of the session."
+  (or (plist-get record :child-session-id)
+      (yeah-delegate--id record)))
+
+(defun yeah-delegate--ordinal-of (short-id)
+  "Return the number the short id SHORT-ID carries, or nil when it carries none.
+The short id of a child is `sub-<n>', and the n is the place of the child
+among the children of its run."
+  (when (and (stringp short-id)
+             (string-match "\\`sub-\\([0-9]+\\)\\'" short-id))
+    (string-to-number (match-string 1 short-id))))
+
+(defun yeah-delegate--journal-children (session)
+  "Return the records of the children of the run of SESSION, read from its journal.
+The journal is what survives a restart of the harness: the memory of the
+running Emacs is gone, and the journal still holds the spawn of every child
+and the end of every child that ended.  A child that the journal holds no end
+of has the status `unknown': the harness does not know what became of it, and
+it does not say that it still works."
+  (let ((children nil))
+    (dolist (record (yeah-session-records session))
+      (let ((type (plist-get record :type)))
+        (cond ((equal type "spawn")
+               (push (list :short-id (plist-get record :short-id)
+                           :child-session-id (plist-get record :child)
+                           :role (plist-get record :role)
+                           :depth (plist-get record :depth)
+                           :ordinal (yeah-delegate--ordinal-of
+                                     (plist-get record :short-id))
+                           :status 'unknown
+                           :result nil
+                           :from-journal t)
+                     children))
+              ((equal type "child-end")
+               (let ((child (cl-find-if
+                             (lambda (candidate)
+                               (equal (plist-get candidate :child-session-id)
+                                      (plist-get record :child)))
+                             children)))
+                 (when child
+                   (setf (plist-get child :status)
+                         (if (yeah-events-boolean-p (plist-get record :ok))
+                             'completed
+                           'failed)
+                         (plist-get child :result)
+                         (or (plist-get record :summary) ""))))))))
+    (nreverse children)))
+
 (defun yeah-delegate--children-of (session)
   "Return the records of the children that the run of SESSION delegated.
-The children come in the order they were delegated."
+The children come in the order they were delegated.  A child that this Emacs
+delegated is in the memory of the Emacs; a child that the run delegated before
+a restart of the harness is in the journal of that run."
   (let ((children nil))
     (maphash
      (lambda (_id record)
@@ -229,8 +307,16 @@ The children come in the order they were delegated."
                     (plist-get session :id))
          (push record children)))
      yeah-delegate--children)
+    (dolist (record (yeah-delegate--journal-children session))
+      (unless (cl-find-if
+               (lambda (live)
+                 (equal (yeah-delegate--session-id-of live)
+                        (yeah-delegate--session-id-of record)))
+               children)
+        (push record children)))
     (sort children (lambda (left right)
-                     (< (plist-get left :ordinal 0) (plist-get right :ordinal 0))))))
+                     (< (or (plist-get left :ordinal) 0)
+                        (or (plist-get right :ordinal) 0))))))
 
 (defun yeah-delegate--status-of (record)
   "Return the status of the child RECORD, as a string.
@@ -263,14 +349,22 @@ another run is not the id of a child of this one."
                 (equal (plist-get record :short-id) id))
               (yeah-delegate--children-of session)))
 
+(defun yeah-delegate--child-by-session-id (id session)
+  "Return the child of the run of SESSION whose session has the id ID, or nil."
+  (cl-find-if (lambda (record)
+                (equal (yeah-delegate--session-id-of record) id))
+              (yeah-delegate--children-of session)))
+
 (defun yeah-delegate--resolve (id)
   "Return the record of the child ID, or nil when no child has that id.
 ID is the id of the session of a child, or the short id of a child of the run
-that is running now."
+that is running now.  A child of a run that delegated before a restart of the
+harness is found in the journal of that run."
   (or (gethash id yeah-delegate--children)
       (let ((session (yeah-session-current)))
         (when session
-          (yeah-delegate--child-by-short-id id session)))))
+          (or (yeah-delegate--child-by-short-id id session)
+              (yeah-delegate--child-by-session-id id session))))))
 
 (defun yeah-delegate--delegate (agent task)
   "Start the child of the preset AGENT on TASK and return the result of the tool.
@@ -305,6 +399,13 @@ of the child."
              (yeah-result-ok
               (format "the child %s is done: %s" child answer)
               (list :id child :status "completed" :summary answer)))
+            ((eq status 'unknown)
+             ;; the child was delegated and the journal of the run holds no end
+             ;; of it: the harness does not know what became of it, and it does
+             ;; not say that it still works
+             (yeah-result-ok
+              (format "the child %s did not end: the journal of this run holds no end of it" child)
+              (list :id child :status "unknown")))
             (t
              (yeah-result-ok
               (format "the child %s ended in %s: %s" child status answer)

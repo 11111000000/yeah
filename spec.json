@@ -2153,6 +2153,56 @@
       "register": "fact",
       "control": "sed -i 's|:deadline timeout|:deadline (and timeout (* timeout 1000000))|' lib/yeah-subagent.el",
       "waiver": null
+    },
+    {
+      "id": "a-child-is-found-after-the-harness-restarts",
+      "text": "The children of a run and what became of them belong in the journal of that run: a restart of the harness forgets the children that the Emacs delegated, and the child is found again by the id the model was given, and the answer tells what became of it, and a child the journal holds no end of is not reported as a child that still works.",
+      "scope": [
+        "lib/yeah-delegate.el",
+        "lib/yeah-subagent.el",
+        "lib/yeah-events.el",
+        "tests/unit/test-yeah-delegate-restart.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-restart.el"
+        }
+      ],
+      "falsifier": "the harness forgets the children of a run after a restart, or it reports that a child still works when the journal holds no end of it",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-delegate--journal-children session)|nil|' lib/yeah-delegate.el",
+      "waiver": null
+    },
+    {
+      "id": "a-session-knows-its-depth-from-the-journal",
+      "text": "A child knows where it stands in the tree of the delegations from its own journal: a restart of the harness does not make a child of depth one look like a root, and a child that reads its depth as zero is refused the delegation that would go deeper than the agent of the child allows.",
+      "scope": [
+        "lib/yeah-delegate.el",
+        "lib/yeah-subagent.el",
+        "lib/yeah-events.el",
+        "tests/unit/test-yeah-delegate-depth-journal.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-depth-journal.el"
+        }
+      ],
+      "falsifier": "the depth of a child is lost by a restart of the harness, or a child that stands at the depth one may delegate a grandchild to an agent that allows the depth one",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-delegate--journal-depth session)|nil|' lib/yeah-delegate.el",
+      "waiver": null
     }
   ]
 }

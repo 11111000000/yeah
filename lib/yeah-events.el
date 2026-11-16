@@ -67,7 +67,11 @@
     (:type "cancel"
      :required (:payload))
     (:type "spawn"
-     :required (:child :role :depth))
+     :required (:child :role :depth)
+     :optional (:short-id))
+    (:type "child-start"
+     :required (:parent :depth)
+     :optional (:short-id :role))
     (:type "child-end"
      :required (:child :role :ok :summary))
     (:type "input-queued"

@@ -15,7 +15,11 @@
 ;; The lineage is in the names: the session of a child is
 ;; `<parent>.sub-<n>', so the tree of a session is readable from the files
 ;; alone.  The parent is told what happened, too: the journal of the parent
-;; carries a `spawn' event and a `child-end' event.
+;; carries a `spawn' event and a `child-end' event, and the `spawn' event
+;; carries the short id of the child -- the id the model calls it by.  The
+;; journal of the child carries a `child-start' event: the parent of the
+;; child, the depth of the child and that short id, so that a child knows
+;; where it stands in the tree after a restart of the harness.
 ;;
 ;; The depth is bounded: a child whose depth would reach the limit is
 ;; refused, and the refusal is a `user-error' rather than a silent
@@ -151,7 +155,7 @@ reason is what the parent needs: a child that ran out of time says so."
 
 (cl-defun yeah-subagent-spawn (parent-session role prompt
                                   &key depth transport tools budget timeout
-                                       answerer)
+                                       answerer short-id)
   "Spawn a child sub-agent and return its record.
 
 PARENT-SESSION is the session of the parent.  ROLE names what the child
@@ -162,7 +166,9 @@ tool is refused, and the refusal is in the journal of the child.  BUDGET
 is the context budget of the child.  TIMEOUT is the time the child may take,
 in seconds: the child is cancelled when the time is up, and the parent is
 told that the child ran out of time.  A child without a time may work for
-ever.
+ever.  SHORT-ID is the id the parent calls the child by; it is written into
+the journal of the parent and into the journal of the child, so that the
+child is found after a restart of the harness.
 The child runs in its own session, whose id carries the lineage:
 `<parent-id>.sub-<n>'.  The spawn is asynchronous: the record comes
 back with the status `running', and `yeah-subagent-wait' waits for the
@@ -192,8 +198,15 @@ Signals `user-error' when the depth of the child would reach
                           :tools tools))
       (puthash child-id record yeah-subagent--active)
       (puthash child-id parent-session yeah-subagent--sessions)
-      (yeah-events-write parent-session "spawn"
-                         :child child-session-id :role role :depth child-depth)
+      (apply #'yeah-events-write parent-session "spawn"
+             (append (list :child child-session-id :role role :depth child-depth)
+                     (when short-id (list :short-id short-id))))
+      ;; The child says where it stands in the tree of delegations, in its own
+      ;; journal: a restart of the harness must not make a child of depth
+      ;; three look like a root.
+      (apply #'yeah-events-write child-session "child-start"
+             (append (list :parent parent-id :depth child-depth :role role)
+                     (when short-id (list :short-id short-id))))
       (let ((context (yeah-run-context-create
                       :placement 'service
                       :session child-session
