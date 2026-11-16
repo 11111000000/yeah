@@ -2057,6 +2057,102 @@
       "register": "fact",
       "control": "sed -i 's|\"bash\" \"job-cancel\" \"delegate\"|\"bash\" \"job-cancel\"|' lib/yeah-perm.el",
       "waiver": null
+    },
+    {
+      "id": "a-delegation-is-written-into-the-journal-of-its-own-run",
+      "text": "A delegation is written into the journal of the run that asked for it, and into no other journal: the child of a delegation belongs to the run whose model asked for it, and the record of the delegation -- that the child was started and what became of it -- is in the journal of that run.",
+      "scope": [
+        "lib/yeah-session.el",
+        "lib/yeah-turn.el",
+        "lib/yeah-delegate.el",
+        "tests/unit/test-yeah-delegate-journal.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-journal.el"
+        }
+      ],
+      "falsifier": "the child of a delegation is written into the journal of another run, or the journal of the run that asked for it holds no delegation",
+      "register": "fact",
+      "control": "sed -i 's|(or (yeah-session-current)|(or (let ((found nil)) (maphash (lambda (_id record) (push record found)) yeah-delegate--children) (plist-get (car found) :parent-session)) (yeah-session-current)|' lib/yeah-delegate.el",
+      "waiver": null
+    },
+    {
+      "id": "a-child-is-found-by-a-short-id",
+      "text": "The id of a child is short enough for a model to copy back without losing a character of it, and the harness finds the child by that id: the model asks for the child by the id that the delegate tool gave it, and the answer names the child.",
+      "scope": [
+        "lib/yeah-delegate.el",
+        "tests/unit/test-yeah-delegate-short-id.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-short-id.el"
+        }
+      ],
+      "falsifier": "the id of a child is too long to copy, or a child is not found by the id the delegate tool gave",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-delegate--child-by-short-id id session)|nil|' lib/yeah-delegate.el",
+      "waiver": null
+    },
+    {
+      "id": "delegate-result-names-the-children-of-the-run",
+      "text": "A model that asks for a child by an id that does not exist learns what does exist: the refusal of `delegate-result' names the children of the run with their state, so that the model can ask again with an id that is there.",
+      "scope": [
+        "lib/yeah-delegate.el",
+        "tests/unit/test-yeah-delegate-names-children.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-names-children.el"
+        }
+      ],
+      "falsifier": "a wrong id is refused and the refusal does not name the children that exist",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-delegate--describe-children (yeah-session-current))|\"none\"|' lib/yeah-delegate.el",
+      "waiver": null
+    },
+    {
+      "id": "a-child-ends-when-its-time-is-up",
+      "text": "A child of a delegation has a time of its own: when the time is up the child is cancelled and the parent is told that the child ran out of time, so that a child that never ends does not work for ever and does not leave the parent waiting for an answer that never comes.",
+      "scope": [
+        "lib/yeah-subagent.el",
+        "lib/yeah-delegate.el",
+        "lib/yeah-agent.el",
+        "tests/unit/test-yeah-delegate-deadline.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-delegate-deadline.el"
+        }
+      ],
+      "falsifier": "a child that ran out of time keeps on working, or the parent is not told that the child ran out of time",
+      "register": "fact",
+      "control": "sed -i 's|:deadline timeout|:deadline (and timeout (* timeout 1000000))|' lib/yeah-subagent.el",
+      "waiver": null
     }
   ]
 }

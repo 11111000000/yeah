@@ -46,7 +46,7 @@ resolved against the home directory."
   :group 'yeah-agent)
 
 (defconst yeah-agent--front-matter-keys
-  '("name" "description" "model" "tools" "depth" "budget")
+  '("name" "description" "model" "tools" "depth" "budget" "timeout")
   "The keys the header of a preset may carry.")
 
 (defun yeah-agent--candidates (name)

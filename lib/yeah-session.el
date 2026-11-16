@@ -166,6 +166,28 @@ Returns a plist of shape:
             (when recovery
               (list :recovery recovery)))))
 
+(defvar yeah-session--current nil
+  "The session of the run that is running right now, or nil.
+A tool that writes into the journal of its own run reads this binding:
+the run binds the session it writes into while it dispatches the call, and
+the binding is gone when the call is over.  The binding is request-local
+and never leaks into another run.")
+
+(defmacro yeah-session-with (session &rest body)
+  "Evaluate BODY with SESSION as the session of the run that is running.
+SESSION is evaluated once, in the scope of BODY.  A tool that acts on the
+world of the run -- a delegation, a write -- reads the session through
+`yeah-session-current' and writes into the journal of that run."
+  (declare (indent 0) (debug t))
+  `(let ((yeah-session--current ,session))
+     ,@body))
+
+(defun yeah-session-current ()
+  "Return the session of the run that is running right now, or nil.
+A call outside of a run has no session: there is no journal to write into,
+and a tool that needs one says so instead of guessing."
+  yeah-session--current)
+
 (defun yeah-session-close (session)
   "Close SESSION, releasing any file handle. No record mutation."
   (unless (and (consp session) (stringp (plist-get session :id)))

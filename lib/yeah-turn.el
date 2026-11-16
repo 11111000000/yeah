@@ -334,11 +334,15 @@ ended is ignored, and an answer that is not a decision is a refusal."
 
 (defun yeah-turn--run-or-refuse (turn slot done decision)
   "Run the tool of SLOT when DECISION allows it, and refuse it otherwise.
-DONE is the continuation of the tool call."
+DONE is the continuation of the tool call.
+The session of the turn is bound while the tool runs: a tool that acts on
+the world of the run writes into the journal of this run and not into the
+journal of another one."
   (unless (yeah-turn-done turn)
     (if (eq (plist-get decision :effect) :allow)
-        (yeah-tools-dispatch (plist-get slot :name)
-                             (plist-get slot :args) done)
+        (yeah-session-with (yeah-turn-session turn)
+          (yeah-tools-dispatch (plist-get slot :name)
+                               (plist-get slot :args) done))
       (funcall done
                (yeah-result-error
                 (or (plist-get decision :reason)
@@ -614,14 +618,17 @@ other slot may run, including the ones waiting for the person."
 A deferred call waits for the person's answer: the wire layer calls the
 resume callback when the answer arrives, and the tool runs only if the
 person allowed it.  An answer that arrived before the tool started is
-applied at once."
+applied at once.
+The session of the turn is bound while the tool runs, so that a tool that
+acts on the world of the run writes into the journal of this run."
   (lambda (args &optional done)
     (unless (yeah-turn-done turn)
       (if (plist-get slot :deferred)
           (if (plist-get slot :answered)
               (yeah-turn--run-or-refuse turn slot done (plist-get slot :answer))
             (setf (plist-get slot :continuation) done))
-        (yeah-tools-dispatch (plist-get slot :name) args done)))))
+        (yeah-session-with (yeah-turn-session turn)
+          (yeah-tools-dispatch (plist-get slot :name) args done))))))
 
 (defun yeah-turn--call-spec (turn slot)
   "Return the scheduler call of SLOT: the tool, its arguments, the

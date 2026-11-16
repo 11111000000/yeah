@@ -1,0 +1,41 @@
+{
+  "id": "wave-36",
+  "title": "a delegation belongs to the run that asked for it",
+  "intent": "The audit of wave 35 found a defect in the delegation: the journal of a child was not the journal of the run that asked for it.  The tool that delegates remembered the sessions of the runs whose calls were allowed, and it took the first of them, so that a delegation could be written into the journal of another run -- and a call that failed left its session behind for the next delegation to take.  The run knows its own session: the run binds the session it writes into while it dispatches the call, and the child of that call is written into the journal of that run.  The id of a child is short, because the model has to copy it back into `delegate-result', and a long token is copied with an error; a wrong id names the children that do exist, so that the model can ask again.  The child has a time of its own: a child that ran out of time is cancelled, and the parent is told why.",
+  "touches": [
+    "lib/yeah-session.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-delegate.el",
+    "lib/yeah-subagent.el",
+    "lib/yeah-agent.el",
+    "tests/unit/test-yeah-delegate-journal.el",
+    "tests/unit/test-yeah-delegate-short-id.el",
+    "tests/unit/test-yeah-delegate-names-children.el",
+    "tests/unit/test-yeah-delegate-deadline.el",
+    "spec.json",
+    "waves/wave-36.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-journal.el",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-short-id.el",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-names-children.el",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-deadline.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "a-delegation-is-written-into-the-journal-of-its-own-run",
+    "a-child-is-found-by-a-short-id",
+    "delegate-result-names-the-children-of-the-run",
+    "a-child-ends-when-its-time-is-up"
+  ],
+  "commitment": [],
+  "objection": "The binding of the session is a dynamic one: the run binds it while it dispatches the call, and the binding is gone when the call is over.  A tool that acts on the world of the run and is not called through the turn -- a call from the REPL, a call from another module -- finds no session and is refused, and the refusal is the truth: there is no journal to write into.  The short id of a child counts the children of the run, so `sub-1' of one run is not `sub-1' of another; the id of the session of the child is still in the answer of the tool, and a model that copies that one is understood as well.  The time of a child is a header of the preset (`timeout: 300') or the default of the harness (900 seconds): a child of a long task may be cancelled while it works, and the parent is told that the child ran out of time, but the work of that child is lost and nobody restarts it.  The depth of the tree of the children is still kept in a table of the running Emacs and not in the journal, so a restart of the harness forgets the children that still work.  The children of the delegation are still not in `yeah-builtins-specs', and the table of the children of a run is in the memory of the running Emacs.",
+  "refuted_by": "the child of a delegation is written into the journal of another run, or a run that delegates is refused, or the id of a child is too long to copy, or a wrong id does not name the children that exist, or a child that ran out of time keeps on working for ever",
+  "note": "The control of the first claim makes the delegate take the session of the run of a child it already has, instead of the session of the run that is calling: the child of the second run is written into the journal of the first run, and the test of the journal fails on the spawn that is in the wrong journal.  The other three tests and the three tests of wave 35 still pass.  The control of the second claim takes the short id out of the lookup: the model asks for the child by the id the tool gave it, the harness does not find it, and the test of the short id fails on the refused call.  The control of the third claim takes the children out of the refusal: the refusal of a wrong id says `none', and the test of the names fails on the message.  The control of the fourth claim takes the time of the child away: the child that never answers keeps on working, and the test of the time fails on the child that did not end.  The test of the journal fails on the code of wave 35 as well: the defect was real, and the test finds it."
+}

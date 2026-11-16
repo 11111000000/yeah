@@ -119,6 +119,16 @@ Each record has shape (:id ID :role ROLE :prompt PROMPT :depth DEPTH
         (setq answer (plist-get record :payload))))
     answer))
 
+(defun yeah-subagent--reason (session)
+  "Return the reason the run of SESSION was stopped, or nil.
+A child that was cancelled writes the reason into its own journal, and the
+reason is what the parent needs: a child that ran out of time says so."
+  (let ((reason nil))
+    (dolist (record (yeah-session-records session))
+      (when (equal (plist-get record :type) "cancel")
+        (setq reason (or (plist-get record :payload) reason))))
+    reason))
+
 (defun yeah-subagent--finish (child-id turn)
   "Record the end of the child CHILD-ID, whose TURN has finished."
   (let ((record (gethash child-id yeah-subagent--active)))
@@ -126,18 +136,22 @@ Each record has shape (:id ID :role ROLE :prompt PROMPT :depth DEPTH
       (let* ((session (plist-get record :child-session))
              (answer (yeah-subagent--last-answer session))
              (ok (eq 'completed (yeah-turn-state turn)))
+             (summary (or answer ""))
              (parent (gethash child-id yeah-subagent--sessions)))
+        (when (and (string-empty-p summary) (not ok))
+          (setq summary (or (yeah-subagent--reason session) "")))
         (setf (plist-get record :status) (if ok 'completed 'failed)
-              (plist-get record :result) (or answer ""))
+              (plist-get record :result) summary)
         (when parent
           (yeah-events-write parent "child-end"
                              :child (plist-get session :id)
                              :role (plist-get record :role)
                              :ok ok
-                             :summary (or answer "")))))))
+                             :summary summary))))))
 
 (cl-defun yeah-subagent-spawn (parent-session role prompt
-                                  &key depth transport tools budget answerer)
+                                  &key depth transport tools budget timeout
+                                       answerer)
   "Spawn a child sub-agent and return its record.
 
 PARENT-SESSION is the session of the parent.  ROLE names what the child
@@ -145,8 +159,10 @@ does.  PROMPT is the task of the child.  DEPTH is the depth of the
 caller; the child is one deeper.  TRANSPORT reaches the model; it
 defaults to gptel.  TOOLS are the tools the child may use: every other
 tool is refused, and the refusal is in the journal of the child.  BUDGET
-is the context budget of the child.
-
+is the context budget of the child.  TIMEOUT is the time the child may take,
+in seconds: the child is cancelled when the time is up, and the parent is
+told that the child ran out of time.  A child without a time may work for
+ever.
 The child runs in its own session, whose id carries the lineage:
 `<parent-id>.sub-<n>'.  The spawn is asynchronous: the record comes
 back with the status `running', and `yeah-subagent-wait' waits for the
@@ -186,6 +202,7 @@ Signals `user-error' when the depth of the child would reach
                       :rules (yeah-subagent--rules tools)
                       :budget budget
                       :max-nudges yeah-subagent-max-nudges
+                      :deadline timeout
                       :on-done (lambda (turn)
                                  (yeah-subagent--finish child-id turn)))))
         (setf (plist-get record :turn)

@@ -22,6 +22,18 @@
 ;; the tools of the preset and nothing else, so the child never asks a
 ;; question, and it never uses a tool of its own.
 ;;
+;; A delegation belongs to the run that asked for it.  The run binds the
+;; session it writes into while it dispatches the call, and the child of
+;; that call is written into the journal of that run -- never into the
+;; journal of another run.  The id of the child is short, because the model
+;; has to copy it back into `delegate-result'; a long token is copied with
+;; an error, and the id of the session of the child is long.
+;;
+;; The child of a delegation is a run of the service placement: it writes
+;; its own journal, and the parent is told what became of it, but nobody
+;; waits for it and nobody cancels it.  The child has a time of its own:
+;; when the time is up the child is cancelled and the parent is told why.
+;;
 ;; The tools of this module are registered when the module is loaded, and
 ;; not through `yeah-builtins-specs': the built-ins are the tools of the
 ;; kernel, and this module needs the run and the session of Yeah, which
@@ -34,17 +46,24 @@
 (require 'yeah-events)
 (require 'yeah-gptel)
 (require 'yeah-result)
+(require 'yeah-session)
 (require 'yeah-subagent)
 (require 'yeah-tools)
+
+(defgroup yeah-delegate nil
+  "Yeah delegation to a child agent."
+  :group 'yeah)
 
 (defconst yeah-delegate--tool-names '("delegate" "delegate-result")
   "The names of the tools of delegation.")
 
-(defvar yeah-delegate--dispatch-queue nil
-  "The journals of the runs whose allowed delegations are waiting to run.
-The observer of this module remembers them; see `yeah-delegate--observe'.
-The queue is a queue and not a counter: two runs may delegate at the same
-time, and the journal of one of them must not be taken for the other.")
+(defcustom yeah-delegate-child-timeout 900
+  "The time a child of a delegation may take, in seconds.
+A child that did not end in that time is cancelled, and the parent is told
+that the child ran out of time.  A preset that names a `timeout' header has
+a time of its own."
+  :type 'integer
+  :group 'yeah-delegate)
 
 (defvar yeah-delegate--children (make-hash-table :test 'equal)
   "The children this Emacs delegated, by the id of their session.")
@@ -52,40 +71,24 @@ time, and the journal of one of them must not be taken for the other.")
 (defvar yeah-delegate--depths (make-hash-table :test 'equal)
   "The depth of every delegated child, by the id of its session.")
 
+(defvar yeah-delegate--ordinals (make-hash-table :test 'equal)
+  "The number of the children of every session that delegated, by its id.
+The number is what the model sees: the id of a child is short, and the id
+of the session of the child is long.")
+
 (defvar yeah-delegate--transport-factory nil
   "The factory of the transport of a child, or nil for the default.
 A factory is called with the model, the instructions and the tools of
 the child, and returns the transport of the child.  The tests replace
 it; the default reaches the model through gptel.")
 
-(defun yeah-delegate--observe (session type fields _id)
-  "Note the allowed delegation of SESSION, so that the tool finds its journal.
-TYPE is the type of the event, FIELDS the fields it carries."
-  (when (and (equal type "permission-decision")
-             (equal (plist-get fields :effect) "allow")
-             (member (plist-get fields :action) yeah-delegate--tool-names))
-    (setq yeah-delegate--dispatch-queue
-          (append yeah-delegate--dispatch-queue (list session)))))
-
-(defun yeah-delegate--install-observer ()
-  "Install the observer that lets a delegate tool find the journal of its run."
-  (unless (memq #'yeah-delegate--observe yeah-events-write-functions)
-    (add-to-list 'yeah-events-write-functions #'yeah-delegate--observe)))
-
-(defun yeah-delegate--take-session ()
-  "Return the journal of the run whose allowed call is waiting to run.
-Return nil when no allowed call is waiting."
-  (when yeah-delegate--dispatch-queue
-    (let ((session (car yeah-delegate--dispatch-queue)))
-      (setq yeah-delegate--dispatch-queue
-            (cdr yeah-delegate--dispatch-queue))
-      session)))
-
 (defun yeah-delegate--current-session ()
   "Return the journal the delegate tools act on.
-The journal of the run whose allowed call is waiting to run is used.
-A call with no such journal is refused: there is no journal to write into."
-  (or (yeah-delegate--take-session)
+The journal of the run whose call is running is used: the run binds the
+session it writes into while it dispatches the call, and the binding is
+over when the call is over.  A call with no such journal is refused: there
+is no journal to write into, and another run's journal is not this run's."
+  (or (yeah-session-current)
       (signal 'user-error
               (list "delegate: this call has no journal: the run did not bind one"))))
 
@@ -115,6 +118,16 @@ and a zero that was never written is not a budget."
   "Return the context budget of the child of PRESET, or nil when it names none."
   (let ((number (yeah-delegate--count (plist-get preset :budget))))
     (when (and number (> number 0)) number)))
+
+(defun yeah-delegate--timeout (preset)
+  "Return the time the child of PRESET may take, in seconds.
+The preset may name a `timeout' header; the default of the harness is used
+when it names none.  A child that has no time may work for ever, and the
+parent never learns that the child is still there."
+  (let ((number (yeah-delegate--count (plist-get preset :timeout))))
+    (if (and number (> number 0))
+        number
+      yeah-delegate-child-timeout)))
 
 (defun yeah-delegate--allowed-depth (preset)
   "Return the depth the children of PRESET may reach, or nil when it names none."
@@ -165,6 +178,21 @@ TOOLS are the names of the tools the child may use."
   "Return the id of the session of the child RECORD."
   (plist-get (plist-get record :child-session) :id))
 
+(defun yeah-delegate--next-ordinal (session)
+  "Return the number the next child of SESSION carries.
+The number counts the children of that session, and not the children of the
+whole Emacs: the number is short, and the model has to copy it back."
+  (let* ((parent (plist-get session :id))
+         (last (gethash parent yeah-delegate--ordinals 0)))
+    (puthash parent (1+ last) yeah-delegate--ordinals)
+    (1+ last)))
+
+(defun yeah-delegate--short-id (ordinal)
+  "Return the short id of the child ORDINAL.
+The id of the session of the child is long, and a model that copies a long
+token loses a character of it.  The short id is what the model sees."
+  (format "sub-%d" ordinal))
+
 (defun yeah-delegate--start (session preset task)
   "Start the child of PRESET on TASK in the session of the parent SESSION.
 Return the record of the child."
@@ -172,6 +200,7 @@ Return the record of the child."
          (model (plist-get preset :model))
          (system (yeah-delegate--system preset))
          (depth (1+ (yeah-delegate--depth-of session)))
+         (ordinal (yeah-delegate--next-ordinal session))
          (record nil))
     (yeah-delegate--check-depth preset depth)
     (setq record (yeah-subagent-spawn
@@ -181,10 +210,27 @@ Return the record of the child."
                   :depth (yeah-delegate--depth-of session)
                   :tools tools
                   :budget (yeah-delegate--budget preset)
+                  :timeout (yeah-delegate--timeout preset)
                   :transport (yeah-delegate--transport model system tools)))
+    (setq record (plist-put record :short-id (yeah-delegate--short-id ordinal)))
+    (setq record (plist-put record :ordinal ordinal))
+    (setq record (plist-put record :parent-session session))
     (puthash (yeah-delegate--id record) record yeah-delegate--children)
     (puthash (yeah-delegate--id record) depth yeah-delegate--depths)
     record))
+
+(defun yeah-delegate--children-of (session)
+  "Return the records of the children that the run of SESSION delegated.
+The children come in the order they were delegated."
+  (let ((children nil))
+    (maphash
+     (lambda (_id record)
+       (when (equal (plist-get (plist-get record :parent-session) :id)
+                    (plist-get session :id))
+         (push record children)))
+     yeah-delegate--children)
+    (sort children (lambda (left right)
+                     (< (plist-get left :ordinal 0) (plist-get right :ordinal 0))))))
 
 (defun yeah-delegate--status-of (record)
   "Return the status of the child RECORD, as a string.
@@ -196,6 +242,36 @@ the child was started."
         "running"
       (format "%s" status))))
 
+(defun yeah-delegate--describe-children (session)
+  "Return a description of the children of the run of SESSION.
+SESSION may be nil: a call outside of a run has no children of its own."
+  (let ((children (if session (yeah-delegate--children-of session) nil)))
+    (if children
+        (string-join
+         (mapcar (lambda (record)
+                   (format "%s (%s)" (plist-get record :short-id)
+                           (yeah-delegate--status-of record)))
+                 children)
+         ", ")
+      "none")))
+
+(defun yeah-delegate--child-by-short-id (id session)
+  "Return the child of the run of SESSION whose short id is ID, or nil.
+The short id counts the children of that run, so the id of a child of
+another run is not the id of a child of this one."
+  (cl-find-if (lambda (record)
+                (equal (plist-get record :short-id) id))
+              (yeah-delegate--children-of session)))
+
+(defun yeah-delegate--resolve (id)
+  "Return the record of the child ID, or nil when no child has that id.
+ID is the id of the session of a child, or the short id of a child of the run
+that is running now."
+  (or (gethash id yeah-delegate--children)
+      (let ((session (yeah-session-current)))
+        (when session
+          (yeah-delegate--child-by-short-id id session)))))
+
 (defun yeah-delegate--delegate (agent task)
   "Start the child of the preset AGENT on TASK and return the result of the tool.
 The child works while the parent does: the tool answers at once, with the id
@@ -203,19 +279,22 @@ of the child."
   (let* ((session (yeah-delegate--current-session))
          (preset (yeah-delegate--preset agent))
          (record (yeah-delegate--start session preset task))
-         (id (yeah-delegate--id record)))
+         (id (plist-get record :short-id)))
     (yeah-result-ok
-     (format "the child %s works on the task while you keep working" id)
+     (format "the child %s works on the task while you keep working; ask for it with delegate-result %s"
+             id id)
      (list :id id
+           :session (yeah-delegate--id record)
            :agent (or (plist-get preset :name) agent)
            :status (yeah-delegate--status-of record)))))
 
 (defun yeah-delegate--result (child)
   "Report what became of the child CHILD."
-  (let ((record (gethash child yeah-delegate--children)))
+  (let ((record (yeah-delegate--resolve child)))
     (unless record
       (signal 'user-error
-              (list (format "delegate-result: no child %S" child))))
+              (list (format "delegate-result: no child %S; the children of this run are: %s"
+                            child (yeah-delegate--describe-children (yeah-session-current))))))
     (let ((status (plist-get record :status))
           (answer (or (plist-get record :result) "")))
       (cond ((eq status 'running)
@@ -235,13 +314,13 @@ of the child."
   "Return the specifications of the tools of delegation."
   (list (list :name "delegate"
               :description
-              "Start a child agent and give it a task. The child is an agent of your own: it runs in a session of its own, with the model and the tools that the agent names, and it works while you keep working. Give the name of the agent and the task; ask for what became of the child with delegate-result."
+              "Start a child agent and give it a task. The child is an agent of your own: it runs in a session of its own, with the model and the tools that the agent names, and it works while you keep working. Give the name of the agent and the task; the tool answers with the short id of the child, and you ask for what became of it with delegate-result and that id."
               :input (list (list :name "agent" :type 'string)
                            (list :name "task" :type 'string))
               :handler #'yeah-delegate--delegate)
         (list :name "delegate-result"
               :description
-              "Report what became of a child agent: whether it still works, and the summary it ended with. Give the id that the delegate tool returned."
+              "Report what became of a child agent: whether it still works, and the summary it ended with. Give the short id that the delegate tool returned, such as sub-1."
               :input (list (list :name "child" :type 'string))
               :handler #'yeah-delegate--result)))
 
@@ -252,7 +331,6 @@ it is, so calling this twice does not raise an error."
   (dolist (spec (yeah-delegate-tools))
     (unless (yeah-tools-get (plist-get spec :name))
       (yeah-tools-register spec)))
-  (yeah-delegate--install-observer)
   t)
 
 (defun yeah-delegate-reset-for-test ()
@@ -260,7 +338,7 @@ it is, so calling this twice does not raise an error."
 Tests only."
   (clrhash yeah-delegate--children)
   (clrhash yeah-delegate--depths)
-  (setq yeah-delegate--dispatch-queue nil)
+  (clrhash yeah-delegate--ordinals)
   t)
 
 (yeah-delegate-register)
