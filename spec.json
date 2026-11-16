@@ -1960,6 +1960,30 @@
       "register": "fact",
       "control": "sed -i 's|((and existed version (not (equal current-version version)))|((and existed version nil)|' lib/yeah-edit.el",
       "waiver": null
+    },
+    {
+      "id": "an-edit-never-runs-the-local-variables-of-the-project",
+      "text": "An edit of a file of the project does not run the local variables of that file and does not run the directory-local variables of its directory: the project is untrusted input, and the harness does not run the code of the project in the Emacs of the person.",
+      "scope": [
+        "lib/yeah-untrusted.el",
+        "lib/yeah-edit.el",
+        "tests/unit/test-yeah-untrusted.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-untrusted.el"
+        }
+      ],
+      "falsifier": "the local variables of an edited file are executed, or the directory-local variables of the directory of that file are executed",
+      "register": "fact",
+      "control": "sed -i 's|(enable-local-variables nil)|(enable-local-variables t)|' lib/yeah-untrusted.el",
+      "waiver": null
     }
   ]
 }

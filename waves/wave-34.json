@@ -1,0 +1,29 @@
+{
+  "id": "wave-34",
+  "title": "an edit never runs the code of the project",
+  "intent": "The harness opens the files of the project on behalf of the model, and Emacs runs the local variables of a file and the directory-local variables of its directory when it opens it.  That code belongs to the project, and the project is untrusted input: a file may name a mode whose function is a function of the project, and a directory may hold a `.dir-locals.el' that runs in every file of the directory.  The edit tool opened the file with `find-file-noselect' and nothing else, so the code of the project ran in the Emacs of the person -- in the attached placement that is the Emacs of the person, and in the service placement it is a process that the model reaches through the tools.  This wave opens the file of an edit with the local variables of the file and the directory-local variables of its directory neutralized, whatever the configuration of that Emacs is.",
+  "touches": [
+    "lib/yeah-untrusted.el",
+    "lib/yeah-edit.el",
+    "tests/unit/test-yeah-untrusted.el",
+    "spec.json",
+    "waves/wave-34.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-untrusted.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "an-edit-never-runs-the-local-variables-of-the-project"
+  ],
+  "commitment": [],
+  "objection": "The mode line of the file is part of its content, so it is ignored: a file whose mode differs from the mode of its name comes up in the mode of its name.  In the attached placement the buffer of the person therefore shows the file in the mode of the name and not in the mode that the file asks for, and the person has to set the mode by hand.  The mode of the name is Emacs' own choice and not the choice of the file, so the code that runs is still the code of Emacs.  The alternative -- the mode of the file with the variables of the file ignored -- was not taken: the name of a mode is a name of a function, and the function may be a function of the project; Emacs calls the function of the name when it sets the mode.  A file that Emacs opens outside the harness (the person opens it by hand) is still opened the way Emacs opens it, and the harness does not change that.  The `write' tool writes bytes and opens nothing, so it never had this hole.",
+  "refuted_by": "the local variables of an edited file run, or the directory-local variables of the directory of that file run",
+  "note": "The control of the claim switches the guard off and fails exactly one test of `tests/unit/test-yeah-untrusted.el', the test of the edit of a file with local variables.  The test asks for a mode and for an eval: the mode is the sharp edge, because Emacs calls the function that the mode names, and the eval runs when the mode runs its hooks, the way a major mode does.  The test opens the file with the configuration of an Emacs that obeys the local variables, so that the refusal does not depend on the configuration of the person.  The name of the section of the local variables is split in the test file, so that the test file itself does not hold a block of local variables that Emacs would try to parse when it loads it."
+}

@@ -18,6 +18,7 @@
 (require 'cl-lib)
 (require 'yeah-result)
 (require 'yeah-undo)
+(require 'yeah-untrusted)
 (require 'yeah-version)
 
 (defcustom yeah-edit-save-after-edit t
@@ -95,7 +96,11 @@ optional expected version token of the file."
     (unless buffer
       (unless (file-exists-p expanded)
         (user-error "edit: file does not exist: %s" expanded))
-      (setq buffer (find-file-noselect expanded)))
+      ;; The file belongs to an untrusted project.  Emacs runs the local
+      ;; variables of a file and the directory-local variables of its
+      ;; directory when it opens it, and that code is the code of the
+      ;; project: the harness does not run it in the Emacs of the person.
+      (setq buffer (yeah-untrusted-open-file expanded)))
     (with-current-buffer buffer
       (unless (verify-visited-file-modtime buffer)
         (user-error "edit: %s changed on disk; read fresh state before retrying"
