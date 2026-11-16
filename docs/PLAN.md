@@ -1610,6 +1610,60 @@ delegation are not in `yeah-builtins-specs` (the built-ins are the tools of the
 kernel, and the delegation is a tool of the product), so a reader of that list
 does not see them; the module registers them itself, the way the bridge does.
 
+### 16.19 A delegation belongs to the run that asked for it — **done on 2026-11-16 (wave 36)**
+
+The audit of wave 35 found a defect in the delegation, and the plan of wave 36
+was wrong about one of its points.  The tool that delegates did not know the
+journal of the run it belonged to: it remembered the sessions of the runs whose
+calls were allowed and took the first of them.  Two runs that delegate at the
+same time could give their children to each other, and a call that failed — a
+`delegate-result` for a child that does not exist, a `delegate` with the wrong
+number of arguments — left its session behind for the next delegation to take.
+The defect was reproduced before it was fixed, and the test of this wave fails
+on the code of wave 35 as well.
+
+The fix is the thing the run already knows.  The run writes into a session, and
+the turn holds that session; the turn binds it while it dispatches the call, and
+the binding is over when the call is over (`lib/yeah-session.el`,
+`lib/yeah-turn.el`).  A tool that acts on the world of the run reads the
+session through `yeah-session-current` and writes into the journal of that
+run.  A call that has no run has no journal: it is refused, and the refusal
+names the truth instead of guessing.
+
+The id of a child is short now.  The id of the session of a child is long — the
+lineage of the sessions is in it — and a model that copies a long token loses a
+character of it: the pilot of wave 35 copied 58 of the 64 characters of a
+digest, and the edit of that file was refused.  The delegate tool answers with
+a short id (`sub-1`, `sub-2`) that counts the children of the run, and the
+model asks for the child by that id.  A wrong id is refused by name, and the
+refusal names the children that do exist with their state, so that the model can
+ask again.
+
+A child has a time of its own.  The preset of an agent may name it (`timeout:
+300`), and the default of the harness is 900 seconds; a child that ran out of
+time is cancelled, and the parent is told that the child ran out of time.  A
+child that never ends would keep the parent waiting for an answer that never
+comes.
+
+The wave has four claims, each with a verifier of its own and a control that
+changes the subject of the claim and not the check.  With the delegate taking
+the session of another run, exactly one test fails, and it fails on the spawn
+that is in the wrong journal.  With the short id taken out of the lookup,
+exactly one test fails, and it fails on the refused call of the model.  With
+the children taken out of the refusal, exactly one test fails, and it fails on
+the message.  With the time of the child taken away, exactly one test fails,
+and it fails on the child that did not end.
+
+**Open:** the depth of the tree of the children is still kept in a table of the
+running Emacs and not in the journal, so a restart of the harness forgets the
+depth of the children that are still running.  The children of a run are kept
+in the memory of the running Emacs as well.  The tools of the delegation are
+not in `yeah-builtins-specs` (the built-ins are the tools of the kernel, and
+the delegation is a tool of the product), so a reader of that list does not see
+them; the module registers them itself, the way the bridge does.  Several
+children in one turn of the parent work already — the audit proved it — and
+the plan that said otherwise was wrong.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then
@@ -1620,7 +1674,7 @@ then 16.7 (the goal is measured), and 16.5 and 16.8 whenever.
 
 ## 17. What is left, and who decides it
 
-The work of waves 24–35 is closed and bound to fresh evidence.  What follows is
+The work of waves 24–36 is closed and bound to fresh evidence.  What follows is
 everything that is still open, written down in one place, so that nobody has
 to reconstruct it from the history of the sessions.  The first list is work an
 agent may do; the second list is the work only the owner may decide, and no
@@ -1628,20 +1682,20 @@ agent may decide it silently (`docs/PLAN.md` §13).
 
 ### 17.1 The open work of the code
 
-**The delegation (Stage 7, after wave 35).**
+**The delegation (Stage 7, after wave 36).**
 
-- Several children in one turn of the parent are not implemented: the parent
-  asks for one child at a time, and the tool answers with one id.
+- Several children in one turn of the parent work already: the audit of wave 35
+  proved it, and the plan that said otherwise was wrong.  What is not proven is
+  a *live* turn of a parent with two children of a live provider.
 - The model of the child is the model of the preset, and the preset names it;
   no child of a live provider has run yet on a model other than the model of
   its parent.
 - The depth of the tree of the children is kept in a table of the running Emacs
   and not in the journal, so a restart of the harness forgets the depth of the
   children that are still working.
-- The id of a child is the id of its session, and the model has to copy it
-  into `delegate-result`; a copy that is wrong is refused by name.  The token
-  of a read was shortened for the same reason (wave 32), and the id of a child
-  is not shortened yet.
+- The children of a run are kept in the memory of the running Emacs as well: a
+  restart of the harness forgets the children that are still working, and the
+  model of the parent that comes back cannot ask for them.
 - The live checks do not exercise the delegation: the benchmark gives its runs
   a fixed set of tools, and the delegation is not among them.  The live
   evidence of a child that works is the fixed point, and that is one child and
@@ -1663,6 +1717,15 @@ agent may decide it silently (`docs/PLAN.md` §13).
   model call that answers with nothing now and then, and a transport that
   times out ("Curl failed with exit code 28").  A run that the provider stops
   is blocked and not a failure of the agent.
+- A run that the provider *silences* and a run that the provider *fails* are
+  not told apart by the runner of the benchmark: the silence is not an error
+  record of the journal, so the runner records it as a failure of the agent,
+  and a run that was never measured counts against the agent.  The pilot of
+  wave 36 measured the third task of Yeah in that shape (the sum was computed,
+  the file was never written).  Whether that shape is a failure of the agent
+  or a run that was never measured is not decided, and the decision changes
+  the number of every pilot (docs/LIVE-EVIDENCE.md, "The live checks and the
+  pilot after wave 36").
 - The outcome of a run does not describe the work that was done: a run of
   `fix-failing-test` ended in "failed" because the provider failed after the
   edit, while the check of the task passed.  The check of the benchmark is the
@@ -1718,14 +1781,18 @@ None of these may be decided by an agent.  Each of them is recorded with
 
 ### 17.3 The order, if the owner says nothing
 
-1. **Wave 36 — the parallel children of the delegation** (Stage 7, right after
-   wave 35): several children in one turn of the parent, the model of the
-   child that differs from the model of the parent, and a short id of the child
-   that a model can copy.
-2. **Wave 37 — the depth of the tree in the journal**, so that a restart of
-   the harness does not forget the children that still work.
-3. **The pilot again**, with a larger set of tasks, when the provider answers.
-4. **The pixel check**, when the owner names the place of the frame server.
+1. **Wave 37 — the depth of the tree in the journal**, so that a restart of
+   the harness does not forget the children that still work.  The children of a
+   run and their depth belong in the journal, and not only in the memory of the
+   running Emacs.
+2. **The pilot again**, with a larger set of tasks, when the provider answers.
+3. **The pixel check**, when the owner names the place of the frame server.
+
+Wave 36 was the plan above that said otherwise: it was to be the parallel
+children of the delegation, and the audit proved that several children in one
+turn of the parent work already.  Wave 36 was the defect that the audit found
+instead — the delegation was written into the journal of another run — and with
+it the short id of the child and the time of the child.
 
 Re-opened when a person says so: the math-coding aim block in AGENTS.md is
 written by `mathc install` and is not edited by hand.

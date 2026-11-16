@@ -238,6 +238,16 @@ preset and the instructions of the preset to the child, it refuses every tool
 outside the preset, and it keeps the turn of the parent free while the child
 works. The promises above are kept and made explicit, not relaxed.*
 
+*Amended on 2026-11-16 (wave 36): the delegation had no journal of its own,
+and it took the journal of a run it remembered instead of the journal of the
+run that asked for it. A run binds the session it writes into while it
+dispatches a call, and the child of that call is written into the journal of
+that run; a call with no run has no journal and is refused. The id of a child
+is short, because the model has to copy it back and a long token is copied
+with an error; a wrong id names the children that do exist. A child has a time
+of its own, and a child that ran out of time is cancelled and the parent is
+told why. The promises above are kept and made explicit, not relaxed.*
+
 ### D9 — Plan and Build are permission profiles
 
 Plan mode is a read-oriented rule profile. Build mode enables the normal

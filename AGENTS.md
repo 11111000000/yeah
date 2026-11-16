@@ -88,7 +88,17 @@ work item. Never resolve it by silently making documentation more optimistic.
   28" after the model had read the file and computed the sum.  A run that the
   provider stops is blocked and not a failure of the agent, and it says
   nothing about either harness (docs/LIVE-EVIDENCE.md, "The live checks and the
-  pilot after wave 35").  The threshold of the parity is a decision of the owner
+  pilot after wave 35").  The pilot of 10:00, on the code of wave 36, measured
+  two tasks of three for Yeah and three of three for pi, and the third task of
+  Yeah failed in the tools: the model read the file, computed the sum with
+  `bash` (the tool answered 100) and then answered with an empty message three
+  times; the harness nudged three times, every nudge carrying the state of the
+  work, and the run ended "unfinished" with the nudge budget spent.  The file
+  was never written, so the runner recorded a failure of the agent; that is
+  the shape the provider has had for two days, and `write-new-file` passed in
+  the same pilot, so the write path of the code of wave 36 works (docs/
+  LIVE-EVIDENCE.md, "The live checks and the pilot after wave 36").  The
+  threshold of the parity is a decision of the owner
   (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
   parity.
 - A decision that arrives while the tools of the previous decision are still
@@ -172,10 +182,25 @@ work item. Never resolve it by silently making documentation more optimistic.
   to it. The turn of the parent is not held: `delegate` answers at once
   with the id of the child, the child answers on its own, and
   `delegate-result` reports what became of it. A delegation changes the
-  world, so the Plan profile denies it. Not implemented: several children
-  in one turn, and the depth of the tree of the children is kept in the
-  running Emacs and not in the journal (lib/yeah-delegate.el,
+  world, so the Plan profile denies it (lib/yeah-delegate.el,
   docs/PLAN.md §16.18).
+- A delegation belongs to the run that asked for it (wave 36). The audit of
+  wave 35 found the defect: the tool that delegates remembered the sessions of
+  the runs whose calls were allowed and took the first of them, so a
+  delegation could be written into the journal of another run, and a call that
+  failed left its session behind for the next delegation to take. The run binds
+  the session it writes into while it dispatches the call (lib/yeah-session.el,
+  lib/yeah-turn.el), and the child of that call is written into the journal of
+  that run; a call with no run has no journal and is refused. The id of a child
+  is short (`sub-1`), because the model has to copy it back and a long token is
+  copied with an error; a wrong id is refused by name, and the refusal names
+  the children that do exist. A child has a time of its own (`timeout:` in the
+  preset, 900 seconds by default): a child that ran out of time is cancelled,
+  and the parent is told why. Several children in one turn of the parent work
+  already — the audit proved it, and the plan that said otherwise was wrong.
+  Not implemented: the depth of the tree of the children and the children
+  themselves are kept in the running Emacs and not in the journal
+  (docs/PLAN.md §16.19, §17.1).
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
@@ -289,7 +314,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-74 claim(s).
+94 claim(s).
 
 ```sh
 mathc run
