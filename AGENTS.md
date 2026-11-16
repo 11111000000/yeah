@@ -75,7 +75,14 @@ work item. Never resolve it by silently making documentation more optimistic.
   worked on passed.  The task that Yeah failed failed on the provider: the
   model announced the fix ("Fixing it to use floating-point division:") and
   called no tool (docs/LIVE-EVIDENCE.md, "The pilot after the token became
-  short").  The threshold of the parity is a decision of the owner
+  short").  The pilot of 2026-11-16 06:43–06:48, on the code of wave 33, measured
+  two tasks of three for Yeah and three of three for pi, and the pilot of
+  07:04, on the code of wave 34, measured one task of three for Yeah and three
+  of three for pi.  Both failures were the same failure of the model and not of
+  the harness: the model read the files of the task and never called the tool
+  that would change them, while the guards of waves 29, 32, 33 and 34 were
+  never in the way (docs/LIVE-EVIDENCE.md, "The live checks and the pilot after
+  wave 34").  The threshold of the parity is a decision of the owner
   (docs/PLAN.md §13), and nobody may quote the pilot as a verdict about
   parity.
 - A decision that arrives while the tools of the previous decision are still
