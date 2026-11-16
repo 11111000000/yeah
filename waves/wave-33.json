@@ -1,0 +1,31 @@
+{
+  "id": "wave-33",
+  "title": "an edit never lands on a file the model did not read",
+  "intent": "D5 promises that the agent does not edit a file whose unsaved changes in the editor a read cannot show, and the code kept that promise only for the edits that presented a version.  A model that presented only a tick -- the path that wave 29 left open -- could still land an edit on the buffer that holds the unsaved changes of the person, and the write tool took no version at all, so a write could replace a file that changed after the read of that file.  This wave makes the refusal of the unsaved changes the answer of every edit, with a version or without one, and gives the write the same short version token that the edit already had.",
+  "touches": [
+    "lib/yeah-edit.el",
+    "tests/unit/test-yeah-unsaved-guard.el",
+    "tests/unit/test-yeah-write-guard.el",
+    "spec.json",
+    "waves/wave-33.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/PLAN-NEXT.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/test-yeah-unsaved-guard.el",
+    "./scripts/dev ert tests/unit/test-yeah-write-guard.el",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "an-edit-never-lands-on-a-file-with-unsaved-changes",
+    "a-write-never-lands-on-a-file-that-changed"
+  ],
+  "commitment": [],
+  "objection": "The refusal does not tell whose changes the buffer holds: the unsaved changes of the person and the unsaved changes of the model itself are the same state of Emacs, and the conservative answer refuses both.  With `yeah-edit-save-after-edit' set to nil, a second edit of the same file is refused as well, because the buffer still holds the changes of the first edit; the person can save the file and the edit lands.  The version of the write is optional in the same way as the version of the edit: a model that presents no version writes without that guard.  A write of a file that Emacs holds unsaved changes of is not refused: the write goes to the disk, the changes of the person stay in the buffer, and the buffer becomes stale -- that is open.  The wave does not touch the tick, the version of the edit, the token, or the order in which the refusals are named: a stale tick is still named before the unsaved changes, so the meaning of the existing check of the stale tick is unchanged.",
+  "refuted_by": "an edit lands on a file that Emacs holds unsaved changes of, or a write lands on a file that changed after the read that handed the version out",
+  "note": "The control of the first claim switches the refusal of the unsaved changes off and fails exactly one test of `tests/unit/test-yeah-unsaved-guard.el', the test of the edit without a version.  The control of the second claim takes the version out of the condition of the write and fails exactly one test of `tests/unit/test-yeah-write-guard.el', the test of the stale version; the test of the current version keeps passing, because the write of a file that did not change still lands.  The two claims have verifiers of their own, so the control of one does not break the check of the other.  The control of wave 29 still bites on this code: it fails exactly one test of `tests/unit/test-yeah-edit.el`, the test of the stale version.  The order of the refusals was chosen with the existing check in mind: the stale tick is named first, because it names the exact staleness, and the unsaved changes are named when nothing else is stale."
+}

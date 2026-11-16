@@ -1913,6 +1913,53 @@
       "register": "fact",
       "control": "sed -i 's|The file may be unchanged and the token may have been copied wrong|The file changed since the read|' lib/yeah-edit.el",
       "waiver": null
+    },
+    {
+      "id": "an-edit-never-lands-on-a-file-with-unsaved-changes",
+      "text": "An edit of a file that Emacs holds unsaved changes of is refused, with a version or without one: a read of the file shows the disk and cannot show the changes of the person, so the edit would overwrite them with text the model never read.",
+      "scope": [
+        "lib/yeah-edit.el",
+        "tests/unit/test-yeah-unsaved-guard.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-unsaved-guard.el"
+        }
+      ],
+      "falsifier": "the edit of a file that Emacs holds unsaved changes of is applied anyway, or the refusal depends on the model presenting a version",
+      "register": "fact",
+      "control": "sed -i 's|(if (with-current-buffer buffer (buffer-modified-p))|(if nil|' lib/yeah-edit.el",
+      "waiver": null
+    },
+    {
+      "id": "a-write-never-lands-on-a-file-that-changed",
+      "text": "A write that replaces a file presents the version of the read that it follows and is refused when the file changed since that read: a write never lands on a file the model did not read.",
+      "scope": [
+        "lib/yeah-edit.el",
+        "lib/yeah-version.el",
+        "tests/unit/test-yeah-write-guard.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-write-guard.el"
+        }
+      ],
+      "falsifier": "the write of a file that changed after the read is applied anyway, or the write takes no version at all",
+      "register": "fact",
+      "control": "sed -i 's|((and existed version (not (equal current-version version)))|((and existed version nil)|' lib/yeah-edit.el",
+      "waiver": null
     }
   ]
 }

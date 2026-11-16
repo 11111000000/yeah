@@ -118,14 +118,15 @@ optional expected version token of the file."
                          expanded)
                  (list :path expanded
                        :changed 0
-                       :version current-version))))
-         ((with-current-buffer buffer (buffer-modified-p))
-          (setq refusal
-                (yeah-result-error
-                 (format "edit: %s has unsaved changes in Emacs that a read cannot show; ask the person to save them before editing"
-                         expanded)
-                 (list :path expanded
-                       :changed 0)))))))
+                       :version current-version)))))))
+    ;; A read of a file shows the disk, and the tick it hands out belongs to
+    ;; the buffer that visits the file.  When Emacs holds unsaved changes of
+    ;; that file, an edit lands on the buffer and overwrites the changes of
+    ;; the person with text the model never read.  The refusal does not
+    ;; depend on a version: a model that presents no version has seen the
+    ;; same disk and deserves the same answer.  D5 promises this of every
+    ;; edit, and the code kept it only for the edits that presented a
+    ;; version.
     (if refusal
         refusal
       (with-current-buffer buffer
@@ -139,34 +140,40 @@ optional expected version token of the file."
                      :changed 0
                      :tick current-tick
                      :modified (buffer-modified-p)))
-            (if (string= old-str new-str)
-                (yeah-edit--ok expanded buffer 0)
-              (let ((positions (yeah-edit--match-positions old-str)))
-                (cond
-                 ((null positions)
-                  (yeah-result-error
-                   (format "edit: old_str not found in %s; read fresh state before retrying"
-                           expanded)
-                   (list :path expanded :changed 0 :tick current-tick)))
-                 ((and (not replace-all) (cdr positions))
-                  (yeah-result-error
-                   (format
-                    "edit: old_str must match exactly once in %s (found %d); read fresh state before retrying"
-                    expanded (length positions))
-                   (list :path expanded :changed 0 :tick current-tick)))
-                 (t
-                  (save-restriction
-                    (widen)
-                    (save-excursion
-                      (yeah-undo-around-buffer
-                       buffer
-                       (lambda ()
-                         (atomic-change-group
-                           (dolist (start positions)
-                             (goto-char start)
-                             (delete-region start (+ start (length old-str)))
-                             (insert new-str)))))))
-                  (yeah-edit--ok expanded buffer (length positions))))))))))))
+            (if (with-current-buffer buffer (buffer-modified-p))
+                (yeah-result-error
+                 (format "edit: %s has unsaved changes in Emacs that a read cannot show; ask the person to save them before editing"
+                         expanded)
+                 (list :path expanded
+                       :changed 0))
+              (if (string= old-str new-str)
+                  (yeah-edit--ok expanded buffer 0)
+                (let ((positions (yeah-edit--match-positions old-str)))
+                  (cond
+                   ((null positions)
+                    (yeah-result-error
+                     (format "edit: old_str not found in %s; read fresh state before retrying"
+                             expanded)
+                     (list :path expanded :changed 0 :tick current-tick)))
+                   ((and (not replace-all) (cdr positions))
+                    (yeah-result-error
+                     (format
+                      "edit: old_str must match exactly once in %s (found %d); read fresh state before retrying"
+                      expanded (length positions))
+                     (list :path expanded :changed 0 :tick current-tick)))
+                   (t
+                    (save-restriction
+                      (widen)
+                      (save-excursion
+                        (yeah-undo-around-buffer
+                         buffer
+                         (lambda ()
+                           (atomic-change-group
+                             (dolist (start positions)
+                               (goto-char start)
+                               (delete-region start (+ start (length old-str)))
+                               (insert new-str)))))))
+                    (yeah-edit--ok expanded buffer (length positions)))))))))))))
 
 (defun yeah-edit--edit (path old-str new-str &optional tick replace-all version)
   "Return a structured result for a guarded edit of PATH.
@@ -192,9 +199,13 @@ reported it."
     (error
      (yeah-result-error (error-message-string err)))))
 
-(defun yeah-edit--write (path content &optional overwrite)
+(defun yeah-edit--write (path content &optional overwrite version)
   "Write CONTENT to PATH as UTF-8 and return a structured result.
-Refuse an existing PATH unless OVERWRITE is non-nil."
+Refuse an existing PATH unless OVERWRITE is non-nil.
+VERSION, when non-nil, must be the version token of the file as a read
+reported it.  A write that replaces a file whose version has changed since
+that read is refused, so that a write never lands on a file the model did not
+read."
   (condition-case err
       (progn
         (unless (and (stringp path) (not (string= path "")))
@@ -203,14 +214,26 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
           (user-error "write: content must be a string"))
         (when (and overwrite (not (booleanp overwrite)))
           (user-error "write: overwrite must be a boolean"))
+        (when (and version (not (stringp version)))
+          (user-error "write: version must be a string"))
         (let* ((expanded (expand-file-name path))
                (existed (file-exists-p expanded))
-               (bytes (length (encode-coding-string content 'utf-8))))
-          (if (and existed (not overwrite))
-              (yeah-result-error
-               (format "write: file exists; set overwrite to true to replace %s"
-                       expanded)
-               (list :path expanded :overwritten nil))
+               (bytes (length (encode-coding-string content 'utf-8)))
+               (current-version (and existed (yeah-version-file expanded))))
+          (cond
+           ((and existed (not overwrite))
+            (yeah-result-error
+             (format "write: file exists; set overwrite to true to replace %s"
+                     expanded)
+             (list :path expanded :overwritten nil)))
+           ((and existed version (not (equal current-version version)))
+            (yeah-result-error
+             (format "write: stale version for %s; the version you present is not the version of the file now. The file may be unchanged and the token may have been copied wrong; read the file again and use the version it reports"
+                     expanded)
+             (list :path expanded
+                   :changed 0
+                   :version current-version)))
+           (t
             (let ((coding-system-for-write 'utf-8))
               (with-temp-buffer
                 (insert content)
@@ -222,7 +245,7 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
              (list :path expanded
                    :bytes bytes
                    :characters (length content)
-                   :overwritten (and existed t))))))
+                   :overwritten (and existed t)))))))
     (error
      (yeah-result-error (error-message-string err)))))
 
@@ -231,7 +254,7 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
   (list
    (list :name "edit"
          :description
-         "Replace exact text in a file, guarded by an optional modification tick and an optional version token. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: pass the tick that the read of this file reported; the edit is refused when the file changed since that tick was taken, and the refusal reports the current tick, so you can retry with it. If the read of the file reported no tick, omit tick: a tick that no read handed out is ignored, and omitting tick edits the file without that guard. version is optional in the same way: pass the short version token that the read of this file reported, and the edit is refused when that token is not the version of the file now, so an edit never lands on a file you did not read. A token that does not match may have been copied wrong and not mean that the file changed: the refusal names the token, reports the current one, and you can retry with it. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
+         "Replace exact text in a file, guarded by an optional modification tick and an optional version token. old_str must be nonempty and must match exactly once unless replace_all is true. tick is optional: pass the tick that the read of this file reported; the edit is refused when the file changed since that tick was taken, and the refusal reports the current tick, so you can retry with it. If the read of the file reported no tick, omit tick: a tick that no read handed out is ignored, and omitting tick edits the file without that guard. version is optional in the same way: pass the short version token that the read of this file reported, and the edit is refused when that token is not the version of the file now, so an edit never lands on a file you did not read. A token that does not match may have been copied wrong and not mean that the file changed: the refusal names the token, reports the current one, and you can retry with it. An edit of a file that Emacs holds unsaved changes of is refused as well, with or without a token: a read of the disk cannot show them, and the refusal asks the person to save the file first. The replacement is one undo step, and the file is saved unless yeah-edit-save-after-edit is nil. After a refusal, read the file again before retrying."
          :input (list (list :name "path" :type 'string)
                       (list :name "old_str" :type 'string)
                       (list :name "new_str" :type 'string)
@@ -242,10 +265,11 @@ Refuse an existing PATH unless OVERWRITE is non-nil."
          :concurrency 'exclusive)
    (list :name "write"
          :description
-         "Write UTF-8 content to a new file, creating it. An existing file is refused unless overwrite is true; to change part of a file that already exists, use the edit tool instead."
+         "Write UTF-8 content to a new file, creating it. An existing file is refused unless overwrite is true; to change part of a file that already exists, use the edit tool instead. version is optional: pass the short version token that the read of this file reported, and the write is refused when that token is not the version of the file now, so that a write never lands on a file you did not read. A token that does not match may have been copied wrong and not mean that the file changed: the refusal names the token and reports the current one, and you can retry with it. A write of a file that does not exist needs no token."
          :input (list (list :name "path" :type 'string)
                       (list :name "content" :type 'string)
-                      (list :name "overwrite" :type 'boolean :optional t))
+                      (list :name "overwrite" :type 'boolean :optional t)
+                      (list :name "version" :type 'string :optional t))
          :handler #'yeah-edit--write
          :concurrency 'exclusive)))
 
