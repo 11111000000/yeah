@@ -115,12 +115,16 @@
                             (or (plist-get decision :reason) "")))))
 
 (ert-deftest yeah-run-context-start-runs-the-turn-of-the-context ()
-  "The transport, the rules and the session of the context reach the turn."
+  "The transport, the rules and the session of the context reach the turn.
+The run asks for no supervision: without it the first answer ends the run,
+and the subject of this test is the plumbing of the run, not the
+supervision of the model."
   (let* ((session (yeah-run-test--session))
          (context (yeah-run-context-create
                    :placement 'batch
                    :session session
                    :transport (yeah-run-test--transport '("the answer"))
+                   :max-nudges 0
                    :rules (list (yeah-perm-rule-make "read" "*" 'allow)))))
     (yeah-run-context-start context "the task")
     (let ((turn (yeah-run-context-turn context)))

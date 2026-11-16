@@ -1524,9 +1524,7 @@
       "register": "fact",
       "control": "sed -i 's|(let ((session-id (plist-get question :session-id)))|(let ((session-id nil))|' lib/yeah-acp.el",
       "waiver": null
-    }
-,
-
+    },
     {
       "id": "pending-queue-is-in-the-journal",
       "text": "The pending queue of a session is a projection of the journal: every input that is queued, starts a run, is recovered or is withdrawn is written into the session log with its id, and the pending list of the editor agrees with the queue of the controller.",
@@ -1550,7 +1548,6 @@
       "control": "sed -i 's/(yeah-control--write-withdrawn control input \"withdrawn by the person\")/(ignore input)/' lib/yeah-control.el",
       "waiver": null
     },
-
     {
       "id": "an-answer-may-come-later",
       "text": "A permission request is written into the journal before the question is asked, and an answer that comes later settles the question exactly once.",
@@ -1574,7 +1571,6 @@
       "control": "sed -i 's/(unless (or settled closed)/(unless closed/' lib/yeah-approval.el",
       "waiver": null
     },
-
     {
       "id": "the-wire-carries-the-control",
       "text": "The ACP wire carries the control of a session: a client steers a running turn, withdraws a pending input, recovers one, opens the session again with its journal replayed, and the pending queue of the session reaches the client as session/update notifications.",
@@ -1598,30 +1594,23 @@
       "control": "sed -i 's/(\"session\\/steer\"/(\"session\\/steer-off\"/' lib/yeah-acp.el",
       "waiver": null
     },
-
     {
       "id": "bench-task-set-is-measurable",
       "text": "The self-check proves every task of the task set has a prompt and an executable check that fails on an untouched workspace, and the runner records a harness that could not run as skipped or not-available, never as a pass.",
-      "scope": [
-        "bench/manifest.el", "bench/run-bench.el", "bench/tasks/"
-      ],
+      "scope": [ "bench/manifest.el", "bench/run-bench.el", "bench/tasks/" ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
       "owner": "p.b.kosov@yandex.ru",
       "review_on": [],
       "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev bench"
-        }
+        { "kind": "verifier", "spec": "./scripts/dev bench" }
       ],
       "falsifier": "a check of the task set passes on an untouched workspace, or a harness that could not run is recorded as a pass",
       "register": "fact",
       "control": "printf '#!/bin/sh\\nexit 0\\n' > bench/tasks/read-answer/check.sh",
       "waiver": null
     },
-
     {
       "id": "yeah-opens-the-service",
       "text": "The command `M-x yeah' opens the service placement, and falls back to the attached placement when the service cannot start.",
@@ -1644,7 +1633,6 @@
       "control": "sed -i 's/(yeah-service)/(yeah--open-attached)/' lib/yeah.el",
       "waiver": null
     },
-
     {
       "id": "the-service-carries-the-control",
       "text": "The editor sends the control requests of a service session — steer, withdraw and recover — over the wire, and the queue notifications that arrive populate its pending-input view.",
@@ -1668,7 +1656,6 @@
       "control": "sed -i 's|\"session/steer\"|\"session/steer-disabled\"|' lib/yeah-service-ui.el",
       "waiver": null
     },
-
     {
       "id": "the-editor-finds-the-service",
       "text": "The editor finds a service through a Unix-domain socket on Unix and through a numeric port file on a loopback TCP port when IPv4 is selected.",
@@ -1695,9 +1682,7 @@
     {
       "id": "an-empty-answer-does-not-end-the-run",
       "text": "An answer of the model that says nothing is not a result: with supervision the run nudges the model into the action, and without supervision the run fails instead of ending as a finished job.",
-      "scope": [
-        "lib/yeah-turn.el", "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
@@ -1717,9 +1702,7 @@
     {
       "id": "a-silence-nudge-carries-the-state-of-the-work",
       "text": "A nudge that follows an empty answer carries the state of the work — the tools the run already called and the results they returned — and does not name an unused tool as the next call, so that the model continues instead of starting the work over.",
-      "scope": [
-        "lib/yeah-turn.el", "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
@@ -1739,9 +1722,7 @@
     {
       "id": "a-guessed-tick-does-not-refuse-an-unchanged-file",
       "text": "An edit of a file that no buffer visits is not refused because of a tick the model could not have read: only a buffer that visits the file hands out a tick, so a tick for a file nobody had open is a guess, and the guard keeps the ticks that a read handed out.",
-      "scope": [
-        "lib/yeah-edit.el", "tests/unit/test-yeah-edit.el"
-      ],
+      "scope": [ "lib/yeah-edit.el", "tests/unit/test-yeah-edit.el" ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
@@ -1761,19 +1742,14 @@
     {
       "id": "a-provider-failure-is-not-a-failure-of-the-agent",
       "text": "A run that the provider or the transport to it stopped is recorded as blocked and not as a failure of the agent: a provider that fails is not an agent that fails, and the measurement of nothing is not a failure.",
-      "scope": [
-        "bench/run-bench.el"
-      ],
+      "scope": [ "bench/run-bench.el" ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
       "owner": "p.b.kosov@yandex.ru",
       "review_on": [],
       "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev bench"
-        }
+        { "kind": "verifier", "spec": "./scripts/dev bench" }
       ],
       "falsifier": "the runner records a run that the provider stopped as a failure of the agent or as a pass",
       "register": "fact",
@@ -1783,10 +1759,7 @@
     {
       "id": "a-decision-that-arrives-while-the-tools-run-does-not-break-the-run",
       "text": "A decision that arrives while the tools of the previous decision are still running waits for them: the run does not break, the decision is not lost, and the model sees the results of every batch together.",
-      "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
@@ -1806,10 +1779,7 @@
     {
       "id": "the-same-tool-call-does-not-run-twice",
       "text": "A tool call that is already running is not run again: the model that says the same thing twice runs the tool once, because a tool that runs twice repeats its side effect.",
-      "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
@@ -1830,8 +1800,9 @@
       "id": "an-edit-does-not-land-on-a-file-that-changed-under-the-model",
       "text": "A read hands the model a version token of the file it read, and an edit that presents that token is refused when the file changed after the read: an edit never lands on a file the model did not read.",
       "scope": [
-        "lib/yeah-version.el", "lib/yeah-files.el", "lib/yeah-edit.el", "lib/yeah-result.el",
-        "tests/unit/test-yeah-files.el", "tests/unit/test-yeah-edit.el"
+        "lib/yeah-version.el", "lib/yeah-files.el", "lib/yeah-edit.el",
+        "lib/yeah-result.el", "tests/unit/test-yeah-files.el",
+        "tests/unit/test-yeah-edit.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -1839,7 +1810,10 @@
       "owner": "p.b.kosov@yandex.ru",
       "review_on": [],
       "requirements": [
-        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-edit.el tests/unit/test-yeah-files.el" }
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-edit.el tests/unit/test-yeah-files.el"
+        }
       ],
       "falsifier": "the edit of a file that changed after the read is applied anyway, or the read hands out no version to guard the edit with",
       "register": "fact",
@@ -1859,7 +1833,10 @@
       "owner": "p.b.kosov@yandex.ru",
       "review_on": [],
       "requirements": [
-        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/test-yeah-control.el" }
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+        }
       ],
       "falsifier": "the journal holds no record of the dropped decision, or the reader cannot tell the drop from a decision that never came",
       "register": "fact",
@@ -1870,8 +1847,7 @@
       "id": "a-version-token-is-short-enough-to-copy",
       "text": "The version token that a read hands out is short enough for a model to copy it back unchanged: the token of the pilot of 2026-11-15 was 64 characters of hex, and the model presented 58 of them.",
       "scope": [
-        "lib/yeah-version.el",
-        "lib/yeah-files.el",
+        "lib/yeah-version.el", "lib/yeah-files.el",
         "tests/unit/test-yeah-version.el"
       ],
       "source": null,
@@ -1894,8 +1870,7 @@
       "id": "an-edit-refuses-a-wrong-token-with-the-current-one",
       "text": "An edit that presents a version token which is not the version of the file now is refused, and the refusal names the token and reports the current one: a token that was copied wrong does not mean that the file changed, and the retry with the reported token lands.",
       "scope": [
-        "lib/yeah-edit.el",
-        "lib/yeah-version.el",
+        "lib/yeah-edit.el", "lib/yeah-version.el",
         "tests/unit/test-yeah-version-guard.el"
       ],
       "source": null,
@@ -1918,8 +1893,7 @@
       "id": "an-edit-never-lands-on-a-file-with-unsaved-changes",
       "text": "An edit of a file that Emacs holds unsaved changes of is refused, with a version or without one: a read of the file shows the disk and cannot show the changes of the person, so the edit would overwrite them with text the model never read.",
       "scope": [
-        "lib/yeah-edit.el",
-        "tests/unit/test-yeah-unsaved-guard.el"
+        "lib/yeah-edit.el", "tests/unit/test-yeah-unsaved-guard.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -1941,8 +1915,7 @@
       "id": "a-write-never-lands-on-a-file-that-changed",
       "text": "A write that replaces a file presents the version of the read that it follows and is refused when the file changed since that read: a write never lands on a file the model did not read.",
       "scope": [
-        "lib/yeah-edit.el",
-        "lib/yeah-version.el",
+        "lib/yeah-edit.el", "lib/yeah-version.el",
         "tests/unit/test-yeah-write-guard.el"
       ],
       "source": null,
@@ -1965,8 +1938,7 @@
       "id": "an-edit-never-runs-the-local-variables-of-the-project",
       "text": "An edit of a file of the project does not run the local variables of that file and does not run the directory-local variables of its directory: the project is untrusted input, and the harness does not run the code of the project in the Emacs of the person.",
       "scope": [
-        "lib/yeah-untrusted.el",
-        "lib/yeah-edit.el",
+        "lib/yeah-untrusted.el", "lib/yeah-edit.el",
         "tests/unit/test-yeah-untrusted.el"
       ],
       "source": null,
@@ -1989,9 +1961,7 @@
       "id": "a-child-runs-with-the-model-and-the-tools-of-its-preset",
       "text": "A delegated child runs on the model of the preset that named it, with the tools of that preset and with the instructions of that preset, and every tool outside the preset is refused to it: a child of Yeah never reaches further than the agent it was given.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-agent.el",
-        "lib/yeah-subagent.el",
+        "lib/yeah-delegate.el", "lib/yeah-agent.el", "lib/yeah-subagent.el",
         "tests/unit/test-yeah-delegate-preset.el"
       ],
       "source": null,
@@ -2014,8 +1984,7 @@
       "id": "a-delegation-does-not-hold-the-turn-of-its-parent",
       "text": "A delegation answers at once with the id of the child, and the turn of the parent goes on while the child works: the child answers on its own, later, and the journal of the parent says what became of it.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-subagent.el",
+        "lib/yeah-delegate.el", "lib/yeah-subagent.el",
         "tests/unit/test-yeah-delegate-asynchronous.el"
       ],
       "source": null,
@@ -2038,8 +2007,7 @@
       "id": "the-plan-profile-denies-a-delegation",
       "text": "The Plan profile denies a delegation: a plan reaches the world through no child, and the denial of the profile is what the journal of the run says.",
       "scope": [
-        "lib/yeah-perm.el",
-        "lib/yeah-delegate.el",
+        "lib/yeah-perm.el", "lib/yeah-delegate.el",
         "tests/unit/test-yeah-delegate-plan-profile.el"
       ],
       "source": null,
@@ -2062,9 +2030,7 @@
       "id": "a-delegation-is-written-into-the-journal-of-its-own-run",
       "text": "A delegation is written into the journal of the run that asked for it, and into no other journal: the child of a delegation belongs to the run whose model asked for it, and the record of the delegation -- that the child was started and what became of it -- is in the journal of that run.",
       "scope": [
-        "lib/yeah-session.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-delegate.el",
+        "lib/yeah-session.el", "lib/yeah-turn.el", "lib/yeah-delegate.el",
         "tests/unit/test-yeah-delegate-journal.el"
       ],
       "source": null,
@@ -2087,8 +2053,7 @@
       "id": "a-child-is-found-by-a-short-id",
       "text": "The id of a child is short enough for a model to copy back without losing a character of it, and the harness finds the child by that id: the model asks for the child by the id that the delegate tool gave it, and the answer names the child.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "tests/unit/test-yeah-delegate-short-id.el"
+        "lib/yeah-delegate.el", "tests/unit/test-yeah-delegate-short-id.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -2133,9 +2098,7 @@
       "id": "a-child-ends-when-its-time-is-up",
       "text": "A child of a delegation has a time of its own: when the time is up the child is cancelled and the parent is told that the child ran out of time, so that a child that never ends does not work for ever and does not leave the parent waiting for an answer that never comes.",
       "scope": [
-        "lib/yeah-subagent.el",
-        "lib/yeah-delegate.el",
-        "lib/yeah-agent.el",
+        "lib/yeah-subagent.el", "lib/yeah-delegate.el", "lib/yeah-agent.el",
         "tests/unit/test-yeah-delegate-deadline.el"
       ],
       "source": null,
@@ -2158,9 +2121,7 @@
       "id": "a-child-is-found-after-the-harness-restarts",
       "text": "The children of a run and what became of them belong in the journal of that run: a restart of the harness forgets the children that the Emacs delegated, and the child is found again by the id the model was given, and the answer tells what became of it, and a child the journal holds no end of is not reported as a child that still works.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-subagent.el",
-        "lib/yeah-events.el",
+        "lib/yeah-delegate.el", "lib/yeah-subagent.el", "lib/yeah-events.el",
         "tests/unit/test-yeah-delegate-restart.el"
       ],
       "source": null,
@@ -2183,9 +2144,7 @@
       "id": "a-session-knows-its-depth-from-the-journal",
       "text": "A child knows where it stands in the tree of the delegations from its own journal: a restart of the harness does not make a child of depth one look like a root, and a child that reads its depth as zero is refused the delegation that would go deeper than the agent of the child allows.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-subagent.el",
-        "lib/yeah-events.el",
+        "lib/yeah-delegate.el", "lib/yeah-subagent.el", "lib/yeah-events.el",
         "tests/unit/test-yeah-delegate-depth-journal.el"
       ],
       "source": null,
@@ -2225,6 +2184,75 @@
       "falsifier": "the row of a run that did not finish does not name the shape of the failure, or the naming of the shape changes the status of the row",
       "register": "fact",
       "control": "sed -i 's|(format \"the run did not finish: %s; \" unfinished)|\"\"|' bench/run-bench.el",
+      "waiver": null
+    },
+    {
+      "id": "supervision-is-the-default",
+      "text": "The kernel supervises a run by default: the budget of the completion supervision is positive, a run that takes the default budget and whose model only describes its next step is nudged, and such a run ends as a failed run and not as a finished job.",
+      "scope": [
+        "lib/yeah-turn.el", "lib/yeah-product.el",
+        "tests/checks/check-supervision-is-the-default.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-supervision-is-the-default.el"
+        }
+      ],
+      "falsifier": "the default budget of the supervision is not positive, or a run that took the default budget ended as a completed job without a nudge",
+      "register": "fact",
+      "control": "sed -i 's|(defcustom yeah-turn-default-max-nudges 3|(defcustom yeah-turn-default-max-nudges 0|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "a-run-that-did-not-finish-is-not-a-success",
+      "text": "A run that spends its nudge budget without an effect is not a success: the turn ends in the state 'failed', and the ACP wire answers such a run with the stop reason 'refusal' and never with 'end_turn'.",
+      "scope": [
+        "lib/yeah-turn.el", "lib/yeah-acp.el",
+        "tests/checks/check-a-run-that-did-not-finish-is-not-a-success.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-run-that-did-not-finish-is-not-a-success.el"
+        }
+      ],
+      "falsifier": "the turn that spent its budget ends in a state other than 'failed', or the wire answers the run that did not finish with 'end_turn'",
+      "register": "fact",
+      "control": "sed -i \"s|(yeah-turn--mark-done turn 'failed)|(yeah-turn--mark-done turn)|\" lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-live-stand-waits-for-an-answer",
+      "text": "The live stand waits for an answer and does not mistake the empty string of a reasoning model for one: text with content and a tool call are answers, and the empty string, the streaming sentinel and the reasoning are not.",
+      "scope": [
+        "tests/live/live-model-call.el", "tests/support/yeah-live-answer.el",
+        "tests/unit/test-yeah-live-answer.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-live-answer.el"
+        }
+      ],
+      "falsifier": "the stand calls an empty answer an answer, or it calls a tool call no answer",
+      "register": "fact",
+      "control": "sed -i \"s|(if (string-empty-p response) 'empty 'text)|(if (string-empty-p response) 'text 'text)|\" tests/support/yeah-live-answer.el",
       "waiver": null
     }
   ]

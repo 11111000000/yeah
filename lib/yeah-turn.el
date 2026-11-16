@@ -115,13 +115,15 @@ run twice."
   :type 'string
   :group 'yeah)
 
-(defcustom yeah-turn-default-max-nudges 0
+(defcustom yeah-turn-default-max-nudges 3
   "Default completion nudge budget.
-Zero keeps ordinary runs uninterrupted: the run ends as soon as the model
-answers with text.  A run that asks for supervision (a non-zero budget)
-is nudged when the model describes its next step instead of taking it, or
-when it reports a result that no tool backs; the nudge names the tools the
-run has not called yet."
+The budget is positive: a run of the kernel is supervised unless a caller
+asks for no supervision at all (a budget of zero).  A supervised run is
+nudged when the model describes its next step instead of taking it, or when
+it reports a result that no tool backs; the nudge names the tools the run
+has not called yet.  A run that spends its budget without an effect says so
+in the journal instead of looking done, and a run that is not supervised ends
+as soon as the model answers with text."
   :type 'integer
   :group 'yeah)
 
@@ -737,7 +739,9 @@ the results of every batch together."
 (defun yeah-turn--answer-text (turn answer transport answerer)
   "Handle a text ANSWER from the model: record it, nudge it or end the run.
 A plan, an answer that says nothing, and a result that no tool backs, are
-nudged into the action; a result that a tool backs ends the run."
+nudged into the action; a result that a tool backs ends the run.  A run that
+spent its nudge budget without an effect ends as a failed run: it did not do
+the work, and it must not look as if it had."
   (yeah-turn--write turn "assistant-message"
                     (yeah-turn--context
                      turn nil (yeah-turn-turn-event-id turn))
@@ -749,50 +753,48 @@ nudged into the action; a result that a tool backs ends the run."
       ;; as if the work were done.
       (yeah-turn--fail turn
                        "the model answered with an empty message and the run is not done")
-    (progn
+    (let ((premature (or (yeah-turn--plan-p answer)
+                          ;; An answer that says nothing is not a result: the
+                          ;; model has not advanced, and the run nudges it into
+                          ;; the action instead of taking the silence for the
+                          ;; work.
+                          (yeah-turn--silent-p answer)
+                          ;; A result that no tool backs is premature: the run
+                          ;; has not touched anything yet.  And a run that is
+                          ;; supervised ends through `finish', not through talk.
+                          (null (yeah-turn-tools-used turn)))))
       (yeah-turn--tick turn 'stream-end)
-      (yeah-turn--tick turn 'no-tool-calls)
-      (if (and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))
-                (or (yeah-turn--plan-p answer)
-                    ;; An answer that says nothing is not a result: the
-                    ;; model has not advanced, and the run nudges it into
-                    ;; the action instead of taking the silence for the
-                    ;; work.
-                    (yeah-turn--silent-p answer)
-                    ;; A result that no tool backs is premature: the run
-                    ;; has not touched anything yet.  And a run that is
-                    ;; supervised ends through `finish', not through talk.
-                    (null (yeah-turn-tools-used turn))))
-          (progn
-            (cl-incf (yeah-turn-nudges turn))
-            (let ((nudge (yeah-turn--nudge-text turn answer)))
-              (yeah-turn--write turn "nudge"
-                                (yeah-turn--context
-                                 turn nil (yeah-turn-turn-event-id turn))
-                                :payload nudge)
-              (setf (yeah-turn-state turn) 'deciding)
-              (setf (yeah-turn-states turn)
-                    (append (yeah-turn-states turn) (list 'deciding)))
-              (yeah-turn--ask turn nudge transport answerer)))
-        (progn
-          ;; A supervised run that ends without the model finishing must
-          ;; say so: the nudge budget is spent and the model still
-          ;; describes its next step.  Ending as if it were done would be
-          ;; a false success.
-          (when (and (> (yeah-turn-max-nudges turn) 0)
-                     (or (yeah-turn--plan-p answer)
-                         (yeah-turn--silent-p answer)
-                         (null (yeah-turn-tools-used turn))))
-            (yeah-turn--write turn "unfinished"
-                              (yeah-turn--context
-                               turn nil (yeah-turn-turn-event-id turn))
-                              :payload (if (yeah-turn--silent-p answer)
-                                           (format "the model answered with an empty message %d times and the run ended without an effect"
-                                                   (yeah-turn-nudges turn))
-                                         (format "the model described its next step %d times and the run ended without an effect"
-                                                 (yeah-turn-nudges turn)))
-                              :reason "the nudge budget was spent"))
-          (yeah-turn--mark-done turn))))))
+      (cond
+       ((and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn)) premature)
+        (yeah-turn--tick turn 'no-tool-calls)
+        (cl-incf (yeah-turn-nudges turn))
+        (let ((nudge (yeah-turn--nudge-text turn answer)))
+          (yeah-turn--write turn "nudge"
+                            (yeah-turn--context
+                             turn nil (yeah-turn-turn-event-id turn))
+                            :payload nudge)
+          (setf (yeah-turn-state turn) 'deciding)
+          (setf (yeah-turn-states turn)
+                (append (yeah-turn-states turn) (list 'deciding)))
+          (yeah-turn--ask turn nudge transport answerer)))
+       ((and (> (yeah-turn-max-nudges turn) 0) premature)
+        ;; A supervised run that ends without the model finishing must
+        ;; say so: the nudge budget is spent and the model still
+        ;; describes its next step.  Ending as if it were done would be
+        ;; a false success, and the run that says so is a failed run.
+        (yeah-turn--write turn "unfinished"
+                          (yeah-turn--context
+                           turn nil (yeah-turn-turn-event-id turn))
+                          :payload (if (yeah-turn--silent-p answer)
+                                       (format "the model answered with an empty message %d times and the run ended without an effect"
+                                               (yeah-turn-nudges turn))
+                                     (format "the model described its next step %d times and the run ended without an effect"
+                                             (yeah-turn-nudges turn)))
+                          :reason "the nudge budget was spent")
+        (yeah-turn--mark-done turn 'failed))
+       (t
+        (yeah-turn--tick turn 'no-tool-calls)
+        (yeah-turn--mark-done turn))))))
 
 (defun yeah-turn--answer (turn answer answerer &optional transport info)
   "Handle the model's ANSWER in TURN. The ANSWERER answers requests."

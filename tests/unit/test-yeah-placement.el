@@ -68,7 +68,9 @@
                    '(("user-message" :payload "hello"))))))
 
 (ert-deftest yeah-placement-batch-runs-a-task-and-writes-the-journal ()
-  "The batch placement runs the task and leaves the journal behind."
+  "The batch placement runs the task and leaves the journal behind.
+The model of the task finishes its work the way a supervised model does: it
+calls the `finish' tool, and the journal says that the run finished."
   (let* ((root (make-temp-file "yeah-placement-project" t))
          (data-home (make-temp-file "yeah-placement-data" t))
          (yeah-data-home data-home)
@@ -76,14 +78,20 @@
                    "do the thing"
                    :root root
                    :transport (lambda (_prompt callback)
-                                (funcall callback "the answer")))))
+                                (funcall callback
+                                         (list 'tool-call
+                                               (list (list :name "finish")
+                                                     (list "the answer")
+                                                     (lambda (_value) nil))))))))
     (unwind-protect
         (progn
           (yeah-placement-await (yeah-run-context-turn context))
           (should (eq 'completed (yeah-turn-state (yeah-run-context-turn context))))
           (let* ((session (yeah-run-context-session context))
                  (records (yeah-session-records session)))
-            (should (equal '("header" "user-message" "assistant-message")
+            (should (equal '("header" "user-message" "tool-request"
+                             "permission-request" "permission-decision"
+                             "tool-end" "finish")
                            (mapcar (lambda (record) (plist-get record :type))
                                    records)))))
       (ignore-errors (delete-directory root t))

@@ -107,6 +107,26 @@ must not write into the queue of the person who runs it."
        (yeah-acp--reset-for-test)
        (ignore-errors (delete-directory directory t t)))))
 
+(defun yeah-acp-test--finish (summary)
+  "Return the tool call of a model that finished its work with SUMMARY.
+A supervised run ends through the `finish' tool: a text answer alone is not
+a completion, and the wire says which of the two happened."
+  (list 'tool-call
+        (list (list :name "finish")
+              (list summary)
+              (lambda (_value) nil))))
+
+(defun yeah-acp-test--answer-then-finish (summary)
+  "Return a transport that answers with SUMMARY and then finishes the run.
+A supervised run does not end through talk: the harness nudges the model, and
+the model ends the run with the `finish' tool."
+  (let ((asked 0))
+    (lambda (_prompt callback)
+      (setq asked (1+ asked))
+      (if (= asked 1)
+          (funcall callback summary)
+        (funcall callback (yeah-acp-test--finish summary))))))
+
 (defun yeah-acp-test--new-session (&optional transport)
   "Create a session in the isolated ACP test server and return its id.
 TRANSPORT is the transport of the service: the controller of a session
@@ -156,7 +176,7 @@ freezes it when the session is created."
   (yeah-acp-test--with-server
     (let* ((emitted nil)
            (session-id (yeah-acp-test--new-session
-                        (lambda (_prompt callback) (funcall callback "the answer")))))
+                        (yeah-acp-test--answer-then-finish "the answer"))))
       (setq yeah-acp--output-function (lambda (text) (push text emitted)))
       (should-not
        (yeah-acp-handle-message
@@ -167,6 +187,28 @@ freezes it when the session is created."
       (should (cl-some (lambda (text)
                          (string-match-p "agent_message_chunk" text))
                        emitted)))))
+
+(ert-deftest yeah-acp-prompt-answers-refusal-when-the-run-does-not-finish ()
+  "A model that only describes its next step does not finish the run.
+The wire must not call such a run done: the run is supervised, and a run
+that spends its budget without an effect is not a completion."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session
+                        (lambda (_prompt callback)
+                          (funcall callback "I'll write the file now."))))
+           (session (plist-get (yeah-acp--session-state session-id) :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (should-not
+       (yeah-acp-handle-message
+        (yeah-acp-test--prompt-request 8 session-id "hello")))
+      (let ((response (yeah-acp-test--find-response emitted 8)))
+        (should response)
+        (should (equal "refusal" (yeah-acp-test--stop-reason response))))
+      ;; and the journal of the session says that the run did not finish
+      (should (cl-some (lambda (record)
+                          (equal "unfinished" (plist-get record :type)))
+                        (yeah-session-records session))))))
 
 (ert-deftest yeah-acp-cancel-answers-prompt-with-cancelled ()
   (yeah-acp-test--with-server
@@ -304,7 +346,8 @@ the session, so the same question is not asked a second time."
            (session-id (yeah-acp-test--new-session
                         (lambda (prompt callback)
                           (setq asked prompt)
-                          (funcall callback "the answer"))))
+                          (funcall callback
+                                   (yeah-acp-test--finish "the answer")))))
            (session (plist-get (yeah-acp--session-state session-id) :session)))
       ;; the queue a restart left behind
       (yeah-input-enqueue session (list :kind 'ask

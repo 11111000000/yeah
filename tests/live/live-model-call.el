@@ -11,8 +11,8 @@
 ;;
 ;; The other checks of this repository never touch the network: they put a
 ;; fake model under the transport. This one does not. It asks a real model
-;; through `yeah-gptel-request' — the one place where Yeah calls the model
-;; — and checks that an answer comes back.
+;; through `yeah-gptel-request' — the one place where Yeah calls the model —
+;; and checks that an answer comes back.
 ;;
 ;; It is not part of the suite, because it costs money and needs a key.
 ;; It is here so that the claim about the transport can be checked against
@@ -29,6 +29,15 @@
 ;; `yeah-gptel--supported-versions'.  The OpenAI backend lives in
 ;; `gptel-openai' since gptel 0.9.8, and it is required here.
 ;;
+;; What counts as an answer.  A model that reasons sends its thinking and,
+;; between the thinking and the answer, an empty string: the empty string is
+;; not an answer, and the check waits for the answer that follows it.  A
+;; model that acts instead of talking answers with a tool call, and that is
+;; an answer as well: the model reached for a tool and the transport carried
+;; the call.  Only a request that ends in an error, or a model that says
+;; nothing at all, fails the check.  The shape of the answer is printed, so
+;; that a reader of a failed run knows what the provider said.
+;;
 ;; Exit codes: 0 — an answer came back, or there was no key to ask with;
 ;; 1 — the model did not answer.
 
@@ -37,10 +46,18 @@
 (require 'gptel)
 (require 'gptel-openai)
 (require 'yeah-gptel)
+(load (expand-file-name "../support/yeah-live-answer.el"
+                        (file-name-directory (or load-file-name default-directory))))
 
-(let ((key (getenv "YEAH_TEST_KEY"))
-      (host (or (getenv "YEAH_TEST_HOST") "api.minimax.io"))
-      (model (or (getenv "YEAH_TEST_MODEL") "MiniMax-M3.1-Flash")))
+(let* ((key (getenv "YEAH_TEST_KEY"))
+       (host (or (getenv "YEAH_TEST_HOST") "api.minimax.io"))
+       (model (or (getenv "YEAH_TEST_MODEL") "MiniMax-M3.1-Flash"))
+       (answer nil)
+       (shape nil)
+       (reason nil)
+       (status nil)
+       (calls 0)
+       (last 0.0))
 
   (unless key
     (message "live: skipped — no YEAH_TEST_KEY in the environment")
@@ -54,23 +71,46 @@
           :models (list (intern model))))
   (setq gptel-model (intern model))
 
-  (let ((answer nil)
-        (status nil))
-    (yeah-gptel-request
-     "Answer with the single word: OK"
-     (lambda (response &optional info)
-       (when (stringp response)
-         (setq answer response))
-       (when (plist-get info :status)
-         (setq status (plist-get info :status)))))
-    ;; the request is asynchronous: the answer arrives on the event loop
-    (let ((waited 0))
-      (while (and (null answer) (< waited 60))
-        (accept-process-output nil 1)
-        (setq waited (1+ waited))))
-    (message "live: status=%S answer=%S" status answer)
-    (if (and answer (stringp answer) (not (string-empty-p answer)))
-        (kill-emacs 0)
-      (kill-emacs 1))))
+  (yeah-gptel-request
+   "Answer with the single word: OK"
+   (lambda (response &optional info)
+     (setq calls (1+ calls))
+     (setq last (float-time))
+     (when (plist-get info :status)
+       (setq status (plist-get info :status)))
+     ;; The shape of the answer decides the verdict.  The empty string that a
+     ;; model that reasons sends between its thinking and its answer is not an
+     ;; answer, and the stand waits for the answer that follows it; a tool
+     ;; call is an answer, because the model acted.
+     (let ((kind (yeah-live-answer-shape response)))
+       (cond
+        ((eq kind 'text)
+         (setq answer (yeah-live-answer-text response)
+               shape 'text))
+        ((eq kind 'tool-call)
+         (setq shape 'tool-call))
+        ((eq kind 'error)
+         (setq shape 'error
+               reason (yeah-live-answer-error response)))))))
+
+  ;; The request is asynchronous: the answer arrives on the event loop.
+  ;; The wait ends when the provider has been quiet for a moment after the
+  ;; answer, or when the budget of the wait is spent.
+  (let ((waited 0)
+        (quiet 0))
+    (while (and (< waited 90)
+                (or (null shape)
+                    (< quiet 3)))
+      (accept-process-output nil 1)
+      (setq waited (1+ waited))
+      (setq quiet (if (and shape (> (- (float-time) last) 2))
+                      (1+ quiet)
+                    0))))
+
+  (message "live: status=%S shape=%S calls=%d answer=%S reason=%S"
+           status shape calls answer reason)
+  (if (and shape (not (eq shape 'error)))
+      (kill-emacs 0)
+    (kill-emacs 1)))
 
 ;;; live-model-call.el ends here

@@ -82,7 +82,9 @@ DATA-HOME, so the check leaves nothing behind."
                           "(setq yeah-input-directory %S) "
                           "(defun yeah-check--transport (prompt callback) "
                           "(if (equal prompt \"again\") "
-                          "(funcall callback \"done\") "
+                          "(funcall callback (list 'tool-call "
+                          "(list (list :name \"finish\") (list \"done\") "
+                          "(lambda (_value) nil)))) "
                           "nil)) "
                           "(yeah-acp-serve-socket %S #'yeah-check--transport))")
                   data-home

@@ -60,7 +60,9 @@ answers every later prompt with text."
                           "(defun yeah-check--transport (prompt callback) "
                           "(setq yeah-check--prompts (1+ yeah-check--prompts)) "
                           "(if (= yeah-check--prompts 1) nil "
-                          "(funcall callback \"done\"))) "
+                          "(funcall callback (list 'tool-call "
+                          "(list (list :name \"finish\") (list \"done\") "
+                          "(lambda (_value) nil)))))) "
                           "(yeah-acp-serve-socket %S #'yeah-check--transport))")
                   data-home socket))
            :connection-type 'pipe
