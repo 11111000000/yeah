@@ -1618,5 +1618,114 @@ is whole), then 16.4 and 16.6 (the product works everywhere and is seen),
 then 16.7 (the goal is measured), and 16.5 and 16.8 whenever.
 
 
+## 17. What is left, and who decides it
+
+The work of waves 24–35 is closed and bound to fresh evidence.  What follows is
+everything that is still open, written down in one place, so that nobody has
+to reconstruct it from the history of the sessions.  The first list is work an
+agent may do; the second list is the work only the owner may decide, and no
+agent may decide it silently (`docs/PLAN.md` §13).
+
+### 17.1 The open work of the code
+
+**The delegation (Stage 7, after wave 35).**
+
+- Several children in one turn of the parent are not implemented: the parent
+  asks for one child at a time, and the tool answers with one id.
+- The model of the child is the model of the preset, and the preset names it;
+  no child of a live provider has run yet on a model other than the model of
+  its parent.
+- The depth of the tree of the children is kept in a table of the running Emacs
+  and not in the journal, so a restart of the harness forgets the depth of the
+  children that are still working.
+- The id of a child is the id of its session, and the model has to copy it
+  into `delegate-result`; a copy that is wrong is refused by name.  The token
+  of a read was shortened for the same reason (wave 32), and the id of a child
+  is not shortened yet.
+- The live checks do not exercise the delegation: the benchmark gives its runs
+  a fixed set of tools, and the delegation is not among them.  The live
+  evidence of a child that works is the fixed point, and that is one child and
+  one task.
+- The tools of the delegation are not in `yeah-builtins-specs` (the built-ins
+  are the tools of the kernel, and the delegation is a tool of the product),
+  so a reader of that list does not see them.
+
+**The turn, and what the provider and the model do.**
+
+- A model can end its turn with a message that announces an action and call no
+  tool ("I'll look at the current state of calc.el.").  The harness cannot tell
+  a promise of an action from an answer: the completion nudge fires when the
+  model is silent and not when the model talks without acting.
+- The provider answers with an empty message after a batch of tool results,
+  with the status of a success (HTTP 200, `answer=""`).  The run then ends
+  with the record "unfinished", which is honest, and the work is not done.
+- The provider is overloaded for hours: HTTP 529 to both harnesses, a plain
+  model call that answers with nothing now and then, and a transport that
+  times out ("Curl failed with exit code 28").  A run that the provider stops
+  is blocked and not a failure of the agent.
+- The outcome of a run does not describe the work that was done: a run of
+  `fix-failing-test` ended in "failed" because the provider failed after the
+  edit, while the check of the task passed.  The check of the benchmark is the
+  arbiter.
+
+**The product.**
+
+- A real editor (an agent-shell, or a person's Emacs) against a live provider:
+  not yet checked.  The ACP agent and the MCP server are driven by a
+  third-party client with a fake model, and the service path itself is
+  verified with a live provider.
+- The service path has no mode changes of the attached path and no opening of
+  an earlier session by name.
+- The bridge to the buffers of an attached Emacs is verified against a live
+  Emacs server (a real daemon), and not against a person's Emacs in day-to-day
+  use.
+- The stdio server answers one request at a time: a cancel that arrives while
+  a prompt is running is read after that prompt reaches a terminal state.  The
+  socket transport does not have this limit.
+- The picture of the interface is compared with itself and with the same
+  buffer without the interface, and not with a stored golden picture.
+- PTC stays an experimental, off-by-default restricted evaluator, and not a
+  security boundary.
+
+**The measurement.**
+
+- The pilot is three tasks.  The sample is small, and the numbers of the runs
+  of waves 33, 34 and 35 (2 of 3, 1 of 3, 2 of 3 and one blocked) differ by
+  the noise of the provider and of the model.
+- The second harness is `pi` 1.1.0, which is checked in the environment;
+  `opencode` is not installed here.
+
+### 17.2 The decisions of the owner
+
+None of these may be decided by an agent.  Each of them is recorded with
+`mathc record` when a person decides it, and not by an edit of the code.
+
+- The threshold of the parity, and the final set of the tasks of the benchmark
+  (`docs/PLAN.md` §13).  Until the threshold is decided, the parity is not
+  claimed anywhere, and the pilot stays a measurement.
+- The second harness of the comparison, if it is not `pi`.
+- The placement of the frame server for the pixel check.  The check is outside
+  the map of the method: without a frame server it is blocked, and not a pass.
+- The priority of the next wave: the parallel children of Stage 7, a wider
+  pilot, a real editor against a live provider, or the gaps of the service
+  path.
+- The minimum versions of Emacs and gptel, and the cycle of the releases.
+- The policy of the unattended command and of the network.
+- Whether a restricted evaluation deserves a design of its own process at all.
+- The access of the service to the personal buffers of the person.
+- The channels of the distribution and the signing of the packages.
+- The compatibility with Apache-2.0 of every optional integration.
+
+### 17.3 The order, if the owner says nothing
+
+1. **Wave 36 — the parallel children of the delegation** (Stage 7, right after
+   wave 35): several children in one turn of the parent, the model of the
+   child that differs from the model of the parent, and a short id of the child
+   that a model can copy.
+2. **Wave 37 — the depth of the tree in the journal**, so that a restart of
+   the harness does not forget the children that still work.
+3. **The pilot again**, with a larger set of tasks, when the provider answers.
+4. **The pixel check**, when the owner names the place of the frame server.
+
 Re-opened when a person says so: the math-coding aim block in AGENTS.md is
 written by `mathc install` and is not edited by hand.

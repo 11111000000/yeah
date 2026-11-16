@@ -235,6 +235,11 @@ work item. Never resolve it by silently making documentation more optimistic.
   adapter without global hooks. Recheck compatibility whenever gptel changes;
   supported pinned versions are declared in `lib/yeah-gptel.el`.
 - A `holds` claim proves its stated check only, not overall product readiness.
+- Everything that is still open is written down in one place:
+  `docs/PLAN.md` §17 — the work an agent may do, the decisions only the owner
+  may make (§17.2), and the order to follow when the owner says nothing
+  (§17.3).  Read it before starting the next wave; do not resolve an owner
+  decision silently.
 
 ## The commands
 
