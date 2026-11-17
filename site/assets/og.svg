@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
-  <title id="title">Yeah — The agent is Emacs</title>
-  <desc id="desc">A GNU Emacs 30.2 frame in its default light theme: the menu bar of 30.2 (File, Edit, Options, Buffers, Tools, Help), a tab bar of window configurations, a header line, a buffer with the words The agent is Emacs, and a mode line with the echo area.</desc>
+  <title id="title">Yeah, Emacs Agent Harness — the agent is Emacs</title>
+  <desc id="desc">A GNU Emacs 30.2 frame in its default light theme: the menu bar of 30.2 (File, Edit, Options, Buffers, Tools, Help), a tab bar of window configurations, a header line, a buffer with the words The agent is Emacs and the name Yeah, Emacs Agent Harness, and a mode line with the echo area.</desc>
 
   <!-- The frame of Emacs 30.2 in its default theme.  Every colour below is a
        face: the menu bar is the window-system grey, the tab bar is grey85, the
@@ -73,26 +73,34 @@
     <text x="68" y="277" font-size="84" letter-spacing="-5">Emacs.</text>
   </g>
 
+  <!-- The name of the thing, as the name reads: Yeah is Y, E-macs, A-gent,
+       H-arness.  The Y-combinator belongs to the sentence that explains
+       the Y, not to the expansion of the acronym. -->
+  <g font-family="DejaVu Sans, Helvetica, Arial, sans-serif">
+    <text x="68" y="322" font-size="26" fill="#a020f0" letter-spacing="0.4">Yeah, Emacs Agent Harness</text>
+    <text x="68" y="350" font-size="15" fill="#555555">Y · E-macs · A-gent · H-arness — and the Y is the Y-combinator.</text>
+  </g>
+
   <g font-family="DejaVu Sans, Helvetica, Arial, sans-serif" fill="#333333" font-size="16">
-    <text x="68" y="315">Yeah is an agent harness written in Emacs Lisp. A dedicated Emacs</text>
-    <text x="68" y="340">runs the tools, permissions and session journal; your editing Emacs</text>
-    <text x="68" y="365">connects through an explicitly approved bridge and stays responsive.</text>
+    <text x="68" y="384">The harness is written in Emacs Lisp. A dedicated Emacs runs the</text>
+    <text x="68" y="406">tools, permissions and session journal; your editing Emacs connects</text>
+    <text x="68" y="428">through an explicitly approved bridge and stays responsive.</text>
   </g>
 
   <g font-family="DejaVu Sans Mono, monospace" font-size="13">
-    <rect x="68" y="394" width="122" height="38" fill="#bfbfbf"/>
-    <text x="80" y="418" fill="#000000" font-weight="bold">install alpha</text>
-    <rect x="202" y="394" width="116" height="38" fill="#ffffff" stroke="#4169e1"/>
-    <text x="214" y="418" fill="#4169e1">read vision</text>
-    <rect x="330" y="394" width="152" height="38" fill="#ffffff" stroke="#4169e1"/>
-    <text x="342" y="418" fill="#4169e1">read architecture</text>
+    <rect x="68" y="448" width="122" height="38" fill="#bfbfbf"/>
+    <text x="80" y="472" fill="#000000" font-weight="bold">install alpha</text>
+    <rect x="202" y="448" width="116" height="38" fill="#ffffff" stroke="#4169e1"/>
+    <text x="214" y="472" fill="#4169e1">read vision</text>
+    <rect x="330" y="448" width="152" height="38" fill="#ffffff" stroke="#4169e1"/>
+    <text x="342" y="472" fill="#4169e1">read architecture</text>
   </g>
 
   <g font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" fill="#333333">
-    <rect x="68" y="458" width="58" height="22" fill="#ff8c00"/>
-    <text x="76" y="474" fill="#000000" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="bold">v0.3.0</text>
-    <text x="138" y="474">The kernel asks only what matters: a read that changes nothing</text>
-    <text x="138" y="496">is not asked about. A kernel, not yet a complete product.</text>
+    <rect x="68" y="502" width="58" height="22" fill="#ff8c00"/>
+    <text x="76" y="518" fill="#000000" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="bold">v0.3.0</text>
+    <text x="138" y="518">The kernel asks only what matters: a read that changes nothing</text>
+    <text x="138" y="540">is not asked about. A kernel, not yet a complete product.</text>
   </g>
 
   <!-- 5. the session, as a window of its own -->
