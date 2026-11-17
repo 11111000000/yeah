@@ -157,6 +157,13 @@ always or reject, and the decision is what the caller receives."
                            (buffer-string)))))
       (ignore-errors (delete-file path)))))
 
+(ert-deftest yeah-diff-previews-an-edit-in-the-middle-of-a-file ()
+  (let* ((path (yeah-interaction-test--temporary-file "one\ntwo\nthree\n"))
+         (edit (yeah-diff-preview "edit" (list path "two" "TWO"))))
+    (unwind-protect
+        (should (plist-get edit :ok))
+      (ignore-errors (delete-file path)))))
+
 (ert-deftest yeah-diff-does-not-change-a-visited-buffer ()
   (let ((path (yeah-interaction-test--temporary-file "one\ntwo\n")))
     (unwind-protect
