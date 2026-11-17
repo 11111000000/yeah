@@ -1,72 +1,148 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
   <title id="title">Yeah — The agent is Emacs</title>
-  <desc id="desc">A dark Emacs frame with a Yeah session, mode line and the phrase The agent is Emacs.</desc>
-  <rect width="1200" height="630" fill="#000000"/>
-  <rect x="40" y="35" width="1120" height="560" fill="#1a1a1a" stroke="#404040"/>
-  <rect x="41" y="36" width="1118" height="48" fill="#262626"/>
-  <line x1="41" y1="84" x2="1159" y2="84" stroke="#404040"/>
+  <desc id="desc">A GNU Emacs 30.2 frame in its default light theme: the menu bar of 30.2 (File, Edit, Options, Buffers, Tools, Help), a tab bar of window configurations, a header line, a buffer with the words The agent is Emacs, and a mode line with the echo area.</desc>
+
+  <!-- The frame of Emacs 30.2 in its default theme.  Every colour below is a
+       face: the menu bar is the window-system grey, the tab bar is grey85, the
+       header line grey90, the mode line black on grey75, the fringe grey95,
+       and the text colours are the font-lock faces. -->
+  <rect width="1200" height="630" fill="#ffffff"/>
+
+  <!-- 1. the menu bar -->
+  <rect x="0" y="0" width="1200" height="34" fill="#f6f5f4"/>
+  <line x1="0" y1="33.5" x2="1200" y2="33.5" stroke="#d6d5d4"/>
+
+  <g font-family="DejaVu Sans Mono, monospace" font-size="15" fill="#000000">
+    <text x="24" y="23" fill="#a020f0" font-size="21">(</text>
+    <g transform="translate(40 4) scale(.42)" fill="none" stroke="#a020f0" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9.5 10.5 L24 26.5"/><path d="M38.5 10.5 L24 26.5"/><path d="M24 26.5 L24 39"/>
+      <circle cx="9.5" cy="10.5" r="3.1" fill="#a020f0"/><circle cx="38.5" cy="10.5" r="3.1" fill="#a020f0"/>
+    </g>
+    <text x="62" y="22" font-weight="bold">Yeah</text>
+    <text x="97" y="23" fill="#a020f0" font-size="21">)</text>
+
+    <text x="150" y="23">File</text>
+    <text x="196" y="23">Edit</text>
+    <text x="242" y="23">Options</text>
+    <text x="322" y="23">Buffers</text>
+    <text x="406" y="23">Tools</text>
+    <text x="464" y="23">Help</text>
+
+    <text x="1050" y="23" font-size="13" fill="#333333">Emacs default</text>
+  </g>
+
+  <!-- 2. the tab bar: a tab is a window configuration, and its label is the
+       buffer of the selected window; the mode is off by default in Emacs,
+       and the site turns it on. -->
+  <rect x="0" y="34" width="1200" height="32" fill="#d9d9d9"/>
+  <line x1="0" y1="65.5" x2="1200" y2="65.5" stroke="#999999"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-size="12">
+    <rect x="22" y="37" width="86" height="28" fill="#ffffff"/>
+    <text x="32" y="56" fill="#000000" font-weight="bold">*scratch*</text>
+    <text x="122" y="56" fill="#333333">*vision*</text>
+    <text x="192" y="56" fill="#333333">*readme*</text>
+    <text x="266" y="56" fill="#333333">*why-emacs*</text>
+    <text x="358" y="56" fill="#333333">*architecture*</text>
+    <text x="468" y="56" fill="#333333">*roadmap*</text>
+    <text x="548" y="56" fill="#333333">*Messages*</text>
+    <text x="628" y="56" fill="#333333">*install*</text>
+    <text x="694" y="56" fill="#333333">*development*</text>
+    <text x="790" y="56" fill="#333333">*non-goals*</text>
+    <text x="880" y="56" fill="#333333">*keybindings*</text>
+    <text x="982" y="56" fill="#333333">*about*</text>
+    <text x="1040" y="56" fill="#333333">+</text>
+  </g>
+
+  <!-- 3. the header line -->
+  <rect x="0" y="66" width="1200" height="26" fill="#e6e6e6"/>
+  <line x1="0" y1="91.5" x2="1200" y2="91.5" stroke="#999999"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-size="12" fill="#333333">
+    <text x="24" y="84">GNU Emacs 30.2 · Yeah 0.3.0</text>
+    <text x="880" y="84">Elisp · service-first · append-only</text>
+  </g>
+
+  <!-- 4. the buffer, with the fringe at the left -->
+  <rect x="0" y="92" width="12" height="482" fill="#f2f2f2"/>
 
   <g font-family="DejaVu Sans Mono, monospace">
-    <text x="62" y="69" fill="#dda0dd" font-size="27">(</text>
-    <g transform="translate(76 46) scale(.58)" fill="none" stroke="#dda0dd" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M8 9 L24 27 L40 9"/><circle cx="24" cy="27" r="4.6"/><path d="M24 31.6 L24 40"/>
-      <circle cx="8" cy="9" r="2.6" fill="#dda0dd"/><circle cx="40" cy="9" r="2.6" fill="#dda0dd"/>
-    </g>
-    <text x="108" y="68" fill="#e6e6e6" font-size="19" font-weight="bold">yeah</text>
-    <text x="155" y="69" fill="#dda0dd" font-size="27">)</text>
-    <text x="710" y="65" fill="#a6a6a6" font-size="12">WHY EMACS   ARCHITECTURE   STATUS</text>
-    <text x="1040" y="65" fill="#dda0dd" font-size="12">[ source ]</text>
+    <text x="68" y="132" fill="#b22222" font-size="14">;; No sidecar. No opaque agent runtime.</text>
+  </g>
 
-    <rect x="41" y="85" width="1118" height="31" fill="#000000"/>
-    <text x="62" y="105" fill="#999999" font-size="11">GNU Emacs · Yeah 0.1.0-alpha</text>
-    <text x="878" y="105" fill="#999999" font-size="11">Elisp · service-first · append-only</text>
+  <g font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-weight="bold" fill="#000000">
+    <text x="68" y="205" font-size="60" letter-spacing="-3">The agent <tspan fill="#a020f0">is</tspan></text>
+    <text x="68" y="277" font-size="84" letter-spacing="-5">Emacs.</text>
+  </g>
 
-    <text x="74" y="159" fill="#999999" font-size="13">;; Yeah, Emacs Agent Harness</text>
-    <text x="70" y="232" fill="#e6e6e6" font-size="51" letter-spacing="-3">The agent <tspan fill="#dda0dd">is</tspan></text>
-    <text x="69" y="317" fill="#add8e6" font-size="78" letter-spacing="-5">Emacs.</text>
-    <text x="74" y="366" fill="#a6a6a6" font-size="15">An inspectable agent harness written in Emacs Lisp.</text>
-    <text x="74" y="393" fill="#a6a6a6" font-size="15">Live buffers. Permissioned tools. Durable events.</text>
+  <g font-family="DejaVu Sans, Helvetica, Arial, sans-serif" fill="#333333" font-size="16">
+    <text x="68" y="315">Yeah is an agent harness written in Emacs Lisp. A dedicated Emacs</text>
+    <text x="68" y="340">runs the tools, permissions and session journal; your editing Emacs</text>
+    <text x="68" y="365">connects through an explicitly approved bridge and stays responsive.</text>
+  </g>
 
-    <rect x="74" y="433" width="180" height="42" fill="#dda0dd"/>
-    <text x="88" y="459" fill="#000000" font-size="13" font-weight="bold">[ install alpha ]</text>
-    <rect x="74" y="499" width="45" height="20" fill="#f0e68c"/>
-    <text x="80" y="513" fill="#000000" font-size="10" font-weight="bold">ALPHA</text>
-    <text x="130" y="513" fill="#999999" font-size="11">Kernel prototype · public alpha gate open</text>
+  <g font-family="DejaVu Sans Mono, monospace" font-size="13">
+    <rect x="68" y="394" width="122" height="38" fill="#bfbfbf"/>
+    <text x="80" y="418" fill="#000000" font-weight="bold">install alpha</text>
+    <rect x="202" y="394" width="116" height="38" fill="#ffffff" stroke="#4169e1"/>
+    <text x="214" y="418" fill="#4169e1">read vision</text>
+    <rect x="330" y="394" width="152" height="38" fill="#ffffff" stroke="#4169e1"/>
+    <text x="342" y="418" fill="#4169e1">read architecture</text>
+  </g>
 
-    <rect x="640" y="142" width="470" height="365" fill="#000000" stroke="#595959"/>
-    <rect x="641" y="143" width="468" height="40" fill="#262626"/>
-    <text x="658" y="168" fill="#d8bfd8" font-size="13">*yeah*</text>
-    <text x="965" y="168" fill="#999999" font-size="10">illustrative session</text>
+  <g font-family="DejaVu Sans, Helvetica, Arial, sans-serif" font-size="14" fill="#333333">
+    <rect x="68" y="458" width="58" height="22" fill="#ff8c00"/>
+    <text x="76" y="474" fill="#000000" font-family="DejaVu Sans Mono, monospace" font-size="12" font-weight="bold">v0.3.0</text>
+    <text x="138" y="474">The kernel asks only what matters: a read that changes nothing</text>
+    <text x="138" y="496">is not asked about. A kernel, not yet a complete product.</text>
+  </g>
 
-    <text x="660" y="214" fill="#add8e6" font-size="12" font-weight="bold">you</text>
-    <text x="716" y="214" fill="#e6e6e6" font-size="12">Fix the failing canary.</text>
-    <line x1="658" y1="230" x2="1092" y2="230" stroke="#333333" stroke-dasharray="3 4"/>
+  <!-- 5. the session, as a window of its own -->
+  <rect x="700" y="116" width="476" height="380" fill="#ffffff" stroke="#999999"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-size="13">
+    <text x="718" y="150" fill="#228b22" font-weight="bold">you</text>
+    <text x="770" y="150" fill="#333333">Fix the failing canary and show me the diff.</text>
+    <line x1="716" y1="168" x2="1160" y2="168" stroke="#999999" stroke-dasharray="3 4"/>
 
-    <text x="660" y="259" fill="#b0c4de" font-size="12" font-weight="bold">Read</text>
-    <text x="716" y="259" fill="#e6e6e6" font-size="12">tests/checks/canary.el</text>
-    <text x="716" y="276" fill="#999999" font-size="10">bounded · read-only</text>
-    <line x1="658" y1="291" x2="1092" y2="291" stroke="#333333" stroke-dasharray="3 4"/>
+    <text x="718" y="200" fill="#483d8b" font-weight="bold">Read</text>
+    <text x="770" y="200" fill="#333333">tests/checks/check-session-log-append-only.el</text>
+    <text x="770" y="219" fill="#333333" font-size="11">bounded · read-only</text>
+    <line x1="716" y1="237" x2="1160" y2="237" stroke="#999999" stroke-dasharray="3 4"/>
 
-    <text x="660" y="320" fill="#b0c4de" font-size="12" font-weight="bold">Edit</text>
-    <text x="716" y="320" fill="#e6e6e6" font-size="12">lib/yeah-session.el</text>
-    <text x="716" y="337" fill="#999999" font-size="10">exact match · modification tick verified</text>
-    <line x1="658" y1="352" x2="1092" y2="352" stroke="#333333" stroke-dasharray="3 4"/>
+    <text x="718" y="269" fill="#483d8b" font-weight="bold">Edit</text>
+    <text x="770" y="269" fill="#333333">lib/yeah-session.el</text>
+    <text x="770" y="288" fill="#333333" font-size="11">exact match · modification tick verified</text>
+    <line x1="716" y1="306" x2="1160" y2="306" stroke="#999999" stroke-dasharray="3 4"/>
 
-    <text x="660" y="381" fill="#f0e68c" font-size="12" font-weight="bold">Build</text>
-    <text x="716" y="381" fill="#e6e6e6" font-size="12">Approve guarded edit?</text>
-    <text x="716" y="399" fill="#f0e68c" font-size="10">[ once ]  [ session ]  [ deny ]</text>
-    <line x1="658" y1="414" x2="1092" y2="414" stroke="#333333" stroke-dasharray="3 4"/>
+    <text x="718" y="338" fill="#ff8c00" font-weight="bold">Build</text>
+    <text x="770" y="338" fill="#333333">Approve guarded edit?</text>
+    <text x="770" y="357" fill="#ff8c00" font-size="11">once · session · deny</text>
+    <line x1="716" y1="375" x2="1160" y2="375" stroke="#999999" stroke-dasharray="3 4"/>
 
-    <text x="660" y="444" fill="#b0c4de" font-size="12" font-weight="bold">ERT</text>
-    <text x="716" y="444" fill="#98fb98" font-size="12" font-weight="bold">PASS</text>
-    <text x="764" y="444" fill="#e6e6e6" font-size="12">— canary repaired</text>
-    <rect x="641" y="471" width="468" height="35" fill="#000000"/>
-    <line x1="641" y1="471" x2="1109" y2="471" stroke="#404040"/>
-    <text x="658" y="493" fill="#dda0dd" font-size="12">M-x <tspan fill="#e6e6e6">yeah</tspan></text>
-    <rect x="713" y="483" width="7" height="13" fill="#98fb98"/>
+    <text x="718" y="407" fill="#228b22" font-weight="bold">ERT</text>
+    <text x="770" y="407" fill="#228b22" font-weight="bold">PASS</text>
+    <text x="818" y="407" fill="#333333">— canary repaired</text>
+    <text x="770" y="426" fill="#333333" font-size="11">review the diff before any commit</text>
+  </g>
+  <rect x="701" y="462" width="474" height="33" fill="#e6e6e6"/>
+  <line x1="701" y1="462" x2="1175" y2="462" stroke="#999999"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-size="12" fill="#333333" xml:space="preserve">
+    <text x="718" y="484">*yeah*  All  L1  (Emacs-Lisp)</text>
+  </g>
 
-    <rect x="41" y="555" width="1118" height="39" fill="#d8bfd8"/>
-    <text x="60" y="579" fill="#000000" font-size="12">-:-   *scratch*</text>
-    <text x="895" y="579" fill="#000000" font-size="12">All   L1   (Elisp)   alpha</text>
+  <!-- 6. the mode line of the frame, and the echo area under it -->
+  <rect x="0" y="574" width="1200" height="30" fill="#bfbfbf"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-size="13" fill="#000000">
+    <text x="16" y="594">U:0%-</text>
+    <text x="80" y="594" font-weight="bold">*scratch*</text>
+    <text x="158" y="594">All</text>
+    <text x="196" y="594">L1</text>
+    <text x="228" y="594">(Fundamental)</text>
+    <text x="1130" y="594">09:30</text>
+  </g>
+
+  <rect x="0" y="604" width="1200" height="26" fill="#ffffff"/>
+  <line x1="0" y1="604.5" x2="1200" y2="604.5" stroke="#999999"/>
+  <g font-family="DejaVu Sans Mono, monospace" font-size="13">
+    <text x="16" y="622" fill="#333333">M-x yeah</text>
+    <text x="800" y="622" fill="#333333" font-size="12">Type M-x for the minibuffer, C-s to search</text>
   </g>
 </svg>
