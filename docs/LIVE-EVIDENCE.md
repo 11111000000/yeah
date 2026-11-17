@@ -908,6 +908,284 @@ budget of the supervision of the kernel is positive now
 caller asks for no supervision at all, and a run that spends its budget ends
 in the state `failed` and is answered with the stop reason `refusal`.
 
+## The live coding run after wave 45 (2026-11-17, 15:31–15:33)
+
+Wave 45 made the harness survive what the tools return.  The run below is the
+first live run on that code, and it is a **coding** run: the model had to write
+a program, write its tests, run them and repair them if they failed.  The
+provider was MiniMax-M3.1-Flash at `api.minimax.io`, the key came from the
+environment and is in no repository, and the harness ran in
+`/home/az/Projects/yeah-live-2` with the tools `read`, `glob`, `grep`, `edit`,
+`write`, `bash`, `finish`, `introspect` and `diagnostics`.
+
+The task: write `calc.py`, a console calculator that evaluates an arithmetic
+expression (`+`, `-`, `*`, `/`, parentheses, unary minus, spaces) taken from the
+command line or from stdin, printing the result on stdout and a readable
+message on stderr with exit code 2 on a division by zero or a syntax error;
+then write `test_calc.py` with at least eight `unittest` tests; then run
+`python3 -m unittest -v` and repair the code until the tests pass; then finish
+through the tool `finish`.
+
+**The run ended in the state `completed`, and the work is really there.**  The
+journal of the session (`sessions/calc.jsonl`, 118 records, 91 348 bytes) holds
+17 tool calls — `write` twice, `bash` seven times, `glob` twice, `read` once,
+`git_status` once, `todo_add` three times, `todo_list` once — with a permission
+request and a permission decision for every one of them, 33 usage records, 4
+assistant messages and 3 nudges.
+
+| What the model wrote | Size |
+|---|---|
+| `calc.py` | 5 553 bytes |
+| `test_calc.py` | 4 699 bytes |
+
+The arbiter of the task is outside the harness: run by hand in the directory of
+the task, `python3 -m unittest -v` prints `Ran 15 tests` and `OK` and exits 0.
+The model wrote 15 tests where the task asked for eight, and the run of the
+tests inside the harness (`python3 -m unittest -v 2>&1 | tail -40`) shows every
+one of them `ok`.
+
+**The harness had to push the model three times.**  The provider answered with
+a plan instead of an action — "I'll create the calculator program and its
+tests." and "Nothing exists yet in the project dir except the session log, so
+I'll create the two files now." — and every nudge of the harness carried the
+state of the work into the model: which tools the run had not called yet, and
+the sentence "your next answer must contain the tool call, not a plan".  The
+run recovered each time and the work was done.  This is the shape the register
+has named since wave 34; what is new here is that the work was finished after
+the third nudge, and that the state of the run says so.
+
+**The run is also the first live proof of wave 45.**  One of the commands of
+the model was `head -c 3000 sessions/calc.jsonl`, which cut a multibyte
+character of the journal in half: the tool returned a string with a raw byte.
+Before wave 45 that string was written into the journal as it was, and
+`json-serialize` refused it (`wrong-type-argument json-value-p`) — the defect
+of the run of 2026-11-16, where the error of the sentinel killed the process.
+On this code the harness replaced the raw byte with U+FFFD: the journal of the
+run is valid UTF-8 from the first byte to the last, and it holds two U+FFFD
+where the two reads of the cut output were written (`tool-end` id 57 and id
+64).  The live coding task of the register has a new failure mode that the
+code of wave 45 no longer has.
+
+**Two things the run did not do, and the register does not hide them.**
+
+- The model never called the tool `finish`, although the task asked for it.
+  The run ended with a text message, and the harness recorded `completed`.
+  The state of a run is therefore not a proof that the instructions of the task
+  were followed; the check of the task is.
+- The last message of the model was "All 15 tests pass. Verifying the CLI
+  end-to-end from a shell:" — an announcement of a step that was never taken.
+  The harness did not nudge it, because the regexp of the plan
+  (`yeah-turn-plan-regexp`) knows "I'll", "I will", "Let me", "I'm going to"
+  and "I am going to", and this sentence opens with the report of a finished
+  work ("All 15 tests pass") and continues with "Verifying".  A message that
+  reports a result and announces the next step at the same time is a plan in
+  part, and the harness does not see that part.  The task was already done, so
+  the gap costs nothing here; it is open.
+- The tools of the run ran in the directory that the model named in the call
+  (`bash` carries a directory argument, and the model passed
+  `/home/az/Projects/yeah-live-2` itself), not in the working directory of the
+  session: the working directory of a session is still not applied to the
+  tools (`docs/PLAN.md` §17.1).  This run says nothing about that defect
+  either way.
+
+**What this run does not prove.**  It is one task, one model and one provider
+on one day.  It says nothing about the parity with another harness (the
+threshold is a decision of the owner, `docs/PLAN.md` §13).  It is not a check
+of the register either: it was driven by the driver of the site
+(`/home/az/Projects/yeah-site/artifacts/driver.el`), not by a check of
+`tests/live/`, and a run of `live-coding-task` on the code of wave 45 is still
+owed.
+
+## The self-development run that found the noise of the provider (2026-11-17, 15:45–15:53)
+
+The next live run was the first run of Yeah on the task of the owner: the wave
+41 of the plan (`docs/PLAN.md` §18.1), the deterministic verifier of the
+bridge.  The harness ran in a copy of the repository with the code of wave 45
+(`/home/az/Projects/yeah-selfdev-1`), the provider was MiniMax-M3 at
+`api.minimax.io`, and the model was told that it works in the repository of
+Yeah itself.
+
+**The run failed, and the failure was the harness's.**  The journal of the
+session (`sessions/wave41.jsonl`, 132 records, 232 577 bytes) holds 17 calls of
+tools — `read` eight times, `git_status` three times, `bash` three times, and
+`glob`, `grep` and `todo_list` once each — with a permission request and a
+permission decision for every one of them, 8 nudges and 9 assistant messages.
+The model was working: it read the rules of the repository, searched them, ran
+the commands and kept its state.
+
+The provider answered every batch of those results with an empty message.  The
+harness read that silence as the silence of a model that does not act, spent
+the whole budget of the nudges on it (eight), and ended the run in the state
+`failed`.  The last record of the journal said:
+
+> the model answered with an empty message 8 times and the run ended without an effect
+
+Both halves of that sentence were false.  The run had an effect — seventeen
+tools — and the model had not refused to act: it had acted, and the results
+were in front of it.  The five empty answers were the noise of the provider.
+
+This is the defect of wave 46 (`docs/PLAN.md` §16.25).  The budget of the
+nudges now pays for the nudges that no effect answered: a nudge that follows
+the silence of the provider after the tools of the model have come back does
+not spend it, and a model that never acts still ends.  The record of a run that
+did not finish names the tools the run called, so a run that called its tools
+is never described as a run that ended without an effect.
+
+**What the run does not prove.**  The run of wave 41 on the code of wave 46 is
+written down below.  The run above says nothing about the parity, and nothing
+about the working directory of a session: the tools of the run ran in the
+directory of the process, and the `cwd` of a session is still not applied to
+them (`docs/PLAN.md` §17.1).
+
+**The second run of the wave 41, on the code of wave 46 (16:16–16:23).**  The
+same task, the same copy of the repository, the provider MiniMax-M3.1-Flash
+this time, and the harness of wave 46.  The run made 108 calls of tools — 64
+`bash`, 30 `read`, 4 `git_status`, 3 `glob`, 3 `grep`, 3 `todo_list`, one
+`todo_add` — and 4 nudges, and it read the whole of the rules of the
+repository, the plan, the check of the bridge, the claims of `spec.json` and
+the history of the commits.  Then it started the whole suite of the checks of
+the repository (`./scripts/dev check tests/checks/*`) inside the harness, and
+while the harness was waiting for that, the transport to the provider died:
+`Curl failed with exit code 28`.  The run ended in the state `failed` with
+that error in the journal, and it changed no file of the repository.
+
+The shape of that failure is the shape the register has named since wave 35: a
+transport that times out is a run the provider stopped, and a run the provider
+stopped is blocked and not a failure of the agent (`docs/PLAN.md` §17.2).  The
+run is also the first live proof that wave 46 holds under a live provider: the
+run of the wave 41 on the code of wave 45 spent its whole budget of nudges on
+the silence of the provider and died, and the run of the same task on the code
+of wave 46 was still alive after 108 calls of tools, with the budget of the
+nudges untouched.
+
+**What the second run says about the model.**  Two live runs of the same task
+on the same code found the same shape: the model researches and does not
+change anything.  The task asks for a rewrite of a check, and the model reads
+the repository, measures the race with experiments of its own
+(`/tmp/exp1.el`, `/tmp/exp2.el`), and does not come to the change.  The
+harness cannot tell the research from the work: both are calls of tools, and
+the nudge of the harness names the tools the run has not called yet — among
+them `edit` and `write`.  This is open work, and it is written down in
+`docs/PLAN.md` §17.1.
+
+## The self-development runs that found the missing memory (2026-11-17, 16:15–16:48)
+
+Two more live runs of the wave 41 were made on the code of wave 46, with the
+provider MiniMax-M3.1-Flash this time, in the same copy of the repository
+(`/home/az/Projects/yeah-selfdev-1`).  The task was the same — the deterministic
+verifier of the bridge (`docs/PLAN.md` §18.1) — and the second run was given a
+tighter brief: *start with the change, do not run the whole suite of the
+checks*.
+
+**The second run (16:15–16:23).**  The journal
+(`sessions/wave41b.jsonl`, 694 records, 928 652 bytes) holds 108 calls of tools —
+64 `bash`, 30 `read`, 4 `git_status`, 3 `glob`, 3 `grep`, 3 `todo_list`, one
+`todo_add` — 4 nudges and 4 assistant messages, and every one of those messages
+is a plan: "I'll start by reading the repository rules", "I'll start by
+exploring the repository structure".  The tool `read` was called on `AGENTS.md`
+ten times, on `docs/PLAN.md` five times, on `docs/PLAN-NEXT.md` four times and on
+`waves/wave-46.json` three times.  It read the whole of the rules of the
+repository, the plan, the check of the bridge, the claims of `spec.json` and the
+history of the commits, and then it started the whole suite of the checks of the
+repository (`./scripts/dev check tests/checks/*`) inside the harness.  While the
+harness was waiting for that, the transport to the provider died: `Curl failed
+with exit code 28`.  The run ended in the state `failed` with that error in the
+journal, and it changed no file of the repository.
+
+**The third run (16:26–16:48).**  The journal (`sessions/wave41c.jsonl`, 769
+records, 1 125 827 bytes) holds 122 calls of tools — 64 `bash`, 27 `read`, 10
+`grep`, 5 `todo_list`, 5 `write`, 4 `glob`, 3 `git_status`, 2 `git_diff`, one
+`todo_add`, one `todo_update` — 7 nudges and 7 assistant messages, and every
+one of those messages is a plan as well: "Let me measure the actual race
+behaviour with the real `emacsclient` before designing the fix".  The `read`
+tool was called on `AGENTS.md` nine times and on `waves/wave-46.json` five
+times.  The five
+`write` calls of the run went to `/tmp/exp1.el` … `/tmp/exp4.el`: the model
+measured the race with experiments of its own and did not come to the change.
+The repository was not touched.  The transport died at the end with `Curl
+failed with exit code 16`.
+
+**The reason is in the harness, and the journals show it.**  Every request of
+the harness starts a *fresh conversation* with the model: `yeah-turn--ask` hands
+the transport a prompt, and the prompt is all the model is told.  The usage
+records of the third run show it plainly — the first request of the run carried
+4149 input tokens, and the last request, after 122 calls of tools, carried 919.
+A conversation that grows with the work would grow; this one does not grow at
+all.  So the model is asked again and again with nothing but the request, it
+cannot see what it has already done, and it starts the task over: it reads
+`AGENTS.md` ten times in one run, reads the claim of the wave 46 five times in
+another, and never reaches the change.
+
+The machinery of the context is not the cause: it exists, and it is not on the
+road to the model.  `yeah-context-project` and `yeah-session-project` compute a
+projection, the compaction and the pruning write their events into the journal,
+and the projection itself never reaches a request.  What the model got was the
+prompt and nothing else.
+
+**This is the defect of wave 47 (`docs/PLAN.md` §16.26).**  Every request of a
+run now carries the transcript of the run before the prompt: a projection of
+the journal — the call the model made, the result it got and the answer it gave
+— and the words that keep the work where it is ("Do not start the work over:
+continue from here.").  The first request of a run carries the request as it
+is, because a run that has done nothing has nothing to tell.  The transcript is
+a projection and not a second copy of the run: the journal keeps the plain
+message it was written with.
+
+**What the runs do not prove.**  Neither run says anything about the parity, and
+neither run is a proof that the transcript is enough: the model of these runs
+answers with a plan instead of an action, and that shape is not repaired by
+being told what the run has done (`docs/PLAN.md` §17.1).  The `cwd` of a session
+is still not applied to the tools (§17.1), and the transport of the provider
+died in both runs, which the register has named since wave 35 as a run the
+provider stopped and not a failure of the agent (§17.2).
+
+## The run on the code of wave 47 and the death of the transport (2026-11-17, 17:10–17:15)
+
+A third live run of the wave 41 was made on the code of wave 47, in the same copy
+of the repository (`/home/az/Projects/yeah-selfdev-1`), with the same task and the
+same model (MiniMax-M3.1-Flash).
+
+**The journal (`sessions/wave41d.jsonl`, 429 records) holds 70 calls of tools** —
+33 `bash`, 20 `read`, 9 `write`, 4 `grep`, 3 `glob`, one `todo_list` — 3 nudges
+and 3 assistant messages, and the three messages are plans as well: "I'll start
+by opening the two files the task points at", "Now let me look at the check
+runner and experiment with the actual Emacs behaviour", "Let me experiment with
+Emacs 30 process semantics to find the exact loss window".
+
+**The effect of wave 47 is visible in the journal.**  The tool `read` was called
+on `AGENTS.md` **once** — the runs of 16:15 and 16:26 called it ten and nine
+times — and the twenty reads of the run went to fifteen different files.  The
+input tokens of the requests do not grow with the work: the first request of
+the run carried 4320 input tokens and the last 888, where the runs before the
+transcript carried 3997 → 793 and 4149 → 919.  The model no longer starts the
+task over: it reads the rules of the repository once and works.
+
+**The work still did not happen.**  The nine `write` calls of the run went to
+`/tmp/exp1.el`, `/tmp/exp5.el`, `/tmp/exp6.el` and `/tmp/exp/exp1.el`: the model
+measured the race of the bridge with experiments of its own and never came to
+the change in the repository.  The run ended with the transport dead: `Curl
+failed with exit code 28`.
+
+**Three runs in a row died the same way**, after 108, 122 and 70 calls of tools:
+`Curl failed with exit code 28`, `Curl failed with exit code 16`, `Curl failed
+with exit code 28`.  The harness read the death of the transport as the end of
+the run and threw the work of the model away with it.
+
+**This is the defect of wave 48 (`docs/PLAN.md` §16.27).**  A request that the
+provider dropped is asked again: the death of the transport is not the death of
+the run.  The retry is bounded (two by default), the journal holds it as a
+record of its own, and the model is asked the same question with the transcript
+of the run in front of it, so the retry continues the work.  A request that the
+provider *refused* is an answer and is not asked again.
+
+**What this does not prove.**  The run on the code of wave 47 says that the
+transcript reaches the model and that the model stops starting the task over; it
+does not say that the model then makes the change, and it did not.  The shape of
+the provider that answers with a plan instead of an action is not repaired by
+either wave (§17.1), and the guard that asks the model for the change after a
+number of calls of tools without one is still open (§17.1).  The run of 17:10
+was made before the code of wave 48, so it does not measure the retry either.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live
@@ -978,6 +1256,18 @@ in the state `failed` and is answered with the stop reason `refusal`.
   either, and the run ends as `completed` — `stopReason: "end_turn"` for a
   run that did nothing.  Whether the default of the route changes is a
   decision of the owner (`docs/PLAN.md` §17.2).
+- A message that reports a finished work **and** announces the next step is a
+  plan in part, and the harness does not see that part.  The live coding run of
+  2026-11-17 ended with "All 15 tests pass.  Verifying the CLI end-to-end from
+  a shell:" — an announcement of a verification that never happened — and the
+  regexp of the plan (`yeah-turn-plan-regexp`) knows no such opening, so the
+  run was completed.  The task was already done there; a task whose last step
+  is the announced one would end as a completed run with the step missing.
+- A run that ends on a text answer is a completed run even when the task asked
+  for the tool `finish`: the live coding run of 2026-11-17 was told to finish
+  through `finish` and never called it.  The state of a run is not a proof
+  that the instructions of the task were followed; the check of the task is
+  the arbiter.
 - The outcome of a run does not describe the work that was done: the run of
   `fix-failing-test` ended in "failed" because the provider failed after the
   edit, while the check of the task passed.  The check of the benchmark is the
@@ -996,3 +1286,22 @@ in the state `failed` and is answered with the stop reason `refusal`.
   with the status of a success and an empty string, and three refusals of the
   same task in a row (`:stopReason "refusal"`).  A refusal is a failure of the
   model and not of the harness, and it is told apart from it here.
+- The silence of the provider after a batch of tool results is the noise of the
+  provider and not the refusal of the model, and since wave 46 it does not spend
+  the budget of the nudges of a run whose model has acted.  The run of the wave
+  41 of 15:45–15:53 is the live proof of the defect, and the two runs of the
+  wave 41 of 16:15–16:48 on the code of wave 46 are the live proof of the
+  repair: both of them were still alive after a hundred calls of tools, with
+  the budget of the nudges untouched, and both of them ended when the
+  transport to the provider died.
+- The transcript of a run is a projection of the journal and not a second copy
+  of the run, and it is put in front of every request of the run since wave
+  47.  What it is not is a context: it is cut at twelve records of the run, and
+  the result of a tool is cut at six hundred characters, so a long run pays for
+  the tail of its own work in every request.  The projection of the context
+  (`lib/yeah-context.el`) is the machinery that is meant to answer this, and it
+  is still not on the road to the model.
+- The budget of the nudges is no longer a bound on the length of a run: it pays
+  for the nudges that no effect answered, and a model that acts and then says
+  nothing is not charged for the silence.  The deadline of the run and the
+  deadline of the request still bound it.

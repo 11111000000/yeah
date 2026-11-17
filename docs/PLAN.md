@@ -1768,6 +1768,413 @@ reasoning are not.
 child that never calls `finish` would then be marked failed, and the claims of
 the delegation do not say that yet (§17.2).
 
+### 16.23 The wire of Yeah speaks ACP — **done on 2026-11-16 (wave 40)**
+
+The integration with Paseo exposed a defect of the wire that no offline check
+had caught, because every offline check was written by the same hand as the
+code and read the wire the way the code wrote it.  A client that validates
+the wire refused every `session/update` of Yeah: the content of a chunk was an
+array of content blocks where ACP says one block, and the events of the
+pending queue (`input_queued`, `input_taken`, `input_recovered`,
+`input_withdrawn`) travelled to every client although ACP has no such kinds.
+The refusal was total — the text of the agent, the calls of its tools and the
+state of its queue never reached the client, and the client saw a run without
+a word.
+
+Wave 40 repairs both shapes.
+
+The content of a chunk is one content block.  The schema of the wire says so,
+and the schema is the measure: `schemas/acp-v1.json` names the kinds of the
+updates and the shape of their content, and the check reads the kinds from the
+schema instead of repeating them.
+
+The events of the queue are an extension of the wire and travel only where
+they were asked for.  A client announces them in the `_meta` of its
+capabilities at `initialize`, and a client that announces nothing is served
+plain ACP.  The editor of Yeah announces them and sees the queue of the
+session; the client of Paseo announces nothing and gets what ACP says.  The
+name of the extension, the version of the protocol and the way the
+announcement is read live in one file, `lib/yeah-acp-vocabulary.el`, which
+both sides of Yeah require, so the two sides cannot drift apart.
+
+The wave adds four claims: `the-wire-speaks-acp`,
+`the-queue-events-travel-where-they-were-asked-for`,
+`the-answer-of-the-agent-reaches-the-client` and
+`a-tool-call-carries-its-input-and-its-output`.  Their controls were
+run against the code of this wave and bit: the control of the first turns the
+content of a chunk back into an array and the check fails on the assertion
+that the chunk carries one block; the control of the second lets the queue
+events travel to everybody and the check fails on the assertion that a client
+which announced nothing received none; the control of the third renames the
+kind of the finished run and the check fails on the assertion that the answer
+of the agent reached the client; the control of the fourth takes the input of
+the call away and the unit check fails on the assertion that the call carries
+its arguments.
+
+The second half of the wave answers the question the first half left open:
+the shapes of the wire were right, and the text of the agent still did not
+reach the client.  The reason was in the journal and not in the wire: the
+model of the live task answered only with the call of the `finish` tool, and
+the `finish` tool was not projected at all — the run ended, the journal
+carried the summary of the run, and the client saw a `tool_call` without a
+word of the answer in it.  A client that speaks ACP expects the words of the
+agent as the message of the agent, so the summary of a finished run is
+projected as `agent_message_chunk`.
+
+The call of a tool carries what it was called with and what it returned:
+`rawInput` holds the arguments and `rawOutput` holds the result.  The
+journal holds the arguments in their printed form, because the journal is a
+log of what happened and not a place for structured data, so the printed form
+is read back into the values themselves — and, because the arguments come
+from the model, the printed form is read as data and never as code: a form
+that the reader of Emacs Lisp would evaluate is not read at all.
+
+**Open:** the ACP method `session/set_mode` does not exist, the model of a
+session cannot be changed over the wire, and the `mcpServers` of a session are
+ignored (§17.1).  These are gaps of the surface, not of the wave.
+
+The third part of the wave answers the question the second part left open.
+The text of the agent reached the client — the live check in Paseo showed the
+answer of the model in the timeline of the agent — and the words of it were
+mojibake: `Emacs — это …` arrived as `Emacs Ð¼ ýÑ‚Ð¾ …`.  The journal of the
+session held the right text, so the spoiling happened on the way out.
+
+The cause was in the way the kernel writes to its standard output.  Emacs's
+`json-serialize` returns a unibyte string whose bytes are UTF-8, and `princ`
+of such a string does not write those bytes: Emacs reads every byte as a
+character of Latin-1 and writes the characters back as UTF-8.  Every non-ASCII
+answer was therefore written twice over, and a Russian agent looked like an
+agent that wrote nonsense.  The wire of Yeah now writes the bytes of a message
+as they are (`lib/yeah-wire.el`, `yeah-wire-print-line`), and both protocols
+that write to a stream use it: ACP and MCP.
+
+The wave adds a fifth claim: `the-text-on-the-wire-is-the-text-the-model-wrote`.
+Its control removes the decoding and the check fails on the assertion that the
+bytes of the answer are on the wire as they were written.  The check itself
+(`tests/checks/check-wire-carries-the-text.el`) reads the bytes of a real
+server process — not a character set, not a decoded string — because the
+question is what a client reads from the wire.
+
+**Open:** the working directory of a session (`cwd`) is still not applied to
+the tools: in the live check the `bash` of the agent ran in the directory of
+the process, not in the repository of the task (§17.1).
+
+### 16.24 The harness lives — **done on 2026-11-17 (wave 45)**
+
+The live test of Yeah against a real provider found four defects that no
+offline check had seen.  Every offline check of the repository had been
+written by the same hand as the code, and it read the tools of the harness
+the way the code wrote them; the live test ran a real `bash` whose output
+ended in a byte that is not text, a real provider that answered no summary,
+and a real refusal that carried a whole conversation in it.
+
+**The byte that killed the process.**  A `bash` tool whose output ends in a
+byte that cannot be a part of a UTF-8 character — `tail -c 6000` cuts a
+character of a file in half, and `printf '\262'` writes a byte that cannot
+start one — took the whole Emacs process down: the refusal of JSON arrived
+inside the sentinel of the process, where no handler of the turn stands, and
+the run left no record of itself.  The exit code was 255 and the journal of
+the run held neither the end of the tool nor the error.
+
+The bytes arrive in two shapes, and the first version of the fix covered
+only one of them.  A unibyte string holds bytes, and the bytes that are not
+valid UTF-8 become the replacement character.  A multibyte string holds
+characters, and the decoder of a process leaves the byte it refused *inside*
+the string as a raw byte — a character whose code is at or above #x3FFF00.
+That string is multibyte and is not text either, and JSON refuses it as
+well.  The text of the harness is decided in one place now
+(`lib/yeah-text.el`), and both shapes become the replacement character.
+The check of the live path proves it end to end: a real child process runs
+the real tool, the journal holds the record of the tool with the broken
+byte replaced, and the process exits with the code 0.
+
+**The journal never refuses a record.**  A record of a run can hold a value
+that JSON cannot write.  The journal writes a stand-in that says so and
+takes the records that follow: the journal is append-only, and a record
+that cannot be written must not take the run down with it.
+
+**An error of the harness does not escape into a sentinel.**  The answer of
+an asynchronous tool arrives in the sentinel of its process, and the results
+of a batch are recorded in the callback of the scheduler.  An error there
+kills the Emacs process.  The scheduler turns such an error into a failed
+tool, and the turn ends with a reason instead of dying.
+
+**A run without a summary degrades.**  The context of a run overflows, and
+the harness asks the model for a summary.  A provider that answers with an
+empty message answers with no summary, and the run died of it, although the
+summary is an economy and not a necessity.  The run now prunes the old
+outputs of its tools, says in the journal that the summary did not arrive,
+and goes on.  A second overflow without a summary ends the run, and then the
+journal says why.
+
+**The record of a failure is bounded.**  A provider that refused a request
+hands the whole conversation of the run back inside the refusal: the record
+of the failure of the second live run was 2.8 MB.  One record of the journal
+is a record and not a transcript.  The reason that goes into the journal is
+cut at two thousand characters, the fields that name the failure are kept,
+and the place where the text was cut is said.
+
+The wave adds five claims: `the-text-of-the-harness-is-always-text`,
+`the-journal-never-refuses-a-record`,
+`a-tool-that-returns-bytes-does-not-kill-the-harness`,
+`a-run-degrades-when-the-summary-does-not-arrive` and
+`the-record-of-a-failure-is-bounded`.  All five controls were run against
+the code of this wave and bit, and each of them made its check fail by an
+assertion of the check and not by a crash of Emacs.  The control of the
+first removes the reading of the output of a tool; the control of the
+second makes the journal raise instead of writing a stand-in; the control of
+the third removes both readings of the broken bytes and the child process of
+the check dies with the code 255, which is the live defect reproduced
+offline; the control of the fourth makes the first failure of a summary end
+the run; the control of the fifth removes the cut, and the record of the
+failure holds 200031 characters.
+
+The wave is numbered 45 and not 41: the waves 41 to 44 are the plan the
+owner named on 2026-11-16 (§18), and that plan is not rewritten here.  The
+wave was executed before them because the four waves of the plan need a
+harness that lives to carry them.
+
+**Open:** the working directory of a session (`cwd`) is still not applied to
+the tools (§17.1), and the provider still answers a plan where an action
+was asked for (docs/LIVE-EVIDENCE.md).
+
+**The live coding run after this wave.**  The repaired harness was run
+against a real provider with a real coding task: write a console calculator,
+write its tests, run them, repair them if they fail, and finish through the
+tool `finish`.  The model wrote the calculator (5 553 bytes), wrote its own
+tests (4 699 bytes, fifteen where the task asked for eight), ran them, and
+the run of the tests outside the harness says `OK` with the code 0.  The run
+ended in the state `completed`, and the harness had to nudge the model three
+times, because the provider answered with a plan where an action was asked
+for.  The run is also the first live proof of the repair: one command of the
+model (`head -c 3000` of the journal) cut a multibyte character in half, and
+the journal of the run is valid UTF-8 from the first byte to the last.  Two
+things the run did not do are written down in §17.1 and in
+docs/LIVE-EVIDENCE.md: the model never called `finish` although the task
+asked for it, and its last message announced a verification that never
+happened ("All 15 tests pass.  Verifying the CLI end-to-end from a shell:"),
+which the regexp of the plan does not recognise as a plan.
+
+### 16.25 The noise of the provider does not end a run that works — **done on 2026-11-17 (wave 46)**
+
+The live run of the wave 41 (the task of the owner, §18.1) was the first live
+run of Yeah on the task of the owner, and it failed — but it failed for a reason
+that the harness itself had made.  The journal of the run holds 17 calls of
+tools: `read` eight times, `git_status` three times, `bash` three times, and
+`glob`, `grep` and `todo_list` once each.  The model worked.  The provider
+answered every batch of those results with an empty message, the harness read
+that silence as the silence of a model that does not act, and the budget of the
+nudges — eight — was spent on the noise of the provider.  The run ended in the
+state `failed`, and its last record said:
+
+> the model answered with an empty message 8 times and the run ended without an effect
+
+Both halves of that sentence were false.  The run had an effect — seventeen
+tools — and the model had not refused to act: it had acted, and the results
+were in front of it.
+
+**The budget of the nudges pays for the nudges that no effect answered.**  A
+nudge that follows the silence of the provider *after* the tools of the model
+have come back does not spend the budget: the model has acted
+(`yeah-turn--acted-since-nudge-p` compares the calls of the run with the calls
+it had when it last nudged).  A model that never acts still ends: the silence
+that follows a silence spends the budget as before, and the run that spends it
+says that it did not finish.  The deadline of the run and the deadline of the
+request are untouched.
+
+**The record of a run that did not finish is true.**  It names what the run did:
+how many times the model answered with an empty message, how many times it
+described its next step, and how many tools it called.  A run that called its
+tools is no longer described as a run that ended without an effect
+(`yeah-turn--unfinished-payload`).
+
+The wave adds two claims:
+`the-noise-of-the-provider-does-not-end-a-working-run` and
+`the-record-of-a-run-that-did-not-finish-is-true`.  Both controls were run
+against the code of this wave and bit, and each of them made the check fail by
+an assertion of the check and not by a crash of Emacs.  The control of the
+first makes the harness forget that the model acted, and the check fails on
+three assertions: the run ended in the state `failed` instead of `completed`,
+the journal holds an `unfinished` record, and the run was nudged twice instead
+of more than twice — the live defect, reproduced offline and end to end.  The
+control of the second makes every unfinished record claim that the run ended
+without an effect, and the check fails on two assertions.
+
+The wave is numbered 46 and not 42: the waves 41 to 44 are the plan of the
+owner (§18), and that plan is not rewritten here.  The run that found this
+defect was the run of the wave 41.
+
+**The wave broke the control of an old claim, and the map of the method caught
+it.**  The claim `nudge-only-for-plans` removed the condition
+`(and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))' from
+`lib/yeah-turn.el', and the wave replaced that condition with the count of the
+nudges that were spent (`yeah-turn-nudge-spent').  The control of the claim
+therefore changed nothing, the verifier of the claim passed with the subject
+unchanged, and the claim went `inconclusive' — the verdict of the map was
+`unknown' for that reason and for no other.  The control was written against
+the code of the wave (it makes the condition of the spending branch
+unreachable), and it bites again: four tests of `tests/unit/test-yeah-control.el'
+fail on their own assertions.  An old control is a promise that the code it
+names is still there, and a wave that renames a condition breaks that promise
+without knowing it.
+
+**Open:** the budget of the nudges is no longer a bound on the length of a run
+(§17.1), and the working directory of a session (`cwd`) is still not applied to
+the tools (§17.1).
+
+### 16.26 The model is told what the run has done — **done on 2026-11-17 (wave 47)**
+
+The live run of the wave 41 on the code of wave 46 (16:15 and 16:26) made 108
+and 122 calls of tools and changed nothing in the repository: the model read
+`AGENTS.md` six and seven times, read the claim of the wave 46 three and five
+times, measured a race with experiments of its own in `/tmp`, and every answer
+of the model was a plan ("I'll start by reading the repository rules").  The
+reason is in the harness and not in the model.
+
+**Every request of the harness starts a fresh conversation with the model.**
+`yeah-turn--ask` hands the transport a prompt, and the prompt is all the model
+is told.  The usage records of the third run show it plainly: the first
+request of the run carried 4149 input tokens, and the last request, after 122
+calls of tools, carried 919.  A conversation that grows with the work would
+grow; this one does not grow at all.  The model is asked again and again with
+nothing but the request, it cannot see what it has already done, and it starts
+the task over.
+
+The machinery of the context is not the cause: it exists, and it is not on the
+road to the model.  `yeah-context-project` and `yeah-session-project` compute a
+projection, the compaction and the pruning write their events into the
+journal, and the projection itself never reaches a request.
+
+**Every request now carries the transcript of the run.**  Before the prompt the
+model is told what the run has done: the call it made, the result it got and
+the answer it gave, and the words that keep the work where it is ("Do not
+start the work over: continue from here.").  The transcript is a projection of
+the journal, put together when the model is asked (`yeah-turn--transcript`), and
+it is cut: twelve records of the run, and six hundred characters of the result
+of a tool.  The first request of a run carries the request as it is, because a
+run that has done nothing has nothing to tell.
+
+**The transcript is a projection and not a second copy of the run.**  The
+journal keeps the plain message it was written with; the projection is put
+together on the way to the model.
+
+The wave adds two claims: `the-model-is-told-what-the-run-has-done` and
+`the-transcript-is-a-projection-and-not-a-second-copy-of-the-run`.  Both
+controls were run against the code of this wave and bit, and each of them made
+the check fail by an assertion of the check and not by a crash of Emacs.  The
+control of the first takes the transcript out of the request, and the check
+fails on four assertions; the control of the second writes the transcript into
+the journal, and the check fails on one assertion.
+
+**The check itself was wrong twice before it was right.**  The first version
+collected the failures with the polarity reversed — `yeah-check--fail` reports
+a failure when its argument is nil, and the checks handed it the negation of
+the condition they wanted, so the check failed on a harness that worked and
+would have passed on a harness that was broken.  The second version recorded
+the prompts of the model into the parameter of the fake transport and not into
+the variable of the caller, so the check saw an empty list of prompts and
+could not tell a harness that asks the model from a harness that does not.
+Both defects were found by reading the check against a direct reading of the
+prompts in an Emacs that printed them.  A check that cannot fail is a comment,
+and a check that fails when the harness is right is worse: it is a comment
+that reads as a proof.
+
+The wave also changed the code of the unit test of the control
+(`tests/unit/test-yeah-control.el`): the prompt of a request now carries the
+transcript, so the test looks for the prompt by its tail, which is the part
+the harness does not change.
+
+**The wave broke a check of the repository, and the map of the method caught
+it.**  The check of the control of the wire
+(`tests/checks/check-wire-control.el`) drives a server whose fake model answers
+the prompt `again' and only that prompt, and it compared the prompt with
+`(equal prompt "again")' — an exact comparison, which the transcript makes
+false.  The prompt of the last request of that session therefore never
+completed, and the check failed on its own assertion.  The fix was in the
+check and not in the harness: the fake model now matches the prompt by its
+tail.  A wave that changes the shape of the prompt breaks every check that
+matched the prompt exactly, and the check has to be rewritten: the prompt of a
+request is not a constant, and the part of it that the harness owns is the
+tail.
+
+**Open:** the transcript is not a context, and it is paid for again in every
+request of a long run (§17.1); the projection of the context
+(`lib/yeah-context.el`) is still not on the road to the model; the model of
+the provider still answers with a plan instead of an action, and being told
+what the run has done does not repair that shape (§17.1); the working
+directory of a session (`cwd`) is still not applied to the tools (§17.1).
+
+### 16.27 A request the provider dropped is asked again — **done on 2026-11-17 (wave 48)**
+
+Three live runs of the wave 41 died the same way and for the same reason.  The
+run of 16:15 died with `Curl failed with exit code 28` after 108 calls of
+tools, the run of 16:26 with `Curl failed with exit code 16` after 122 calls,
+and the run of 17:10 with `Curl failed with exit code 28` after 70 calls.
+The transport to the provider died, and the harness took the death of the
+transport for the end of the run: the work of the model was thrown away with
+it, and the journal said that the run failed.
+
+**The request never reached an answer.**  A provider that drops the
+connection did not refuse the request: the words of the refusal and the words
+of a dead transport are both "error", and the harness read them as the same
+thing.  The wave tells them apart.
+
+- A request that the provider dropped — the transport failed and there is no
+  HTTP status — is asked again (`yeah-turn--retryable-p`,
+  `yeah-turn--retry`).  The model is asked the same question, and the
+  transcript of the run (wave 47) is in front of it, so the retry continues
+  the work instead of starting it over.
+- A provider that is busy (429, 500, 502, 503, 504, 529) did not answer
+  either, and the request is asked again.
+- A request that the provider refused (an HTTP status of the client, a
+  refusal of the model) is an answer, and the run fails at once and says why.
+
+The retry is bounded by a budget of its own (`yeah-turn-default-max-retries`,
+two by default), and the budget is fresh again after every answer of the
+provider.  A provider that drops every request therefore ends the run after
+the budget is spent, with the reason in the journal.
+
+**The status of the wire is read as a number.**  The transport of gptel
+reports the HTTP status as a string (`"529"`, `"400"`), and a check of
+`integerp` would never have seen a busy provider and never have told a
+refusal from a request that was never answered (`yeah-turn--status-code`).
+
+**The machine of the states does not move.**  The run was waiting for the
+model and waits again: the retry is not a transition, the counter of the
+twenty transitions of `lib/yeah-loop.el` is untouched, and the state of the
+run is the state it had.
+
+The journal holds the retry as a record of its own (`retry`, with the reason
+the request was made again), and the transcript of the model names it in one
+line (`[retry] the provider dropped the request: ...`).
+
+The wave adds three claims: `a-dropped-request-is-asked-again`,
+`a-refused-request-is-not-asked-again` and `the-retries-of-a-run-are-bounded`.
+All three controls were run against the code of this wave and bit, and each
+of them made the check fail by an assertion of the check and not by a crash
+of Emacs: the first on twelve assertions, the second on two, the third on
+four.
+
+**The check itself was wrong twice before it was right, and the second
+defect was a defect of the harness.**  The first version of the fake
+provider played its script with `pop`, which changes the local variable of
+the caller and not the list itself: the script repeated itself, the model was
+asked the same request over and over, and the check measured a harness that
+never stops — while the harness under test was a harness that did stop, so
+the check failed on a harness that worked.  The second version read the
+status of the wire as a number, which is the shape of no transport: in the
+live harness a refusal of the provider would have been taken for a request
+that was never answered and asked again.  The wave found that defect in the
+harness while it was writing the check of the harness, and the check now
+plays the real shape of the wire down to the string that carries the status.
+
+**Open:** the retry repeats the whole request, so the tokens of the request
+are paid for twice and a provider that is busy for a long time is asked again
+and again until the budget is spent; a run that meets a provider that is down
+still ends where it ended before, and the wave buys the runs that meet a
+provider that dies once (§17.1); the shape of the provider that answers with
+a plan instead of an action is not repaired by this wave (§17.1).
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then
@@ -1820,16 +2227,66 @@ agent may decide it silently (`docs/PLAN.md` §13).
   run of the kernel is supervised by default, so such a model is nudged into
   the action; a model that spends the budget without an effect ends the run as
   a failed run, and the ACP route answers `refusal` and not `end_turn`.
+- The harness cannot tell the research from the work: a model that reads the
+  whole repository, measures a race with experiments of its own and never
+  changes a file makes calls of tools like any other model, and the nudge
+  names the tools the run has not called yet — among them `edit` and `write`.
+  Two live runs of the wave 41 (2026-11-17, 15:45 and 16:16) found that
+  shape: 108 calls of tools, no change of the repository.  A guard that asks
+  the model for the change after a number of calls of tools without one is
+  open work; nothing in the harness does it yet.
+- Since wave 47 the model is told what the run has done: every request of a run
+  carries the transcript of the run before the prompt, and the transcript is a
+  projection of the journal — the tail of the records of the run, cut at twelve
+  records and six hundred characters of the result of a tool.  What it is not
+  is a context: a long run pays for the tail of its own work in every
+  request, and the projection of the context (`lib/yeah-context.el`), the
+  compaction and the pruning are still not on the road to the model.  The
+  transcript fixes the memory of the model and not the shape of the provider,
+  which still answers with a plan instead of an action: the two live runs that
+  found the defect of the transcript were made with a model of that shape, and
+  the run on the code of wave 47 is the measurement that says whether the two
+  together are enough.
+- Since wave 48 a request that the provider dropped is asked again: the
+  death of the transport is not the death of the run.  The retry is bounded
+  (two by default), the journal holds it as a record of its own, and the
+  model is asked the same question with the transcript of the run in front of
+  it.  A request the provider refused is not asked again.  What the wave does
+  not repair is the run that meets a provider that is down: such a run ends
+  after the budget of the retries, where it ended before the wave.
 - A caller that wants the old behaviour of the kernel (a run that ends as soon
   as the model answers with text) must now say so with an explicit budget of
   zero.  The default changed for every caller at once.
+- A message that reports a finished work **and** announces the next step at
+  the same time is a plan in part, and the harness does not see that part:
+  `yeah-turn-plan-regexp` matches "I'll", "I will", "Let me", "Next I",
+  "I'm going to" and "I am going to", so "All 15 tests pass.  Verifying the
+  CLI end-to-end from a shell:" reads as a result.  The live coding run of
+  wave 45 ended that way: the model announced a verification it never
+  performed, and the run was completed.  The task was already done there, so
+  the gap cost nothing; a task whose *last* step is the announced one would
+  end as a completed run with the step missing.
+- A run that ends on a text answer is a completed run even when the task
+  asked for the tool `finish`: the live coding run of wave 45 was told to
+  finish through `finish` and never called it.  The state of a run is
+  therefore not a proof that the instructions of the task were followed; the
+  check of the task is the arbiter.  Whether the kernel should require
+  `finish` is a decision of the owner (§17.2).
 - The budget of a child of a delegation is a separate default and is still
   zero: a child that only talks still ends as a completed child.  Whether a
   child that never calls `finish` is a failed child is a decision of the owner
   (§17.2).
 - The provider answers with an empty message after a batch of tool results,
-  with the status of a success (HTTP 200, `answer=""`).  The run then ends
-  with the record "unfinished", which is honest, and the work is not done.
+  with the status of a success (HTTP 200, `answer=""`).  Since wave 46 such a
+  silence does not spend the budget of the nudges when the model has acted: the
+  noise of the provider is not the refusal of the model, and a run that works
+  must not be ended by it.  A model that never acts still ends, and the record
+  of a run that did not finish says what the run did.
+- The budget of the nudges is no longer a bound on the length of a run: it pays
+  for the nudges that no effect answered, and a model that acts and then says
+  nothing is not charged for the silence (wave 46).  The deadline of the run and
+  the deadline of the request still bound it; a caller who wants a bound on the
+  length of a run must set a deadline.
 - The provider is overloaded for hours: HTTP 529 to both harnesses, a plain
   model call that answers with nothing now and then, and a transport that
   times out ("Curl failed with exit code 28").  A run that the provider stops
@@ -1872,6 +2329,41 @@ agent may decide it silently (`docs/PLAN.md` §13).
 - PTC stays an experimental, off-by-default restricted evaluator, and not a
   security boundary.
 
+**The ACP surface, as an orchestrator sees it.**  The gaps below were found by
+the integration with Paseo (docs/PASEO-INTEGRATION.md) and are still open.
+
+- The working directory of a session — the `cwd` of `session/new` — is recorded
+  in the journal and in the frozen input of the run, but the tools do not read
+  it: a relative path of a tool is counted from the working directory of the
+  Emacs process and not from the directory of the session.  An orchestrator
+  that asks for a run in a repository gets a run in the directory of the
+  service.
+- The method `session/set_mode` does not exist: the permission profile of a
+  session cannot be changed over the wire, and a client that asks is answered
+  with `-32601`.
+- The model of a session cannot be changed over the wire: neither
+  `session/set_model` nor `session/set_config_option` exists, so an
+  orchestrator cannot choose the model of a run.
+- The `mcpServers` of a session are ignored: the tools of an MCP server that a
+  client names do not reach the model.
+- The `tool_call` of the wire names the tool and carries what it was called
+  with and what it returned (`rawInput` and `rawOutput`), but no `kind`: a
+  client that renders the call of a tool by its kind — a read, an edit, a
+  shell — sees the name of the tool and nothing else.  The arguments of a
+  call are positional, so a client that looks for named fields (`path`,
+  `oldText`, `query`) does not find them.
+- The process of the server outlives the agent.  A client that keeps the pipe
+  of the server open after the last turn leaves an Emacs process alive, and
+  some of those processes burn half a core in a tight loop of userspace: one
+  of them was measured with 1.9 million involuntary context switches and six
+  voluntary ones, and it never slept.  The read loop of the server is not the
+  cause: an idle server costs no CPU and leaves cleanly when its input ends,
+  and a server that waits for a turn the model never answers costs about four
+  per cent of a core.  The spin is therefore on the path of the live request
+  of the provider, and the loop itself is not localized yet.  The client that
+  leaves the process behind is the plugin that spawned it: nothing closes the
+  pipe of the server when the session of the agent is over.
+
 **The measurement.**
 
 - The pilot is three tasks.  The sample is small, and the numbers of the runs
@@ -1879,28 +2371,51 @@ agent may decide it silently (`docs/PLAN.md` §13).
   2 of 3, 2 of 3) differ by the noise of the provider and of the model.
 - The second harness is `pi` 1.1.0, which is checked in the environment;
   `opencode` is not installed here.
+- One verifier of the standing specification is a race.  The check of
+  `bridge-keeps-the-answer` reads the buffer of an attached Emacs a hundred
+  and twenty times while a thread keeps the parent late, and it fails only
+  when the answer is really lost.  Six runs of the evidence bound that claim
+  on 2026-11-16: five bit, and one did not — the control reached the
+  subject, the verifier after the control still passed, the claim came out
+  `inconclusive`, and the map came out `unknown`.  A claim whose control does
+  not always bite is not established: until the check of that race is
+  deterministic, the verdict of the map can be `unknown` for a reason that has
+  nothing to do with the code it names.  The claim itself is not weakened
+  here, and nobody may quote it as established on the strength of the runs
+  where the race happened.
 
 ### 17.2 The decisions of the owner
 
 None of these may be decided by an agent.  Each of them is recorded with
 `mathc record` when a person decides it, and not by an edit of the code.
 
+**One of them was decided on 2026-11-16 (az): the priority of the next wave.**
+It is recorded as the judgment claim
+`the-owner-decided-the-order-of-the-next-waves` — a human review, bound to
+the materials of this repository by `mathc record` — and the plan that the
+decision refers to is §18.  The decisions that §18.5 names stay open: no
+wave of that plan takes them, and no agent may take them either.
+
 - The threshold of the parity, and the final set of the tasks of the benchmark
   (`docs/PLAN.md` §13).  Until the threshold is decided, the parity is not
-  claimed anywhere, and the pilot stays a measurement.
+  claimed anywhere, and the pilot stays a measurement.  **Open** (§18.5).
 - Whether a run that the provider silenced is a failure of the agent or a run
   that was never measured.  The runner of the benchmark knows a run that the
   provider failed from the error records of the journal; the silence of the
   provider is not an error record, so such a run counts against the agent
   today.  The decision changes the number of every pilot, and the pilot of
   wave 36 measured a task of Yeah in that shape (docs/LIVE-EVIDENCE.md, "The
-  live checks and the pilot after wave 36").
+  live checks and the pilot after wave 36").  **Open** (§18.5).
 - The second harness of the comparison, if it is not `pi`.
 - The placement of the frame server for the pixel check.  The check is outside
   the map of the method: without a frame server it is blocked, and not a pass.
 - The priority of the next wave: the parallel children of Stage 7, a wider
   pilot, a real editor against a live provider, or the gaps of the service
-  path.
+  path.  **Decided on 2026-11-16 (az):** the order is wave 41 (the
+  deterministic verifier of the bridge), wave 42 (the process of the server),
+  wave 43 (the surface of ACP for an orchestrator), wave 44 (parallel
+  children in a live turn) — §18, recorded as the judgment claim
+  `the-owner-decided-the-order-of-the-next-waves`.
 - The minimum versions of Emacs and gptel, and the cycle of the releases.
 - The policy of the unattended command and of the network.
 - Whether a restricted evaluation deserves a design of its own process at all.
@@ -1913,9 +2428,13 @@ None of these may be decided by an agent.  Each of them is recorded with
   completed child today.  The wave did not change the default of the child,
   because the claims of the delegation (§17.1) do not say that a child that
   never finishes is a failed child, and a silent change of that meaning would
-  make the claims of wave 35–37 untrue.
+  make the claims of wave 35–37 untrue.  **Open** (§18.5).
 
 ### 17.3 The order, if the owner says nothing
+
+The owner did say something about the next waves on 2026-11-16 (az), and that
+order (§18) comes first.  What follows is the order of the rest, if the
+owner says nothing about them either.
 
 1. **The pilot again**, with a larger set of tasks, when the provider answers.
    The row of a run that did not finish names the shape of it since wave 38,
@@ -1941,3 +2460,235 @@ it the short id of the child and the time of the child.
 
 Re-opened when a person says so: the math-coding aim block in AGENTS.md is
 written by `mathc install` and is not edited by hand.
+
+## 18. The plan of the next waves
+
+The owner named the order of the next waves on 2026-11-16 (az), after the
+report on the readiness of Yeah for self-development and after the
+integration with the orchestrator Paseo.  The decision is recorded by the
+method as the judgment claim `the-owner-decided-the-order-of-the-next-waves`
+(a human review, not a machine verifier), and this section is the plan that
+the decision refers to.  The order is by the price of the defect: the wave
+that makes the verdict of the method unreadable goes first, and the wave that
+opens the path from a model to a working program goes last.
+
+The order of the next waves, named by the owner on 2026-11-16: **wave 41, wave 42, wave 43, wave 44.**
+
+They are: wave 41 (the deterministic verifier of the bridge), wave 42 (the
+process of the server), wave 43 (the surface of ACP for an orchestrator), wave
+44 (parallel children in a live turn).
+
+One wave was executed before them: **wave 45** (2026-11-17), the repair of
+the harness that the live test of the harness forced — a tool that returns
+bytes that are not text took the whole Emacs process down, and the four
+waves of this plan need a harness that lives to carry them (§16.24).  The
+order named by the owner is unchanged: wave 41 is still the first of the
+four.
+
+Every wave below names the defect it removes, the claims it registers, the
+control that has to bite, and the criteria that close it.  A wave that ends
+without a control that bites is not a wave: it is a change of the code with
+no evidence.
+
+### 18.1 Wave 41 — the verifier of the bridge decides the race by construction
+
+**The defect.**  One verifier of the standing specification is a race.  The
+check of `bridge-keeps-the-answer` reads the buffer of an attached Emacs a
+hundred and twenty times while a thread keeps the parent late, and it fails
+only when the answer is really lost.  Six runs of the evidence on 2026-11-16:
+five bit, one did not — the control reached the subject, the verifier after
+the control still passed, the claim came out `inconclusive`, and the map came
+out `unknown`.  The code was not the cause of that verdict; the evidence was.
+
+**Why this wave is first.**  Every other wave of this plan ends with a run
+of the method, and a run whose verdict depends on a race may say `unknown`
+for a reason that has nothing to do with the code it names.  A map that says
+`unknown` because of a race cannot be read.
+
+**What changes.**  The check stops racing the subject and starts commanding
+it: the loss of the answer becomes a condition that the check arranges — a
+barrier the parent waits for, a hook the check owns — so that the same
+input gives the same verdict every time.  The control of the claim becomes
+the same arrangement with one step removed, and the check must then fail by
+its own assertion.
+
+**The claims.**
+- `bridge-keeps-the-answer` — the existing claim, re-bound with a control
+  that bites every time (register `fact`, requirement: the check of the
+  bridge).
+- `the-bridge-check-decides-the-race-by-construction` — a new claim: the
+  check of the bridge gives the same verdict on ten consecutive runs of the
+  control, and the control bites on each of them (register `fact`).
+
+**The exit criteria.**
+1. Ten consecutive runs of the control bite: every one of them fails by an
+   assertion of the check, not by a crash of Emacs and not by a timeout.
+2. Two consecutive runs of the method end in `green`, with no `inconclusive`
+   claim and no `unknown` verdict.
+
+**The estimate.**  Half a day to a day.  **What this wave does not fix.**  It
+repairs the evidence, not the harness: nothing of the run itself changes.
+
+### 18.2 Wave 42 — the server does not outlive the agent, and it does not spin
+
+**The defect.**  Two defects of one life cycle.  The process of the ACP
+server outlives the agent: a client that keeps the pipe of the server open
+after the last turn leaves an Emacs process behind, and nothing closes it.
+And some of those processes burn half a core in a tight loop of userspace:
+one of them was measured with 1,921,354 involuntary context switches and six
+voluntary ones — it never slept — at 25–60 % of a core.
+
+**What is known and what is not.**  The read loop of the server is not the
+cause: an idle server costs no CPU and leaves cleanly when its input ends,
+and a server that waits for a turn the model never answers costs about four
+per cent of a core.  The spin is therefore on the path of the live request of
+the provider, and the loop itself is not localized yet: `ptrace` and `strace`
+are not available in this environment ("Operation not permitted"), so the
+localization has to be done by measurement — the ticks of `/proc/<pid>/stat`,
+not the percentage of the CPU that `top` prints.
+
+**What changes.**
+1. *The life cycle.*  The server has a way to end that does not depend on the
+   client closing the pipe: the session ends, and the process exits.  The
+   plugin of Paseo (`yeah-provider`, outside this repository) closes the pipe
+   of the server when the session of the agent is over; the kernel side gives
+   it a way to say so.
+2. *The spin.*  The loop on the path of the live request is localized by
+   instrumentation — a counter of the iterations of the pump and of the
+   request of the provider — measured the way the defect itself was measured.
+   The loop that spins is then removed, and the bound becomes a check.
+
+**The claims.**
+- `the-server-exits-when-the-session-is-over` — the process of the server is
+  gone after the session ends, even when the client keeps the pipe open
+  (the control keeps the pipe open and ends the session: the check must
+  fail).
+- `the-server-does-not-spin-when-the-provider-is-silent` — a server whose
+  provider went silent costs less than one per cent of a core over ten
+  seconds (the control brings the busy loop back: the measured ticks must
+  exceed the bound).
+
+**The exit criteria.**
+1. A server left behind by a finished session is gone within ten seconds.
+2. The ticks of a silent server stay under the bound in ten consecutive
+   measurements.
+3. The live check of the plugin leaves no process behind.
+
+**The estimate.**  One to two days.  **What this wave does not fix.**  A
+transport that dies with "Curl failed with exit code 28" is the provider's
+death, not the harness's.
+
+### 18.3 Wave 43 — the surface of ACP that an orchestrator needs
+
+**The defect.**  The integration with Paseo found four gaps of the surface,
+and all of them point the same way: an orchestrator cannot put the agent
+where the work is, cannot change what the agent may do, and cannot read what
+the agent did.
+
+1. The working directory of a session — the `cwd` of `session/new` — is
+   recorded in the journal and in the frozen input of the run, but the tools
+   do not read it: a relative path of a tool is counted from the directory of
+   the Emacs process and not from the directory of the session.  In the live
+   check the `bash` of the agent ran in the directory of the installation of
+   the CLI of Paseo, not in the repository of the task.
+2. The method `session/set_mode` does not exist: the permission profile of a
+   session cannot be changed over the wire, and a client that asks is
+   answered with `-32601`.
+3. The model of a session cannot be changed over the wire: neither
+   `session/set_model` nor `session/set_config_option` exists.
+4. The `tool_call` of the wire names the tool and carries what it was called
+   with and what it returned (`rawInput` and `rawOutput`, since wave 40), but
+   no `kind`: a client that renders the call of a tool by its kind — a read,
+   an edit, a shell — sees the name of the tool and nothing else.  The
+   arguments of a call are positional, so a client that looks for named
+   fields (`path`, `oldText`, `query`) does not find them.
+
+**What changes.**  The gaps are closed in the order of what the live
+integration needs today: the `cwd` first, because the agent must work in the
+repository of the task; then the `kind` of the call and its named arguments,
+because the client must be able to show what the agent did; then
+`session/set_mode`; then the model of the session; then the `mcpServers` of
+the session, whose tools do not reach the model today.
+
+**The claims.**  Each gap is a claim of its own, and the name of the claim is
+the name of the gap: `a-session-runs-in-its-own-directory`,
+`a-tool-call-carries-its-kind`, `a-tool-call-carries-named-arguments`,
+`a-session-changes-its-permission-profile-over-the-wire`,
+`a-session-changes-its-model-over-the-wire`,
+`the-mcp-servers-of-a-session-reach-the-model`.
+
+**The exit criteria.**
+1. The check of the `cwd` sends a session into a temporary directory, and the
+   tool of that session sees the temporary directory and not the directory of
+   the process.
+2. The plugin of Paseo runs a turn in the repository of the task, and the
+   timeline of the client shows the kind of the call of the tool.
+3. The wire answers `session/set_mode` and no longer answers `-32601`.
+
+**The estimate.**  Two to three days.  **What this wave does not fix.**  The
+wire of Yeah is ACP plus the one extension that was announced
+(`yeah.queueEvents`); this wave adds no method that ACP does not have.
+
+### 18.4 Wave 44 — parallel children in a live turn
+
+**The defect.**  Several children in one turn of the parent work already: the
+audit of wave 35 proved it, and the plan that said otherwise was wrong.  What
+is not proven is a *live* turn of a parent with two children of a live
+provider.  No child of a live provider has run on a model other than the
+model of its parent, and the live checks do not exercise the delegation at
+all: the benchmark gives its runs a fixed set of tools, and the delegation is
+not among them.
+
+**What changes.**  The live check grows a second child in the same turn of
+the parent, and the offline check with a fake model becomes the claim that
+the map binds — the live check lives outside the map, because it needs a
+provider.
+
+**The claims.**
+- `two-children-run-in-one-turn-of-the-parent` — the claim of the map, with a
+  fake model: two delegations in one turn of the parent give two children,
+  both alive, and the turn of the parent goes on (the control refuses the
+  second delegation: the check must fail).
+- `a-child-runs-on-the-model-of-its-preset` — the model of a child is the
+  model of the preset, and not the model of its parent (the control names
+  another model in the preset: the child must run on it).
+
+**The exit criteria.**
+1. The offline check passes and its control bites.
+2. The live check with a real provider shows two children in one turn of the
+   parent, and the tree of the children in the journal holds both.
+
+**The estimate.**  One to two days, and a key of the provider for the live
+part.  **What this wave does not fix.**  The budget of the completion
+supervision of a child is zero today, and that is a decision of the owner
+(§17.2), not a defect of this wave.
+
+### 18.5 What this plan does not decide
+
+Three decisions of the owner stay open, and no wave above takes them:
+- the threshold of the parity, and the final set of the tasks of the benchmark
+  (`docs/PLAN.md` §13): until it is decided, the parity is not claimed
+  anywhere, and the pilot stays a measurement;
+- whether a run that the provider silenced is a failure of the agent or a run
+  that was never measured: it changes the number of every pilot;
+- the budget of the completion supervision of a child of a delegation: the
+  default of the kernel is positive since wave 39, the default of the child is
+  still zero.
+
+Two more items of the open work (§17.1) are not in the order above and stay
+where they are: the pilot again, with a larger set of tasks, when the
+provider answers; and the pixel check, which waits for the owner to name the
+place of the frame server.
+
+### 18.6 How this plan is measured
+
+- One run of the method per wave, and a new run only for a new reason.
+- Every new claim names its control before its check is written, and the
+  control is shown to bite by an assertion of the check — not by a crash of
+  Emacs and not by an unreadable test.
+- The verdict of the map is the verdict of the wave: a wave that ends in
+  `unknown` is not finished, whatever the code looks like.
+- The live checks stay outside the map: they need a provider, and a check that
+  cannot run without a key is `blocked`, not `pass`.
+- A claim that the owner decides (a judgment) is recorded with
+  `mathc record`, and never by an edit of the code.
