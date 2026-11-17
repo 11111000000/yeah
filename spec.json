@@ -117,7 +117,7 @@
       "id": "wire-stdio",
       "text": "the ACP and MCP servers answer over stdio with the real protocol",
       "scope": [
-        "lib/yeah-acp.el", "lib/yeah-mcp.el",
+        "lib/yeah-acp.el", "lib/yeah-acp-vocabulary.el", "lib/yeah-mcp.el",
         "tests/checks/check-wire-speaks-over-stdio.el"
       ],
       "source": null,
@@ -133,7 +133,7 @@
       ],
       "falsifier": "a stdio server does not answer or answers with the wrong protocol",
       "register": "fact",
-      "control": "sed -i 's/(defconst yeah-acp--protocol-version 1/(defconst yeah-acp--protocol-version 2/' lib/yeah-acp.el",
+      "control": "sed -i 's/(defconst yeah-acp-protocol-version 1/(defconst yeah-acp-protocol-version 2/' lib/yeah-acp-vocabulary.el",
       "waiver": null
     },
     {
@@ -291,7 +291,7 @@
       ],
       "falsifier": "the run ends without acting, or a run that acted and reported a result is nudged anyway",
       "register": "fact",
-      "control": "sed -i 's|(and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))|(and nil (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn))|' lib/yeah-turn.el",
+      "control": "sed -i 's|(and (< (yeah-turn-nudge-spent turn) (yeah-turn-max-nudges turn))|(and nil (< (yeah-turn-nudge-spent turn) (yeah-turn-max-nudges turn))|' lib/yeah-turn.el",
       "waiver": null
     },
     {
@@ -1573,7 +1573,7 @@
     },
     {
       "id": "the-wire-carries-the-control",
-      "text": "The ACP wire carries the control of a session: a client steers a running turn, withdraws a pending input, recovers one, opens the session again with its journal replayed, and the pending queue of the session reaches the client as session/update notifications.",
+      "text": "The ACP wire carries the control of a session: a client steers a running turn, withdraws a pending input, recovers one, opens the session again with its journal replayed, and the pending queue of the session reaches the client that asked for the queue events as session/update notifications.",
       "scope": [
         "lib/yeah-acp.el", "lib/yeah-control.el", "schemas/acp-v1.json",
         "tests/checks/check-wire-control.el"
@@ -1589,7 +1589,7 @@
           "spec": "./scripts/dev check tests/checks/check-wire-control.el"
         }
       ],
-      "falsifier": "the steer, the withdraw or the recover is not answered, the replay carries no earlier record, or the pending queue of the session does not reach the client as a session/update",
+      "falsifier": "the steer, the withdraw or the recover is not answered, the replay carries no earlier record, or the pending queue of the session does not reach the client that asked for the queue events as a session/update",
       "register": "fact",
       "control": "sed -i 's/(\"session\\/steer\"/(\"session\\/steer-off\"/' lib/yeah-acp.el",
       "waiver": null
@@ -2253,6 +2253,418 @@
       "falsifier": "the stand calls an empty answer an answer, or it calls a tool call no answer",
       "register": "fact",
       "control": "sed -i \"s|(if (string-empty-p response) 'empty 'text)|(if (string-empty-p response) 'text 'text)|\" tests/support/yeah-live-answer.el",
+      "waiver": null
+    },
+    {
+      "id": "the-wire-speaks-acp",
+      "text": "The wire of Yeah speaks ACP: every session/update names a kind that the ACP schema declares, and the content of a chunk is one content block, not an array of blocks.",
+      "scope": [
+        "lib/yeah-acp.el", "lib/yeah-acp-vocabulary.el",
+        "schemas/acp-v1.json", "tests/checks/check-wire-speaks-acp.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-wire-speaks-acp.el"
+        }
+      ],
+      "falsifier": "a session/update names a kind that the schema does not declare, or the content of a chunk is an array of blocks instead of one block",
+      "register": "fact",
+      "control": "sed -i \"s|:content (list :type \\\"text\\\" :text (or text \\\"\\\"))|:content (vector (list :type \\\"text\\\" :text (or text \\\"\\\")))|\" lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "the-queue-events-travel-where-they-were-asked-for",
+      "text": "Yeah’s own queue events travel only to the client that asked for them: a client announces them in the _meta of its capabilities at initialize, and a client that announces nothing is served plain ACP.",
+      "scope": [
+        "lib/yeah-acp.el", "lib/yeah-acp-vocabulary.el",
+        "lib/yeah-service-ui.el", "tests/checks/check-wire-speaks-acp.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-wire-speaks-acp.el"
+        }
+      ],
+      "falsifier": "a client that announced nothing receives a queue event, or a client that announced them receives none",
+      "register": "fact",
+      "control": "sed -i \"s/(guard queue-events)/(guard t)/g\" lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "the-answer-of-the-agent-reaches-the-client",
+      "text": "The words of the agent reach the client: the summary of a finished run travels as the message of the agent (agent_message_chunk), because a model that answers only through the finish tool says nothing else.",
+      "scope": [ "lib/yeah-acp.el", "tests/checks/check-wire-speaks-acp.el" ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-wire-speaks-acp.el"
+        }
+      ],
+      "falsifier": "the client receives no message of the agent, or receives one without the words of the run",
+      "register": "fact",
+      "control": "sed -i 's|(\"finish\"|(\"finish-off\"|' lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "a-tool-call-carries-its-input-and-its-output",
+      "text": "The call of a tool travels with what the tool was called with and what it returned: rawInput holds the arguments of the call as values, and rawOutput holds the result.",
+      "scope": [ "lib/yeah-acp.el", "tests/unit/test-yeah-acp.el" ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-acp.el"
+        }
+      ],
+      "falsifier": "a tool call reaches the client as a name without its arguments, or without the result of the call",
+      "register": "fact",
+      "control": "sed -i 's|(plist-put update :rawInput input)|nil|' lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "the-text-on-the-wire-is-the-text-the-model-wrote",
+      "text": "The text on the wire is the text the model wrote: the bytes of a message are the UTF-8 of that text, so a client that reads them sees the same words and not a Latin-1 reading of the same bytes.",
+      "scope": [
+        "lib/yeah-wire.el", "lib/yeah-acp.el", "lib/yeah-mcp.el",
+        "tests/checks/check-wire-carries-the-text.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-wire-carries-the-text.el"
+        }
+      ],
+      "falsifier": "the bytes the server writes for a non-ASCII answer differ from the UTF-8 of that answer",
+      "register": "fact",
+      "control": "sed -i \"s|(decode-coding-string text 'utf-8)|text|\" lib/yeah-wire.el",
+      "waiver": null
+    },
+    {
+      "id": "the-owner-decided-the-order-of-the-next-waves",
+      "text": "the owner named the order of the next waves on 2026-11-16, and the plan of the project follows that order",
+      "scope": [ "docs/PLAN.md" ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "review",
+          "spec": "owner",
+          "minimum_independence": "external"
+        }
+      ],
+      "falsifier": "the order of the waves in docs/PLAN.md is not the order the owner named on 2026-11-16",
+      "register": "judgment",
+      "control": "sed -i 's/wave 41, wave 42, wave 43, wave 44/wave 44, wave 43, wave 42, wave 41/' docs/PLAN.md",
+      "waiver": null
+    },
+    {
+      "id": "the-text-of-the-harness-is-always-text",
+      "text": "The text of the harness is always text: the output of a tool and the text of the model are multibyte strings that JSON accepts, and a byte that is not valid UTF-8 stands as the replacement character.",
+      "scope": [
+        "lib/yeah-text.el",
+        "lib/yeah-result.el",
+        "tests/unit/test-yeah-text.el",
+        "tests/checks/check-tool-output-is-valid-text.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-tool-output-is-valid-text.el"
+        }
+      ],
+      "falsifier": "the output of a tool or the text of the model is a string that JSON refuses, or the broken byte did not become the replacement character",
+      "register": "fact",
+      "control": "sed -i '/yeah-text-valid content/d' lib/yeah-result.el",
+      "waiver": null
+    },
+    {
+      "id": "the-journal-never-refuses-a-record",
+      "text": "The journal never refuses a record: a record that JSON cannot write is written as a stand-in that says so, and the journal takes the records that follow.",
+      "scope": [
+        "lib/yeah-session.el",
+        "tests/checks/check-journal-survives-a-record-it-cannot-write.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-journal-survives-a-record-it-cannot-write.el"
+        }
+      ],
+      "falsifier": "the journal raises an error on a record it cannot write, or the stand-in is not readable, or the journal stops taking the records that follow",
+      "register": "fact",
+      "control": "sed -i 's|^          (error nil))|          (error (signal (quote user-error) (list \"the journal cannot write this record\"))))|' lib/yeah-session.el",
+      "waiver": null
+    },
+    {
+      "id": "a-tool-that-returns-bytes-does-not-kill-the-harness",
+      "text": "A tool that returns bytes that are not text does not kill the harness: the process lives, the journal holds the record of the tool, and the broken byte stands as the replacement character.",
+      "scope": [
+        "lib/yeah-process.el",
+        "lib/yeah-result.el",
+        "lib/yeah-session.el",
+        "lib/yeah-scheduler.el",
+        "tests/checks/check-a-tool-that-returns-bytes-does-not-kill-the-harness.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-tool-that-returns-bytes-does-not-kill-the-harness.el"
+        }
+      ],
+      "falsifier": "the process of the harness died with the bytes of the tool, or the journal holds no record of the tool",
+      "register": "fact",
+      "control": "sed -i -e '/yeah-text-valid content/d' -e 's|(json-serialize (yeah-text-value-valid copy))|(json-serialize copy)|' lib/yeah-result.el lib/yeah-session.el",
+      "waiver": null
+    },
+    {
+      "id": "a-run-degrades-when-the-summary-does-not-arrive",
+      "text": "A run whose summary does not arrive degrades instead of dying: the journal says that the summary did not arrive, the old outputs of the tools are pruned, and the run goes on.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "lib/yeah-context.el",
+        "tests/checks/check-compaction-degrades-when-the-summary-is-missing.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-compaction-degrades-when-the-summary-is-missing.el"
+        }
+      ],
+      "falsifier": "the run ended in the state 'failed' because the model wrote no summary, or the journal holds no record of the failure of the summary",
+      "register": "fact",
+      "control": "sed -i 's/(> (yeah-turn-compaction-failures turn) 0)/t/' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-record-of-a-failure-is-bounded",
+      "text": "The record of a failure is bounded and names the cause: the journal holds the reason of the failure and not the conversation of the run.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/checks/check-an-error-record-is-bounded.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-an-error-record-is-bounded.el"
+        }
+      ],
+      "falsifier": "the record of the failure holds more than four thousand characters, or it does not name the cause, or it does not say where the text was cut",
+      "register": "fact",
+      "control": "sed -i 's/(if (> (length text) yeah-turn--reason-limit)/(if nil/' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-noise-of-the-provider-does-not-end-a-working-run",
+      "text": "The noise of the provider does not end a run that works: an empty answer that arrives after the tools of the model have come back is the noise of the provider and not the refusal of the model, so the nudge that carries it does not spend the budget of the nudges.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/checks/check-the-noise-of-the-provider-does-not-end-a-working-run.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-noise-of-the-provider-does-not-end-a-working-run.el"
+        }
+      ],
+      "falsifier": "a run whose model called its tools is ended by the silence of the provider, or the silence spends the budget of the nudges",
+      "register": "fact",
+      "control": "sed -i 's|(> (yeah-turn-calls turn) (yeah-turn-nudge-calls turn))|nil|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-record-of-a-run-that-did-not-finish-is-true",
+      "text": "The record of a run that did not finish is true: it names the tools the run called, and a run that called its tools is not described as a run that ended without an effect.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/checks/check-the-noise-of-the-provider-does-not-end-a-working-run.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-noise-of-the-provider-does-not-end-a-working-run.el"
+        }
+      ],
+      "falsifier": "the record of a run that did not finish says that it ended without an effect although it called its tools, or it does not name the tools the run called",
+      "register": "fact",
+      "control": "sed -i 's|(if (null (yeah-turn-tools-used turn))|(if t|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-model-is-told-what-the-run-has-done",
+      "text": "The model is told what the run has done: every request of the harness carries the transcript of the run before the prompt, so a model that answers with a plan instead of an action does not start the task over.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/checks/check-the-model-sees-the-run.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-model-sees-the-run.el"
+        }
+      ],
+      "falsifier": "a request that follows the work of the run carries no trace of the work: neither the call the model made, nor the result it got, nor the answer it gave",
+      "register": "fact",
+      "control": "sed -i 's|(concat transcript prompt)|prompt|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-transcript-is-a-projection-and-not-a-second-copy-of-the-run",
+      "text": "The transcript of a run is a projection of the journal and not a second copy of the run: the journal keeps the plain message the run was written with, and the transcript is put together when the model is asked.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/checks/check-the-model-sees-the-run.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-model-sees-the-run.el"
+        }
+      ],
+      "falsifier": "the journal holds the transcript of the run, or the journal does not hold the plain message the run was written with",
+      "register": "fact",
+      "control": "sed -i 's|:payload prompt))|:payload (concat (or transcript \"\") prompt)))|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "a-dropped-request-is-asked-again",
+      "text": "A request that the provider dropped is asked again: the run goes on, the journal holds the retry, and the model is asked the same question with what the run has done in front of it.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/checks/check-a-dropped-request-is-asked-again.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-dropped-request-is-asked-again.el"
+        }
+      ],
+      "falsifier": "the run ends when the provider dropped the request, or the model is asked again without being told what happened and what the run has done",
+      "register": "fact",
+      "control": "sed -i 's|  (yeah-turn--ask turn (or (yeah-turn-prompt turn) \"\") transport answerer))|  nil)|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "a-refused-request-is-not-asked-again",
+      "text": "A request that the provider refused is not asked again: a refusal is an answer, the run fails at once and says why, and the status of the wire is read as a number although the transport of gptel reports it as a string.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/checks/check-a-dropped-request-is-asked-again.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-dropped-request-is-asked-again.el"
+        }
+      ],
+      "falsifier": "the run asks the model again after a refusal of the provider, or the status of the wire is not read and a refusal is taken for a request that was never answered",
+      "register": "fact",
+      "control": "sed -i 's|        (and status (memq status yeah-turn--busy-statuses))))|        t))|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-retries-of-a-run-are-bounded",
+      "text": "The retries of a run are bounded: a provider that drops every request ends the run after the budget of the retries, and the run says why it stopped.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/checks/check-a-dropped-request-is-asked-again.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-dropped-request-is-asked-again.el"
+        }
+      ],
+      "falsifier": "the run asks the model again without bound, or the run ends without saying why it stopped",
+      "register": "fact",
+      "control": "sed -i 's|       (< (yeah-turn-retries turn) (yeah-turn-max-retries turn)))|       t)|' lib/yeah-turn.el",
       "waiver": null
     }
   ]

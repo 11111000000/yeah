@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "yeah/acp-v1.json",
   "title": "ACP v1 — Yeah subset",
-  "description": "The subset of the Agent Client Protocol v1 that Yeah speaks on the agent side over newline-delimited JSON-RPC 2.0. Method names and field names follow the protocol; the transport is stdio.",
+  "description": "The subset of the Agent Client Protocol v1 that Yeah speaks on the agent side over newline-delimited JSON-RPC 2.0. Method names and field names follow the protocol; the transport is stdio. The notifications of the wire carry what ACP has: a client that checks them refuses an update it does not know. Yeah's own queue events (`input_queued', `input_taken', `input_recovered', `input_withdrawn') are an extension, not ACP: they travel only to a client that asked for them in the `_meta' of its capabilities at `initialize'.",
   "definitions": {
     "RequestId": {
       "type": ["integer", "string"]
@@ -157,18 +157,39 @@
         "update": {
           "type": "object",
           "required": ["sessionUpdate"],
+          "oneOf": [
+            {
+              "properties": {
+                "sessionUpdate": {
+                  "type": "string",
+                  "enum": ["user_message_chunk", "agent_message_chunk"]
+                },
+                "content": { "$ref": "#/definitions/ContentBlock" }
+              }
+            },
+            {
+              "properties": {
+                "sessionUpdate": {
+                  "type": "string",
+                  "enum": ["tool_call", "tool_call_update"]
+                },
+                "content": {
+                  "type": "array",
+                  "items": { "$ref": "#/definitions/ContentBlock" }
+                }
+              }
+            }
+          ],
           "properties": {
             "sessionUpdate": {
               "type": "string",
-              "enum": ["user_message_chunk", "agent_message_chunk", "tool_call", "tool_call_update", "input_queued", "input_taken", "input_recovered", "input_withdrawn"]
+              "enum": ["user_message_chunk", "agent_message_chunk", "tool_call", "tool_call_update"]
             },
-            "content": { "type": "array" },
             "toolCallId": { "type": "string" },
             "title": { "type": "string" },
             "status": { "type": "string" },
-            "inputId": { "type": "string", "description": "The id of the pending input the event names." },
-            "inputKind": { "type": "string", "description": "The kind of the input: `ask' or `steering'." },
-            "reason": { "type": "string", "description": "Why the input left the queue." }
+            "rawInput": { "description": "What the tool was called with, as the tool received it." },
+            "rawOutput": { "description": "What the tool returned." }
           }
         }
       }

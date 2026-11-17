@@ -58,11 +58,15 @@
      :optional (:args))
     (:type "compaction"
      :required (:cut_point :summary :timestamp))
+    (:type "compaction-failed"
+     :required (:reason))
     (:type "pruning"
      :required (:keep-chars))
     (:type "steering"
      :required (:payload))
     (:type "nudge"
+     :required (:payload))
+    (:type "retry"
      :required (:payload))
     (:type "cancel"
      :required (:payload))

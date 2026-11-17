@@ -30,9 +30,18 @@
 (defun yeah-diff--replace-once (old new text)
   "Return TEXT with OLD replaced by NEW exactly once.
 Return nil when OLD is absent or occurs more than once."
-  (let ((count (length (split-string text (regexp-quote old) t))))
-    (and (= count 1)
-         (replace-regexp-in-string (regexp-quote old) new text t t))))
+  (when (and (stringp old) (> (length old) 0) (stringp text))
+    (let* ((pattern (regexp-quote old))
+           (count 0)
+           (start 0))
+      ;; The number of occurrences is counted, not the number of pieces the
+      ;; text falls into: the pieces depend on where the text sits, so a
+      ;; match in the middle of a file looked like no match at all.
+      (while (string-match pattern text start)
+        (setq count (1+ count))
+        (setq start (match-end 0)))
+      (and (= count 1)
+           (replace-regexp-in-string pattern new text t t)))))
 
 (defun yeah-diff--unified (old-text new-text)
   "Return a unified diff between OLD-TEXT and NEW-TEXT."

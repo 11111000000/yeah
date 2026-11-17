@@ -36,9 +36,10 @@
   "Function receiving one serialized JSON message per call.")
 
 (defun yeah-mcp--print-line (text)
-  "Write TEXT and a newline to standard output."
-  (princ text)
-  (terpri))
+  "Write TEXT and a newline to standard output.
+The bytes of a serialized message are UTF-8, and they are written as
+they are: `yeah-wire-print-line' knows how."
+  (yeah-wire-print-line text))
 
 (defun yeah-mcp--emit (object)
   "Serialize OBJECT and pass it to `yeah-mcp--output-function'."

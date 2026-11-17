@@ -39,9 +39,11 @@
 
 (require 'cl-lib)
 (require 'json)
+(require 'yeah-acp-vocabulary)
 (require 'yeah-control)
 (require 'yeah-events)
 (require 'yeah-product)
+(require 'yeah-result)
 (require 'yeah-turn)
 (require 'yeah-wire)
 (require 'yeah-wire-socket)
@@ -49,9 +51,6 @@
 (defgroup yeah-acp nil
   "Yeah ACP v1 agent."
   :group 'yeah)
-
-(defconst yeah-acp--protocol-version 1
-  "ACP v1 protocol version spoken by Yeah.")
 
 (defconst yeah-acp--agent-name "yeah")
 (defconst yeah-acp--agent-version "0.1.0")
@@ -69,6 +68,12 @@ session.")
   "The connection being served, bound dynamically by the socket handler.
 A session remembers which connection owns it, so the death of that
 connection can cancel the work it started.")
+
+(defvar yeah-acp--client-capabilities (make-hash-table :test 'eq)
+  "Map every connection to the capabilities its client announced.
+The key is the connection; the standard output connection is the key
+nil.  What a client announced at `initialize' says what it
+understands of the wire.")
 
 (defun yeah-acp--jsonable-args (args)
   "Return ARGS as a JSON value: an array when every element serializes,
@@ -183,12 +188,13 @@ service's, and the working directory travels with every input."
 
 (defun yeah-acp-version ()
   "Return the ACP protocol version spoken by Yeah."
-  yeah-acp--protocol-version)
+  yeah-acp-protocol-version)
 
 (defun yeah-acp--print-line (text)
-  "Write TEXT and a newline to standard output."
-  (princ text)
-  (terpri))
+  "Write TEXT and a newline to standard output.
+The bytes of a serialized message are UTF-8, and they are written as
+they are: `yeah-wire-print-line' knows how."
+  (yeah-wire-print-line text))
 
 (defun yeah-acp--emit (object)
   "Serialize OBJECT and pass it to the output function of this connection."
@@ -225,7 +231,8 @@ service's, and the working directory travels with every input."
                (integerp (plist-get handshake :protocolVersion)))
     (signal 'user-error
             (list "initialize: protocolVersion must be an integer")))
-  (list :protocolVersion yeah-acp--protocol-version
+  (yeah-acp--remember-capabilities handshake)
+  (list :protocolVersion yeah-acp-protocol-version
         :agentInfo (list :name yeah-acp--agent-name
                          :version yeah-acp--agent-version)
         :agentCapabilities
@@ -234,6 +241,25 @@ service's, and the working directory travels with every input."
                                         :audio :false
                                         :embeddedContext :false)
               :mcpCapabilities (list :http :false :sse :false))))
+
+(defun yeah-acp--remember-capabilities (handshake)
+  "Remember the client capabilities of HANDSHAKE for the current connection.
+What the client announced is what it understands of the wire: Yeah's own
+events travel to the clients that asked for them and to nobody else."
+  (puthash yeah-acp--connection
+           (plist-get handshake :clientCapabilities)
+           yeah-acp--client-capabilities))
+
+(defun yeah-acp--queue-events-p (state)
+  "Return non-nil when the client of STATE asked for Yeah's queue events.
+The queue events are Yeah's own vocabulary, not the vocabulary of ACP: a
+client that does not know them refuses the whole update.  A client asks
+for them in the `_meta' of the capabilities it announced."
+  (let* ((capabilities (gethash (plist-get state :connection)
+                                yeah-acp--client-capabilities))
+         (meta (and (listp capabilities) (plist-get capabilities :_meta))))
+    (and (listp meta)
+         (eq t (plist-get meta yeah-acp-queue-events-capability)))))
 
 (defun yeah-acp--validate-session-request (request &optional load)
   "Validate a session/new or session/load REQUEST.  LOAD selects its shape."
@@ -261,22 +287,56 @@ OUTPUT receives the serialized message and defaults to standard output."
 
 (defun yeah-acp--content-chunk (kind text)
   "Return an ACP content chunk of KIND containing TEXT.
-The content of an ACP update is an array of content blocks, and the JSON
-encoder needs a vector to write one."
+The content of an ACP chunk is one content block, not an array of them:
+the protocol says so, and a client that checks the wire refuses a chunk
+that carries an array."
   (list :sessionUpdate kind
-        :content (vector (list :type "text" :text (or text "")))))
+        :content (list :type "text" :text (or text ""))))
 
-(defun yeah-acp--tool-call (tool-call-id name status &optional result)
-  "Return a tool_call or tool_call_update ACP update for TOOL-CALL-ID."
+(defun yeah-acp--tool-input (args)
+  "Return ARGS as a JSON value for the wire.
+The journal holds the arguments of a call in their printed form, because the
+journal is a log of what happened and not a place for structured data.  A
+client that shows the call wants the values themselves, so the printed form
+is read back into them.
+
+The arguments come from the model, so the printed form is read as data and
+not as code: a form that the reader would evaluate is not read at all, and
+the printed form travels to the client as it is."
+  (if (stringp args)
+      (condition-case nil
+          (if (string-match-p "#\\." args)
+              args
+            (let ((value (car (read-from-string args))))
+              (cond
+               ((and (listp value) (proper-list-p value))
+                (apply #'vector (mapcar #'yeah-result-json-safe value)))
+               ((vectorp value) value)
+               (t (format "%S" value)))))
+        (error args))
+    args))
+
+(defun yeah-acp--tool-call (tool-call-id name status &optional input result)
+  "Return a tool_call or tool_call_update ACP update for TOOL-CALL-ID.
+INPUT is what the tool was called with and RESULT is what it returned.
+The protocol has a field for each of them, and a client that shows the call
+of a tool shows them: a call without its input is a name."
   (if (eq status 'started)
-      (list :sessionUpdate "tool_call"
-            :toolCallId tool-call-id
-            :title name
-            :status "pending")
-    (list :sessionUpdate "tool_call_update"
-          :toolCallId tool-call-id
-          :status (if (eq status 'failed) "failed" "completed")
-          :content (vector (list :type "text" :text (or result ""))))))
+      (let ((update (list :sessionUpdate "tool_call"
+                           :toolCallId tool-call-id
+                           :title name
+                           :status "pending")))
+        (when input
+          (plist-put update :rawInput input))
+        update)
+    (let ((update (list :sessionUpdate "tool_call_update"
+                         :toolCallId tool-call-id
+                         :status (if (eq status 'failed) "failed" "completed")
+                         :content (vector (list :type "text"
+                                                :text (or result ""))))))
+      (when result
+        (plist-put update :rawOutput result))
+      update)))
 
 (defun yeah-acp--input-update (kind fields)
   "Return an ACP update of KIND for a queue event with FIELDS.
@@ -295,12 +355,14 @@ carry is left out of the update."
       (plist-put update :reason reason))
     update))
 
-(defun yeah-acp--update-for (type fields id)
+(defun yeah-acp--update-for (type fields id &optional queue-events)
   "Return the ACP update for the journal event TYPE with FIELDS, or nil.
-ID names the record.  The pending queue of a session is visible in the log:
-the events that move an input in or out of the queue have their own kinds,
-so that the editor learns the queue from the journal and keeps no state of
-its own."
+ID names the record.  QUEUE-EVENTS says that the client understands
+Yeah's own queue events; a client that does not know them refuses the
+whole update, so they travel only where they were asked for.  The
+pending queue of a session is visible in the log: the events that move
+an input in or out of the queue have their own kinds, so that the
+editor learns the queue from the journal and keeps no state of its own."
   (pcase type
     ("user-message"
      (yeah-acp--content-chunk "user_message_chunk"
@@ -308,10 +370,19 @@ its own."
     ("assistant-message"
      (yeah-acp--content-chunk "agent_message_chunk"
                               (plist-get fields :payload)))
+    ("finish"
+     ;; The summary of a finished run is the answer of the agent: the model
+     ;; writes it for the human, and the editor shows it as the answer of the
+     ;; run.  A client that speaks ACP expects the words of the agent as the
+     ;; message of the agent, and a model that answers only through the
+     ;; `finish' tool says nothing else.
+     (yeah-acp--content-chunk "agent_message_chunk"
+                              (plist-get fields :summary)))
     ("tool-request"
      (yeah-acp--tool-call
       (or (plist-get fields :tool_call_id) id)
-      (plist-get fields :tool) 'started))
+      (plist-get fields :tool) 'started
+      (yeah-acp--tool-input (plist-get fields :args))))
     ("tool-end"
      (yeah-acp--tool-call
       (or (plist-get fields :tool_call_id) id)
@@ -319,17 +390,23 @@ its own."
       (if (yeah-events-boolean-p (plist-get fields :ok))
           'completed
         'failed)
+      nil
       (plist-get fields :payload)))
-    ("input-queued" (yeah-acp--input-update "input_queued" fields))
-    ("input-taken" (yeah-acp--input-update "input_taken" fields))
-    ("input-recovered" (yeah-acp--input-update "input_recovered" fields))
-    ("input-withdrawn" (yeah-acp--input-update "input_withdrawn" fields))
+    ((and (guard queue-events) "input-queued")
+     (yeah-acp--input-update "input_queued" fields))
+    ((and (guard queue-events) "input-taken")
+     (yeah-acp--input-update "input_taken" fields))
+    ((and (guard queue-events) "input-recovered")
+     (yeah-acp--input-update "input_recovered" fields))
+    ((and (guard queue-events) "input-withdrawn")
+     (yeah-acp--input-update "input_withdrawn" fields))
     (_ nil)))
 
 (defun yeah-acp--observe-event (state session type fields id)
   "Send ACP updates for journal events belonging to STATE's SESSION."
   (when (eq session (plist-get state :session))
-    (let ((update (yeah-acp--update-for type fields id)))
+    (let ((update (yeah-acp--update-for type fields id
+                                         (yeah-acp--queue-events-p state))))
       (when update
         (yeah-acp--send-update (plist-get state :id) update
                                (yeah-acp--output-for state))))))
@@ -340,12 +417,14 @@ Return the number of records that were replayed.  The editor rebuilds its
 transcript from them: the messages, the tool calls and the queue events of
 the session, in the order the journal holds them."
   (let ((output (yeah-acp--output-for state))
+        (queue-events (yeah-acp--queue-events-p state))
         (count 0))
     (dolist (record (yeah-session-records session))
       (let ((update (yeah-acp--update-for
                      (plist-get record :type)
                      (yeah-session-record-fields record)
-                     (plist-get record :id))))
+                     (plist-get record :id)
+                     queue-events)))
         (when update
           (yeah-acp--send-update (plist-get state :id) update output)
           (setq count (1+ count)))))
@@ -774,6 +853,7 @@ served at the same time."
    yeah-acp--sessions)
   (clrhash yeah-acp--sessions)
   (clrhash yeah-acp--pending-permissions)
+  (clrhash yeah-acp--client-capabilities)
   (setq yeah-acp--counter 0))
 
 (provide 'yeah-acp)

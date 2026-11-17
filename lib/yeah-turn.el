@@ -89,6 +89,22 @@ run twice."
   (steer-source nil)
   (nudges 0)
   (max-nudges 0)
+  ;; The budget of the nudges pays for the nudges that no effect answered.
+  ;; A provider that answers with an empty message after the tools of the
+  ;; model have come back is noisy, and the noise does not spend the budget:
+  ;; the model has acted.  `nudge-calls' remembers how many tools the run had
+  ;; called when it last nudged, and `silent-nudges' counts the nudges that
+  ;; answered an empty message.
+  (nudge-spent 0)
+  (nudge-calls 0)
+  (silent-nudges 0)
+  ;; A request that the provider dropped is asked again (wave 48).  RETRIES
+  ;; counts the tries of the request that is being asked now, MAX-RETRIES is
+  ;; the budget of those tries, and PROMPT is the question of the last
+  ;; request, so that the retry asks the same question.
+  (retries 0)
+  (max-retries 0)
+  (prompt nil)
   (model-fsm nil)
   (input nil)
   (deadline-timer nil)
@@ -104,7 +120,8 @@ run twice."
   (pending-permissions nil)
   (permissions 0)
   (settlements nil)
-  (turn-event-id nil))
+  (turn-event-id nil)
+  (compaction-failures 0))
 
 (declare-function gptel-abort "gptel-request" (buffer))
 (declare-function gptel-fsm-info "gptel-request" (fsm))
@@ -126,6 +143,54 @@ in the journal instead of looking done, and a run that is not supervised ends
 as soon as the model answers with text."
   :type 'integer
   :group 'yeah)
+
+(defcustom yeah-turn-default-max-retries 2
+  "How many times a request that the provider dropped is asked again.
+A provider that drops the connection (a timeout of the transport, a closed
+connection, a server that is too busy) did not refuse the request: the
+request is asked again, and this budget bounds the tries.  A request that the
+provider refused for a reason of its own (an HTTP status of the client, a
+refusal of the model) is not asked again: the run fails and says why."
+  :type 'integer
+  :group 'yeah)
+
+(defconst yeah-turn--busy-statuses '(429 500 502 503 504 529)
+  "The HTTP statuses of a provider that is busy or unwell.
+The request that met one of them may be asked again: the provider did not
+answer, and it did not refuse.")
+
+(defun yeah-turn--status-code (info)
+  "Return the HTTP status of INFO as an integer, or nil when there is none.
+The transport of gptel reports the status as a string ("529"), and a check
+that only knows the integer would never see the busy provider of the wire."
+  (let ((status (and (listp info) (plist-get info :http-status))))
+    (cond ((integerp status) status)
+          ((and (stringp status) (string-match-p "\\`[0-9]+\\'" status))
+           (string-to-number status))
+          (t nil))))
+
+(defun yeah-turn--retryable-p (info)
+  "Return non-nil when the failure described by INFO may be asked again.
+The failure is retryable when the provider never answered (the transport
+failed and there is no HTTP status) or when the provider was busy.  A refusal
+of the provider (an HTTP status of the client, a refusal of the model) is not
+retryable: the run says why it stopped."
+  (let ((status (yeah-turn--status-code info)))
+    (or (and (listp info)
+             (plist-get info :error)
+             (null status))
+        (and status (memq status yeah-turn--busy-statuses)))))
+
+(defun yeah-turn--retry (turn reason transport answerer)
+  "Ask the model again after the provider dropped the request.
+REASON says why the request was dropped, and it is written into the journal:
+the model is told what happened, and the question is asked again.
+The machine does not move: it was waiting for the model, and it waits
+again."
+  (setf (yeah-turn-retries turn) (1+ (yeah-turn-retries turn)))
+  (yeah-turn--write turn "retry" (yeah-turn--context turn)
+                    :payload (yeah-turn--reason-text reason))
+  (yeah-turn--ask turn (or (yeah-turn-prompt turn) "") transport answerer))
 
 (defun yeah-turn--mark-done (turn &optional terminal-state)
   "Mark TURN done, optionally in TERMINAL-STATE, and notify exactly once."
@@ -195,21 +260,53 @@ bug in the turn, and the run stops with that reason."
   (apply #'yeah-events-write-with-context
          (yeah-turn-session turn) type context fields))
 
+(defconst yeah-turn--reason-limit 2000
+  "Maximum number of characters of a failure reason written into the journal.")
+
+(defun yeah-turn--reason-text (reason)
+  "Return REASON as text that fits into the journal.
+A request that the provider refused carries its whole conversation in it,
+and one record of the journal must not carry a conversation: the fields that
+name the failure are kept, and the text is cut at `yeah-turn--reason-limit'."
+  (let ((text
+         (cond
+          ((stringp reason) reason)
+          ((and (listp reason) (plist-get reason :error))
+           (format "%S" (plist-get reason :error)))
+          ((and (listp reason)
+                (or (plist-get reason :status) (plist-get reason :http-status)))
+           (mapconcat (lambda (key)
+                        (let ((value (plist-get reason key)))
+                          (when value
+                            (format "%s %S" (substring (symbol-name key) 1) value))))
+                      '(:uuid :status :http-status :tool-pending)
+                      " "))
+          (t (format "%S" reason)))))
+    (if (> (length text) yeah-turn--reason-limit)
+        (concat (substring text 0 yeah-turn--reason-limit)
+                (format "… [%d characters more]"
+                        (- (length text) yeah-turn--reason-limit)))
+      text)))
+
 (defun yeah-turn--fail (turn reason)
-  "Stop TURN because of REASON, and say why in the log."
-  (if (eq (yeah-turn-state turn) 'deciding)
-      (yeah-turn--tick turn 'error)
-    (unless (memq (yeah-turn-state turn) '(completed failed interrupted))
-      (setf (yeah-turn-state turn) 'failed)
-      (setf (yeah-turn-states turn)
-            (append (yeah-turn-states turn) (list 'failed)))))
-  (setf (yeah-turn-error turn) reason)
-  (yeah-turn--mark-done turn)
-  (when (yeah-turn-session turn)
-    (yeah-turn--write turn "error"
-                      (yeah-turn--context turn nil (yeah-turn-turn-event-id turn))
-                      :payload reason))
-  reason)
+  "Stop TURN because of REASON, and say why in the log.
+The reason that goes into the log is bounded: the answer of a provider that
+refused a request holds the whole conversation of the run, and the journal
+keeps records, not conversations."
+  (let ((text (yeah-turn--reason-text reason)))
+    (if (eq (yeah-turn-state turn) 'deciding)
+        (yeah-turn--tick turn 'error)
+      (unless (memq (yeah-turn-state turn) '(completed failed interrupted))
+        (setf (yeah-turn-state turn) 'failed)
+        (setf (yeah-turn-states turn)
+              (append (yeah-turn-states turn) (list 'failed)))))
+    (setf (yeah-turn-error turn) text)
+    (yeah-turn--mark-done turn)
+    (when (yeah-turn-session turn)
+      (yeah-turn--write turn "error"
+                        (yeah-turn--context turn nil (yeah-turn-turn-event-id turn))
+                        :payload text))
+    text))
 
 (defun yeah-turn-resume-permission (turn request-id decision)
   "Answer the deferred permission request REQUEST-ID of TURN with DECISION.
@@ -575,6 +672,26 @@ delivered only after the entire batch has settled."
          (t
           (yeah-turn--deliver-results (yeah-turn--take-results turn) steering)))))))
 
+(defun yeah-turn--compaction-failed (turn reason)
+  "Degrade after the summary of the context did not arrive.
+The run does not die because the model wrote no summary: the old outputs of
+the tools are pruned from the projection that the model reads, the journal
+says that the summary did not arrive, and the run goes on.  A second
+failure ends the run, because the context of the run cannot be held any
+more and a run that cannot go on says so."
+  (if (> (yeah-turn-compaction-failures turn) 0)
+      (yeah-turn--fail
+       turn
+       (format "the context of the run overflowed twice and the model wrote no summary: %s"
+               (yeah-turn--reason-text reason)))
+    (setf (yeah-turn-compaction-failures turn)
+          (1+ (yeah-turn-compaction-failures turn)))
+    (yeah-turn--write turn "compaction-failed"
+                      (yeah-turn--context turn)
+                      :reason (yeah-turn--reason-text reason))
+    (yeah-context-prune-session (yeah-turn-session turn))
+    (yeah-turn--continue-batch turn)))
+
 (defun yeah-turn--maybe-compact (turn transport)
   "Compact TURN's session before continuing when its budget overflows."
   (if (yeah-context-overflow-p
@@ -589,7 +706,7 @@ delivered only after the entire batch has settled."
          (lambda (result _info)
            (unless (yeah-turn-done turn)
              (if (plist-get result :error)
-                 (yeah-turn--fail turn (plist-get result :error))
+                 (yeah-turn--compaction-failed turn (plist-get result :error))
                (yeah-turn--continue-batch turn))))
          (lambda () (not (yeah-turn-done turn)))))
     (yeah-turn--continue-batch turn)))
@@ -733,15 +850,85 @@ the results of every batch together."
        (yeah-scheduler-run
         (mapcar (lambda (slot) (yeah-turn--call-spec turn slot)) runnable)
         (lambda (settled)
-          (yeah-turn--settle-batch turn transport calls prepared runnable
-                                    results refused settled)))))))
+          ;; The result of a batch is recorded here.  An error of the harness
+          ;; must not escape into the sentinel of a process, where it would
+          ;; kill the whole Emacs process: the run ends with the reason
+          ;; instead, and the reason is bounded.
+          (condition-case err
+              (yeah-turn--settle-batch turn transport calls prepared runnable
+                                       results refused settled)
+            (error
+             (yeah-turn--fail
+              turn
+              (format "the harness could not record the results of the tools: %s"
+                      (error-message-string err)))))))))))
+
+(defun yeah-turn--acted-since-nudge-p (turn)
+  "Return non-nil when the model called a tool since the last nudge of TURN.
+The provider answers with an empty message after the tools of the model have
+come back.  That silence is not the model refusing to act: the model has
+acted, and the run must not spend its nudge budget on the noise."
+  (> (yeah-turn-calls turn) (yeah-turn-nudge-calls turn)))
+
+(defun yeah-turn--send-nudge (turn answer transport answerer spend)
+  "Nudge the model of TURN after it answered ANSWER.
+SPEND says whether the nudge spends the budget of the run: the budget pays
+for the nudges that no effect answered."
+  (yeah-turn--tick turn 'no-tool-calls)
+  (cl-incf (yeah-turn-nudges turn))
+  (when (yeah-turn--silent-p answer)
+    (cl-incf (yeah-turn-silent-nudges turn)))
+  (when spend
+    (cl-incf (yeah-turn-nudge-spent turn)))
+  (setf (yeah-turn-nudge-calls turn) (yeah-turn-calls turn))
+  (let ((nudge (yeah-turn--nudge-text turn answer)))
+    (yeah-turn--write turn "nudge"
+                      (yeah-turn--context
+                       turn nil (yeah-turn-turn-event-id turn))
+                      :payload nudge)
+    (setf (yeah-turn-state turn) 'deciding)
+    (setf (yeah-turn-states turn)
+          (append (yeah-turn-states turn) (list 'deciding)))
+    (yeah-turn--ask turn nudge transport answerer)))
+
+(defun yeah-turn--counted (n noun)
+  "Return N NOUN with the plural that fits N."
+  (format "%d %s%s" n noun (if (= n 1) "" "s")))
+
+(defun yeah-turn--unfinished-payload (turn)
+  "Return the payload of the `unfinished' record of TURN.
+It names what the model did: how many times it answered with an empty
+message, how many times it described its next step, how many tools the run
+called, and whether the run had an effect at all.  A record that says
+`without an effect' when the run called its tools is a false record."
+  (let* ((empty (yeah-turn-silent-nudges turn))
+         (plans (- (yeah-turn-nudges turn) empty))
+         (calls (yeah-turn-calls turn))
+         (parts (delq nil
+                      (list (when (> empty 0)
+                             (format "the model answered with an empty message %s"
+                                     (yeah-turn--counted empty "time")))
+                            (when (> plans 0)
+                             (format "the model described its next step %s"
+                                     (yeah-turn--counted plans "time")))))))
+    (if (null (yeah-turn-tools-used turn))
+        (format "%s and the run ended without an effect"
+                (string-join parts ", "))
+      (format "%s, called %s, and the run never finished"
+              (string-join parts ", ")
+              (yeah-turn--counted calls "tool")))))
 
 (defun yeah-turn--answer-text (turn answer transport answerer)
   "Handle a text ANSWER from the model: record it, nudge it or end the run.
 A plan, an answer that says nothing, and a result that no tool backs, are
 nudged into the action; a result that a tool backs ends the run.  A run that
 spent its nudge budget without an effect ends as a failed run: it did not do
-the work, and it must not look as if it had."
+the work, and it must not look as if it had.
+
+The budget pays for the nudges that no effect answered.  A provider that
+answers with an empty message after the tools of the model have come back
+does not spend it: the model has acted, and a run that works must not be
+ended by the noise of the provider."
   (yeah-turn--write turn "assistant-message"
                     (yeah-turn--context
                      turn nil (yeah-turn-turn-event-id turn))
@@ -753,30 +940,28 @@ the work, and it must not look as if it had."
       ;; as if the work were done.
       (yeah-turn--fail turn
                        "the model answered with an empty message and the run is not done")
-    (let ((premature (or (yeah-turn--plan-p answer)
+    (let* ((silent (yeah-turn--silent-p answer))
+           (acted (and silent (yeah-turn--acted-since-nudge-p turn)))
+           (premature (or (yeah-turn--plan-p answer)
                           ;; An answer that says nothing is not a result: the
                           ;; model has not advanced, and the run nudges it into
                           ;; the action instead of taking the silence for the
                           ;; work.
-                          (yeah-turn--silent-p answer)
+                          silent
                           ;; A result that no tool backs is premature: the run
                           ;; has not touched anything yet.  And a run that is
                           ;; supervised ends through `finish', not through talk.
                           (null (yeah-turn-tools-used turn)))))
       (yeah-turn--tick turn 'stream-end)
       (cond
-       ((and (< (yeah-turn-nudges turn) (yeah-turn-max-nudges turn)) premature)
-        (yeah-turn--tick turn 'no-tool-calls)
-        (cl-incf (yeah-turn-nudges turn))
-        (let ((nudge (yeah-turn--nudge-text turn answer)))
-          (yeah-turn--write turn "nudge"
-                            (yeah-turn--context
-                             turn nil (yeah-turn-turn-event-id turn))
-                            :payload nudge)
-          (setf (yeah-turn-state turn) 'deciding)
-          (setf (yeah-turn-states turn)
-                (append (yeah-turn-states turn) (list 'deciding)))
-          (yeah-turn--ask turn nudge transport answerer)))
+       ((and acted premature)
+        ;; The provider is noisy and the model has acted since the last
+        ;; nudge: the run asks again, and the noise does not spend the
+        ;; budget.
+        (yeah-turn--send-nudge turn answer transport answerer nil))
+       ((and (< (yeah-turn-nudge-spent turn) (yeah-turn-max-nudges turn))
+             premature)
+        (yeah-turn--send-nudge turn answer transport answerer t))
        ((and (> (yeah-turn-max-nudges turn) 0) premature)
         ;; A supervised run that ends without the model finishing must
         ;; say so: the nudge budget is spent and the model still
@@ -785,11 +970,7 @@ the work, and it must not look as if it had."
         (yeah-turn--write turn "unfinished"
                           (yeah-turn--context
                            turn nil (yeah-turn-turn-event-id turn))
-                          :payload (if (yeah-turn--silent-p answer)
-                                       (format "the model answered with an empty message %d times and the run ended without an effect"
-                                               (yeah-turn-nudges turn))
-                                     (format "the model described its next step %d times and the run ended without an effect"
-                                             (yeah-turn-nudges turn)))
+                          :payload (yeah-turn--unfinished-payload turn)
                           :reason "the nudge budget was spent")
         (yeah-turn--mark-done turn 'failed))
        (t
@@ -815,6 +996,9 @@ the work, and it must not look as if it had."
            (or (plist-get usage :raw-estimated)
                (plist-get usage :estimated))
            info))))
+    (unless (and (consp answer) (eq (car answer) 'error))
+      ;; The provider answered: the budget of the retries is fresh again.
+      (setf (yeah-turn-retries turn) 0))
     (cond
      ((stringp answer)
       (if (yeah-loop-transition-p (yeah-turn-state turn) 'stream-end)
@@ -831,7 +1015,13 @@ the work, and it must not look as if it had."
      ((and (consp answer) (eq (car answer) 'tool-call))
       (yeah-turn--take-calls turn answerer transport (cdr answer)))
      ((and (consp answer) (eq (car answer) 'error))
-      (yeah-turn--fail turn (format "%s" (cdr answer))))
+      (if (and (yeah-turn--retryable-p info)
+               (< (yeah-turn-retries turn) (yeah-turn-max-retries turn)))
+          ;; The provider dropped the request, and it is asked again: the
+          ;; model is told what the run has done (wave 47), so the retry
+          ;; continues the work instead of starting it over.
+          (yeah-turn--retry turn (cdr answer) transport answerer)
+        (yeah-turn--fail turn (format "%s" (cdr answer)))))
      (t
       (yeah-turn--fail turn (format "the model answered with %S" answer))))))
 
@@ -856,6 +1046,73 @@ An empty answer is not a result: the model has not advanced, and a run that
 takes it for a result ends without the effect and looks done."
   (and (stringp answer)
        (string-blank-p answer)))
+
+(defconst yeah-turn--transcript-limit 12
+  "How many records of the run the transcript of the model carries.
+The transcript is the continuity of the model between the requests of a run:
+the harness asks the model in a fresh conversation every time, so a model that
+is told nothing of the work starts the task over.")
+
+(defconst yeah-turn--transcript-result-limit 600
+  "How many characters of the result of a tool the transcript carries.")
+
+(defun yeah-turn--cut (text limit)
+  "Return TEXT cut at LIMIT characters."
+  (if (and (stringp text) (> (length text) limit))
+      (concat (substring text 0 limit) " [...]")
+    (or text "")))
+
+(defun yeah-turn--transcript-text (record by-id)
+  "Return the line of the transcript for RECORD, or nil.
+BY-ID maps the id of a record to the record itself; the call of a tool is
+named with the arguments it was called with."
+  (let ((type (plist-get record :type))
+        (payload (plist-get record :payload)))
+    (cond
+     ((equal "assistant-message" type)
+      (format "[you] %s" (yeah-turn--cut payload 400)))
+     ((equal "user-message" type)
+      (format "[message] %s" (yeah-turn--cut payload 400)))
+     ((equal "tool-end" type)
+      (let* ((request (gethash (plist-get record :parent_event_id) by-id))
+             (args (and request (plist-get request :args)))
+             (name (or (plist-get record :tool) "tool")))
+        (if (plist-get record :pruned)
+            (format "[tool %s] the output of this call was pruned" name)
+          (format "[tool %s %s] %s" name (or args "")
+                  (yeah-turn--cut payload yeah-turn--transcript-result-limit)))))
+     ((equal "retry" type)
+      (format "[retry] the provider dropped the request: %s"
+              (yeah-turn--cut payload 200)))
+     ((equal "compaction" type)
+      (format "[summary of the work so far] %s"
+              (yeah-turn--cut (plist-get record :summary) 800)))
+     (t nil))))
+
+(defun yeah-turn--transcript (turn)
+  "Return the transcript of the run of TURN for the model.
+The transcript is what the model has not seen: every request of the harness
+starts a fresh conversation, and a model that is not told what the run has
+already done starts the task over.  The transcript is a projection of the
+journal, and the journal keeps the plain messages it was written with."
+  (let* ((records (yeah-session-records (yeah-turn-session turn)))
+         (by-id (make-hash-table :test #'equal))
+         (entries nil))
+    (dolist (record records)
+      (let ((id (plist-get record :id)))
+        (when (integerp id)
+          (puthash id record by-id))))
+    (dolist (record records)
+      (let ((text (yeah-turn--transcript-text record by-id)))
+        (when text
+          (push text entries))))
+    (let ((entries (nreverse entries)))
+      (when (> (length entries) yeah-turn--transcript-limit)
+        (setq entries (last entries yeah-turn--transcript-limit)))
+      (when entries
+        (concat "This is what has been done in this run so far:\n\n"
+                (string-join entries "\n\n")
+                "\n\nDo not start the work over: continue from here.\n\n")))))
 
 (defun yeah-turn--unused-tools (turn)
   "Return the tools of TURN's registry that this run has not called yet."
@@ -983,21 +1240,31 @@ that is told to repeat a call starts the work over."
 
 (defun yeah-turn--ask (turn prompt transport answerer)
   "Ask the model PROMPT with TRANSPORT, and continue TURN when it answers.
-The ANSWERER is what answers a request for permission."
+The ANSWERER is what answers a request for permission.
+
+Every request of the harness starts a fresh conversation, so the model is
+given the transcript of the run before the prompt: a model that is told
+nothing of the work starts the task over.  The first request of a run has no
+transcript and carries the prompt as it is."
   (unless (yeah-turn-done turn)
     (setf (yeah-turn-transport turn) transport
           (yeah-turn-answerer turn) answerer)
     (when (eq (yeah-turn-state turn) 'idle)
       (yeah-turn--tick turn 'user-prompt))
     (cl-incf (yeah-turn-turns turn))
-    (setf (yeah-turn-turn-event-id turn)
-          (yeah-turn--write turn "user-message" (yeah-turn--context turn)
-                            :payload prompt))
-    (setf (yeah-turn-model-fsm turn)
-          (yeah-tools-with-registry (yeah-turn-tools-registry turn)
-            (funcall transport prompt
-                     (lambda (answer &optional info)
-                       (yeah-turn--answer turn answer answerer transport info)))))))
+    (setf (yeah-turn-prompt turn) prompt)
+    (let ((transcript (yeah-turn--transcript turn)))
+      (setf (yeah-turn-turn-event-id turn)
+            (yeah-turn--write turn "user-message" (yeah-turn--context turn)
+                              :payload prompt))
+      (setf (yeah-turn-model-fsm turn)
+            (yeah-tools-with-registry (yeah-turn-tools-registry turn)
+              (funcall transport
+                       (if (and transcript (stringp prompt))
+                           (concat transcript prompt)
+                         prompt)
+                       (lambda (answer &optional info)
+                         (yeah-turn--answer turn answer answerer transport info))))))))
 
 ;;;###autoload
 (defun yeah-turn-cancel (turn &optional reason)
@@ -1033,14 +1300,15 @@ completed effects or guarantee termination of process descendants."
 ;;;###autoload
 (defun yeah-turn-run (session prompt &optional transport answerer budget
                               max-nudges on-done steer-source input deadline
-                              registry)
+                              registry max-retries)
   "Run the agent loop over SESSION with PROMPT and optional context BUDGET.
 MAX-NUDGES bounds completion supervision.  ON-DONE is called once at a
 terminal state.  STEER-SOURCE returns pending steering inputs for a batch.
 INPUT is the frozen input plist captured at submission.  DEADLINE is an
 optional whole-run timeout in seconds and is cancelled at terminal states.
 REGISTRY is the registry snapshot of this run (from `yeah-tools-snapshot');
-nil uses the shared registry."
+nil uses the shared registry.  MAX-RETRIES bounds the tries of a request that
+the provider dropped."
   (let ((transport (or transport
                       (and (fboundp 'yeah-gptel-request) #'yeah-gptel-request)))
         (answerer (or answerer #'yeah-approval-policy-decision)))
@@ -1057,6 +1325,7 @@ transport was given")))
                  :steer-source steer-source
                  :input input
                  :tools-registry registry
+                 :max-retries (or max-retries yeah-turn-default-max-retries)
                  :pending-permissions (make-hash-table :test 'equal))))
       (when deadline
         (unless (and (numberp deadline) (> deadline 0))
