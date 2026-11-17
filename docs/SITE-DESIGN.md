@@ -164,6 +164,53 @@ The command that `C-x 2` is bound to is `split-window-below`; `split-window`
 is the function underneath it, which takes an argument. The site had
 `split-window` in its minibuffer and was corrected.
 
+### The echo area is a window, not a row
+
+The bottom row of the frame is not a terminal line with a cursor parked at the
+end of it. In Emacs it is a **window of the frame** — the minibuffer window —
+and the message is drawn in that window. `src/xdisp.c` says so in
+`echo_area_display`:
+
+```c
+  mini_window = FRAME_MINIBUF_WINDOW (sf);
+  ...
+  if (!NILP (echo_area_buffer[0]) || minibuf_level == 0)
+    {
+      echo_area_window = mini_window;
+      window_height_changed_p = display_echo_area (w);
+```
+
+The same file says that while the mini-window is selected, the echo area does
+not show through it (`src/xdisp.c`, in `redisplay_internal`):
+
+```c
+	  && minibuf_level == 0
+	  /* If the mini-window is currently selected, this means the
+	     echo-area doesn't show through.  */
+	  && !MINI_WINDOW_P (XWINDOW (selected_window)))
+```
+
+So the row belongs to the minibuffer while it reads, and to the message when
+it does not. And `src/window.c` gives the window itself: `minibuffer-window`
+returns "the minibuffer window for frame FRAME".
+
+A window has a point, and Emacs shows the cursor in the selected window, at
+that point. The point of the minibuffer is at the end of the text that was
+typed, so the cursor stands **right after the text** — after `M-x `, after
+`Switch to buffer: ` — and never at the far end of the row. The row is as wide
+as the frame; the cursor is not.
+
+The site had the input grow to fill the row and the block cursor pushed to the
+far right of it. That is the drawing of a terminal line, and it is not what
+Emacs does.
+
+One thing the site does on its own: a stock Emacs leaves the area empty
+between messages, and the area of the site rests on the command the frame is
+ready for — `M-x yeah` — so that the reader sees where the frame stands and
+so that the cursor has a place to stand. The prompt of the minibuffer (`M-x `)
+comes back as soon as a command is asked for. That departure is named in
+§ *The decisions*.
+
 ### Two facts that settled the direction
 
 1. **There is no default theme file.** `custom-enabled-themes` is `nil` in a
@@ -223,9 +270,16 @@ these keys is a frame, whatever it is made of.
 
 **The parts of Emacs that are modes are modes on the site too.** The tab bar
 is off in a stock Emacs and on here; the minibuffer is a mode that comes and
-goes with the commands that need it; the echo area is quiet until something
-is said in it. A website that draws all of these at once, always, would look
+goes with the commands that need it; the echo area carries the line of the
+frame while the minibuffer is closed and the prompt of the minibuffer while
+it is open. A website that draws all of these at once, always, would look
 like a picture of Emacs rather than like Emacs.
+
+**The cursor stands where the text ends.** The echo area of Emacs is a window
+of the frame, and the cursor of a window stands at its point — at the end of
+the text, not at the end of the row. The site keeps that rule: the cursor
+waits right after `M-x yeah`, and when the minibuffer is open it stands at the
+end of what was typed.
 
 ## The decisions
 
@@ -274,6 +328,14 @@ like a picture of Emacs rather than like Emacs.
     The image of the card is named by an absolute URL with a version
     query, because the social platforms cache a picture by its URL: when
     the card changes, the PNG is rendered again and the query is bumped.
+15. **The cursor of the echo area stands where the text ends.** The echo
+    area of Emacs is the minibuffer window of the frame (`src/xdisp.c`),
+    and the cursor of a window stands at its point — after the text, not at
+    the end of the row. The site had the cursor at the far right of the
+    row; it waits right after `M-x yeah` now, and after the text that was
+    typed when the minibuffer is open. The frame rests on the command it
+    is ready for (`M-x yeah`); a stock Emacs leaves the area empty between
+    messages, and that departure of the site is named here.
 
 ## The verification
 
@@ -281,13 +343,15 @@ The design was checked in a real browser, not by reading the CSS. Chromium was
 driven over the DevTools protocol against the site served from disk, and the
 checks were: the anatomy of the frame, the menus and their contents and the
 painted box of an open menu, the tab bar and its selection, the scroll spy, the
-mode line, the minibuffer, the buffer prompt with its completion, the
-incremental search with its count, the keys, the themes and their persistence,
-the layout at 420 and 1440 pixels, the
-console, the failed requests, the focus ring and the contrast of every text
-role. The screenshots were read back and looked at.
+mode line, the minibuffer, the geometry of the echo area — where the cursor
+has to start exactly where the text ends —, the buffer prompt with its
+completion, the incremental search with its count, the keys, the themes and
+their persistence, the layout at 420 and 1440 pixels, the console, the failed
+requests, the focus ring and the contrast of every text role. The screenshots
+were read back and looked at.
 
-The checks found sixteen defects, all of them fixed.
+Seventeen defects were found and fixed: fifteen of them by the checks, and
+two by a reader who looked at the site.
 
 **The first round, six:**
 
@@ -367,6 +431,19 @@ The checks found sixteen defects, all of them fixed.
   and the Y is the Y-combinator.` The picture of the card is named by an
   absolute URL with a version query, so that a new card is a new picture.
 
+**The fourth round, one, and it was found by a reader as well:**
+
+- **The cursor of the minibuffer blinked at the far end of the row,** a whole
+  screen away from the text it belonged to. The echo area of Emacs is the
+  minibuffer window of the frame, and the cursor of a window stands at its
+  point — at the end of the text. The site drew the row like a terminal line:
+  the input grew to fill it and the block cursor was pushed to its right end.
+  The idle line was the placeholder of the input, and a placeholder cannot
+  carry a cursor — it is a real element of the frame now, and the prompt, the
+  command line and the cursor are one group. The cursor waits right after
+  `M-x yeah`, and when the minibuffer is open the real caret of the browser
+  stands at the end of what was typed.
+
 ## What is still open
 
 - The icons of the window system are not drawn. The menu bar of a real
@@ -413,6 +490,8 @@ of the Emacs mirror (`lisp`, `etc/themes`, `src`):
 - `lisp/frame.el` — "multi-frame management independent of window systems".
 - `src/keyboard.c` — `menu_bar_items` and `menu-bar-final-items`.
 - `src/window.c` — `minibuffer-window`.
+- `src/xdisp.c` — `echo_area_display`, `display_echo_area` and the line that
+  says the echo area does not show through a selected mini-window.
 - `etc/themes/modus-vivendi-theme.el` — the palette of the dark theme.
 
 **The photographs of real frames,** decoded and sampled pixel by pixel:
