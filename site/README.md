@@ -25,6 +25,20 @@ touches `site/` or the workflow itself. The published address is
 To publish it by hand instead, point GitHub Pages at the `main` branch and
 `/site` folder in the repository settings.
 
+## The preview of the site
+
+The title of the page and the title of the social card are the name of the
+thing: **Yeah, Emacs Agent Harness**. Yeah reads as Y, E-macs, A-gent,
+H-arness — a recursive acronym. The Y-combinator is not the expansion of the
+name; it belongs to the sentence that explains the Y (`;; The Y is the
+Y-combinator.`), and it is there that it lives.
+
+The card (`assets/og.png`) is fetched by the social platforms from its URL,
+and they cache it there. The `og:image` and `twitter:image` therefore carry an
+absolute URL with a version query (`?v=2`): **when the card changes, render
+the PNG again and bump the query**, otherwise the old picture keeps being
+served.
+
 ## Design: the default frame of GNU Emacs
 
 The page is not a page styled to look like Emacs; it is a frame, with the

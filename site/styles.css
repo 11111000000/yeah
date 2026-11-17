@@ -603,6 +603,24 @@ code {
   line-height: 1.72;
 }
 
+/* The name of the thing, in the Purple of the font-lock faces — the same
+   colour as the Y of the wordmark in the menu bar. */
+.hero__name {
+  margin-top: 1.15rem;
+  color: var(--fl-keyword);
+  font-size: 1.22rem;
+  font-weight: 700;
+  letter-spacing: -0.012em;
+}
+
+.hero__reading {
+  margin-top: 0.35rem;
+  color: var(--face-prose);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
 .hero__actions {
   display: flex;
   flex-wrap: wrap;

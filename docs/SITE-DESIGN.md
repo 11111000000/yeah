@@ -264,6 +264,16 @@ like a picture of Emacs rather than like Emacs.
     light theme, `fg-dim` in the dark one. The `shadow` face is grey50 and
     fails the 4.5:1 contrast on white; `shadow` is for shadows, not for
     text.
+14. **The preview of the site says the name of the thing: `Yeah, Emacs
+    Agent Harness`.** Yeah reads as Y, E-macs, A-gent, H-arness — a
+    recursive acronym. The expansion of the name is the name; the
+    Y-combinator is not the expansion and stays in the sentence that
+    explains the Y. The title of the page, the title of the card and the
+    card itself all carry that name, and the card carries the reading of
+    it: `Y · E-macs · A-gent · H-arness — and the Y is the Y-combinator.`
+    The image of the card is named by an absolute URL with a version
+    query, because the social platforms cache a picture by its URL: when
+    the card changes, the PNG is rendered again and the query is bumped.
 
 ## The verification
 
@@ -277,7 +287,7 @@ the layout at 420 and 1440 pixels, the
 console, the failed requests, the focus ring and the contrast of every text
 role. The screenshots were read back and looked at.
 
-The checks found fifteen defects, all of them fixed.
+The checks found sixteen defects, all of them fixed.
 
 **The first round, six:**
 
@@ -338,6 +348,24 @@ The checks found fifteen defects, all of them fixed.
   `(unless (commandp function) (error "`%s' is not a valid command name"))`,
   and the installed Emacs 30.2 was asked for the exact wording:
   `‘nope’ is not a valid command name`. The site says that now.
+
+**The third round, one, and it was not found by a check but by a reader:**
+
+- **The preview of the site did not carry the name of the thing.** The title
+  of the page and the title of the card said only `Yeah — The agent is
+  Emacs`, so a card of the site said nothing about the name it is a card
+  of. Worse, the card a reader sent showed an expansion the name never
+  had: `Yeah — Y-combinator, Emacs Agent Harness`. That text is from the
+  deploy of the 11th of November; the 12th already corrected it
+  (`4e3081c`, "the name was expanded as 'Y-combinator, Emacs Agent
+  Harness', which lost the recursion the name actually has"), and the
+  redesign dropped the name from the title altogether. The social
+  platforms cache a preview by its URL, so the wrong card outlived the
+  deploy that fixed the text. The name is a recursive acronym — Yeah,
+  Emacs Agent Harness — and the title, the card and the card's picture
+  say it now, with the reading of it: `Y · E-macs · A-gent · H-arness —
+  and the Y is the Y-combinator.` The picture of the card is named by an
+  absolute URL with a version query, so that a new card is a new picture.
 
 ## What is still open
 
