@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Yeah — The agent is Emacs</title>
 <meta name="description" content="Yeah is an agent harness written in Emacs Lisp. A dedicated Emacs runs the tools, permissions and append-only journal; your editor connects through an explicitly approved bridge.">
-<meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#111116">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#d9d9d9">
 
 <meta property="og:type" content="website">
 <meta property="og:title" content="Yeah — The agent is Emacs">
@@ -17,198 +17,459 @@
 
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
+
+<!-- The theme is restored before the first paint, so a frame that was
+     left in modus-vivendi does not flash white on the way there. -->
+<script>
+  (function () {
+    try {
+      if (window.localStorage.getItem("yeah-theme") === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    } catch (error) { /* private mode: the default theme stands */ }
+  })();
+</script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
 
-<header class="menu-bar">
-  <div class="frame-width menu-bar__inner">
-    <a class="wordmark" href="#top" aria-label="Yeah — home">
-      <span class="wordmark__paren" aria-hidden="true">(</span>
-      <img class="wordmark__mark" src="assets/logo.svg" width="28" height="28" alt="">
-      <span class="wordmark__name">yeah</span>
-      <span class="wordmark__paren" aria-hidden="true">)</span>
-    </a>
+<!--
+  The page is a GNU Emacs frame, not a page styled to look like one.
+  Every colour below is a face of Emacs 30.2: the buffer is `default',
+  the mode line is `mode-line' (black on grey75), the tab bar is
+  `tab-bar' (grey85), the header line is `header-line' (grey90 on
+  grey20), the fringe is `fringe' (grey95), and the text colours are
+  the `font-lock' faces (Firebrick comments, Purple keywords,
+  VioletRed4 strings, Blue1 function names, ForestGreen types).
+  The anatomy is checked against Emacs 30.2 and against photographs of
+  the real frame; see docs/SITE-DESIGN.md.
+-->
 
-    <nav class="nav" aria-label="Sections">
-      <a href="#vision">Vision</a>
-      <a href="#why">Why Emacs</a>
-      <a href="#architecture">Architecture</a>
-      <a href="#roadmap">Roadmap</a>
-      <a href="#status">Status</a>
-      <a href="#install">Install</a>
-    </nav>
+<div class="frame" id="frame">
 
-    <a class="source-link" href="https://github.com/11111000000/yeah">[ source ]</a>
-  </div>
-</header>
+  <!-- ============================ 1. MENU BAR ============================ -->
+  <header class="menu-bar">
+    <div class="menu-bar__inner">
+      <a class="wordmark" href="#top" aria-label="Yeah — beginning of buffer">
+        <span class="wordmark__paren" aria-hidden="true">(</span>
+        <span class="wordmark__mark" aria-hidden="true"></span>
+        <span class="wordmark__name">Yeah</span>
+        <span class="wordmark__paren" aria-hidden="true">)</span>
+      </a>
 
-<div class="system-bar">
-  <div class="frame-width system-bar__inner">
-    <span>GNU Emacs · Yeah 0.3.0</span>
-    <span class="system-bar__right">Elisp &nbsp;·&nbsp; service-first &nbsp;·&nbsp; append-only</span>
-  </div>
-</div>
-
-<main id="main" class="frame frame-width">
-  <span id="top" class="anchor"></span>
-
-  <section class="hero" aria-labelledby="hero-title">
-    <div class="window-title">
-      <span>*scratch*</span>
-      <span>Yeah, Emacs Agent Harness</span>
-    </div>
-
-    <div class="hero__grid">
-      <div class="hero__copy">
-        <p class="code-comment">;; No sidecar. No opaque agent runtime.</p>
-        <h1 id="hero-title">The agent <span class="face-keyword">is</span><br><span class="hero__name">Emacs.</span></h1>
-        <p class="hero__lead">
-          Yeah is an agent harness written in Emacs Lisp. A dedicated Emacs runs
-          the tools, permissions and session journal; your editing Emacs connects
-          through an explicitly approved bridge and stays responsive.
-        </p>
-
-        <div class="hero__actions" aria-label="Get started">
-          <a class="action action--primary" href="#install">[ install alpha ]</a>
-          <a class="action" href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md">[ read vision ]</a>
-          <a class="action" href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md">[ read architecture ]</a>
+      <!-- The menu bar of Emacs 30.2: File, Edit, Options, Buffers, Tools,
+           Help.  The names, the order and the commands are the ones of the
+           real frame — `lisp/menu-bar.el' of emacs-30.2 and a photograph of
+           a running Emacs.  The View and Go menus of Emacs 28 are gone: in
+           30 their commands live under Options, and the buffers live under
+           Buffers. -->
+      <nav class="menus" aria-label="Main menu">
+        <div class="menu" data-menu="file">
+          <button type="button" class="menu__title" aria-haspopup="true" aria-expanded="false"><span class="mnemonic">F</span>ile</button>
+          <ul class="menu__list" role="menu" aria-label="File">
+            <li role="none"><a role="menuitem" href="#install">Install package…</a></li>
+            <li role="separator" class="menu__sep"></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah/blob/main/README.md" rel="noopener">Open File (README)</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah/blob/main/LICENSE" rel="noopener">Open File (LICENSE)</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah/blob/main/spec.json" rel="noopener">Open File (spec.json)</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah" rel="noopener">Open Directory (repository)</a></li>
+          </ul>
         </div>
 
-        <p class="hero__status"><span class="label-warning">v0.3.0</span> The kernel asks only what matters: a read that changes nothing is not asked about.<br>A kernel, not yet a complete product.</p>
+        <div class="menu" data-menu="edit">
+          <button type="button" class="menu__title" aria-haspopup="true" aria-expanded="false"><span class="mnemonic">E</span>dit</button>
+          <ul class="menu__list" role="menu" aria-label="Edit">
+            <li role="none"><button type="button" role="menuitem" data-action="copy-install">Copy install command</button></li>
+            <li role="none"><button type="button" role="menuitem" data-action="copy-url">Copy page address</button></li>
+            <li role="none"><button type="button" role="menuitem" data-action="select-all">Select all text</button></li>
+          </ul>
+        </div>
+
+        <div class="menu" data-menu="options">
+          <button type="button" class="menu__title" aria-haspopup="true" aria-expanded="false"><span class="mnemonic">O</span>ptions</button>
+          <ul class="menu__list" role="menu" aria-label="Options">
+            <li role="none"><button type="button" role="menuitem" data-action="theme-light">Theme: Emacs Default</button></li>
+            <li role="none"><button type="button" role="menuitem" data-action="theme-dark">Theme: Modus Vivendi</button></li>
+            <li role="separator" class="menu__sep"></li>
+            <li role="none"><button type="button" role="menuitem" data-action="isearch">Incremental Search…</button></li>
+            <li role="none"><button type="button" role="menuitem" data-action="zoom-in">Zoom In</button></li>
+            <li role="none"><button type="button" role="menuitem" data-action="zoom-out">Zoom Out</button></li>
+            <li role="separator" class="menu__sep"></li>
+            <li role="none"><button type="button" role="menuitem" data-action="toggle-chrome">Toggle Frame Chrome</button></li>
+          </ul>
+        </div>
+
+        <!-- The Buffers menu of Emacs lists the buffers of the frame, and
+             then the commands that work on them.  The buffers of this frame
+             are the windows of the page. -->
+        <div class="menu" data-menu="buffers">
+          <button type="button" class="menu__title" aria-haspopup="true" aria-expanded="false"><span class="mnemonic">B</span>uffers</button>
+          <ul class="menu__list" role="menu" aria-label="Buffers">
+            <li role="none"><a role="menuitem" href="#scratch">*scratch*</a></li>
+            <li role="none"><a role="menuitem" href="#vision">*vision*</a></li>
+            <li role="none"><a role="menuitem" href="#what">*readme*</a></li>
+            <li role="none"><a role="menuitem" href="#why">*why-emacs*</a></li>
+            <li role="none"><a role="menuitem" href="#architecture">*architecture*</a></li>
+            <li role="none"><a role="menuitem" href="#roadmap">*roadmap*</a></li>
+            <li role="none"><a role="menuitem" href="#status">*Messages*</a></li>
+            <li role="none"><a role="menuitem" href="#install">*install*</a></li>
+            <li role="none"><a role="menuitem" href="#development">*development*</a></li>
+            <li role="none"><a role="menuitem" href="#non-goals">*non-goals*</a></li>
+            <li role="none"><a role="menuitem" href="#keys">*keybindings*</a></li>
+            <li role="none"><a role="menuitem" href="#about">*about*</a></li>
+            <li role="separator" class="menu__sep"></li>
+            <li role="none"><button type="button" role="menuitem" data-action="next-buffer">Next Buffer</button></li>
+            <li role="none"><button type="button" role="menuitem" data-action="previous-buffer">Previous Buffer</button></li>
+            <li role="none"><button type="button" role="menuitem" data-action="switch-to-buffer">Select Named Buffer…</button></li>
+          </ul>
+        </div>
+
+        <div class="menu" data-menu="tools">
+          <button type="button" class="menu__title" aria-haspopup="true" aria-expanded="false"><span class="mnemonic">T</span>ools</button>
+          <ul class="menu__list" role="menu" aria-label="Tools">
+            <li role="none"><a role="menuitem" href="#status">Run the doctor</a></li>
+            <li role="none"><a role="menuitem" href="#development">Byte-compile the kernel</a></li>
+            <li role="none"><a role="menuitem" href="#architecture">Inspect the run controller</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah/blob/main/docs/PLAN.md" rel="noopener">Read the plan</a></li>
+          </ul>
+        </div>
+
+        <div class="menu" data-menu="help">
+          <button type="button" class="menu__title" aria-haspopup="true" aria-expanded="false"><span class="mnemonic">H</span>elp</button>
+          <ul class="menu__list" role="menu" aria-label="Help">
+            <li role="none"><a role="menuitem" href="#keys">Emacs Tutorial</a></li>
+            <li role="none"><a role="menuitem" href="https://www.gnu.org/software/emacs/manual/" rel="noopener">Read the Emacs Manual</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah" rel="noopener">Find Emacs Packages</a></li>
+            <li role="separator" class="menu__sep"></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md" rel="noopener">C-h vision</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md" rel="noopener">C-h architecture</a></li>
+            <li role="none"><a role="menuitem" href="https://github.com/11111000000/yeah/blob/main/docs/ENGINEERING.md" rel="noopener">C-h engineering</a></li>
+            <li role="separator" class="menu__sep"></li>
+            <li role="none"><a role="menuitem" href="#about">About Emacs</a></li>
+          </ul>
+        </div>
+      </nav>
+
+      <div class="menu-bar__right">
+        <button type="button" class="theme-button" data-action="toggle-theme" aria-label="Change theme">
+          <span class="theme-button__swatch" aria-hidden="true"></span>
+          <span class="theme-button__label" data-theme-label>Emacs default</span>
+        </button>
       </div>
+    </div>
+  </header>
 
-      <section class="session" aria-labelledby="session-title">
-        <div class="buffer-title">
-          <h2 id="session-title">*yeah*</h2>
-          <span>illustrative session</span>
+  <!-- ============================ 2. TAB BAR ============================ -->
+  <!-- Emacs 29 shows the open buffers as tabs above the buffer. -->
+  <div class="tab-bar" role="tablist" aria-label="Open buffers">
+    <div class="tab-bar__tabs">
+      <button type="button" class="tab" role="tab" data-target="#top" data-buffer="*scratch*" aria-selected="true"><span class="tab__name">*scratch*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#vision" data-buffer="*vision*" aria-selected="false"><span class="tab__name">*vision*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#what" data-buffer="*readme*" aria-selected="false"><span class="tab__name">*readme*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#why" data-buffer="*why-emacs*" aria-selected="false"><span class="tab__name">*why-emacs*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#architecture" data-buffer="*architecture*" aria-selected="false"><span class="tab__name">*architecture*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#roadmap" data-buffer="*roadmap*" aria-selected="false"><span class="tab__name">*roadmap*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#status" data-buffer="*Messages*" aria-selected="false"><span class="tab__name">*Messages*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#install" data-buffer="*install*" aria-selected="false"><span class="tab__name">*install*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#development" data-buffer="*development*" aria-selected="false"><span class="tab__name">*development*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#non-goals" data-buffer="*non-goals*" aria-selected="false"><span class="tab__name">*non-goals*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#keys" data-buffer="*keybindings*" aria-selected="false"><span class="tab__name">*keybindings*</span></button>
+      <button type="button" class="tab" role="tab" data-target="#about" data-buffer="*about*" aria-selected="false"><span class="tab__name">*about*</span></button>
+      <button type="button" class="tab tab--new" data-action="new-buffer" title="Switch to buffer" aria-label="Switch to buffer">+</button>
+    </div>
+  </div>
+
+  <!-- ============================ 3. HEADER LINE ============================ -->
+  <div class="header-line">
+    <div class="frame-width header-line__inner">
+      <span class="header-line__left">
+        <span class="header-line__item">GNU Emacs 30.2</span>
+        <span class="header-line__sep" aria-hidden="true">·</span>
+        <span class="header-line__item">Yeah 0.3.0</span>
+      </span>
+      <span class="header-line__right">
+        <span class="header-line__item">Elisp</span>
+        <span class="header-line__sep" aria-hidden="true">·</span>
+        <span class="header-line__item">service-first</span>
+        <span class="header-line__sep" aria-hidden="true">·</span>
+        <span class="header-line__item">append-only</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- ============================ 4. THE BUFFER ============================ -->
+  <main id="main" class="buffer">
+    <div class="fringe" aria-hidden="true"></div>
+
+    <div class="buffer__content">
+      <span id="top" class="anchor"></span>
+
+      <!-- ---------- *scratch* ---------- -->
+      <section class="window window--scratch" id="scratch" data-mode="Fundamental" data-buffer="*scratch*" aria-labelledby="hero-title">
+        <div class="hero">
+          <div class="hero__copy">
+            <p class="comment">;; No sidecar. No opaque agent runtime.</p>
+            <h1 id="hero-title">The agent <span class="face-keyword">is</span><br>Emacs.</h1>
+            <p class="lead">
+              Yeah is an agent harness written in Emacs Lisp. A dedicated Emacs runs
+              the tools, permissions and session journal; your editing Emacs connects
+              through an explicitly approved bridge and stays responsive.
+            </p>
+
+            <div class="hero__actions">
+              <a class="button button--primary" href="#install">install alpha</a>
+              <a class="button" href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md" rel="noopener">read vision</a>
+              <a class="button" href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md" rel="noopener">read architecture</a>
+            </div>
+
+            <p class="hero__status">
+              <span class="label label--warning">v0.3.0</span>
+              The kernel asks only what matters: a read that changes nothing is not asked about.
+              A kernel, not yet a complete product.
+            </p>
+          </div>
+
+          <div class="hero__session">
+            <section class="session" aria-labelledby="session-title">
+              <h2 id="session-title" class="visually-hidden">Illustrative session</h2>
+
+              <ol class="event-log">
+                <li class="event event--input">
+                  <span class="event__kind face-type">you</span>
+                  <div>
+                    <p>Fix the failing canary and show me the diff.</p>
+                  </div>
+                </li>
+                <li class="event">
+                  <span class="event__kind face-builtin">Read</span>
+                  <div>
+                    <p>tests/checks/check-session-log-append-only.el</p>
+                    <span class="event__meta">bounded · read-only</span>
+                  </div>
+                </li>
+                <li class="event">
+                  <span class="event__kind face-builtin">Edit</span>
+                  <div>
+                    <p>lib/yeah-session.el</p>
+                    <span class="event__meta">exact match · modification tick verified</span>
+                  </div>
+                </li>
+                <li class="event event--approval">
+                  <span class="event__kind face-warning">Build</span>
+                  <div>
+                    <p>Approve guarded edit?</p>
+                    <span class="event__choices">once · session · deny</span>
+                  </div>
+                </li>
+                <li class="event">
+                  <span class="event__kind face-success">ERT</span>
+                  <div>
+                    <p><span class="face-success">PASS</span> — canary repaired</p>
+                    <span class="event__meta">review the diff before any commit</span>
+                  </div>
+                </li>
+              </ol>
+
+              <div class="mode-line mode-line--inset">
+                <span class="mode-line__name">*yeah*</span>
+                <span>All</span>
+                <span>L1</span>
+                <span>(Emacs-Lisp)</span>
+              </div>
+            </section>
+          </div>
         </div>
 
-        <ol class="event-log">
-          <li class="event event--input">
-            <span class="event__kind face-type">you</span>
-            <div><p>Fix the failing canary and show me the diff.</p></div>
-          </li>
-          <li class="event">
-            <span class="event__kind face-builtin">Read</span>
-            <div><p>tests/checks/check-session-log-append-only.el</p><span class="event__meta">bounded · read-only</span></div>
-          </li>
-          <li class="event">
-            <span class="event__kind face-builtin">Edit</span>
-            <div><p>lib/yeah-session.el</p><span class="event__meta">exact match · modification tick verified</span></div>
-          </li>
-          <li class="event event--approval">
-            <span class="event__kind face-warning">Build</span>
-            <div><p>Approve guarded edit?</p><span class="event__choices">[ once ] &nbsp; [ session ] &nbsp; [ deny ]</span></div>
-          </li>
-          <li class="event">
-            <span class="event__kind face-builtin">ERT</span>
-            <div><p><span class="face-success">PASS</span> — canary repaired</p><span class="event__meta">review the diff before any commit</span></div>
-          </li>
-        </ol>
-
-        <div class="minibuffer" aria-label="Emacs command example"><span class="face-keyword">M-x</span> yeah <span class="cursor" aria-hidden="true"></span></div>
+        <!-- Only the mode line of the frame is live; a window that is not
+             selected shows the inactive variant, grey on grey, as in Emacs. -->
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*scratch*</span>
+          <span>All</span>
+          <span>Fundamental</span>
+        </div>
       </section>
-    </div>
 
-    <div class="mode-line" aria-hidden="true">
-      <span>-:-&nbsp;&nbsp; *scratch*</span>
-      <span>All &nbsp; L1 &nbsp; (Elisp) &nbsp; <b>alpha</b></span>
-    </div>
-  </section>
+      <!-- ---------- *vision* (Org) ---------- -->
+      <section class="window window--org" id="vision" data-mode="Org" data-buffer="*vision*" aria-labelledby="vision-title">
+        <div class="window__body">
+          <p class="comment">;; The environment is people.</p>
+          <h2 id="vision-title" class="headline">A participant, not a replacement.</h2>
+          <p class="lead lead--wide">
+            Emacs is a place people invested themselves in for decades: packages the community
+            wrote, configurations sharpened for years, habits that became muscle memory. The new
+            era should not demand leaving that world behind.
+          </p>
 
-  <section class="buffer" id="vision" aria-labelledby="vision-title">
-    <div class="window-title">
-      <span>*vision*</span>
-      <span>the reason, in one piece</span>
-    </div>
-    <div class="buffer__body">
-      <p class="code-comment">;; The environment is people.</p>
-      <h2 id="vision-title" class="section-title">A participant, not a replacement.</h2>
-      <p class="section-lead">Emacs is a place people invested themselves in for decades: packages the community wrote, configurations sharpened for years, habits that became muscle memory. The new era should not demand leaving that world behind.</p>
+          <ul class="capability-list">
+            <li>
+              <span class="capability__face face-keyword">INHERIT</span>
+              <div>
+                <h3>The agent starts from what people built.</h3>
+                <p>Live buffers, your own functions and documentation, your LSP's diagnostics, your permissions. The environment's inheritance is the agent's starting capital, not its background.</p>
+              </div>
+            </li>
+            <li>
+              <span class="capability__face face-keyword">CARRY</span>
+              <div>
+                <h3>A minimal culture travels anywhere.</h3>
+                <p>The same kernel installs on a bare CI Emacs and on an Emacs inhabited for twenty years. Inheritance is a multiplier, not a prerequisite — what travels is the environment's capacity to be used.</p>
+              </div>
+            </li>
+            <li>
+              <span class="capability__face face-keyword">ISOLATE</span>
+              <div>
+                <h3>The thread, not the culture.</h3>
+                <p>A service Emacs runs the long turn so your editor never waits; the model, the permissions and the live buffers stay yours.</p>
+              </div>
+            </li>
+            <li>
+              <span class="capability__face face-keyword">FIXPOINT</span>
+              <div>
+                <h3>The environment develops itself.</h3>
+                <p>The Y is the Y-combinator: person → environment → agent → environment. Yeah repairing its own canary is the modest, measurable form of that cycle.</p>
+              </div>
+            </li>
+          </ul>
 
-      <ul class="capability-list">
-        <li><span class="capability__face face-keyword">INHERIT</span><div><h3>The agent starts from what people built.</h3><p>Live buffers, your own functions and documentation, your LSP's diagnostics, your permissions. The environment's inheritance is the agent's starting capital, not its background.</p></div></li>
-        <li><span class="capability__face face-keyword">CARRY</span><div><h3>A minimal culture travels anywhere.</h3><p>The same kernel installs on a bare CI Emacs and on an Emacs inhabited for twenty years. Inheritance is a multiplier, not a prerequisite — what travels is the environment's capacity to be used.</p></div></li>
-        <li><span class="capability__face face-keyword">ISOLATE</span><div><h3>The thread, not the culture.</h3><p>A service Emacs runs the long turn so your editor never waits; the model, the permissions and the live buffers stay yours.</p></div></li>
-        <li><span class="capability__face face-keyword">FIXPOINT</span><div><h3>The environment develops itself.</h3><p>The Y is the Y-combinator: person → environment → agent → environment. Yeah repairing its own canary is the modest, measurable form of that cycle.</p></div></li>
-      </ul>
-
-      <p class="buffer-note"><span class="face-comment">;;</span> A check that cannot fail is a comment; unknown is not pass. <a href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md">Read the whole vision.</a></p>
-    </div>
-  </section>
-
-  <section class="buffer" id="what" aria-labelledby="what-title">
-    <div class="window-title">
-      <span>*README*</span>
-      <span>the non-negotiables</span>
-    </div>
-    <div class="buffer__body">
-      <p class="code-comment">;; Three commitments, enforced by the kernel.</p>
-      <h2 id="what-title" class="section-title">Inspect the whole loop.</h2>
-      <p class="section-lead">The point is not another chat window. It is an agent whose execution, effects and history remain visible to the person running it.</p>
-
-      <div class="invariants">
-        <article class="invariant">
-          <span class="invariant__index face-comment">01</span>
-          <div><h3>Elisp is the kernel.</h3><p>The run controller, typed tool registry, permission policy and journal live in <code>lib/</code>. There is no second agent implementation in another language.</p></div>
-        </article>
-        <article class="invariant">
-          <span class="invariant__index face-comment">02</span>
-          <div><h3>Every effect has a policy.</h3><p>Model-originated tools pass through argument validation and last-matching permission rules. Plan and Build are profiles, not different execution engines.</p></div>
-        </article>
-        <article class="invariant">
-          <span class="invariant__index face-comment">03</span>
-          <div><h3>The journal is the truth.</h3><p>Context, interface state, approvals, cost and recovery are projections of append-only JSONL events. Compaction adds events; it does not erase history.</p></div>
-        </article>
-      </div>
-
-      <aside class="y-note" aria-labelledby="y-title">
-        <div class="y-note__form" aria-hidden="true">(yeah<br>&nbsp;&nbsp;emacs<br>&nbsp;&nbsp;agent<br>&nbsp;&nbsp;harness)</div>
-        <div>
-          <p class="code-comment">;; The Y is the Y-combinator.</p>
-          <h3 id="y-title">Recursion with a reason.</h3>
-          <p><strong>Yeah</strong> means <strong>Yeah, Emacs Agent Harness</strong>. Its long-term shape is bounded delegation, runtime self-inspection and a fixed point at which Yeah can develop and verify Yeah itself.</p>
+          <p class="note"><span class="face-comment">;;</span> A check that cannot fail is a comment; unknown is not pass. <a href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md" rel="noopener">Read the whole vision.</a></p>
         </div>
-      </aside>
-    </div>
-  </section>
 
-  <section class="buffer" id="why" aria-labelledby="why-title">
-    <div class="window-title">
-      <span>*why-emacs*</span>
-      <span>native capabilities</span>
-    </div>
-    <div class="buffer__body">
-      <p class="code-comment">;; An environment people already invested in.</p>
-      <h2 id="why-title" class="section-title">Your editor is already the interface.</h2>
-      <p class="section-lead">Emacs holds decades of community packages and years of your own configuration. Yeah is designed to start from that inheritance: the agent becomes a participant in the environment you built, rather than a shell scraping files and process output.</p>
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*vision*</span>
+          <span>All</span>
+          <span>Org</span>
+        </div>
+      </section>
 
-      <ul class="capability-list">
-        <li><span class="capability__face face-keyword">BUFFERS</span><div><h3>Unsaved edits are still context.</h3><p>Read live buffers through the explicitly approved emacsclient bridge, including work that exists only in the editor.</p></div></li>
-        <li><span class="capability__face face-keyword">INTROSPECT</span><div><h3>The runtime can explain itself.</h3><p>Functions, documentation, source and Info become agent context. The tool does not have to guess how Emacs works.</p></div></li>
-        <li><span class="capability__face face-keyword">EDIT</span><div><h3>Changes respect the buffer.</h3><p>Exact old text and modification-tick checks reject stale edits. A logical change becomes one native undo step.</p></div></li>
-        <li><span class="capability__face face-keyword">DIAGNOSE</span><div><h3>No second build system.</h3><p>Use Eglot and Flymake diagnostics, then verify Elisp with check-parens, byte compilation and ERT.</p></div></li>
-        <li><span class="capability__face face-keyword">COMPOSE</span><div><h3>Your tools remain your tools.</h3><p>Magit, Org, project.el, Dired and TRAMP belong in the same environment, not in a parallel plugin universe.</p></div></li>
-        <li><span class="capability__face face-keyword">RECOVER</span><div><h3>History outlives the interface.</h3><p>Durable, versioned events support projections and recovery without turning the session into opaque process state.</p></div></li>
-      </ul>
+      <!-- ---------- *readme* (Emacs-Lisp) ---------- -->
+      <section class="window window--elisp" id="what" data-mode="Emacs-Lisp" data-buffer="*readme*" aria-labelledby="what-title">
+        <div class="window__body">
+          <p class="comment">;; Three commitments, enforced by the kernel.</p>
+          <h2 id="what-title" class="headline">Inspect the whole loop.</h2>
+          <p class="lead lead--wide">
+            The point is not another chat window. It is an agent whose execution, effects and
+            history remain visible to the person running it.
+          </p>
 
-      <p class="buffer-note"><span class="face-comment">;;</span> Parity with mature harnesses is a goal to measure by completed tasks, not a feature to claim by checklist.</p>
-    </div>
-  </section>
+          <div class="invariants">
+            <article class="invariant">
+              <span class="invariant__index face-comment">01</span>
+              <div>
+                <h3>Elisp is the kernel.</h3>
+                <p>The run controller, typed tool registry, permission policy and journal live in <code>lib/</code>. There is no second agent implementation in another language.</p>
+              </div>
+            </article>
+            <article class="invariant">
+              <span class="invariant__index face-comment">02</span>
+              <div>
+                <h3>Every effect has a policy.</h3>
+                <p>Model-originated tools pass through argument validation and last-matching permission rules. Plan and Build are profiles, not different execution engines.</p>
+              </div>
+            </article>
+            <article class="invariant">
+              <span class="invariant__index face-comment">03</span>
+              <div>
+                <h3>The journal is the truth.</h3>
+                <p>Context, interface state, approvals, cost and recovery are projections of append-only JSONL events. Compaction adds events; it does not erase history.</p>
+              </div>
+            </article>
+          </div>
 
-  <section class="buffer" id="architecture" aria-labelledby="architecture-title">
-    <div class="window-title">
-      <span>*architecture*</span>
-      <span>fundamental-mode</span>
-    </div>
-    <div class="buffer__body">
-      <p class="code-comment">;; Different drivers. The same semantic events.</p>
-      <h2 id="architecture-title" class="section-title">One controller. One journal.</h2>
-      <p class="section-lead">Human, ACP, MCP and batch drivers submit to the same run controller. Placement can change process ownership and who answers approvals; it cannot change the event sequence.</p>
+          <aside class="y-note" aria-labelledby="y-title">
+            <div class="y-note__form" aria-hidden="true">(yeah<br>&nbsp;&nbsp;emacs<br>&nbsp;&nbsp;agent<br>&nbsp;&nbsp;harness)</div>
+            <div>
+              <p class="comment">;; The Y is the Y-combinator.</p>
+              <h3 id="y-title">Recursion with a reason.</h3>
+              <p><strong>Yeah</strong> means <strong>Yeah, Emacs Agent Harness</strong>. Its long-term shape is bounded delegation, runtime self-inspection and a fixed point at which Yeah can develop and verify Yeah itself.</p>
+            </div>
+          </aside>
+        </div>
 
-      <figure class="ascii-figure">
-        <pre tabindex="0" aria-label="Human, ACP, MCP and Batch converge on the Session API and Run Controller, then the model adapter, typed tool registry and policy, execution scheduler, append-only JSONL journal, projections, and attached, service or batch placement."><code> Human: M-x yeah       ACP          MCP          Batch
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*readme*</span>
+          <span>All</span>
+          <span>Elisp</span>
+        </div>
+      </section>
+
+      <!-- ---------- *why-emacs* (Org) ---------- -->
+      <section class="window window--org" id="why" data-mode="Org" data-buffer="*why-emacs*" aria-labelledby="why-title">
+        <div class="window__body">
+          <p class="comment">;; An environment people already invested in.</p>
+          <h2 id="why-title" class="headline">Your editor is already the interface.</h2>
+          <p class="lead lead--wide">
+            Emacs holds decades of community packages and years of your own configuration. Yeah is
+            designed to start from that inheritance: the agent becomes a participant in the
+            environment you built, rather than a shell scraping files and process output.
+          </p>
+
+          <ul class="capability-list">
+            <li>
+              <span class="capability__face face-keyword">BUFFERS</span>
+              <div>
+                <h3>Unsaved edits are still context.</h3>
+                <p>Read live buffers through the explicitly approved emacsclient bridge, including work that exists only in the editor.</p>
+              </div>
+            </li>
+            <li>
+              <span class="capability__face face-keyword">INTROSPECT</span>
+              <div>
+                <h3>The runtime can explain itself.</h3>
+                <p>Functions, documentation, source and Info become agent context. The tool does not have to guess how Emacs works.</p>
+              </div>
+            </li>
+            <li>
+              <span class="capability__face face-keyword">EDIT</span>
+              <div>
+                <h3>Changes respect the buffer.</h3>
+                <p>Exact old text and modification-tick checks reject stale edits. A logical change becomes one native undo step.</p>
+              </div>
+            </li>
+            <li>
+              <span class="capability__face face-keyword">DIAGNOSE</span>
+              <div>
+                <h3>No second build system.</h3>
+                <p>Use Eglot and Flymake diagnostics, then verify Elisp with check-parens, byte compilation and ERT.</p>
+              </div>
+            </li>
+            <li>
+              <span class="capability__face face-keyword">COMPOSE</span>
+              <div>
+                <h3>Your tools remain your tools.</h3>
+                <p>Magit, Org, project.el, Dired and TRAMP belong in the same environment, not in a parallel plugin universe.</p>
+              </div>
+            </li>
+            <li>
+              <span class="capability__face face-keyword">RECOVER</span>
+              <div>
+                <h3>History outlives the interface.</h3>
+                <p>Durable, versioned events support projections and recovery without turning the session into opaque process state.</p>
+              </div>
+            </li>
+          </ul>
+
+          <p class="note"><span class="face-comment">;;</span> Parity with mature harnesses is a goal to measure by completed tasks, not a feature to claim by checklist.</p>
+        </div>
+
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*why-emacs*</span>
+          <span>All</span>
+          <span>Org</span>
+        </div>
+      </section>
+
+      <!-- ---------- *architecture* (fundamental-mode) ---------- -->
+      <section class="window window--fundamental" id="architecture" data-mode="Fundamental" data-buffer="*architecture*" aria-labelledby="architecture-title">
+        <div class="window__body">
+          <p class="comment">;; Different drivers. The same semantic events.</p>
+          <h2 id="architecture-title" class="headline">One controller. One journal.</h2>
+          <p class="lead lead--wide">
+            Human, ACP, MCP and batch drivers submit to the same run controller. Placement can
+            change process ownership and who answers approvals; it cannot change the event sequence.
+          </p>
+
+          <figure class="ascii-figure">
+            <pre tabindex="0" aria-label="Human, ACP, MCP and Batch converge on the Session API and Run Controller, then the model adapter, typed tool registry and policy, execution scheduler, append-only JSONL journal, projections, and attached, service or batch placement."><code> Human: M-x yeah       ACP          MCP          Batch
           \                |            |             /
            +---------------+------------+------------+
                            |
@@ -230,184 +491,284 @@
        Model context   Read models / UI   Session index / cost
                            |
                attached · service · batch</code></pre>
-        <figcaption>Commands flow inward; events flow into one durable journal. The primary deployment is a dedicated service Emacs.</figcaption>
-      </figure>
+            <figcaption>Commands flow inward; events flow into one durable journal. The primary deployment is a dedicated service Emacs.</figcaption>
+          </figure>
 
-      <div class="doc-links">
-        <a href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md">C-h architecture</a>
-        <a href="https://github.com/11111000000/yeah/blob/main/spec.json">inspect spec.json</a>
-      </div>
-    </div>
-  </section>
-
-  <section class="buffer" id="roadmap" aria-labelledby="roadmap-title">
-    <div class="window-title">
-      <span>*roadmap*</span>
-      <span>org-mode</span>
-    </div>
-    <div class="buffer__body">
-      <p class="code-comment">#+STARTUP: content</p>
-      <h2 id="roadmap-title" class="section-title">Dependency order, not feature theatre.</h2>
-      <p class="section-lead">Protocols and delegation transport the kernel; they do not conceal missing execution. A completed stage still proves only its stated checks.</p>
-
-      <ol class="org-list">
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>0. Honesty and safety</h3><p>Contracts pinned, experimental evaluation quarantined, failures bounded.</p></div></li>
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>1. Coding tools</h3><p>Read, guarded edit/write, asynchronous jobs, diagnostics and artifacts.</p></div></li>
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>2. Context and compaction</h3><p>Usage calibration, asynchronous compaction, pruning and corrupt-tail recovery.</p></div></li>
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>3. Human control</h3><p>Persistent pending input, steering, cancellation, nudges and deadlines.</p></div></li>
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>4. Public alpha gate</h3><p>The interactive path works against a live provider; clean installation from the published repository is verified. v0.3.0 carries the permissions the kernel asks about.</p></div></li>
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>5. ACP and MCP wire</h3><p>Stdio and local socket servers; socket cancellation preempts a prompt; a third-party client is verified with a fake model.</p></div></li>
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>6. Placements</h3><p>Attached, service and batch share one event stream; the bridge is checked against a live Emacs server.</p></div></li>
-        <li><span class="org-star" aria-hidden="true">*</span><span class="todo done">DONE</span><div><h3>7. Delegation</h3><p>File-based agent presets and the fixed-point demonstration (one child repairing a Yeah canary) are verified with a live model. Parallel children, the cheaper child model and the Org projection remain open.</p></div></li>
-      </ol>
-
-      <p class="buffer-note"><span class="face-comment">;;</span> The road to 1.0 includes live wire providers, daily-use validation and measured task success. <a href="https://github.com/11111000000/yeah/blob/main/docs/PLAN.md">Read the full plan.</a></p>
-    </div>
-  </section>
-
-  <section class="buffer" id="status" aria-labelledby="status-title">
-    <div class="window-title">
-      <span>*Messages*</span>
-      <span>M-x yeah-doctor</span>
-    </div>
-    <div class="buffer__body">
-      <p class="code-comment">;; A green module is not a working product.</p>
-      <h2 id="status-title" class="section-title">Evidence, with its limits attached.</h2>
-
-      <div class="status-grid">
-        <section class="status-block" aria-labelledby="verified-title">
-          <h3 id="verified-title"><span class="label-success">PASS</span> Verified in this checkout</h3>
-          <ul>
-            <li>All <code>lib/</code> modules byte-compile without warnings; <strong>331 / 331</strong> ERT unit tests and all <strong>47</strong> direct canaries pass.</li>
-            <li>A real model completes the coding task and drives the interactive path, including cancel, restart, resume and pending-input recovery.</li>
-            <li>The clean-Emacs bootstrap installs the published repository in a throwaway HOME; gptel is pinned to a revision that compiles cleanly.</li>
-            <li>ACP and MCP speak over stdio and a local socket; a third-party ACP client drives the wire with a fake model.</li>
-            <li>Three placements write the same events. Two concurrent sessions in one Emacs are isolated; a 10 MiB context estimate stays responsive.</li>
-            <li>The bridge reads and edits buffers in a real Emacs server. It remains an explicit, separately approved capability.</li>
-            <li>Typed tools, structured failures, append-only events, projections, compaction and queued human control have executable checks.</li>
-            <li>A read that changes nothing is never asked about: it answers itself and says why. An answer of <code>always</code> becomes a rule, so the same question is not asked twice.</li>
-          </ul>
-        </section>
-
-        <section class="status-block status-block--limits" aria-labelledby="limits-title">
-          <h3 id="limits-title"><span class="label-warning">OPEN</span> Do not assume yet</h3>
-          <ul>
-            <li>The service path is verified with a live provider (tests/live/live-service-path.el, one intermittent provider failure observed). No real ACP editor (agent-shell) has completed a task yet, and no live provider has driven the MCP server.</li>
-            <li>The bootstrap is verified against the published repository in a clean Emacs HOME; it does not run in CI, so a platform-specific failure can still hide there.</li>
-            <li>On stdio, cancellation cannot preempt a running prompt. Use the socket transport for that behaviour.</li>
-            <li>The bridge is off until the operator enables it and has not been validated in day-to-day personal use.</li>
-            <li>Experimental PTC evaluation is off by default and is <strong>not</strong> a security boundary.</li>
-            <li>Frozen math-coding v4 evidence is historical, not current proof.</li>
-          </ul>
-        </section>
-      </div>
-
-      <p class="buffer-note"><span class="face-comment">;;</span> Machine-checked claims live in <code>spec.json</code> and <code>./scripts/dev map</code>. This page is documentation, not a substitute for evidence.</p>
-    </div>
-  </section>
-
-  <section class="buffer" id="install" aria-labelledby="install-title">
-    <div class="window-title">
-      <span>*install*</span>
-      <span>emacs 30.2</span>
-    </div>
-    <div class="buffer__body">
-      <p class="code-comment">;; Alpha software. Read the open gate above first.</p>
-      <h2 id="install-title" class="section-title">Evaluate in your own Emacs.</h2>
-      <p class="section-lead">Target: Emacs 30.2 with <code>gptel</code> and a configured model backend. Keep credentials in your normal Emacs configuration, never in the repository or session log.</p>
-
-      <div class="install-grid">
-        <div class="snippet">
-          <div class="snippet__head">
-            <span>;; package-vc</span>
-            <button class="copy" type="button" data-copy-target="install-vc" hidden>[ copy ]</button>
+          <div class="doc-links">
+            <a href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md" rel="noopener">C-h architecture</a>
+            <a href="https://github.com/11111000000/yeah/blob/main/spec.json" rel="noopener">inspect spec.json</a>
           </div>
-          <pre class="code"><code id="install-vc">(require 'package-vc)
+        </div>
+
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*architecture*</span>
+          <span>All</span>
+          <span>Fundamental</span>
+        </div>
+      </section>
+
+      <!-- ---------- *roadmap* (Org) ---------- -->
+      <section class="window window--org" id="roadmap" data-mode="Org" data-buffer="*roadmap*" aria-labelledby="roadmap-title">
+        <div class="window__body">
+          <p class="comment">#+STARTUP: content</p>
+          <h2 id="roadmap-title" class="headline">Dependency order, not feature theatre.</h2>
+          <p class="lead lead--wide">
+            Protocols and delegation transport the kernel; they do not conceal missing execution. A
+            completed stage still proves only its stated checks.
+          </p>
+
+          <ol class="org-list">
+            <li><span class="org-star" aria-hidden="true">*</span><span class="todo todo--done">DONE</span><div><h3>0. Honesty and safety</h3><p>Contracts pinned, experimental evaluation quarantined, failures bounded.</p></div></li>
+            <li><span class="org-star" aria-hidden="true">*</span><span class="todo todo--done">DONE</span><div><h3>1. Coding tools</h3><p>Read, guarded edit/write, asynchronous jobs, diagnostics and artifacts.</p></div></li>
+            <li><span class="org-star" aria-hidden="true">*</span><span class="todo todo--done">DONE</span><div><h3>2. Context and compaction</h3><p>Usage calibration, asynchronous compaction, pruning and corrupt-tail recovery.</p></div></li>
+            <li><span class="org-star" aria-hidden="true">*</span><span class="todo todo--done">DONE</span><div><h3>3. Human control</h3><p>Persistent pending input, steering, cancellation, nudges and deadlines.</p></div></li>
+            <li><span class="org-star" aria-hidden="true">*</span><span class="todo todo--done">DONE</span><div><h3>4. Public alpha gate</h3><p>The interactive path works against a live provider; clean installation from the published repository is verified. v0.3.0 carries the permissions the kernel asks about.</p></div></li>
+            <li><span class="org-star" aria-hidden="true">*</span><span class="todo todo--done">DONE</span><div><h3>5. ACP and MCP wire</h3><p>Stdio and local socket servers; socket cancellation preempts a prompt; a third-party client is verified with a fake model.</p></div></li>
+            <li><span class="org-star" aria-hidden="true">*</span><span class="todo todo--done">DONE</span><div><h3>6. Placements</h3><p>Attached, service and batch share one event stream; the bridge is checked against a live Emacs server.</p></div></li>
+            <li><span class="org-star" aria-hidden="true">*</span><span class="todo todo--done">DONE</span><div><h3>7. Delegation</h3><p>File-based agent presets and the fixed-point demonstration (one child repairing a Yeah canary) are verified with a live model. Parallel children, the cheaper child model and the Org projection remain open.</p></div></li>
+          </ol>
+
+          <p class="note"><span class="face-comment">;;</span> The road to 1.0 includes live wire providers, daily-use validation and measured task success. <a href="https://github.com/11111000000/yeah/blob/main/docs/PLAN.md" rel="noopener">Read the full plan.</a></p>
+        </div>
+
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*roadmap*</span>
+          <span>All</span>
+          <span>Org</span>
+        </div>
+      </section>
+
+      <!-- ---------- *Messages* ---------- -->
+      <section class="window window--messages" id="status" data-mode="Messages" data-buffer="*Messages*" aria-labelledby="status-title">
+        <div class="window__body">
+          <p class="comment">;; A green module is not a working product.</p>
+          <h2 id="status-title" class="headline">Evidence, with its limits attached.</h2>
+
+          <div class="status-grid">
+            <section class="status-block" aria-labelledby="verified-title">
+              <h3 id="verified-title"><span class="label label--success">PASS</span> Verified in this checkout</h3>
+              <ul>
+                <li>All <code>lib/</code> modules byte-compile without warnings; <strong>331 / 331</strong> ERT unit tests and all <strong>47</strong> direct canaries pass.</li>
+                <li>A real model completes the coding task and drives the interactive path, including cancel, restart, resume and pending-input recovery.</li>
+                <li>The clean-Emacs bootstrap installs the published repository in a throwaway HOME; gptel is pinned to a revision that compiles cleanly.</li>
+                <li>ACP and MCP speak over stdio and a local socket; a third-party ACP client drives the wire with a fake model.</li>
+                <li>Three placements write the same events. Two concurrent sessions in one Emacs are isolated; a 10 MiB context estimate stays responsive.</li>
+                <li>The bridge reads and edits buffers in a real Emacs server. It remains an explicit, separately approved capability.</li>
+                <li>Typed tools, structured failures, append-only events, projections, compaction and queued human control have executable checks.</li>
+                <li>A read that changes nothing is never asked about: it answers itself and says why. An answer of <code>always</code> becomes a rule, so the same question is not asked twice.</li>
+              </ul>
+            </section>
+
+            <section class="status-block status-block--limits" aria-labelledby="limits-title">
+              <h3 id="limits-title"><span class="label label--warning">OPEN</span> Do not assume yet</h3>
+              <ul>
+                <li>The service path is verified with a live provider (tests/live/live-service-path.el, one intermittent provider failure observed). No real ACP editor (agent-shell) has completed a task yet, and no live provider has driven the MCP server.</li>
+                <li>The bootstrap is verified against the published repository in a clean Emacs HOME; it does not run in CI, so a platform-specific failure can still hide there.</li>
+                <li>On stdio, cancellation cannot preempt a running prompt. Use the socket transport for that behaviour.</li>
+                <li>The bridge is off until the operator enables it and has not been validated in day-to-day personal use.</li>
+                <li>Experimental PTC evaluation is off by default and is <strong>not</strong> a security boundary.</li>
+                <li>Frozen math-coding v4 evidence is historical, not current proof.</li>
+              </ul>
+            </section>
+          </div>
+
+          <p class="note"><span class="face-comment">;;</span> Machine-checked claims live in <code>spec.json</code> and <code>./scripts/dev map</code>. This page is documentation, not a substitute for evidence.</p>
+        </div>
+
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*Messages*</span>
+          <span>All</span>
+          <span>Messages</span>
+        </div>
+      </section>
+
+      <!-- ---------- *install* (Shell) ---------- -->
+      <section class="window window--shell" id="install" data-mode="Shell" data-buffer="*install*" aria-labelledby="install-title">
+        <div class="window__body">
+          <p class="comment">;; Alpha software. Read the open gate above first.</p>
+          <h2 id="install-title" class="headline">Evaluate in your own Emacs.</h2>
+          <p class="lead lead--wide">
+            Target: Emacs 30.2 with <code>gptel</code> and a configured model backend. Keep
+            credentials in your normal Emacs configuration, never in the repository or session log.
+          </p>
+
+          <div class="install-grid">
+            <div class="snippet">
+              <div class="snippet__head">
+                <span class="snippet__prompt" aria-hidden="true">$</span>
+                <span>;; package-vc</span>
+                <button class="copy" type="button" data-copy-target="install-vc" hidden>copy</button>
+              </div>
+              <pre class="code"><code id="install-vc">(require 'package-vc)
 (package-vc-install
  '(yeah :url "https://github.com/11111000000/yeah.git"
         :lisp-dir "lib"))</code></pre>
-        </div>
+            </div>
 
-        <div class="snippet">
-          <div class="snippet__head">
-            <span>;; clean Emacs HOME</span>
-            <button class="copy" type="button" data-copy-target="install-sh" hidden>[ copy ]</button>
+            <div class="snippet">
+              <div class="snippet__head">
+                <span class="snippet__prompt" aria-hidden="true">$</span>
+                <span>;; clean Emacs HOME</span>
+                <button class="copy" type="button" data-copy-target="install-sh" hidden>copy</button>
+              </div>
+              <pre class="code"><code id="install-sh">emacs -Q --batch -l install/yeah-bootstrap.el</code></pre>
+            </div>
           </div>
-          <pre class="code"><code id="install-sh">emacs -Q --batch -l install/yeah-bootstrap.el</code></pre>
+
+          <ol class="quick-start">
+            <li><span>1</span><p>Configure the gptel backend, model and key through your normal Emacs mechanism.</p></li>
+            <li><span>2</span><p>Run <code>M-x yeah-doctor</code> and inspect local diagnostics.</p></li>
+            <li><span>3</span><p>Start with <code>M-x yeah</code>; choose Plan for read-oriented work or Build for approved effects.</p></li>
+          </ol>
+
+          <p class="note"><span class="face-comment">;;</span> The bootstrap installs the supported gptel revision and Yeah through package-vc. Report failures before treating the published-repository installation as supported.</p>
         </div>
-      </div>
 
-      <ol class="quick-start">
-        <li><span>1</span><p>Configure the gptel backend, model and key through your normal Emacs mechanism.</p></li>
-        <li><span>2</span><p>Run <code>M-x yeah-doctor</code> and inspect local diagnostics.</p></li>
-        <li><span>3</span><p>Start with <code>M-x yeah</code>; choose Plan for read-oriented work or Build for approved effects.</p></li>
-      </ol>
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*install*</span>
+          <span>All</span>
+          <span>Shell</span>
+        </div>
+      </section>
 
-      <p class="buffer-note"><span class="face-comment">;;</span> The bootstrap installs the supported gptel revision and Yeah through package-vc. Report failures before treating the published-repository installation as supported.</p>
-    </div>
-  </section>
-
-  <div class="reference-grid">
-    <section class="buffer reference" id="development" aria-labelledby="development-title">
-      <div class="window-title"><span>*development*</span><span>compile</span></div>
-      <div class="buffer__body">
-        <h2 id="development-title">Checks that can fail.</h2>
-        <p>Every claim needs a control that breaks its subject. A check that cannot fail is a comment; unknown is never pass.</p>
-        <pre class="code code--flush"><code>./scripts/dev byte-compile-all
+      <!-- ---------- two side-by-side windows ---------- -->
+      <div class="split" id="split">
+        <section class="window window--split" id="development" data-mode="Shell" data-buffer="*development*" aria-labelledby="development-title">
+          <div class="window__body">
+            <p class="comment">;; Checks that can fail.</p>
+            <h2 id="development-title" class="headline headline--small">Checks that can fail.</h2>
+            <p class="prose">Every claim needs a control that breaks its subject. A check that cannot fail is a comment; unknown is never pass.</p>
+            <pre class="code code--flush"><code>./scripts/dev byte-compile-all
 ./scripts/dev ert tests/unit/*.el
 ./scripts/dev check tests/checks/*
 ./scripts/dev map
 ./scripts/dev run
 ./scripts/dev gate</code></pre>
-        <a href="https://github.com/11111000000/yeah/blob/main/docs/ENGINEERING.md">C-h engineering</a>
-      </div>
-    </section>
+            <p class="doc-links"><a href="https://github.com/11111000000/yeah/blob/main/docs/ENGINEERING.md" rel="noopener">C-h engineering</a></p>
+          </div>
+          <div class="mode-line mode-line--inactive">
+            <span class="mode-line__name">*development*</span>
+            <span>All</span>
+            <span>Shell</span>
+          </div>
+        </section>
 
-    <section class="buffer reference" id="non-goals" aria-labelledby="non-goals-title">
-      <div class="window-title"><span>*non-goals*</span><span>read-only</span></div>
-      <div class="buffer__body">
-        <h2 id="non-goals-title">Deliberately not built in.</h2>
-        <ul class="non-goals">
-          <li>A second kernel in another language</li>
-          <li>Destructive compaction or snapshot history</li>
-          <li>Unrestricted evaluation presented as safe</li>
-          <li>Advice to gptel internals as architecture</li>
-          <li>Telemetry, provider lock-in or cloud-only operation</li>
-          <li>A parallel plugin ecosystem duplicating the registries</li>
-        </ul>
+        <section class="window window--split" id="non-goals" data-mode="Info" data-buffer="*non-goals*" aria-labelledby="non-goals-title">
+          <div class="window__body">
+            <p class="comment">;; Read-only.</p>
+            <h2 id="non-goals-title" class="headline headline--small">Deliberately not built in.</h2>
+            <ul class="non-goals">
+              <li>A second kernel in another language</li>
+              <li>Destructive compaction or snapshot history</li>
+              <li>Unrestricted evaluation presented as safe</li>
+              <li>Advice to gptel internals as architecture</li>
+              <li>Telemetry, provider lock-in or cloud-only operation</li>
+              <li>A parallel plugin ecosystem duplicating the registries</li>
+            </ul>
+          </div>
+          <div class="mode-line mode-line--inactive">
+            <span class="mode-line__name">*non-goals*</span>
+            <span>All</span>
+            <span>Info</span>
+          </div>
+        </section>
       </div>
-    </section>
-  </div>
-</main>
 
-<footer class="footer">
-  <div class="frame-width footer__inner">
-    <div>
-      <a class="wordmark wordmark--footer" href="#top" aria-label="Yeah — back to top">
-        <span class="wordmark__paren" aria-hidden="true">(</span>
-        <img class="wordmark__mark" src="assets/logo.svg" width="24" height="24" alt="">
-        <span class="wordmark__name">yeah</span>
-        <span class="wordmark__paren" aria-hidden="true">)</span>
-      </a>
-      <p class="footer__note">Durable text. Inspectable state. Your Emacs.</p>
+      <!-- ---------- *keybindings* ---------- -->
+      <section class="window window--org" id="keys" data-mode="Org" data-buffer="*keybindings*" aria-labelledby="keys-title">
+        <div class="window__body">
+          <p class="comment">;; The frame answers the same keys Emacs does.</p>
+          <h2 id="keys-title" class="headline">Keyboard shortcuts.</h2>
+          <p class="lead lead--wide">
+            The page is a frame, so it takes the keys a frame takes. Press <kbd>M-x</kbd> to reach
+            the minibuffer, <kbd>C-s</kbd> to search, <kbd>C-x b</kbd> to switch buffers.
+          </p>
+
+          <dl class="keys">
+            <dt><kbd>M-x</kbd></dt><dd>Open the minibuffer. Type a command and press <kbd>Enter</kbd>.</dd>
+            <dt><kbd>C-s</kbd></dt><dd>Incremental search in the buffer. <kbd>Enter</kbd> keeps the match, <kbd>C-g</kbd> gives it up.</dd>
+            <dt><kbd>C-x b</kbd></dt><dd>Switch to buffer: the minibuffer asks for a name, <kbd>Tab</kbd> completes it.</dd>
+            <dt><kbd>C-x 2</kbd></dt><dd>Split the frame: two windows side by side.</dd>
+            <dt><kbd>C-g</kbd></dt><dd>Quit the minibuffer without acting.</dd>
+            <dt><kbd>C-x C-f</kbd></dt><dd>Find file: the same incremental search.</dd>
+          </dl>
+
+          <p class="note"><span class="face-comment">;;</span> The minibuffer knows a handful of commands: <code>yeah</code>, <code>yeah-doctor</code>, <code>open-file</code>, <code>find-file</code>, <code>switch-to-buffer</code>, <code>toggle-theme</code>, <code>split-window-below</code>. A name it does not know is refused the way Emacs refuses it: <code>‘nope’ is not a valid command name</code>.</p>
+        </div>
+
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*keybindings*</span>
+          <span>All</span>
+          <span>Org</span>
+        </div>
+      </section>
+
+      <!-- ---------- the footer, as the last window ---------- -->
+      <section class="window window--footer" id="about" data-mode="Info" data-buffer="*about*" aria-labelledby="about-title">
+        <div class="window__body window__body--footer">
+          <h2 id="about-title" class="visually-hidden">About Yeah</h2>
+
+          <div class="footer__grid">
+            <div>
+              <a class="wordmark wordmark--footer" href="#top" aria-label="Yeah — beginning of buffer">
+                <span class="wordmark__paren" aria-hidden="true">(</span>
+                <span class="wordmark__mark" aria-hidden="true"></span>
+                <span class="wordmark__name">Yeah</span>
+                <span class="wordmark__paren" aria-hidden="true">)</span>
+              </a>
+              <p class="footer__note">Durable text. Inspectable state. Your Emacs.</p>
+            </div>
+
+            <nav class="footer__links" aria-label="Documents">
+              <a href="https://github.com/11111000000/yeah/blob/main/README.md" rel="noopener">README</a>
+              <a href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md" rel="noopener">Vision</a>
+              <a href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md" rel="noopener">Architecture</a>
+              <a href="https://github.com/11111000000/yeah/blob/main/docs/PLAN.md" rel="noopener">Plan</a>
+              <a href="https://github.com/11111000000/yeah/blob/main/spec.json" rel="noopener">spec.json</a>
+            </nav>
+
+            <div class="footer__meta">
+              <p>Author &nbsp; Petr Kosov</p>
+              <p>License &nbsp; Apache-2.0</p>
+              <p>Version &nbsp; 0.3.0</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mode-line mode-line--inactive">
+          <span class="mode-line__name">*about*</span>
+          <span>All</span>
+          <span>Info</span>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ===================== 5. MODE LINE AND ECHO AREA ===================== -->
+<!-- The frame keeps them: a mode line that scrolls away is not a mode line. -->
+<div class="frame-bottom">
+  <div class="frame-width frame-bottom__inner">
+    <div class="mode-line mode-line--frame">
+      <span class="mode-line__position" data-position>U:0%-</span>
+      <span class="mode-line__name" data-buffer-name>*scratch*</span>
+      <span>All</span>
+      <span class="mode-line__line" data-line>L1</span>
+      <span data-mode>(Fundamental)</span>
+      <span class="mode-line__right"><time data-clock>--:--</time></span>
     </div>
 
-    <nav class="footer__links" aria-label="Documents">
-      <a href="https://github.com/11111000000/yeah/blob/main/README.md">README</a>
-      <a href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md">Vision</a>
-      <a href="https://github.com/11111000000/yeah/blob/main/docs/ARCHITECTURE.md">Architecture</a>
-      <a href="https://github.com/11111000000/yeah/blob/main/docs/PLAN.md">Plan</a>
-      <a href="https://github.com/11111000000/yeah/blob/main/spec.json">spec.json</a>
-    </nav>
-
-    <div class="footer__meta">
-      <p>Author &nbsp; Petr Kosov</p>
-      <p>License &nbsp; Apache-2.0</p>
-      <p>Version &nbsp; 0.3.0</p>
+    <div class="echo-area">
+      <label class="visually-hidden" for="minibuffer">Minibuffer</label>
+      <span class="echo-area__prompt" data-minibuffer-prompt aria-hidden="true">M-x </span>
+      <input class="echo-area__input" id="minibuffer" type="text" autocomplete="off"
+             autocapitalize="off" autocorrect="off" spellcheck="false"
+             placeholder="M-x yeah" aria-label="Minibuffer command">
+      <span class="echo-area__cursor" aria-hidden="true"></span>
+      <span class="echo-area__message" data-message role="status" aria-live="polite"></span>
     </div>
   </div>
-  <div class="frame-width footer__echo"><span class="face-keyword">M-:</span> (message "Yeah") <span class="face-string">⇒ "Yeah"</span></div>
-</footer>
+</div>
 
 <script src="script.js" defer></script>
 </body>
