@@ -756,7 +756,7 @@ code {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0;
   height: var(--h-echo);
   padding-inline: 0.6rem;
   background: var(--face-default-bg);
@@ -765,8 +765,24 @@ code {
   font-size: 0.8rem;
 }
 
+/* The prompt, the command line and the cursor that waits are one group, so
+   that the cursor stands where a caret stands: right after the text. */
+.echo-area__left {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
 .echo-area__prompt { color: var(--fl-keyword); font-weight: 700; }
 .echo-area__prompt:empty { display: none; }
+
+/* The line the frame rests on when the minibuffer is closed: the command
+   the frame is ready for, in the quiet colour of a placeholder. */
+.echo-area__idle {
+  color: var(--face-prose);
+  opacity: 0.8;
+}
+.echo-area.is-active .echo-area__idle { display: none; }
 
 .echo-area__input {
   flex: 1 1 auto;
@@ -795,6 +811,7 @@ code {
 .echo-area__message {
   flex: none;
   max-width: 60%;
+  margin-left: 0.6rem;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

@@ -390,8 +390,11 @@
       minibufferPrompt.textContent = "M-x ";
       minibuffer.placeholder = "";
     } else {
+      /* The frame is quiet: the line it rests on is the command it is
+         ready for (`M-x yeah`), and the cursor waits right after it.  The
+         prompt of the minibuffer comes back when a command is asked for. */
       minibufferPrompt.textContent = "";
-      minibuffer.placeholder = "M-x yeah";
+      minibuffer.placeholder = "";
     }
   }
 
