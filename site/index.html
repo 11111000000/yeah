@@ -771,11 +771,17 @@
 
     <div class="echo-area">
       <label class="visually-hidden" for="minibuffer">Minibuffer</label>
-      <span class="echo-area__prompt" data-minibuffer-prompt aria-hidden="true">M-x </span>
+      <!-- The prompt, the command line and the cursor that waits are one
+           group: the cursor stands where a caret stands — right after the
+           text — and not at the end of the row. -->
+      <span class="echo-area__left">
+        <span class="echo-area__prompt" data-minibuffer-prompt aria-hidden="true">M-x </span>
+        <span class="echo-area__idle" aria-hidden="true">M-x yeah</span>
+        <span class="echo-area__cursor" aria-hidden="true"></span>
+      </span>
       <input class="echo-area__input" id="minibuffer" type="text" autocomplete="off"
              autocapitalize="off" autocorrect="off" spellcheck="false"
-             placeholder="M-x yeah" aria-label="Minibuffer command">
-      <span class="echo-area__cursor" aria-hidden="true"></span>
+             aria-label="Minibuffer command">
       <span class="echo-area__message" data-message role="status" aria-live="polite"></span>
     </div>
   </div>

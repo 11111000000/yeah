@@ -63,8 +63,15 @@ the twelve buffers of the frame and then `Next Buffer`, `Previous Buffer` and
 
 The tab bar is a mode that a stock Emacs leaves off; the site turns it on. A
 tab of Emacs is a *window configuration* and its label is the buffer of the
-window that is selected in it, so one tab per window is the honest reading of
-it.
+window that is selected in it, so one tab per window is the honest reading
+of it.
+
+The echo area is the window of the frame in which the message and the
+minibuffer live, and its cursor stands where the text ends — right after
+`M-x yeah` while the frame rests, and after what was typed while the
+minibuffer is open. In Emacs the echo area *is* the minibuffer window of the
+frame, and the cursor of a window stands at its point; the site had parked the
+cursor at the far right of the row, which is not what Emacs does.
 
 **The light theme is the default**, because a stock Emacs is light: a white
 buffer, a grey75 mode line, a grey85 tab bar. The dark theme of the site is
