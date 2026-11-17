@@ -22,6 +22,7 @@
 
 (require 'cl-lib)
 (require 'json)
+(require 'yeah-text)
 
 (defgroup yeah-session nil
   "Yeah append-only session log."
@@ -85,13 +86,25 @@ for uniqueness; this is the lowest-level mutation primitive."
 
 (defun yeah-session--serialize (record)
   "Serialize RECORD (a plist) to a one-line JSON string.
+Every string of the record is valid UTF-8: a tool can hand back bytes that
+are not text, and a byte that is not text becomes the replacement character.
+A record that JSON cannot hold at all is written as a stand-in that says so,
+because the journal is append-only and the run must go on.
 The `:id' field is preserved on the wire for cross-reference
 by compaction records."
   (let* ((id (plist-get record :id))
          (copy record))
     (when id
       (setq copy (plist-put copy :id id)))
-    (json-serialize copy)))
+    (or (condition-case nil
+            (json-serialize (yeah-text-value-valid copy))
+          (error nil))
+        (json-serialize
+         (append (list :type (or (plist-get record :type) "unknown"))
+                 (when (integerp id) (list :id id))
+                 (list :unserializable t
+                       :note (format "the record holds a value that the journal cannot write: %S"
+                                     (plist-get record :type))))))))
 
 (defun yeah-session-open (session-id &optional root)
   "Open (or create) the session log for SESSION-ID under ROOT.

@@ -41,6 +41,7 @@
 
 (require 'cl-lib)
 (require 'json)
+(require 'yeah-acp-vocabulary)
 (load (expand-file-name "tests/support/yeah-journal-files.el") nil t)
 
 (defvar yeah-check--position nil
@@ -253,10 +254,16 @@ later check can look at them.  TIMEOUT defaults to 5 seconds."
           (unwind-protect
               (when connection
                 ;; --- the handshake ---
+                ;; The client asks for Yeah's own queue events: they are not
+                ;; ACP, so they travel only to a client that asked for them.
                 (yeah-check--send
                  connection
                  (list :jsonrpc "2.0" :id 1 :method "initialize"
-                       :params (list :protocolVersion 1)))
+                       :params (list :protocolVersion yeah-acp-protocol-version
+                                     :clientCapabilities
+                                     (list :_meta
+                                           (list yeah-acp-queue-events-capability
+                                                 t)))))
                 (let ((response (yeah-check--await (yeah-check--response 1))))
                   (unless (equal 1 (plist-get (plist-get response :result)
                                               :protocolVersion))
@@ -286,7 +293,20 @@ later check can look at them.  TIMEOUT defaults to 5 seconds."
                                 10)))
                   (unless started
                     (push "the server did not report the started prompt"
-                          failures)))
+                          failures))
+                  ;; The content of a chunk is one content block, not an
+                  ;; array of them: a client that checks the wire refuses
+                  ;; a chunk that carries an array.
+                  (when started
+                    (let ((content (plist-get (yeah-check--update started)
+                                              :content)))
+                      (unless (and (listp content)
+                                   (not (vectorp content))
+                                   (equal "text" (plist-get content :type))
+                                   (equal "wait" (plist-get content :text)))
+                        (push (format "the chunk did not carry one content block: %S"
+                                      content)
+                              failures)))))
                 ;; --- a clarification that waits in the queue ---
                 (yeah-check--send
                  connection

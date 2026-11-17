@@ -113,6 +113,19 @@ happened. The drop is a journal event now, carrying the tool, the reason and
 the arguments; the promise of the journal as the source of truth is kept and
 made explicit, not relaxed.*
 
+*Amended on 2026-11-17 (wave 45): the journal does not refuse a record. A
+record of a run can hold a value that JSON cannot write — a symbol, a
+character, a cons that is not a list of pairs — and the refusal of JSON must
+not take the run down: the record is written as a stand-in that says the
+journal could not write it, and the journal takes the records that follow.
+The promise is strengthened, not weakened: a journal that drops a record
+without saying so is not a source of truth. The same wave bounds the reason
+of a failure: a provider that refused a request hands the whole conversation
+of the run back inside the refusal, and one record of the journal is a
+record and not a transcript. The reason is cut at two thousand characters,
+the fields that name the failure are kept, and the place where the text was
+cut is said.*
+
 ### D2 — Yeah owns its execution state machine
 
 Yeah does not build its correctness on advice to gptel internals. gptel owns
@@ -124,6 +137,16 @@ transitions, once-only settlement, bounded waiting and a recoverable terminal
 state. Four failure classes are mandatory checks: malformed tool arguments,
 exceptions in handlers, duplicate asynchronous callbacks and nil/non-string
 tool results.
+
+*Amended on 2026-11-17 (wave 45): two more failure classes are mandatory.
+An error of the harness that happens inside the callback of an asynchronous
+tool arrives in the sentinel of a process, where no handler of the turn
+stands, and it kills the Emacs process: the error becomes a failed tool
+instead, and the run ends with a reason. And a run whose context overflows
+and whose summary the provider does not write does not die: the summary is an
+economy and not a necessity, so the old outputs of the tools are pruned, the
+journal says that the summary did not arrive, and the run goes on. A second
+overflow without a summary ends the run, and the journal says why.*
 
 ### D3 — gptel is a narrow, private model adapter
 
@@ -200,6 +223,38 @@ counting) and are calibrated against provider-reported usage. Compaction is
 an asynchronous model operation that commits only a complete, nonblank
 summary. Its source events remain in the journal.
 
+The model is told what the run has done. Every request of the harness carries
+the transcript of the run before the prompt: the call the model made, the
+result it got and the answer it gave, so that a model which answers with a
+plan instead of an action does not start the task over. The transcript is a
+projection of the journal and not a second copy of the run: the journal keeps
+the plain message the run was written with, and the projection is put together
+on the way to the model. The first request of a run carries the request as it
+is, because a run that has done nothing has nothing to tell.
+
+*Amended on 2026-11-17 (wave 47): every request of the harness started a
+fresh conversation with the model — the prompt was all the model was told — so
+the model could not continue the work and began the task over. Two live runs
+of the wave 41 measured the shape: 108 and 122 calls of tools and no change of
+the repository, with `AGENTS.md` read ten and nine times. The promises above
+are kept and made explicit, not relaxed: the transcript is a projection and
+not a copy, and it is cut — twelve records of the run, six hundred characters
+of the result of a tool. What it is not is a context: the projection of the
+context, the compaction and the pruning are still not on the road to the
+model.*
+
+*Amended on 2026-11-17 (wave 48): the death of the transport is not the death
+of the run. A request that the provider dropped — the transport failed and
+there is no HTTP status — and a request that met a busy provider (429, 500,
+502, 503, 504, 529) are asked again, and the model is asked the same question
+with the transcript of the run in front of it. The retry is bounded by a budget
+of its own, the journal holds it as a record of its own, and the machine of
+the states does not move: the run was waiting for the model and waits again.
+A request that the provider refused is an answer, and the run fails at once
+and says why. The status of the wire decides which of the two it is, and the
+transport of gptel reports that status as a string, so it is read as a number
+and not only as a number.*
+
 ### D7 — The human is an asynchronous master
 
 Steering is delivered at a batch boundary, never halfway through a tool batch.
@@ -214,6 +269,47 @@ completion nudges is positive, and a caller that wants no supervision at all
 asks for it with a budget of zero. A run that spends its budget without an
 effect ends in the state `failed`, and the journal of the run says so; a run
 that did not do the work is never presented as a finished one.
+
+The budget of the nudges pays for the nudges that no effect answered. A
+provider answers with an empty message after a batch of tool results have come
+back, and that silence is the noise of the provider and not the refusal of the
+model to act: a nudge that follows it does not spend the budget, because the
+model has acted. A model that never acts still ends, and the run says that it
+did not finish. The record of a run that did not finish is true: it names the
+tools the run called, and a run that called its tools is never described as a
+run that ended without an effect.
+
+The wire of Yeah speaks ACP and nothing else. A content chunk carries one
+content block, as the protocol says, and a client that checks the wire
+refuses an update whose shape it does not know. The events of the pending
+queue of a session are not ACP, so they travel only to the client that asked
+for them: the client announces them in the `_meta` of its capabilities at
+`initialize`, and a client that announces nothing is served plain ACP. The
+editor of Yeah announces them and sees the queue of the session.
+
+The answer of the agent is the message of the agent. A model that answers
+only through the `finish` tool says nothing else, so the summary of a
+finished run travels as the message of the agent, and a client that waits
+for the words of the agent sees them. The call of a tool travels with what
+the tool was called with and what it returned: the arguments are the values
+themselves and not their printed form, and the printed form of arguments
+that come from the model is read as data and never as code.
+
+The bytes on the wire are the bytes of the text. A serialized message is
+UTF-8, and it leaves the process as UTF-8: the words of the agent reach
+the client as the words the model wrote, and a Russian answer does not
+arrive as a Latin-1 reading of its own bytes. The wire carries text, not
+a promise about a character set.
+
+*Amended on 2026-11-16 (wave 40): the wire carried two shapes that ACP does
+not have — the content of a chunk was an array of blocks instead of one
+block, and the events of the pending queue travelled to every client as if
+they were ACP. A client that validates the wire refused the whole update,
+so the text of the agent never reached the client. The promises above are
+kept and made explicit, not relaxed. The same wave found that the words
+themselves were spoiled on the way out: Emacs read the bytes of a
+unibyte string as Latin-1 and wrote them back as UTF-8, so every
+non-ASCII answer arrived at the client written twice over.*
 
 ### D8 — Agents and skills are declarative
 
@@ -329,6 +425,16 @@ A tool declaration contains:
 A result is structured: success/failure, content or typed error, truncation
 information and artifact references. Tool errors are values for the model and
 events for the journal; they do not wedge the run.
+
+The content of a result is text. A tool of the agent can return bytes that
+are not text — `tail -c` cuts a character of a UTF-8 file in half — and such
+bytes arrive in two shapes: a unibyte string of bytes, and a multibyte string
+that holds a raw byte where the decoder refused one. The text of the harness
+is decided in one place (`lib/yeah-text.el`); a byte that is not text becomes
+the replacement character, and the rest of the text is kept as it is. The
+text of the model is the same kind of text, for the same reason: the answer
+of a model reaches the client and the journal, and neither can carry bytes
+that are not text.
 
 ### Event envelope
 

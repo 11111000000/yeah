@@ -917,6 +917,16 @@ does not bring it back."
                                (plist-get end :payload))))))
         (ignore-errors (delete-directory root t t))))))
 
+(defun yeah-control-test--callback-for (callbacks text)
+  "Return the callback of CALLBACKS whose prompt ends with TEXT.
+Every request of the harness carries the transcript of the run before the
+prompt, so the prompt of a request is not the text of the input and nothing
+more."
+  (seq-find (lambda (entry)
+              (and (stringp (car entry))
+                   (string-suffix-p text (car entry))))
+            callbacks))
+
 (ert-deftest yeah-control-submit-completes-each-queued-input ()
   (let* ((root (make-temp-file "yeah-submit" t))
          (yeah-input-directory root)
@@ -956,9 +966,9 @@ does not bring it back."
                                       :test #'equal)))
               (should (eq 'cancelled (plist-get withdrawn :state)))
               (should-not (plist-get withdrawn :turn)))
-            (funcall (cdr (assoc "first" model-callbacks)) "first done")
-            (should (assoc "second" model-callbacks))
-            (funcall (cdr (assoc "second" model-callbacks)) "second done")
+            (funcall (cdr (yeah-control-test--callback-for model-callbacks "first")) "first done")
+            (should (yeah-control-test--callback-for model-callbacks "second"))
+            (funcall (cdr (yeah-control-test--callback-for model-callbacks "second")) "second done")
             (should (= 3 (length completions)))
             (dolist (id (list first second))
               (let ((completion (cl-find id completions

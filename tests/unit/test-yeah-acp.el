@@ -138,6 +138,19 @@ freezes it when the session is created."
                                :mcpServers nil))
    :sessionId))
 
+(defun yeah-acp-test--announce-queue-events ()
+  "Announce that the client understands Yeah's own queue events.
+The announcement is what the client of Yeah says at `initialize'; a client
+that says nothing is served plain ACP.  The handshake goes through the
+wire here, so the test reads the announcement the way the server reads
+it: Emacs parses a JSON object into a property list whose keys are
+keywords."
+  (yeah-acp-initialize
+   (yeah-acp-test--parse
+    (json-serialize
+     (list :protocolVersion yeah-acp-protocol-version
+           :clientCapabilities (yeah-acp-queue-events-capabilities))))))
+
 (ert-deftest yeah-acp-initialize-negotiates-protocol-one ()
   (yeah-acp-test--with-server
     (let ((response (yeah-acp-initialize
@@ -389,8 +402,11 @@ the session, so the same question is not asked a second time."
 
 (ert-deftest yeah-acp-queue-events-reach-the-client-as-session-updates ()
   "The pending queue of a session is visible in the wire: the events that
-move an input in or out of the queue have their own update kinds."
+move an input in or out of the queue have their own update kinds.
+They travel to the client that asked for them: they are not ACP, and a
+client that does not know them refuses the whole update."
   (yeah-acp-test--with-server
+    (yeah-acp-test--announce-queue-events)
     (let* ((emitted nil)
            (session-id (yeah-acp-test--new-session))
            (state (yeah-acp--session-state session-id))
@@ -423,6 +439,98 @@ move an input in or out of the queue have their own update kinds."
         (should (equal "steering" (plist-get (nth 3 updates) :inputKind)))
         (should (equal "the run it was addressed to ended"
                        (plist-get (nth 3 updates) :reason)))))))
+
+(ert-deftest yeah-acp-queue-events-stay-away-from-a-client-that-asked-for-nothing ()
+  "A client that announced nothing gets plain ACP: the queue events of Yeah
+are not part of the protocol, and a client that does not know them refuses
+the whole update."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (listener (plist-get state :listener))
+           (session (plist-get state :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (funcall listener session "input-queued"
+               (list :input_id "input-1" :input_kind "ask"
+                     :prompt "the words") 1)
+      (funcall listener session "input-taken"
+               (list :input_id "input-1" :input_kind "ask") 2)
+      (should (null emitted)))))
+
+(ert-deftest yeah-acp-a-content-chunk-carries-one-content-block ()
+  "The content of an ACP chunk is one block, not an array of them: a client
+that checks the wire refuses a chunk that carries an array."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (listener (plist-get state :listener))
+           (session (plist-get state :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (funcall listener session "assistant-message" (list :payload "hello") 1)
+      (let* ((update (car (yeah-acp-test--update-objects emitted)))
+             (content (plist-get update :content)))
+        (should (equal "agent_message_chunk" (plist-get update :sessionUpdate)))
+        (should (equal "text" (plist-get content :type)))
+        (should (equal "hello" (plist-get content :text)))
+        (should-not (vectorp content))))))
+
+(ert-deftest yeah-acp-the-answer-of-a-finished-run-reaches-the-client ()
+  "The summary of a finished run is the answer of the agent: it travels as
+the message of the agent.  A model that answers only through the `finish'
+tool says nothing else, and a client that waits for the words of the agent
+must see them."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (listener (plist-get state :listener))
+           (session (plist-get state :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (funcall listener session "finish"
+               (list :summary "the work is done") 1)
+      (let* ((updates (yeah-acp-test--update-objects emitted))
+             (update (car updates))
+             (content (plist-get update :content)))
+        (should (= 1 (length updates)))
+        (should (equal "agent_message_chunk" (plist-get update :sessionUpdate)))
+        (should (equal "the work is done" (plist-get content :text)))))))
+
+(ert-deftest yeah-acp-a-tool-call-carries-its-input-and-its-output ()
+  "The call of a tool travels with what the tool was called with and what it
+returned: a call without its input is a name."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (listener (plist-get state :listener))
+           (session (plist-get state :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (funcall listener session "tool-request"
+               (list :tool "write" :args "(\"answer.txt\" \"42\")"
+                     :tool_call_id "call-1") 1)
+      (funcall listener session "tool-end"
+               (list :tool "write" :ok t :payload "the file is written"
+                     :tool_call_id "call-1") 2)
+      (let* ((updates (reverse (yeah-acp-test--update-objects emitted)))
+             (call (nth 0 updates))
+             (end (nth 1 updates)))
+        (should (equal "tool_call" (plist-get call :sessionUpdate)))
+        ;; the arguments are the values themselves and not their printed form
+        (should (equal '("answer.txt" "42") (plist-get call :rawInput)))
+        (should (equal "tool_call_update" (plist-get end :sessionUpdate)))
+        (should (equal "the file is written" (plist-get end :rawOutput))))))
+
+(ert-deftest yeah-acp-the-input-of-a-tool-call-is-read-as-data ()
+  "The arguments of a call come from the model, so the printed form of them is
+read back as data: a form that the reader would evaluate is not read at all,
+and the printed form travels to the client as it is."
+  (should (equal '("answer.txt" "42")
+                 (yeah-acp--tool-input "(\"answer.txt\" \"42\")")))
+  (should (equal '("a" "b") (yeah-acp--tool-input "(\"a\" \"b\")")))
+  (should (equal "#.(+ 1 2)" (yeah-acp--tool-input "#.(+ 1 2)")))
+  (should (equal "not a list" (yeah-acp--tool-input "not a list")))))
 
 (ert-deftest yeah-acp-an-unknown-session-is-an-error ()
   "The wire does not answer a request for a session it does not know."

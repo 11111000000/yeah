@@ -582,6 +582,13 @@ key."
                               (list :text (plist-get record :payload)
                                     :payload (plist-get record :payload))
                               'running))
+      ("retry"
+       ;; The provider dropped the request and it is asked again: the person
+       ;; must see that the run went on and why it asked again.
+       (yeah-ui--simple-event projection record index :retry
+                              (list :text (plist-get record :payload)
+                                    :payload (plist-get record :payload))
+                              'running))
       ("unfinished"
        ;; A supervised run that spent its nudge budget without the model
        ;; finishing: the person must see that the work is not done.
@@ -664,7 +671,7 @@ awaiting-approval, done, failed, refused or unknown.  Approval blocks carry
 their states are pending, deferred, approved, refused or unknown.  A deferred
 approval also has :defer-event-id and the wire's :deferred-request-id, and stays
 in :pending-approvals until a final decision.  Compaction,
-pruning, steering, nudge, cancel, finish, error, spawn, child-end and
+pruning, steering, nudge, retry, cancel, finish, error, spawn, child-end and
 input-withdrawn have their own kinds.  Unknown or uncorrelatable records become
 explicit :event blocks carrying the original :record and, when applicable,
 :fallback-reason.

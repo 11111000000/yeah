@@ -14,6 +14,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-text)
 
 (defgroup yeah-result nil
   "Structured Yeah tool results."
@@ -88,6 +89,10 @@ When CONTENT exceeds LIMIT (default `yeah-result-output-limit'), write the
 full text to a private artifact and return its tail inline."
   (unless (stringp content)
     (setq content (format "%S" content)))
+  ;; A tool may hand back bytes that are not text: `tail -c' cuts a character
+  ;; of a UTF-8 file in half.  The text of the harness is always valid UTF-8,
+  ;; and a byte that is not text becomes the replacement character.
+  (setq content (yeah-text-valid content))
   (let ((limit (or limit yeah-result-output-limit)))
     (unless (and (integerp limit) (> limit 0))
       (signal 'user-error (list "yeah-result: output limit must be positive")))
@@ -115,7 +120,7 @@ legacy strings and scheduler error plists are accepted for compatibility."
            (version (or (plist-get value :version)
                         (and (listp metadata)
                              (plist-get metadata :version)))))
-      (concat base
+      (concat (yeah-text-valid base)
               (when (and tick (integerp tick))
                 (format "\n[tick: %d]" tick))
               (when (and version (stringp version))
@@ -127,9 +132,9 @@ legacy strings and scheduler error plists are accepted for compatibility."
                                    artifacts ", ")
                         "]")))))
    ((and (consp value) (plist-get value :yeah-error))
-    (plist-get value :yeah-error))
+    (yeah-text-valid (plist-get value :yeah-error)))
    ((null value) "Error: tool produced no result")
-   ((stringp value) value)
+   ((stringp value) (yeah-text-valid value))
    (t (format "%S" value))))
 
 (defun yeah-result-json-safe (value)

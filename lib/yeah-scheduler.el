@@ -89,7 +89,17 @@ and leaving the batch pending."
             (progn
               (funcall handler args
                        (lambda (result)
-                         (yeah-scheduler--settle batch index result)))
+                         ;; The answer of an asynchronous tool arrives in the
+                         ;; sentinel of its process.  An error of the harness
+                         ;; must not reach that sentinel: it would kill the
+                         ;; whole Emacs process, and the run would leave no
+                         ;; record of itself.
+                         (condition-case err
+                             (yeah-scheduler--settle batch index result)
+                           (error
+                            (yeah-scheduler--settle
+                             batch index
+                             (yeah-scheduler--error-result err))))))
               (yeah-scheduler--advance batch)
               nil)
           (error

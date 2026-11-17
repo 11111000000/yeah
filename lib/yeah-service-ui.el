@@ -18,6 +18,7 @@
 
 (require 'cl-lib)
 (require 'project)
+(require 'yeah-acp-vocabulary)
 (require 'yeah-approval-ui)
 (require 'yeah-perm)
 (require 'yeah-service)
@@ -561,8 +562,13 @@ the agent look but not touch, `build' asks the person for every effect
             yeah-service-ui--records nil
             yeah-service-ui--event-id 0)
       (yeah-service-ui--update-journal))
+    ;; The editor is a client of Yeah: it announces the events that ACP
+    ;; does not have, so that it sees the queue of the session.  A client
+    ;; that announces nothing is served plain ACP.
     (yeah-client-request client "initialize"
-                         (list :protocolVersion 1)
+                         (list :protocolVersion yeah-acp-protocol-version
+                               :clientCapabilities
+                               (yeah-acp-queue-events-capabilities))
                          (lambda (_result _error) nil))
     (yeah-client-request
      client "session/new"

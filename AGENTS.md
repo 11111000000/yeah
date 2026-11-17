@@ -159,6 +159,13 @@ work item. Never resolve it by silently making documentation more optimistic.
   version that no read handed out is ignored, like a tick that no read handed
   out. docs/ARCHITECTURE.md §D5 was amended, not weakened: it names the
   version as the second form of the state a read returns.
+- The process of the ACP server outlives the agent when the client keeps its
+  pipe open, and some of those processes burn half a core in a tight loop of
+  userspace. The read loop of the server is not the cause (an idle server
+  costs no CPU and leaves on EOF) and the wait for a turn is not either (about
+  four per cent of a core): the spin is on the path of the live request of the
+  provider, and the loop is not localized yet. Nobody may quote the ACP
+  server as free of this until a canary says so — docs/PLAN.md §17.1.
 - The version token is short (12 characters of the digest) and a refusal of a
   token that does not match names the token, not the file, and reports the
   current token so that the retry lands: the pilot of 17:06 measured a model
@@ -253,6 +260,141 @@ work item. Never resolve it by silently making documentation more optimistic.
   `a-run-that-did-not-finish-is-not-a-success'; docs/PLAN.md §16.22).  The
   budget of a child of a delegation is a separate default and is still zero:
   that decision belongs to the owner (docs/PLAN.md §17.2).
+- Wave 40 made the wire of Yeah speak ACP: the content of a chunk is one
+  content block (the protocol says one block, and a client that checks the
+  wire refuses an array), and the events of the pending queue of a session —
+  `input_queued', `input_taken', `input_recovered', `input_withdrawn' — are
+  not ACP at all.  They travel only to the client that asked for them: the
+  client announces them in the `_meta' of its capabilities at `initialize',
+  and a client that announces nothing is served plain ACP.  The editor of
+  Yeah announces them and sees the queue.  The name of the extension, the
+  version of the protocol and the way the announcement is read live in
+  `lib/yeah-acp-vocabulary.el`, which both sides of Yeah require (the claims
+  `the-wire-speaks-acp' and
+  `the-queue-events-travel-where-they-were-asked-for'; docs/PLAN.md §16.23).
+  The defect this wave repairs was found by a client that validates the wire:
+  it refused every `session/update' of Yeah, so the text of the agent never
+  reached the timeline of the client.
+- The shapes of the wire were not the whole of it: the text of the agent
+  still did not reach the client, because the model of the live task answered
+  only with the call of the `finish' tool and the `finish' tool was not
+  projected at all.  A client that speaks ACP expects the words of the agent
+  as the message of the agent, so the summary of a finished run travels as
+  `agent_message_chunk', and the call of a tool carries what it was called
+  with and what it returned (`rawInput' and `rawOutput'; the claims
+  `the-answer-of-the-agent-reaches-the-client' and
+  `a-tool-call-carries-its-input-and-its-output').  The arguments of a call
+  are read back from their printed form as data and never as code.
+- The words themselves were spoiled on the way out, and the live check in
+  Paseo found it: the answer of the model reached the timeline of the agent
+  and arrived as mojibake, while the journal of the session held the right
+  text.  Emacs's `json-serialize' returns a unibyte string whose bytes are
+  UTF-8, and `princ' of such a string makes Emacs read every byte as a
+  character of Latin-1 and write the characters back as UTF-8 — every
+  non-ASCII answer was written twice over.  The wire now writes the bytes of
+  a message as they are (`lib/yeah-wire.el', `yeah-wire-print-line'), and both
+  protocols that write to a stream use it (the claim
+  `the-text-on-the-wire-is-the-text-the-model-wrote'; the check reads the
+  bytes of a real server process, because a character set would answer a
+  different question).
+- Wave 45 made the harness live.  The live test of Yeah against a real
+  provider found four defects that no offline check had seen, because every
+  offline check had been written by the same hand as the code.  A `bash'
+  tool whose output ends in a byte that is not valid UTF-8 killed the whole
+  Emacs process: the refusal of JSON arrived inside the sentinel of the
+  process, where no handler of the turn stands, and the run left no record
+  of itself (exit code 255).  The bytes arrive in two shapes, and both are
+  now text: a unibyte string of bytes, and a multibyte string that holds a
+  raw byte where the decoder of a process refused one (a character whose
+  code is at or above #x3FFF00).  The text of the harness is decided in one
+  place (`lib/yeah-text.el'), and a byte that is not text becomes the
+  replacement character (the claim
+  `the-text-of-the-harness-is-always-text').  The journal never refuses a
+  record: a record that JSON cannot write is written as a stand-in that
+  says so, and the journal takes the records that follow (the claim
+  `the-journal-never-refuses-a-record').  An error of the harness that
+  happens inside the callback of an asynchronous tool becomes a failed tool
+  and not the death of the process.  A run whose summary the provider did
+  not write does not die either: the old outputs of the tools are pruned,
+  the journal says that the summary did not arrive, and the run goes on (the
+  claim `a-run-degrades-when-the-summary-does-not-arrive').  The reason of
+  a failure that goes into the journal is cut at two thousand characters,
+  because a provider that refuses a request hands the whole conversation of
+  the run back inside the refusal, and one record of the journal is a
+  record and not a transcript (the claim
+  `the-record-of-a-failure-is-bounded'; the record of the failure of the
+  second live run was 2.8 MB).  The end-to-end check of the first defect
+  runs a real child process that runs the real tool
+  (tests/checks/check-a-tool-that-returns-bytes-does-not-kill-the-harness.el),
+  and all five controls were run and bit; docs/PLAN.md §16.24.  The repaired
+  harness was then run against a real provider with a real coding task: the
+  model wrote a calculator (5 553 bytes), wrote its own tests (4 699 bytes,
+  fifteen where the task asked for eight), ran them and the run of the tests
+  outside the harness says `OK` (docs/LIVE-EVIDENCE.md, "The live coding run
+  after wave 45").  The same run is the first live proof of the repair: one
+  command of the model cut a multibyte character of the journal in half, and
+  the journal of the run is valid UTF-8 from the first byte to the last.
+  The wave is
+  numbered 45 and not 41: the waves 41 to 44 are the plan the owner named
+  on 2026-11-16 (docs/PLAN.md §18), and that plan is not rewritten here.
+- Wave 46 made the noise of the provider harmless to a run that works.  The
+  first live run of Yeah on the task of the owner (the wave 41) called
+  seventeen tools and still ended in the state `failed`: the provider answered
+  every batch of the results with an empty message, the harness read that
+  silence as the silence of a model that does not act, and the budget of the
+  nudges was spent on the noise.  The record of that run said "the model
+  answered with an empty message 8 times and the run ended without an effect",
+  and both halves of it were false: the run had an effect and the model had
+  acted.  The budget of the nudges now pays for the nudges that no effect
+  answered, and a nudge that follows the silence of the provider after the
+  tools of the model have come back does not spend it (the claim
+  `the-noise-of-the-provider-does-not-end-a-working-run').  A model that never
+  acts still ends, and the record of a run that did not finish names the tools
+  the run called, so a run that called its tools is never described as a run
+  that ended without an effect (the claim
+  `the-record-of-a-run-that-did-not-finish-is-true').  The check of the wave
+  plays the shape of that live run with a fake transport, and both of its
+  controls were run and bit; docs/PLAN.md §16.25, docs/LIVE-EVIDENCE.md, "The
+  self-development run that found the noise of the provider".
+- Wave 47 gave the model the memory of the run.  Every request of the harness
+  started a fresh conversation with the model: the prompt was all the model was
+  told, so a model that answered with a plan instead of an action began the
+  task over.  Two live runs of the wave 41 measured the shape — 108 and 122
+  calls of tools, no change of the repository, `AGENTS.md' read ten and nine
+  times, the input of the requests not growing at all (4149 tokens at the
+  start of the run and 919 after 122 calls).  Every request now carries the
+  transcript of the run before the prompt: the call the model made, the result
+  it got and the answer it gave, and the words that keep the work where it is
+  (the claim `the-model-is-told-what-the-run-has-done').  The transcript is a
+  projection of the journal and not a second copy of the run — the journal
+  keeps the plain message it was written with (the claim
+  `the-transcript-is-a-projection-and-not-a-second-copy-of-the-run').  The
+  check of the wave plays the shape of those live runs with a fake transport,
+  and both of its controls were run and bit; docs/PLAN.md §16.26,
+  docs/LIVE-EVIDENCE.md, "The self-development runs that found the missing
+  memory".
+- Wave 48 made the death of the transport harmless to a run that works.  Three
+  live runs of the wave 41 died the same way — `Curl failed with exit code 28',
+  `16' and `28' — after 108, 122 and 70 calls of tools, and the harness read
+  the death of the transport as the end of the run and threw the work of the
+  model away with it.  A request that the provider dropped (no HTTP status) and
+  a request that met a busy provider (429, 5xx, 529) are asked again, with the
+  transcript of the run in front of the model, and the retry is bounded by a
+  budget of its own; the journal holds the retry as a record of its own
+  (`retry'), and the machine of the states does not move (the claims
+  `a-dropped-request-is-asked-again' and `the-retries-of-a-run-are-bounded').
+  A request that the provider refused is an answer and is not asked again (the
+  claim `a-refused-request-is-not-asked-again').  The status of the wire
+  decides which of the two it is, and gptel reports it as a string, so it is
+  read as a number: without that a refusal of the provider would have been
+  taken for a request that was never answered.  The check of the wave plays
+  the shape of those live runs with a fake provider, down to the string that
+  carries the status, and all three of its controls were run and bit; docs/PLAN.md
+  §16.27, docs/LIVE-EVIDENCE.md, "The run on the code of wave 47 and the death
+  of the transport".
+- The working directory of a session (`cwd') is still not applied to the
+  tools: in the live check the `bash' of the agent ran in the directory of
+  the process, not in the repository of the task (docs/PLAN.md §17.1).
 - The live stand of the transport was at fault, and not the provider: it stopped
   waiting at the first line that arrived, and the empty string that a
   reasoning model sends between its thinking and its answer was the absence of
@@ -319,6 +461,16 @@ work item. Never resolve it by silently making documentation more optimistic.
   adapter without global hooks. Recheck compatibility whenever gptel changes;
   supported pinned versions are declared in `lib/yeah-gptel.el`.
 - A `holds` claim proves its stated check only, not overall product readiness.
+- The owner named the order of the next waves on 2026-11-16 (az): wave 41
+  (the deterministic verifier of the bridge), wave 42 (the process of the
+  server), wave 43 (the surface of ACP for an orchestrator), wave 44 (parallel
+  children in a live turn).  The plan is `docs/PLAN.md` §18, and the decision
+  is recorded by the method as the judgment claim
+  `the-owner-decided-the-order-of-the-next-waves` — a claim whose evidence is
+  a human review, not a machine verifier.  Three decisions of the owner stay
+  open, and no agent may take them: the threshold of the parity, the
+  classification of a run that the provider silenced, and the budget of the
+  supervision of a child (`docs/PLAN.md` §17.2, §18.5).
 - Everything that is still open is written down in one place:
   `docs/PLAN.md` §17 — the work an agent may do, the decisions only the owner
   may make (§17.2), and the order to follow when the owner says nothing
@@ -373,7 +525,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-100 claim(s).
+106 claim(s).
 
 ```sh
 mathc run
