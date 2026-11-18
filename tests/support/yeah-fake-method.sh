@@ -16,6 +16,12 @@
 #   attempts — one line per attempt of the run
 #   map     — the map of the run
 #
+# YEAH_FAKE_METHOD_HANG says how many attempts wait for ever before the
+# run answers: the first attempt waits for ever by default, so that the
+# check can kill it the way an unknown sender killed three runs of the
+# method on 2026-11-18.  A check that needs a run that ends right away
+# asks for no hanging attempt at all.
+#
 # Exit codes: 0 — the run ended; 2 — the usage is wrong.
 
 set -u
@@ -26,6 +32,14 @@ if [ -z "$dir" ]; then
   exit 2
 fi
 mkdir -p "$dir"
+
+hang="${YEAH_FAKE_METHOD_HANG:-1}"
+case "$hang" in
+  ''|*[!0-9]*)
+    echo "tests/support/yeah-fake-method.sh: YEAH_FAKE_METHOD_HANG must be a whole number" >&2
+    exit 2
+    ;;
+esac
 
 command_name=""
 for arg in "$@"; do
@@ -42,10 +56,10 @@ case "$command_name" in
       attempt=$(( $(wc -l < "$dir/attempts") + 1 ))
     fi
     printf 'run=%s pid=%s\n' "$attempt" "$$" >> "$dir/attempts"
-    if [ "$attempt" -eq 1 ]; then
-      # The first attempt waits for ever: the check kills it.  The wait
-      # replaces this shell, so the process that waits is the process the
-      # check knows, and killing it leaves nothing behind.
+    if [ "$attempt" -le "$hang" ]; then
+      # The attempt waits for ever: the check kills it.  The wait replaces
+      # this shell, so the process that waits is the process the check
+      # knows, and killing it leaves nothing behind.
       exec sleep 300
     fi
     printf 'done=%s\n' "$attempt" >> "$dir/attempts"

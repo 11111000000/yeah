@@ -98,6 +98,8 @@ fi
 . "$dir/lib/tree.sh"
 # shellcheck source=scripts/lib/method.sh
 . "$dir/lib/method.sh"
+# shellcheck source=scripts/lib/copies.sh
+. "$dir/lib/copies.sh"
 
 mathc_bin="$(find_mathc)" || {
   echo "scripts/gate: the method is not on PATH and MATHC is not set." >&2
@@ -158,6 +160,11 @@ while :; do
       ;;
   esac
 done
+
+# The copies of the runs that are gone are removed before the map is
+# written: the run that was killed left its copy on disk, and the copy is
+# a gigabyte of the machine that nobody asked to keep.
+sweep_method_copies
 
 # The map is written when the run ends: the map is the state of the
 # project, and it must say how far the run came -- even when the run was

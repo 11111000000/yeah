@@ -3139,6 +3139,32 @@
       "register": "fact",
       "control": "sed -i 's|^      attempt=\\$((attempt + 1))$|      verdict=3; break|' scripts/gate",
       "waiver": null
+    },
+    {
+      "id": "the-killed-run-leaves-no-copy-behind",
+      "text": "A killed run of the method leaves no copy behind: after the run the gate removes the copies of the runs that are gone, and the copy of a run that is alive stays.",
+      "scope": [
+        "scripts/lib/copies.sh",
+        "scripts/gate",
+        "scripts/dev",
+        "tests/support/yeah-fake-method.sh",
+        "tests/checks/check-a-killed-run-leaves-no-copy-behind.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-killed-run-leaves-no-copy-behind.el"
+        }
+      ],
+      "falsifier": "the copy of the run that was killed is still on disk when the gate answered, or the copy of a run that is alive was removed",
+      "register": "fact",
+      "control": "sed -i 's|^sweep_method_copies$|: control|' scripts/gate",
+      "waiver": null
     }
   ]
 }

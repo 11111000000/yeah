@@ -38,6 +38,8 @@ cmd="${1:-help}"
 script_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 # shellcheck source=scripts/lib/method.sh
 . "$script_dir/lib/method.sh"
+# shellcheck source=scripts/lib/copies.sh
+. "$script_dir/lib/copies.sh"
 
 find_emacs() {
   if [ -n "${EMACS:-}" ] && [ -x "${EMACS}" ]; then
@@ -313,8 +315,14 @@ EOF
   run)
     need_mathc
     "$mathc_bin" --root . run
+    rc=$?
+    # The copies of the runs that are gone are removed after the run: a
+    # run that was killed leaves its copy on disk, and the copy is about a
+    # gigabyte of the machine that nobody asked to keep.  The copy of a run
+    # that is alive is left alone.
+    sweep_method_copies
+    exit $rc
     ;;
-
   gate)
     # The gate of the project is one runner: scripts/gate.  This wrapper
     # does not keep a second copy of it.  Two copies of the gate are two
