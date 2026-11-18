@@ -31,6 +31,10 @@
    and objection.
 7. `ELISP_BEST_PRACTICES.md` — kernel Elisp conventions; §11 is the trap log.
 8. `lib/yeah-*.el` — the implementation, one feature per file.
+9. `docs/PASEO-INTEGRATION-PLAN.md` — the state of the integration with the
+   orchestrator Paseo, the gaps of the ACP surface and the order of the work;
+   the plugin of Paseo lives in `plugin/yeah-provider/` (TypeScript, outside
+   `lib/`, which stays Elisp only).
 
 If two sources contradict each other, report the contradiction in the open
 work item. Never resolve it by silently making documentation more optimistic.
@@ -570,6 +574,19 @@ work item. Never resolve it by silently making documentation more optimistic.
   may make (§17.2), and the order to follow when the owner says nothing
   (§17.3).  Read it before starting the next wave; do not resolve an owner
   decision silently.
+- The integration with the orchestrator Paseo is live: the provider `yeah` is
+  registered by the plugin in `plugin/yeah-provider/` (the decision of the
+  owner on 2026-11-18 — the plugin was outside the repository and outside
+  version control before that), the agent runs, its text reaches the timeline
+  and its permissions reach the person.  Four gaps of the surface remain open
+  and are written down in `docs/PASEO-INTEGRATION-PLAN.md`: the `cwd` of a
+  session does not reach the tools (the agent works in the directory of the
+  daemon, not in the repository of the task), the route of ACP in Paseo
+  refuses a steering message, the outcome of a run does not travel over the
+  wire, and the plugin speaks to a fresh Emacs per connection instead of the
+  service of the kernel.  The order of the work is the plan of the owner
+  (`docs/PLAN.md` §18: waves 42 and 43); the plugin is TypeScript and lives
+  outside `lib/`, which stays Elisp only.
 
 ## The commands
 

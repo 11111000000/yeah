@@ -125,6 +125,13 @@ kernel and its Emacs-native interface:
 - an ACP v1 agent over newline JSON-RPC on stdio, with real sessions, journal
   updates, streaming tool calls and cancellation — and over a local socket,
   where a cancel is handled while the prompt is still running;
+- the orchestrator Paseo talks to this kernel through the plugin in
+  `plugin/yeah-provider/`: the provider `yeah` is registered, an agent of it
+  runs in the workspace that is open in Paseo, its text reaches the timeline
+  and its permissions reach the person; the gaps of the surface that are still
+  open — the `cwd` of a session does not reach the tools, the route of ACP in
+  Paseo refuses a steering message, the outcome of a run does not travel over
+  the wire — are written down in `docs/PASEO-INTEGRATION-PLAN.md`;
 - the whole control of a session on both paths: the wire carries
   `session/steer', `session/withdraw' and `session/recover', a `session/load'
   replays the journal of an earlier session, and the pending queue of the

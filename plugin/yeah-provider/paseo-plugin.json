@@ -1,0 +1,9 @@
+{
+  "id": "yeah-provider",
+  "name": "Yeah",
+  "description": "The Yeah kernel: an Emacs Lisp agent harness that runs inside Emacs",
+  "media": [],
+  "requirements": {
+    "paseo": ">=0.15.2"
+  }
+}

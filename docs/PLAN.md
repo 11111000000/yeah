@@ -2585,6 +2585,34 @@ the integration with Paseo (docs/PASEO-INTEGRATION.md) and are still open.
   leaves the process behind is the plugin that spawned it: nothing closes the
   pipe of the server when the session of the agent is over.
 
+**The rest of the surface, found on 2026-11-18.**  The list above is the
+surface as it was on 2026-11-16 and as the plan of the owner names it
+(§18.3, wave 43).  A second reading of the code of 2026-11-18 added four gaps
+that this list does not name, and one of them is not in the core at all:
+
+- The route of ACP in Paseo refuses a steering message before it sends the
+  prompt (`packages/plugin/src/server/acp.test.ts`: "refuses unsupported
+  steering before sending an ACP prompt").  The kernel has `session/steer`, so
+  the ability is there and the orchestrator does not reach it.  The repair is
+  in the repository of Paseo, not in this one.
+- The outcome of a run does not travel over the wire: `usage`, `nudge`,
+  `unfinished` and `error` are in the journal and not in `session/update`, so
+  an orchestrator sees the `stopReason` and nothing else.
+- Every connection to the provider creates a real session for the sake of the
+  catalog of the provider, and that session stays in the journal of the kernel
+  having done nothing.
+- The plugin of Paseo speaks to a fresh Emacs process per connection instead
+  of the service of the kernel over its socket.  The socket is the transport
+  that lets a cancellation preempt a running prompt, and the service is the
+  primary placement of this harness (§7 of `docs/ARCHITECTURE.md`).
+
+The reading itself, with the evidence for every gap, is
+`docs/PASEO-INTEGRATION-PLAN.md`.  The plugin of Paseo lives in this
+repository now, in `plugin/yeah-provider/` (decision of the owner,
+2026-11-18); it was outside the repository and outside version control
+before that, and the two facts are recorded in the revision 4 of
+`docs/PASEO-INTEGRATION.md`.
+
 **The measurement.**
 
 - The pilot is three tasks.  The sample is small, and the numbers of the runs
