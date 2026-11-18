@@ -104,17 +104,29 @@ client reads, and a character set would answer a different question."
                           (push chunk yeah-check--chunks))))
 
 (defun yeah-check--raw ()
-  "Return the bytes the server wrote so far."
-  (apply #'concat (nreverse yeah-check--chunks)))
+  "Return the bytes the server wrote so far.
+The list of the chunks is read and not turned over in place.  `nreverse'
+reverses a list in place and leaves the variable at the cell that was
+its head, which is the tail of the reversed list: the next reading
+would find one chunk there and not the wire.  The check reads the bytes
+again and again, so the bytes of the wire are the bytes that came, in
+the order they came."
+  (apply #'concat (reverse yeah-check--chunks)))
 
 (defun yeah-check--all-lines ()
   "Return the lines the server wrote so far.
 A line that is not complete yet is not a line: the server writes it
-whole."
+whole.
+The bytes are cut into lines before they are decoded: a character that
+the server has not finished writing cannot break the lines that came
+before it."
   (let ((raw (yeah-check--raw)))
     (if (string-empty-p raw)
         nil
-      (split-string (decode-coding-string raw 'utf-8) "\n" t))))
+      (let ((pieces (split-string raw "\n" nil)))
+        ;; The last piece is the line that the server has not finished.
+        (mapcar (lambda (line) (decode-coding-string line 'utf-8))
+                (butlast pieces 1))))))
 
 (defun yeah-check--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
@@ -196,13 +208,16 @@ whole."
                    :params (list :sessionId session-id
                                  :prompt (vector (list :type "text"
                                                        :text "answer")))))
-            (yeah-check--await
-             (lambda ()
-               (and (cl-find-if (lambda (text)
-                                  (equal (yeah-check--answer) text))
-                                 (yeah-check--agent-messages))
-                    t))
-             30))))
+            ;; The wait is for the end of the turn and not for the equality
+            ;; of the text: the response to the prompt leaves when the run
+            ;; is done, and the message of the agent is on the wire before
+            ;; it.  The equality of the text is the assertion of the check
+            ;; and not the condition of the wait: a wait that asks for the
+            ;; equality waits the whole timeout on every run that the
+            ;; control has broken, and the loop of twenty runs of the check
+            ;; that decides its verdict costs a minute and not ten minutes
+            ;; because of this line.
+            (yeah-check--await-response process 3 30))))
     ;; the bytes on the wire
     (let* ((answer (yeah-check--answer))
            (expected (encode-coding-string answer 'utf-8))

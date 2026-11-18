@@ -2390,6 +2390,21 @@
       "waiver": null
     },
     {
+      "id": "the-wire-check-decides-its-verdict-by-construction",
+      "text": "the check of the wire gives the same verdict on twenty consecutive runs of the control, and the control bites on each of them",
+      "scope": ["lib/yeah-wire.el", "tests/checks/check-wire-carries-the-text.el", "tests/checks/check-wire-check-decides-its-verdict-by-construction.el"],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [{"kind": "verifier", "spec": "./scripts/dev check tests/checks/check-wire-check-decides-its-verdict-by-construction.el"}],
+      "falsifier": "the check of the wire gives different verdicts on consecutive runs of the control, or the control does not bite on one of them",
+      "register": "fact",
+      "control": "sed -i 's|(message \"wire-text: %s\" failure)|(message \"wire-text: %s at %s\" failure (float-time))|' tests/checks/check-wire-carries-the-text.el",
+      "waiver": null
+    },
+    {
       "id": "the-owner-decided-the-order-of-the-next-waves",
       "text": "the owner named the order of the next waves on 2026-11-16, and the plan of the project follows that order",
       "scope": [ "docs/PLAN.md" ],

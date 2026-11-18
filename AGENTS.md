@@ -412,6 +412,27 @@ work item. Never resolve it by silently making documentation more optimistic.
   that live run with a fake provider, and both of its controls were run and
   bit; docs/PLAN.md §16.28, docs/LIVE-EVIDENCE.md, "The self-development run
   that found the compaction that did not wait".
+- Wave 50 made the check of the wire decide its verdict by construction.  The
+  check of the wire was flaky, and the reason was in the check itself:
+  `yeah-check--raw` read the chunks of the wire with `nreverse`, which turns
+  the list over in place and leaves the variable at the cell that was its
+  head, so the second reading of the wire found one chunk and not the wire,
+  and the verdict of the check depended on how many times it had read the
+  wire before.  The reading is repaired (the list is read and not turned over,
+  and the lines are cut out of the bytes before they are decoded), and the
+  check waits now for the end of the turn and not for the equality of the
+  text: the equality is the assertion of the check and not the condition of
+  the wait, so a run that the control has broken ends in a second and not in
+  thirty.  The new check
+  (tests/checks/check-wire-check-decides-its-verdict-by-construction.el) takes
+  the control of the claim of the text on the wire and runs the check of the
+  wire against it twenty times in a copy of the repository: every one of the
+  twenty runs must fail by an assertion of the check, and every one of them
+  must fail in the same way — the same code of the exit and the same words.
+  The claim `the-wire-check-decides-its-verdict-by-construction` is registered,
+  and its control (the moment of the clock in the words of the check) breaks
+  that determinism: nineteen of the twenty runs decided in another way than
+  the first one; docs/PLAN.md §16.29.
 - Wave 41 — the wave of the plan of the owner — was carried out by the harness
   itself (2026-11-17 18:48–19:15): a live model (MiniMax-M3.1-Flash) worked on
   a copy of the repository in a live run of Yeah, wrote the check of the wave
@@ -564,7 +585,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-121 claim(s).
+122 claim(s).
 
 ```sh
 mathc run
