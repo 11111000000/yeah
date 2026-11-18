@@ -855,7 +855,7 @@ measurement, not a reason to change the work.
 - Every new claim needs a control shown to bite. Every feature needs an
   observable end-to-end check appropriate to its layer.
 - `lib/` is Elisp only. No C, Rust or shell scripts inside the kernel.
-- One feature per file; `(require 'yeah-x)` loads `lib/yeah-x.el`.
+- One feature per file; `(require 'yeah-acp)` loads `lib/yeah-acp.el`.
 - Public symbols use `yeah-`; internal helpers use `yeah--` or the module's
   established internal prefix.
 - Domain errors are `user-error` or structured tool errors, not false success.

@@ -14,9 +14,9 @@ with no errors and no warnings under `./scripts/dev byte-compile-all`.
 A warning is a failure: the check greps for `Warning:` and refuses.
 
 §1.2 — **one feature per file.** Each `lib/yeah-*.el` provides exactly
-one feature, matching the file name. `(require 'yeah-x)` loads
-`lib/yeah-x.el`. No cross-file `defun` is allowed; only
-`(defun yeah-x-foo …)` or fully-qualified helpers.
+one feature, matching the file name. `(require 'yeah-acp)` loads
+`lib/yeah-acp.el`. No cross-file `defun` is allowed; only
+`(defun yeah-acp-foo …)` or fully-qualified helpers.
 
 §1.3 — **no `require` cycles.** Cycles in the require graph are
 forbidden. The graph is visible in `lib/` and in `spec.json`, where each

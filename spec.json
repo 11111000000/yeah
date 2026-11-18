@@ -3165,6 +3165,124 @@
       "register": "fact",
       "control": "sed -i 's|^sweep_method_copies$|: control|' scripts/gate",
       "waiver": null
+    },
+    {
+      "id": "the-support-fixtures-load",
+      "text": "The fixtures of the support load: every fixture of the support that does not start a server is loaded in a child Emacs and ends, the three fixtures that start a server are there, and the check leaves no process behind.",
+      "scope": [
+        "tests/support",
+        "tests/checks/check-the-support-fixtures-load.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-support-fixtures-load.el"
+        }
+      ],
+      "falsifier": "a fixture of the support does not load, or does not end in ten seconds, or one of the three fixtures that start a server is gone, or the check leaves a process behind",
+      "register": "fact",
+      "control": "sed -i '$a )' tests/support/yeah-journal-files.el",
+      "waiver": null
+    },
+    {
+      "id": "the-live-tests-are-whole-files",
+      "text": "The live tests are whole files: every live test is read to its end, its parentheses match, and it has the header and the footer of a file of the project.",
+      "scope": [
+        "tests/live",
+        "tests/checks/check-the-live-tests-are-whole-files.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-live-tests-are-whole-files.el"
+        }
+      ],
+      "falsifier": "a live test cannot be read to its end, or has an unmatched parenthesis, or has no header, or has no footer",
+      "register": "fact",
+      "control": "sed -i '$a )' tests/live/live-model-call.el",
+      "waiver": null
+    },
+    {
+      "id": "the-interface-is-seen",
+      "text": "The interface of the project is seen: the picture check draws the journal and the approval view in a terminal under a frame server, photographs the screen and finds the interface in the picture.",
+      "scope": [
+        "tests/pixel"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/pixel/check-interface-is-seen.sh"
+        }
+      ],
+      "falsifier": "the picture of the interface holds three colours or fewer, or the interface does not change the screen by more than two thousand pixels, or the journal and the approval view look the same",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-journal-full-render journal view)|nil|' tests/pixel/render-interface.el",
+      "waiver": null
+    },
+    {
+      "id": "the-site-shows-the-current-version",
+      "text": "The site shows the project as it is: the page shows one version and it is the version of the project, and every file of the repository the page points at is on disk.",
+      "scope": [
+        "site",
+        "VERSION",
+        "tests/checks/check-the-site-shows-the-current-version.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-site-shows-the-current-version.el"
+        }
+      ],
+      "falsifier": "the page shows no version, or shows a version that is not the version of the project, or points at a file of the repository that is not on disk",
+      "register": "fact",
+      "control": "sed -i 's|0.3.0|0.3.1|' site/index.html",
+      "waiver": null
+    },
+    {
+      "id": "the-documentation-points-at-files-that-exist",
+      "text": "The documentation points at what is there: every name of a file of this repository that a document mentions leads to a file that is on disk, and every section it names is a heading of that file.",
+      "scope": [
+        "docs",
+        "AGENTS.md",
+        "README.md",
+        "ELISP_BEST_PRACTICES.md",
+        "tests/checks/check-the-documentation-points-at-files-that-exist.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-documentation-points-at-files-that-exist.el"
+        }
+      ],
+      "falsifier": "a document names a file of the repository that is not on disk, or names a section that the file does not have, or the check follows no name at all and cannot tell a good name from a bad one",
+      "register": "fact",
+      "control": "sed -i '$a The name of a file that is not there: `docs/there-is-no-such-file.md`.' docs/PLAN.md",
+      "waiver": null
     }
   ]
 }

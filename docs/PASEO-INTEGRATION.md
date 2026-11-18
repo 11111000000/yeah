@@ -692,7 +692,7 @@ Emacs. Это разрыв №1 в §4 и он остаётся открытым
 свой MCP-сервер с каталогом инструментов, а некоторые ACP-адаптеры не умеют
 создавать сессию при непустом `mcpServers`
 (`packages/server/src/server/agent/providers/acp-agent.ts:487-504` в
-`docs/custom-providers.md`). Yeah `mcpServers` принимает, но **игнорирует**
+`paseo/docs/custom-providers.md`). Yeah `mcpServers` принимает, но **игнорирует**
 (`yeah-acp.el:248-251`), так что пустой список — честный ответ.
 
 `clientCapabilities` выключены потому, что Yeah делает работу с файлами и
@@ -886,7 +886,7 @@ Yeah спрашивает по каждому мутирующему вызов�
   (`packages/plugin/src/server/acp.ts`,
   `packages/plugin/src/server/acp-internal/connection.ts`,
   `packages/server/src/server/agent/providers/acp-agent.ts`,
-  `docs/custom-providers.md`, `docs/plugins.md`), но плагин не собирался и
+  `paseo/docs/custom-providers.md`, `paseo/docs/plugins.md`), но плагин не собирался и
   не запускался.
 * **Поведение при нескольких сессиях одного сервиса** — не измерялось.
 * **Отмена живого прогона** на сокете — измерялось только офлайн-канарем
