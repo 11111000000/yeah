@@ -225,7 +225,7 @@
       ],
       "falsifier": "the service does not answer, or the journal has no turn",
       "register": "fact",
-      "control": "sed -i 's|(yeah-acp-serve-socket %S %s)|(ignore)|' lib/yeah-service.el",
+      "control": "sed -i 's|(yeah-acp-handle-message line)|nil|g' lib/yeah-acp.el",
       "waiver": null
     },
     {
@@ -3034,7 +3034,7 @@
       ],
       "falsifier": "the server of a killed check is still alive ten seconds after the owner of the check was killed, or the socket of that server stays on disk",
       "register": "fact",
-      "control": "sed -i 's|(let* ((life (or life (yeah-life-inherited-path)))|(let* ((life life)|' lib/yeah-acp.el",
+      "control": "sed -i 's|(not (yeah-life-alive-p watch))|nil|g' lib/yeah-acp.el",
       "waiver": null
     },
     {

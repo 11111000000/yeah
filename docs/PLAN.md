@@ -2904,6 +2904,47 @@ TERM → три секунды → KILL, потомки гасятся чере�
 живых прогонов — это отказ платформы, и он записан в `objection` волны.
 
 
+### 16.45 Мёртвые контроли снова кусаются — **сделано 2026-11-18 (волна 61)**
+
+**Дефект.**  Два контроля в `spec.json` перестали что-либо менять после волн
+55 и 56, и оба claim'а стояли в карте как `Inconclusive` — не потому, что
+свойства ложны, а потому, что отрицательный контроль не изменил ни одного
+байта в scope (`reach = nothing`).  Метод поступил верно: `Inconclusive`, а не
+зелёный.  Но правда о свойстве осталась неизвестной.
+
+**Что сделано.**  Требования, falsifier'ы и проверки не тронуты — изменён
+только способ внести отрицательный контроль:
+
+- `the-check-leaves-no-server-behind` — `sed -i 's|(not (yeah-life-alive-p
+  watch))|nil|g' lib/yeah-acp.el`.  Сервер перестаёт замечать, что его хозяин
+  умер: он остаётся жив, а его сокет остаётся на диске — срабатывает ровно тот
+  falsifier, который записан у claim'а.
+- `service-lifecycle` — `sed -i 's|(yeah-acp-handle-message line)|nil|g'
+  lib/yeah-acp.el`.  Сервис не отвечает на рукопожатие — срабатывает
+  falsifier «the service does not answer».
+
+Оба якоря лежат внутри scope своих claim'ов, поэтому `reach` считается как
+`subject`.
+
+**Почему контроли умерли.**  Первый искал `(yeah-acp-serve-socket %S %s)`,
+а вызов после волны 55 стал `(yeah-acp-serve-socket %S %s nil 'local %S)`.
+Второй искал `(let* ((life ...`, а в BRE `t*` — квантификатор: после `le`
+ожидался пробел, а в тексте стояла звёздочка.
+
+**Критерий выхода.**
+1. Базовая линия зелёная: 904 мс и 865 мс, exit 0.
+2. Оба контроля кусаются утверждениями самих проверок: 20768 мс — «the server
+   of the check stayed behind after its owner was killed» и «the socket of the
+   server stayed behind»; 10525 мс — «the service did not answer the
+   handshake».
+
+**Что эта волна не делает.**  Она не чинит дефект метода и не меняет свойства
+кода — она возвращает claim'ам способ быть проверенными.  Контроль остаётся
+sed'ом по строке кода и умрёт от следующей переименки; мёртвый контроль
+метод видит сам (`reach = nothing` → `Inconclusive`), и это записано в
+`objection` волны.
+
+
 ## 17. What is left, and who decides it
 
 The work of waves 24–38 is closed and bound to fresh evidence.  What follows is
