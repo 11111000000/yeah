@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+# scripts/live-pilot — the runner of a live pilot.
+#
+#   scripts/live-pilot [--limit SECONDS] -- COMMAND [ARGUMENT...]
+#
+# A pilot is a live run of Yeah against a real provider: it starts an
+# Emacs, and the Emacs starts the servers of the session.  A pilot runs
+# for a long time, and it ends in one of three ways: the work is done,
+# the person stops it, or the limit of time passes.  In every one of the
+# three cases the servers of the pilot must go with it.  A server that
+# outlives its pilot holds the socket it serves on and waits for a client
+# that never comes, and it burns a share of a core while it waits.  The
+# measurement of 2026-11-18: the server of the pilot of the self-
+# development run was orphaned (its parent was gone) and spun for three
+# and a half hours.
+#
+# The runner owns the tree of processes, not the server.  The tree is
+# stopped by the runner — SIGTERM, and SIGKILL three seconds later — and
+# the runner waits for its child with `wait'.  Nothing is polled: the
+# runner reads no log, asks no question and sleeps in no loop.  The old
+# way around the death of a run was a watchdog with a loop of `sleep 5'
+# and a grep over a log file, and it cost forty-four minutes of waiting
+# a day; this runner is the way that needs no watchdog.
+#
+# The group of the pilot is stopped as well as the tree: a process that
+# stayed in the group of the pilot is a process of the pilot even when
+# the pilot itself is gone and its children were orphaned.
+#
+# Exit codes:
+#   0 — the pilot held
+#   1 — the pilot failed (the code of the pilot itself)
+#   2 — the usage is wrong
+#   3 — the limit passed: the method could not tell
+
+set -u
+
+usage() {
+  echo "scripts/live-pilot: usage: scripts/live-pilot [--limit SECONDS] -- COMMAND [ARGUMENT...]" >&2
+  exit 2
+}
+
+# The limit of the pilot.  The old runner used `timeout 3300' around the
+# Emacs of the pilot; the limit is the same, and it is the limit of this
+# runner now.
+limit="${YEAH_PILOT_TIMEOUT:-3300}"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --limit)
+      [ $# -ge 2 ] || usage
+      limit="$2"
+      shift 2
+      ;;
+    --limit=*)
+      limit="${1#--limit=}"
+      shift
+      ;;
+    --)
+      shift
+      break
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+[ $# -ge 1 ] || usage
+
+case "$limit" in
+  ''|*[!0-9]*)
+    echo "scripts/live-pilot: the limit must be a whole number of seconds" >&2
+    exit 2
+    ;;
+esac
+if [ "$limit" -lt 1 ]; then
+  echo "scripts/live-pilot: the limit must be at least one second" >&2
+  exit 2
+fi
+
+# The tree of processes is stopped the same way in every script that owns
+# one: the knowledge of /proc lives in scripts/lib/tree.sh, and this
+# script reads it.
+# shellcheck source=scripts/lib/tree.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/tree.sh"
+
+pid=""
+group=""
+timer=""
+stopped=0
+# The marker of the limit lives in a directory of its own: a name that a
+# stranger could guess in /tmp is a name a stranger could take, and the
+# runner writes to it when the limit passes.
+marker_dir="$(mktemp -d "${TMPDIR:-/tmp}/yeah-pilot-XXXXXX")"
+marker="$marker_dir/timeout"
+
+# Signal the group of the pilot.  The group is the one the pilot led
+# when it started: the group outlives the pilot, and a member of it that
+# stayed behind is a process of the pilot.
+stop_group() {
+  local signal="$1"
+  if [ -n "$group" ] && [ "$group" != "$own_group" ]; then
+    kill -"$signal" "-$group" 2>/dev/null || true
+  fi
+}
+
+# Stop the tree of the pilot: the pilot itself, the processes it started
+# and the group of the pilot.  The tree is stopped twice: first with
+# SIGTERM, and then with SIGKILL three seconds later, because a process
+# that waits for a child may not answer a SIGTERM at once.
+#
+# The two stops live in one place on purpose.  The tree of the pilot is
+# stopped by the tree and by the group, and both are needed: a child
+# that left the group is found by the tree, and a child that outlived
+# its parent is found by the group.  One place to stop them means one
+# place to break them, and a check that shows the break is a check of
+# the runner and not of one of the two stops.
+signal_pilot() {
+  local signal="$1"
+  stop_tree "$pid" "$signal"
+  stop_group "$signal"
+}
+
+stop_tree_of_pilot() {
+  signal_pilot TERM
+  sleep 3
+  signal_pilot KILL
+}
+
+# Stop everything the runner owns: the timer and the tree of the pilot.
+stop_pilot() {
+  [ "$stopped" -eq 1 ] && return 0
+  stopped=1
+  if [ -n "$timer" ]; then
+    kill_group "$timer" TERM
+    kill -TERM "$timer" 2>/dev/null || true
+    timer=""
+  fi
+  if [ -n "$pid" ]; then
+    stop_tree_of_pilot
+  fi
+  rm -rf "$marker_dir"
+}
+
+on_signal() {
+  stop_pilot
+  exit "$1"
+}
+
+trap 'on_signal 130' INT
+trap 'on_signal 143' TERM
+trap 'stop_pilot' EXIT
+
+# The pilot leads a process group of its own: the signals that stop it
+# reach the children that stayed in the group.  The timer leads a group
+# of its own as well: a timer that is stopped must not leave its sleep
+# behind.
+set -m
+"$@" &
+pid=$!
+set +m
+group="$(process_group "$pid")"
+
+# The timer: when the limit passes, the pilot is asked to stop, and then
+# stopped.  The marker is written before the first signal, so the code
+# that reads it knows that the limit, and not the pilot, ended it.
+#
+# The timer leads a group of its own: the sleep of the timer is a child
+# of the timer, and a timer that is stopped must not leave its sleep
+# behind -- that is the very leak this runner exists to close.
+set -m
+(
+  sleep "$limit"
+  : > "$marker" 2>/dev/null || true
+  stop_tree_of_pilot
+) &
+timer=$!
+set +m
+
+started="$(now_ms)"
+wait "$pid"
+rc=$?
+elapsed=$(( $(now_ms) - started ))
+
+kill_group "$timer" TERM
+kill -TERM "$timer" 2>/dev/null || true
+timer=""
+
+timed_out=0
+if [ -f "$marker" ]; then
+  timed_out=1
+elif [ "$rc" -ge 128 ] && [ "$elapsed" -ge $(( limit * 1000 - 100 )) ]; then
+  # the marker is gone, but the pilot died by a signal at the limit
+  timed_out=1
+fi
+rm -rf "$marker_dir"
+
+# The pilot ended; the tree of the pilot ends with it, whether the pilot
+# held or failed.
+stop_pilot
+
+if [ "$timed_out" -eq 1 ]; then
+  echo "scripts/live-pilot: the pilot ran longer than ${limit}s and was stopped" >&2
+  exit 3
+fi
+exit "$rc"

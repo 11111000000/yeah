@@ -13,7 +13,9 @@
 # The children of the command are stopped as well.  Emacs 30.2 gives every
 # child of `make-process' a process group of its own, so a signal to the
 # group of the command does not reach them: they are found through /proc
-# and stopped by their own group.
+# and stopped by their own group.  The knowledge of /proc is shared with
+# the other scripts that own a tree of processes, and it lives in
+# scripts/lib/tree.sh.
 #
 # Exit codes:
 #   0 — the command held
@@ -47,65 +49,11 @@ if [ "$limit" -lt 1 ]; then
   exit 2
 fi
 
-now_ms() {
-  printf '%s' "$(( $(date +%s%N) / 1000000 ))"
-}
-
-# The process group of the process PID, or nothing when the process is gone.
-process_group() {
-  awk '{ i = index($0, ")"); if (i == 0) next
-         rest = substr($0, i + 2); split(rest, f, " ")
-         print f[3] }' "/proc/$1/stat" 2>/dev/null
-}
-
-# The descendants of PID, the deepest first.
-#
-# The name of a process may hold spaces and parentheses, so the fields of
-# /proc/PID/stat are read after the last closing parenthesis: what is left
-# is the state, the parent, the group, the session, and the rest.
-descendants() {
-  local parent="$1" child
-  while read -r child; do
-    [ -n "$child" ] || continue
-    descendants "$child"
-    printf '%s\n' "$child"
-  done <<CHILDREN
-$(awk -v p="$parent" '
-  FNR == 1 { split(FILENAME, parts, "/"); pid = parts[3] }
-  { i = index($0, ")"); if (i == 0) next
-    rest = substr($0, i + 2); split(rest, f, " ")
-    if (f[2] + 0 == p + 0) print pid }' /proc/[0-9]*/stat 2>/dev/null)
-CHILDREN
-}
-
-own_group="$(process_group $$)"
-
-# Signal the group of PID, but only when PID leads a group of its own.
-# The group of this script is never signalled: a mistake here would kill
-# the gate that runs the check.
-kill_group() {
-  local pid="$1" signal="$2" group
-  group="$(process_group "$pid")"
-  if [ -n "$group" ] && [ "$group" = "$pid" ] && [ "$group" != "$own_group" ]; then
-    kill -"$signal" "-$group" 2>/dev/null || true
-  fi
-}
-
-# Stop the process PID and everything it started.
-stop_tree() {
-  local pid="$1" signal="$2" child
-  for child in $(descendants "$pid"); do
-    kill_group "$child" "$signal"
-    kill -"$signal" "$child" 2>/dev/null || true
-  done
-  kill_group "$pid" "$signal"
-  kill -"$signal" "$pid" 2>/dev/null || true
-}
-
-# Stop the process PID the way a timer stops it.
-stop_now() {
-  stop_tree "$1" TERM
-}
+# The tree of processes is stopped the same way in every script that owns
+# one: the knowledge of /proc lives in scripts/lib/tree.sh, and this
+# script reads it.
+# shellcheck source=scripts/lib/tree.sh
+. "$(cd "$(dirname "$0")" && pwd)/lib/tree.sh"
 
 pid=""
 timer=""

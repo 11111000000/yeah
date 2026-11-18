@@ -3042,6 +3042,7 @@
       "text": "A check that hangs does not eat the gate: the gate stops the check at its limit of time, stops the children of the check as well, and answers with the third answer (unknown) and not with a refutation.",
       "scope": [
         "scripts/dev-timeout",
+        "scripts/lib/tree.sh",
         "scripts/dev",
         "tests/support/yeah-hanging-check-fixture.el",
         "tests/checks/check-a-check-that-hangs-is-stopped.el"
@@ -3060,6 +3061,56 @@
       "falsifier": "the check that hangs is still alive fifteen seconds after the limit of the gate passed, or the child of that check is still alive, or the gate answers the run of a stopped check with a code other than three",
       "register": "fact",
       "control": "sed -i 's|^  stop_tree \"$pid\" TERM$|  : control|; s|^  stop_tree \"$pid\" KILL$|  : control|' scripts/dev-timeout",
+      "waiver": null
+    },
+    {
+      "id": "the-interrupted-pilot-leaves-no-server-behind",
+      "text": "A pilot that is interrupted leaves no server behind: the runner of the pilot stops the tree of the pilot and the group of the pilot, the server of the pilot is gone within fifteen seconds of the interruption, and the runner answers the interruption as an interruption.",
+      "scope": [
+        "scripts/live-pilot",
+        "scripts/lib/tree.sh",
+        "tests/support/yeah-pilot-fixture.el",
+        "tests/checks/check-a-pilot-that-is-interrupted-leaves-no-server.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-pilot-that-is-interrupted-leaves-no-server.el"
+        }
+      ],
+      "falsifier": "the server of the pilot is still alive fifteen seconds after the pilot was interrupted, or the runner of the pilot did not stop, or the runner of the pilot answered a code other than 130 to the interruption",
+      "register": "fact",
+      "control": "sed -i 's|^  stop_tree \"$pid\" \"$signal\"$|  : control|; s|^  stop_group \"$signal\"$|  : control|' scripts/live-pilot",
+      "waiver": null
+    },
+    {
+      "id": "the-pilot-that-runs-out-of-time-leaves-no-server-behind",
+      "text": "A pilot that ran out of time leaves no server behind: the runner of the pilot stops the pilot when the limit passes, the server of the pilot is gone within fifteen seconds of the limit, and the runner answers the third answer (unknown) and not a refutation.",
+      "scope": [
+        "scripts/live-pilot",
+        "scripts/lib/tree.sh",
+        "tests/support/yeah-pilot-fixture.el",
+        "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el"
+        }
+      ],
+      "falsifier": "the server of the pilot is still alive fifteen seconds after the limit of the pilot passed, or the runner of the pilot did not stop when the limit passed, or the runner of the pilot answered a code other than three",
+      "register": "fact",
+      "control": "sed -i 's|^  stop_tree_of_pilot$|  : control|' scripts/live-pilot",
       "waiver": null
     }
   ]
