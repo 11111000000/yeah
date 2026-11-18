@@ -1631,8 +1631,245 @@ checks of the live path were not run here.  They do not prove that no other
 kind of leak exists — they prove that six kinds were found by measurement and
 closed by measurement, and the six kinds were the ones the plan named.
 
+## The after-measurement of the plan of 2026-11-18 (2026-11-18, 17:11–17:12)
+
+The plan of the owner (`math-coding-field-lab/projects/yeah/remediation-plan-2026-11-18.md`)
+named the list of what had to be measured again after the repairs: `pgrep -c
+emacs`, `uptime`, the copies of the method in `/tmp/mathc-v5-*`, the time of the
+sweep and the ticks of the daemon.  The same list, the same units, the same
+machine.
+
+| What was measured | Before (2026-11-18, 11:17–11:30 UTC) | After (2026-11-18, 17:11 UTC) |
+|---|---|---|
+| `pgrep -c emacs` | 42 -- two of them burning a core, forty of them idle servers of checks | 0 |
+| load average | 13.42 | 0.90, 0.87, 0.87 |
+| copies of the method (`/tmp/mathc-v5-*`) | 48, about a gigabyte | 0 |
+| the temporary directory | 3.1 GB | 2.5 GB |
+| ticks of the daemon in 10 s | 399--498 ticks -- 80--100 % of a core | no daemon is running, see below |
+| the sweep of the gate | 8.5--11.5 min for 121 verifiers at load 13 | 14.3 min for 143 claims at load 0.9 -- 24.0 min of wall clock, of which 9.7 min was one check that the host starved |
+
+**What the after-measurement does not prove.**  It proves that the leaks of the
+run are closed on the machine of the measurement: no server of a check is left
+alive, no copy of a dead run is left on the disk, and the load of the machine is
+the load of an idle machine.  It does not prove that the spin of the daemon of a
+live session is gone: the daemon was stopped in step 0 of the plan and was not
+started again, because the live session belongs to the owner of the machine, so
+the row of the ticks is empty for that reason and not because the defect was
+repaired.  The spin of the live path is not localized and not closed; it is an
+open defect, and it is written down as one.
+
+The sweep is the gate of 2026-11-18, 17:12--17:36: 143 claims, 241 runs of a
+verifier (a baseline for every claim, a control run for every claim that has a
+control and passed), `real 23m59.404s`.  Nine and a half minutes of that were
+one check that the host starved; without it the sweep took 14.3 min, that is
+3.6 s per run against the 4.2--5.8 s per check of the plan.  The reason the run
+got cheaper is written down below: the copy that the method makes for every
+claim lost seven eighths of its size.
+
+### Wave 61 — the dead controls bite again
+
+Two claims stood in the map as Inconclusive because their negative controls had
+stopped touching the subject.  The control of `service-lifecycle` was
+`sed -i 's|(yeah-acp-serve-socket %S %s)|(ignore)|' lib/yeah-service.el`, and
+the call of the server changed its shape in wave 55 into
+`(yeah-acp-serve-socket %S %s nil 'local %S)` (`lib/yeah-service.el:157`), so the
+pattern never matched any more.  The control of
+`the-check-leaves-no-server-behind` was
+`sed -i 's|(let* ((life (or life (yeah-life-inherited-path)))|(let* ((life life)|'
+`lib/yeah-acp.el`, and it never matched either: in a basic regular expression
+`t*` is a quantifier, so `let*` asked for a space after `le` and the line
+`(let* ((life (or life (yeah-life-inherited-path)))` did not match it.  The
+method behaved correctly -- reach `nothing` gives Inconclusive, not green -- and
+the two properties were untested all the same.  Wave 61 changes only the way
+the negative control is applied; the requirement, the falsifier and the check
+stay exactly as they were.
+
+Measured in isolated copies of the repository (the method does the same thing:
+`adapter/isolated_run.ml` -- clone, `checkout --detach HEAD`, the working tree
+over it).  The baseline of `check-a-check-that-is-killed-leaves-no-server.el` was
+884 ms, exit 0; the baseline of `check-service-lifecycle.el` was 779 ms, exit 0.
+The new control of `the-check-leaves-no-server-behind`
+(`sed -i 's|(not (yeah-life-alive-p watch))|nil|g' lib/yeah-acp.el`) took the
+notice of the death of the owner out of the server, and the check failed after
+20 816 ms, exit 1, with its own assertions: `the server of the check stayed
+behind after its owner was killed (pid 4669)' and `the socket of the server
+stayed behind: /tmp/yeah-fixtureI3zMpc/server.sock'.  The new control of
+`service-lifecycle` (`sed -i 's|(yeah-acp-handle-message line)|nil|g'
+lib/yeah-acp.el`) took the answer of the server out, and the check failed after
+10 595 ms, exit 1, with `the service did not create a session' and `the service
+did not answer the handshake'.
+
+A rejected candidate is written down as well, because a control that bites for
+the wrong reason is worse than a control that does not bite:
+`sed -i 's|(yeah-life-socket-connect life)|nil|g' lib/yeah-acp.el' bites too
+(20 583 ms, exit 1), but it drops the server at the start (`the server of the
+check was not alive (pid 6207)') -- the server did not stay behind, it never
+rose, and the falsifier of the claim is not proved by that.
+
+The dead anchors were measured literally: the command of the control, taken from
+`spec.json` and run through `sh -c` in a copy, returned 0 and changed nothing.
+That is reach `nothing`, written down rather than assumed.
+
+### Wave 62 — the uncovered has an owner
+
+The map showed 40 files that no claim owned: five areas of the repository stood
+without a master, and not one check stood on their side.  The areas were
+`tests/support` (14 files), `tests/live` (5), `tests/pixel` (2), `site` (8) and
+`docs` together with `ELISP_BEST_PRACTICES.md` (11).  Wave 62 gave them five
+claims and five checks, and after it `mathc map` shows `uncovered: 0 file(s)`.
+
+Four of the five checks written for that volume turned out to be defective, each
+in its own way, and each of them quietly: a check that cannot fail is a comment.
+The check of the live tests took its "copy" with `copy-file` under the same path
+as the source, so the copy was the source itself, and the `delete-file` at the
+end of the check erased the live test out of the repository and reported success
+besides; the live tests are marked `no-byte-compile: t`, which means they are
+read, not compiled.  It was rewritten as
+`tests/checks/check-the-live-tests-are-whole-files.el`: it reads every live test
+to the end, compares the brackets with `check-parens`, requires a header and a
+footer, and writes nothing.  The check of the support fixtures did not parse at
+all (two closing brackets were missing), and it loaded the fixtures in the same
+Emacs while three of them raise a server and wait for ever, so the check hung
+instead of failing.  It was rewritten to load every fixture in a child Emacs,
+one child per fixture, with a limit of ten seconds: a hanging fixture gives its
+name and its reason instead of silence; the three server fixtures are named and
+checked for presence, not for loading, and no process is left after the run.
+The check of the version of the site needed `string-match-all', which Emacs 30.2
+does not have, so it could not run at all; it was rewritten on a loop of
+`string-match'.  The check of the documentation was truncated; it was rewritten
+too.
+
+The rewritten checks stood on wrong assumptions about the dialect of Emacs 30.2,
+and those assumptions were wrong: the "zero or one" operator is a bare `?'
+(`\?' is a literal question mark), `\b' and `\B' are word boundaries, `\<' and
+`\>' work, `(?:' is supported, `a{2}' is a literal, `\d' is a literal, a
+look-behind is not supported, a regular expression that starts with `"*' never
+matches, `string-trim' in Emacs 30 takes regular expressions in its second and
+third arguments and calls `string-match' inside, which erases the match data
+(`args-out-of-range'), `string-match-all' is absent, `directory-files' has the
+prototype `(FULL MATCH NOSORT COUNT)' and not `(NOSORT MATCH-DOTFILES
+RETURN-ABSOLUTE)', and `member' compares strings with `eq' and takes no test
+function.
+
+The baseline of the check of the documentation was red because of the same kind
+of assumption: it built the list of the top level of the repository with the
+wrong prototype of `directory-files', so the list held `.', `..' and the hidden
+names, and the path of the neighbouring project `../emacs-agents-research' was
+taken for a path of this repository.  Four live links of the documentation were
+named in the check and were correct: `AGENTS.md:858`, `ELISP_BEST_PRACTICES.md:16`
+to `19`, `docs/PASEO-INTEGRATION.md:695` and `docs/PASEO-INTEGRATION.md:889`.
+The links were repaired in the documentation and the rule was not weakened.
+
+The five controls were shown to bite, in isolated copies of the repository, with
+the commands taken from `spec.json` themselves.  For every one of them the scope
+of the claim changed, the code of the control was 0, and the code of the check
+after the control was 1:
+
+| Claim | Baseline | After the control | What the check said |
+|---|---|---|---|
+| `the-support-fixtures-load` | 2448 ms, exit 0 | 2452 ms, exit 1 | `support: the fixture yeah-journal-files.el does not load: Error: invalid-read-syntax (")" 54 1)' |
+| `the-live-tests-are-whole-files` | 251 ms, exit 0 | 280 ms, exit 1 | `the live test live-model-call.el has no footer', `has an unmatched parenthesis on line 117', `is empty', `is not a whole file: Invalid read syntax: ")", 117, 1' |
+| `the-interface-is-seen` | 5939 ms, exit 0 | 5526 ms, exit 1 | `check-interface-is-seen: the interface does not change the screen: 0 pixels differ' |
+| `the-site-shows-the-current-version` | 234 ms, exit 0 | 243 ms, exit 1 | `site: the page shows the version 0.3.1, the project is at 0.3.0' |
+| `the-documentation-points-at-files-that-exist` | 814 ms, exit 0 | 910 ms, exit 1 | `docs: PLAN.md: it names docs/there-is-no-such-file.md, and there is no such file' |
+
+The first run of the measurer said `BITES: False` for all five, and that was a
+defect of the measurer and not of the checks: `run' returns `(code, ms, out)'
+and the unpacking was `(ms, code, out)', so the printed 4/6/5/7/6 were the
+milliseconds of the control and not its code.
+
+**What the wave does not prove.**  `uncovered' does not touch the verdict of the
+map -- it touches `next' only.  A claim without files is a property without a
+subject: it can neither be refuted nor repaired, and the map is silent about it
+in the same way it is silent about a property that nobody checks.  Three of the
+five checks watch the absence of a defect (a link in the documentation, the
+version on the page, the wholeness of a live test), and such a property breaks
+at every renaming: that is the price of a property "the tree of the
+documentation is whole", and it is written down here instead of being hidden.
+The pixel check needs a frame server, a terminal and ImageMagick; where they
+are missing the script prints `blocked' and leaves the code 2, that is, not a
+Pass -- the method shows such a case as Inconclusive and not as green.
+
+### The stall of 2026-11-18, 17:13–17:23 — a starved host, not a defect of the project
+
+One claim of the map came out of the gate as Inconclusive: `product-installs'.
+The trail says it plainly -- `mathc: ./scripts/dev check
+tests/checks/check-product-installs.el exited 3', `check: 578922 ms',
+`scripts/dev-timeout: the command ran longer than 120s and was stopped', and
+`control_reach: null', that is, the control never ran.
+
+The number itself is the evidence.  The check has a limit of 120 s, and the
+watchdog of the runner (`scripts/dev-timeout`) stopped it -- but the check had
+already been running for 578.9 s: the watchdog of the check fired 459 s late.
+A watchdog that is late by eight minutes is not a watchdog that is broken, it is
+a watchdog that was not scheduled; and the only thing that keeps a timer
+subprocess from running for eight minutes is a host that has no time left.
+
+What the host looked like at 18:12, an hour after the stall: seven and more
+processes of another agent (`minimax-code', 290--700 MB of resident memory
+each), the daemon of Paseo, 4477 MiB of the 8068 MiB of swap occupied, zram0 at
+about 3.9 GB, `kswapd` busy, the load average 2.25, 1.74, 5.40, and
+`pid_max = 8192`, so the numbers of the processes are reused quickly.  In
+`/tmp`, files of that other agent appeared between 18:06 and 18:07 -- the
+middle of the window in which our check was hanging.  The check itself is fast
+and always was: ten consecutive runs took 313--482 ms and ended with the code 0,
+and in the gate of 15:04 the same claim was green (`product-installs: pass',
+`negative control proven', the control run took 409 ms).
+
+Every hypothesis that pointed into the repository was measured and dropped:
+with `</dev/null' and with a pipe without an end of file the check is fast; a
+shell that refuses to die is stopped in 8 s under a limit of 5 s and a hanging
+Emacs is stopped exactly at the limit, so the watchdog works; `(require 'yeah)'
+gives 204 features in 0.297 s and no side effect; one full scan of
+`/proc/[0-9]*/stat' costs 8 ms at 214 processes, and the recursion of the tree
+of the runner makes three such scans, not minutes; the repository is 399
+tracked files and 3.4 MB, and the copy of it is 21 MB at worst.
+
+The conclusion is written down as it stands: the 579 s were an external stall of
+a shared machine, the check is not slow, and the project is not the cause.
+A new wave of code was not started for it, because there is nothing in this
+repository to repair.  What the map cannot show is the difference between a
+host that is busy and a check that hangs, and that difference is an open item.
+
+### The hygiene of the repository — the copy of the method got smaller
+
+The method makes an isolated copy of the repository for every control it runs
+(`adapter/isolated_run.ml`), and the gate of the day ran 98 of those copies.
+Before `git gc` the copy carried 2314 loose objects (19.47 MiB) with them, so
+the `.git` of the copy was 21 MB and the clone took 97 ms; after `git gc
+--quiet` there is not one loose object left, 2527 objects are in a pack, the
+`.git` of the copy is 2.7 MB, and five clones in a row took 21, 33, 19, 19 and
+18 ms.  The gate writes about 6 GB of copies in that state and about 0.8 GB in
+this one.  `git status' did not change and the working tree was not touched:
+this is the hygiene of the object store and not a change of the project.
+
 ## What is still open
 
+- The spin of the daemon of a live session is neither localized nor closed.
+  The measurement of 2026-11-18 (399–498 ticks in ten seconds, 80–100 % of a
+  core) was taken on the code of that day; the waves 55–61 closed leaks, not
+  that loop.  The daemon was stopped in step 0 of the plan of the owner and was
+  not started again — the live session belongs to the owner of the machine — so
+  the row of the after-measurement is empty for that reason and not because the
+  defect was repaired.  The counter that would name the loop (the iterations of
+  the pump of the wire and of the request of the provider) is still not in the
+  code, and the claim `the-server-does-not-spin-when-the-provider-is-silent`
+  covers the synthetic scenarios and not the live path of the plugin.
+- The negative control of a claim is a line of code, and it dies at every
+  renaming: waves 55, 56 and 61 measured that on live code.  The call of the
+  server changed its shape in wave 55 and the pattern of the `sed` never
+  matched, because `t*` in a basic regular expression is a quantifier.  A dead
+  control is not worse than a missing one — the method says Inconclusive and not
+  green — but the property it was meant to test is untested all the same, and
+  the map says exactly that instead of hiding it.
+- A verdict of the map cannot tell a busy host from a hanging check.  On
+  2026-11-18, 17:13–17:23, the check `product-installs` ran 578.9 s instead of
+  0.4 s and even its own watchdog of 120 s fired 459 s late, because another
+  agent was filling the memory of the same host; the cause was outside the
+  repository and the check is green in ten runs out of ten.  Nothing in the
+  runner tells a starved host from a stuck check, so a map of a shared machine
+  carries a verdict that depends on the neighbours of that machine.  The way out
+  is a claim about the load of the host, not a faster check.
 - A real editor (an agent-shell, or a person's Emacs) against a live
   provider: not yet checked.
 - The bridge to the buffers of an attached Emacs against a person's Emacs in
