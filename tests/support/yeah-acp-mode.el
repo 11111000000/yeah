@@ -12,7 +12,9 @@
 ;; The check of the mode of a session needs a client that speaks to a real
 ;; ACP server: it opens a session, changes the mode of the session, asks
 ;; the session to do something that changes the world, and answers the
-;; question about the permission when the server asks one.
+;; question about the permission when the server asks one.  The client
+;; itself lives in `yeah-acp-client.el': a source that is written twice is
+;; a source that is wrong twice.
 ;;
 ;; The server is a service on a socket and not a server on stdio: a server on
 ;; stdio reads its input between the requests, so the answer of the client
@@ -29,6 +31,11 @@
 (require 'cl-lib)
 (require 'yeah-client)
 (require 'yeah-service)
+
+(load (expand-file-name "yeah-acp-client.el"
+                        (file-name-directory (or load-file-name buffer-file-name)))
+      nil
+      t)
 
 (defun yeah-acp-mode--model-file ()
   "Return the file that holds the fake model of the server."
@@ -52,51 +59,6 @@ The model of the service is the fake one of the checks."
                       "#'yeah-mode-model-transport"
                       t
                       nil))
-
-(defun yeah-acp-mode--connect (name)
-  "Connect to the service NAME and return the client and two readers.
-The result is the client, a function that returns the questions of the
-server about a permission, and a function that returns the notifications
-of the server.  The questions and the notifications live in the closure
-of the client: a list that a function pushes into is the list of that
-function, and not the list of the caller."
-  (let (questions updates)
-    (let ((client (yeah-client-connect
-                   (yeah-service-socket-path name)
-                   :on-notification
-                   (lambda (message) (push message updates))
-                   :on-request
-                   (lambda (method params respond)
-                     (push (list :method method :params params) questions)
-                     (funcall respond
-                              (list :outcome (list :outcome "selected"
-                                                   :optionId "allow-once")))))))
-      (list client
-            (lambda () (reverse questions))
-            (lambda () (reverse updates))))))
-
-(defun yeah-acp-mode--request (client method params &optional timeout)
-  "Send METHOD with PARAMS to CLIENT and wait for the answer of the server.
-The answer is returned as a plist with `:result' and `:error'; a server
-that did not answer at all gives a plist with neither."
-  (let ((answer nil))
-    (yeah-client-request client method params
-      (lambda (result error)
-        (setq answer (list :result result :error error))))
-    (let ((deadline (+ (float-time) (or timeout 30))))
-      (while (and (null answer) (< (float-time) deadline))
-        (accept-process-output nil 0.05)))
-    (or answer (list))))
-
-(defun yeah-acp-mode--tool-calls (updates)
-  "Return the calls of the tools that the notifications UPDATES announced."
-  (delq nil
-        (mapcar (lambda (message)
-                  (let ((update (plist-get (plist-get message :params) :update)))
-                    (when (and update
-                               (equal "tool_call" (plist-get update :sessionUpdate)))
-                      update)))
-                updates)))
 
 (provide 'yeah-acp-mode)
 

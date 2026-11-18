@@ -102,7 +102,9 @@
     (:type "finish"
      :required (:summary))
     (:type "session-mode"
-     :required (:mode)))
+     :required (:mode))
+    (:type "session-model"
+     :required (:model)))
   "The event vocabulary, with required and optional payload fields.")
 
 (defun yeah-events-types ()

@@ -653,6 +653,37 @@ work item. Never resolve it by silently making documentation more optimistic.
   against a server on stdio: a server on stdio reads its input between the
   requests, so the answer of the client to a question about a permission would
   come after the run it belongs to had ended.
+- Wave 43 (the fourth part) made the model of a session change over the wire.
+  Neither `session/set_model' nor `session/set_config_option' existed, and a
+  client that asked was answered with `-32601'; the model was chosen when the
+  process started, so a person could see the model and not switch it.  The
+  catalog of the models is what the client may choose from, and it names the
+  models that can really run: the models of the backend of gptel
+  (`lib/yeah-model.el').  `session/new' and `session/load' publish them as
+  `configOptions' -- an array, because `json-serialize' does not serialize a
+  list of objects -- with the category `model' that the client of Paseo looks
+  for, and `session/set_config_option' changes the model, refuses a model that
+  no session may run on, and answers with the options and their new values.
+  The journal names the new model (the record `session-model'), the wire
+  carries it as the `config_option_update' notification, and a session that is
+  opened again keeps the model it was left in.  The model reaches the call of
+  the model without a change of the contract of the transport: the transport of
+  the service is one for every session, and the model of the session is bound
+  around the call of that transport (`yeah-model--current'), and
+  `yeah-gptel-request' takes it when nobody named a model explicitly -- the
+  same shape as the working directory of the session (wave 43, part 1).  The
+  plugin of Paseo stopped being the one who changes the model: it registers
+  every model it knows in the backend of gptel (the setting `models', a list
+  through a comma) and does not intercept the change -- the request goes to the
+  kernel, and the kernel decides whether the session may run on the named
+  model.  The check is
+  `tests/checks/check-a-session-changes-its-model-over-the-wire.el' and the
+  claim is `a-session-changes-its-model-over-the-wire' (docs/PLAN.md §16.36).
+  Two traps of this wave are worth keeping: the catalog of the models was
+  empty because the check asked for `gptel-backend' through `fboundp', and
+  that is a variable and not a function; and the check of the model and the
+  check of the mode had the client of the checks written twice, so the client
+  now lives in `tests/support/yeah-acp-client.el'.
 
 ## The commands
 

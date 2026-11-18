@@ -1,0 +1,48 @@
+{
+  "id": "wave-43d",
+  "title": "the model of a session changes over the wire",
+  "intent": "The fourth part of wave 43 of the plan of the owner (docs/PLAN.md 18.3, gap 3).  The defect: the model of a session could not be changed over the wire -- neither `session/set_model' nor `session/set_config_option' existed, and a client that asked was answered with `-32601'.  The model was chosen when the process started, and the plugin of Paseo papered over it: it published one model in the catalog and answered a request for a change of the model itself, but only when the request named the same model, so a person could see the model and not switch it.  What changes: the catalog of the models is what the client may choose from and it names the models that can really run -- the models of the backend of gptel (`lib/yeah-model.el'); `session/new' and `session/load' publish them as `configOptions', the configuration options of ACP, with the category `model' that the client of Paseo looks for; `session/set_config_option' changes the model of the session, refuses a model that no session may run on, and answers with the options and their new values; the journal names the new model (the record `session-model'), the wire carries it as the `config_option_update' notification that ACP names, and a session that is opened again keeps the model it was left in.  The model reaches the call of the model without a change of the contract of the transport: the transport of the service is one for every session, and the model of the session is bound around the call of that transport (`yeah-model--current'), and `yeah-gptel-request' takes it when nobody named a model explicitly -- the same shape as the working directory of the session (wave 43, part 1).  The plugin of Paseo stops being the one who changes the model: it registers every model it knows in the backend of gptel (the setting `models', a list through a comma) and publishes them in the catalog of the provider, and it does not intercept the change -- the request goes to the kernel, and the kernel decides whether the session may run on the named model.  The other gap of the wave (the `mcpServers' of the session) is not this part: it is a claim of its own and it is not registered here.",
+  "touches": [
+    "lib/yeah-model.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-gptel.el",
+    "lib/yeah-events.el",
+    "tests/support/yeah-acp-client.el",
+    "tests/support/yeah-acp-mode.el",
+    "tests/support/yeah-acp-model.el",
+    "tests/support/yeah-session-model.el",
+    "tests/checks/check-a-session-changes-its-model-over-the-wire.el",
+    "tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
+    "tests/unit/test-yeah-acp.el",
+    "tests/unit/test-yeah-gptel.el",
+    "plugin/yeah-provider/index.server.ts",
+    "plugin/yeah-provider/server/catalog.ts",
+    "plugin/yeah-provider/server/yeah.ts",
+    "plugin/yeah-provider/shared/settings.ts",
+    "plugin/yeah-provider/scripts/print-command.ts",
+    "plugin/yeah-provider/scripts/probe-acp.ts",
+    "plugin/yeah-provider/test/catalog.test.ts",
+    "plugin/yeah-provider/test/settings.test.ts",
+    "plugin/yeah-provider/test/yeah.test.ts",
+    "spec.json",
+    "waves/wave-43d.json",
+    "docs/PLAN.md",
+    "docs/PASEO-INTEGRATION-PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-session-changes-its-model-over-the-wire.el",
+    "./scripts/dev check tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
+    "cd plugin/yeah-provider && npm test",
+    "cd plugin/yeah-provider && npm run typecheck"
+  ],
+  "claims": [
+    "a-session-changes-its-model-over-the-wire"
+  ],
+  "commitment": [],
+  "objection": "Модель -- это не состояние сессии, а состояние процесса: так было до волны, и плагин отвечал за это.  Ответ: модель провода -- это свойство сессии, а не процесса, потому что у сессии свой каталог моделей, и клиент выбирает модель для сессии.  Каталог берётся у бэкенда gptel, а не из настройки: модель, которой нет в бэкенде, gptel не возьмёт, и ядро не должно предлагать её клиенту.  Связывание модели вокруг транспорта -- скрытое состояние, и это возражение против него: динамическая переменная не видна в подписи вызова.  Ответ: она видна в том, что модель сессии лежит в состоянии сессии и в журнале, а связывание -- только способ донести её до транспорта, контракт которого менять нельзя (девяносто девять фейковых транспортов в проверках живут по старому контракту).  Второе возражение: проверка доказывает, что модель доходит до вызова модели, но не то, что клиент Paseo рисует переключатель моделей, -- живой прогон с клиентом в этой волне не проводился.  Третье: модель ребёнка делегации по-прежнему задаётся пресетом, а не сессией; пресет -- это собственный выбор ребёнка, и волна 44 его не меняет.",
+  "refuted_by": "the wire refuses the model of a session with -32601, or the model of a session changes nothing and the run of the session goes to the model of the service, or the control of the claim does not make the check fail by its own assertion",
+  "note": "Проверка волны нашла дефект в ядре до того, как что-то доказала: каталог моделей был пуст, потому что проверка спрашивала `gptel-backend' через `fboundp', а это переменная, а не функция, -- и каталог молчал.  Теперь это `boundp', и каталог ядра в развёртывании совпадает с моделями бэкенда.  Второе: контракт транспорта менять нельзя -- под ним живут десятки фейковых транспортов проверок, -- и модель доходит до вызова связыванием вокруг вызова, как рабочий каталог сессии.  Третье: список объектов `json-serialize' не сериализует, поэтому `configOptions' -- вектор, как и режимы.  Четвёртое: общий клиент проверок (подключение, запрос, чтение уведомлений) вынесен в `tests/support/yeah-acp-client.el': он был написан дважды -- для проверки режима и для проверки модели, -- а код, написанный дважды, написан дважды неправильно.  Контроль claim'а (sed -i 's|(yeah-model--current (yeah-acp--session-model state))|(yeah-model--current nil)|' lib/yeah-acp.el) кусается: проверка падает с кодом 1 и своими словами (`the run of the session did not go to the model of the session').  Второй контроль (метод убран из диспетчера) падает с `-32601' и теми же словами.  Живой провод проверен отдельно: сервер, поднятый той же формой запуска, что поднимает плагин, публикует `configOptions' с обеими моделями бэкенда, меняет модель и отвергает неизвестную с `-32602'.  Проверка зелёная (около двух секунд), юниты -- 441 из 441, плагин -- 28 из 28."
+}

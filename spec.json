@@ -2906,6 +2906,32 @@
       "register": "fact",
       "control": "sed -i 's|(yeah-acp--mode-denies-p mode request)|nil|' lib/yeah-acp.el",
       "waiver": null
+    },
+    {
+      "id": "a-session-changes-its-model-over-the-wire",
+      "text": "The model of a session changes over the wire: the answer of `session/new' names the models the session may run on and the one it runs on, the method `session/set_config_option' of ACP is answered, and the run of the session goes to the model the client chose.",
+      "scope": [
+        "lib/yeah-model.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-gptel.el",
+        "lib/yeah-events.el",
+        "tests/checks/check-a-session-changes-its-model-over-the-wire.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-session-changes-its-model-over-the-wire.el"
+        }
+      ],
+      "falsifier": "the wire refuses the model of a session with -32601, or the model of a session changes nothing and the run of the session goes to the model of the service",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-model--current (yeah-acp--session-model state))|(yeah-model--current nil)|' lib/yeah-acp.el",
+      "waiver": null
     }
   ]
 }

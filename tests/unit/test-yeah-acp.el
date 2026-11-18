@@ -642,6 +642,92 @@ The mode is the state of the session, and the journal names it."
                      (list :sessionId session-id :modeId "rewrite"))
                     :type 'user-error))))
 
+(defun yeah-acp-test--model-option (options)
+  "Return the option of the model among the configuration OPTIONS."
+  (cl-find-if (lambda (option) (equal "model" (plist-get option :category)))
+              options))
+
+(ert-deftest yeah-acp-session-new-publishes-the-model-of-the-session ()
+  "A new session names the models it may run on and the one it runs on.
+The option of the model is what a client looks for, and the client of
+Paseo reads it by its category."
+  (yeah-acp-test--with-server
+    (let* ((yeah-model-catalog '("model-a" "model-b"))
+           (answer (yeah-acp-session-new (list :cwd (file-truename yeah-data-home)
+                                               :mcpServers nil)))
+           (option (yeah-acp-test--model-option (plist-get answer :configOptions))))
+      (should option)
+      (should (equal "model-a" (plist-get option :currentValue)))
+      (should (equal '("model-a" "model-b")
+                     (mapcar (lambda (value) (plist-get value :value))
+                             (plist-get option :options)))))))
+
+(ert-deftest yeah-acp-set-config-option-changes-the-model-of-the-session ()
+  "The wire answers `session/set_config_option', and the client is told about it.
+The model is the state of the session, and the journal names it."
+  (yeah-acp-test--with-server
+    (let* ((yeah-model-catalog '("model-a" "model-b"))
+           (session-id (yeah-acp-test--new-session))
+           (emitted nil))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (let ((response
+             (yeah-acp-handle-message
+              (json-serialize
+               (list :jsonrpc "2.0" :id 6 :method "session/set_config_option"
+                     :params (list :sessionId session-id
+                                   :configId "model"
+                                   :value "model-b"))))))
+        (should response)
+        (should-not (plist-get (yeah-acp-test--parse response) :error)))
+      (should (cl-some
+               (lambda (text)
+                 (let* ((update (plist-get (plist-get (yeah-acp-test--parse text)
+                                                     :params)
+                                            :update))
+                        (option (yeah-acp-test--model-option
+                                 (plist-get update :configOptions))))
+                   (and (equal "config_option_update"
+                               (plist-get update :sessionUpdate))
+                        (equal "model-b" (plist-get option :currentValue)))))
+               emitted))
+      ;; a session that is opened again keeps the model it was left in
+      (let ((loaded (yeah-acp-session-load
+                     (list :sessionId session-id :cwd yeah-data-home
+                           :mcpServers nil))))
+        (should (equal "model-b"
+                       (plist-get (yeah-acp-test--model-option
+                                   (plist-get loaded :configOptions))
+                                  :currentValue)))))))
+
+(ert-deftest yeah-acp-set-config-option-refuses-a-model-the-kernel-does-not-know ()
+  (yeah-acp-test--with-server
+    (let* ((yeah-model-catalog '("model-a" "model-b"))
+           (session-id (yeah-acp-test--new-session)))
+      (should-error (yeah-acp-session-set-config-option
+                     (list :sessionId session-id
+                           :configId "model"
+                           :value "model-c"))
+                    :type 'user-error))))
+
+(ert-deftest yeah-acp-the-model-of-a-session-is-bound-around-the-transport ()
+  "The model of the session is the model the transport runs on.
+The transport of the service is one for every session, and the model of a
+session is bound around the call of that transport."
+  (yeah-acp-test--with-server
+    (let* ((yeah-model-catalog '("model-a" "model-b"))
+           (seen nil)
+           (session-id (yeah-acp-test--new-session
+                        (lambda (_prompt _callback)
+                          (setq seen (yeah-model-current))))))
+      (funcall (yeah-acp--session-transport (yeah-acp--session-state session-id))
+               "prompt" #'ignore)
+      (should (equal "model-a" seen))
+      (yeah-acp-session-set-config-option
+       (list :sessionId session-id :configId "model" :value "model-b"))
+      (funcall (yeah-acp--session-transport (yeah-acp--session-state session-id))
+               "prompt" #'ignore)
+      (should (equal "model-b" seen)))))
+
 (ert-deftest yeah-acp-the-mode-of-a-session-decides-before-the-client-is-asked ()
   "The mode of a session decides first: a mode that forbids an action
 refuses it without a question, and a mode that does not forbid it lets the

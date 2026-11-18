@@ -24,8 +24,10 @@ export interface YeahLaunch {
   lib: string;
   /** Каталог сборки gptel; пусто, если gptel на хосте нет. */
   gptel: string;
-  /** Имя модели. */
+  /** Имя модели, на которой сервер стартует. */
   model: string;
+  /** Имена всех моделей, на которых сервер может вести сессию. */
+  models: readonly string[];
   /** Хост провайдера. */
   host: string;
   /** Профиль разрешений: `plan` запрещает, `build` спрашивает человека. */
@@ -39,6 +41,7 @@ export const ENV = {
   lib: "YEAH_ACP_LIB",
   gptel: "YEAH_ACP_GPTEL",
   model: "YEAH_ACP_MODEL",
+  models: "YEAH_ACP_MODELS",
   host: "YEAH_ACP_HOST",
   key: "YEAH_ACP_KEY",
   profile: "YEAH_ACP_PROFILE",
@@ -53,6 +56,11 @@ export const ENV = {
  *
  * Пустая переменная окружения — это отсутствие значения, а не значение:
  * пустой каталог в `load-path` и пустой каталог данных ломают ядро.
+ *
+ * Бэкенд модели знает все модели, на которых сервер может вести сессию:
+ * модель сессии меняется по проводу, и gptel берёт только ту модель, которую
+ * знает его бэкенд.  Поэтому список моделей — это то, что бэкенд принял, а
+ * не одна модель запуска.
  */
 export const LAUNCH_FORM = `(progn
   (dolist (dir (list (getenv "${ENV.lib}") (getenv "${ENV.gptel}")))
@@ -66,17 +74,24 @@ export const LAUNCH_FORM = `(progn
   (let ((model (getenv "${ENV.model}"))
         (host (getenv "${ENV.host}"))
         (profile (getenv "${ENV.profile}"))
-        (key (getenv "${ENV.key}")))
+        (key (getenv "${ENV.key}"))
+        (names (let ((raw (getenv "${ENV.models}")))
+                 (let ((split (if (and raw (not (string-empty-p raw)))
+                                  (split-string raw "," t "[ \\t]+")
+                                nil)))
+                   (if split
+                       split
+                     (list "MiniMax-M3.1-Flash"))))))
     (setq gptel-backend
           (gptel-make-openai "paseo"
             :host (if (and host (not (string-empty-p host))) host "api.minimax.io")
             :endpoint "/v1/chat/completions"
             :key key
-            :models (list (intern (if (and model (not (string-empty-p model)))
-                                     model "MiniMax-M3.1-Flash")))))
+            :models (mapcar #'intern names)))
     (setq gptel-model
           (intern (if (and model (not (string-empty-p model)))
-                     model "MiniMax-M3.1-Flash")))
+                     model
+                   (car names))))
     (require 'yeah-perm)
     (require 'yeah-acp)
     (dolist (rule (yeah-perm-profile (if (and profile (not (string-empty-p profile)))
@@ -111,6 +126,7 @@ export function launchEnv(
   env[ENV.lib] = launch.lib;
   env[ENV.gptel] = launch.gptel;
   env[ENV.model] = launch.model;
+  env[ENV.models] = launch.models.join(",");
   env[ENV.host] = launch.host;
   env[ENV.key] = key;
   env[ENV.profile] = launch.profile;

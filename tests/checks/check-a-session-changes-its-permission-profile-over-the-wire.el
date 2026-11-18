@@ -72,16 +72,16 @@ session and the update, and the update names the mode."
   (unwind-protect
       (progn
         (yeah-acp-mode--start name data-home)
-        (let ((connection (yeah-acp-mode--connect name)))
+        (let ((connection (yeah-acp-client-connect (yeah-service-socket-path name))))
           (setq client (nth 0 connection)
                 questions (nth 1 connection)
                 updates (nth 2 connection)))
-        (let ((answer (yeah-acp-mode--request client "initialize"
+        (let ((answer (yeah-acp-client-request client "initialize"
                                                (list :protocolVersion 1))))
           (unless (plist-get answer :result)
             (push "the handshake was not answered" yeah-check--failures)))
         ;; 1. the modes of a new session
-        (let* ((answer (yeah-acp-mode--request
+        (let* ((answer (yeah-acp-client-request
                         client "session/new"
                         (list :cwd build-workspace :mcpServers nil)))
                (result (plist-get answer :result))
@@ -99,7 +99,7 @@ session and the update, and the update names the mode."
                   yeah-check--failures))
           ;; 2. the build mode asks the client and lets the tool run
           (let ((session-id (plist-get result :sessionId)))
-            (let ((answer (yeah-acp-mode--request
+            (let ((answer (yeah-acp-client-request
                            client "session/prompt"
                            (list :sessionId session-id
                                  :prompt (vector (list :type "text"
@@ -115,12 +115,12 @@ session and the update, and the update names the mode."
               (push "the session in the build mode did not write the file"
                     yeah-check--failures))))
         ;; 3. the plan mode decides without a question
-        (let* ((answer (yeah-acp-mode--request
+        (let* ((answer (yeah-acp-client-request
                         client "session/new"
                         (list :cwd plan-workspace :mcpServers nil)))
                (session-id (plist-get (plist-get answer :result) :sessionId))
                (questions-before (length (funcall questions))))
-          (let ((reply (yeah-acp-mode--request
+          (let ((reply (yeah-acp-client-request
                         client "session/set_mode"
                         (list :sessionId session-id :modeId "plan"))))
             (when (plist-get reply :error)
@@ -132,7 +132,7 @@ session and the update, and the update names the mode."
               (push (format "the client was not told about the new mode of the session: %S"
                             update)
                     yeah-check--failures)))
-          (let ((answer (yeah-acp-mode--request
+          (let ((answer (yeah-acp-client-request
                          client "session/prompt"
                          (list :sessionId session-id
                                :prompt (vector (list :type "text"
@@ -144,7 +144,7 @@ session and the update, and the update names the mode."
             (push "the client was asked about a permission in the plan mode"
                   yeah-check--failures))
           (unless (cl-find-if (lambda (update) (equal "write" (plist-get update :title)))
-                               (yeah-acp-mode--tool-calls (funcall updates)))
+                               (yeah-acp-client-tool-calls (funcall updates)))
             (push "the session in the plan mode did not call the write tool"
                   yeah-check--failures))
           (when (file-exists-p (expand-file-name "written.txt" plan-workspace))

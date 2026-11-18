@@ -17,6 +17,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-model)
 (require 'yeah-tools)
 (require 'gptel nil t)
 
@@ -193,8 +194,11 @@ gptel's public shapes.  Failures and unknown shapes become `(error . REASON)'."
   "Ask the model PROMPT and call CALLBACK with its response and request info.
 
 This is the only place in Yeah that calls `gptel-request'.  BACKEND and MODEL
-default to the user's current gptel choices.  TOOLS is `registry' for Yeah's
-registered tools, nil for no tools, or an explicit list of gptel tools.
+default to the user's current gptel choices, and MODEL defaults to the model
+of the run in force: the model of a session is bound around the call of the
+transport, and a run that nobody gave a model runs on the model of the
+service.  TOOLS is `registry' for Yeah's registered tools, nil for no tools,
+or an explicit list of gptel tools.
 SYSTEM defaults to `yeah-gptel-prelude' and may be nil.  STREAM, CONTEXT and
 DRY-RUN have the meanings documented by `gptel-request'.
 
@@ -212,7 +216,9 @@ value is gptel's request state machine, which can be inspected or aborted."
   (yeah-gptel-check-contract)
   (let* ((request-tools (yeah-gptel--request-tools tools))
          (gptel-backend (or backend gptel-backend))
-         (gptel-model (or model gptel-model))
+         (gptel-model (or model
+                          (yeah-model-symbol (yeah-model-current))
+                          gptel-model))
          (gptel-tools request-tools)
          (gptel-use-tools (and request-tools t))
          (gptel-use-context nil)

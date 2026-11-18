@@ -42,6 +42,7 @@
 (require 'yeah-acp-vocabulary)
 (require 'yeah-control)
 (require 'yeah-events)
+(require 'yeah-model)
 (require 'yeah-perm)
 (require 'yeah-product)
 (require 'yeah-result)
@@ -148,6 +149,38 @@ the person: a mode that forbids an action refuses it without asking."
   (let ((state (yeah-acp--session-state session-id)))
     (or (plist-get state :mode) yeah-acp--default-mode)))
 
+(defconst yeah-acp--model-option-id "model"
+  "The id of the configuration option of the model.
+ACP names the option by its id, and the client of Paseo looks for the
+option whose category is `model'.")
+
+(defun yeah-acp--session-model (state)
+  "Return the name of the model the session of STATE runs on.
+The model the client chose for the session comes first, and the model of
+the service comes next: a session that nobody gave a model runs on the
+model the transport would use."
+  (or (plist-get state :model) (yeah-model-default)))
+
+(defun yeah-acp--model-option (model)
+  "Return the configuration option of the model, with MODEL in it.
+The option is a choice: it names every model a session may run on, and the
+one the session runs on now.  The options travel as a vector, because a list
+of objects does not serialize and the wire of ACP carries an array."
+  (list :id yeah-acp--model-option-id
+        :name "Model"
+        :category "model"
+        :type "select"
+        :currentValue model
+        :options (apply #'vector
+                        (mapcar (lambda (name) (list :value name :name name))
+                                (yeah-model-names)))))
+
+(defun yeah-acp--config-options (model)
+  "Return the configuration options of a session that runs on MODEL.
+The options travel as a vector: a list of objects does not serialize, and
+the wire of ACP carries an array."
+  (vector (yeah-acp--model-option model)))
+
 (defun yeah-acp--ask-client (session-id output request)
   "Ask the client about REQUEST and return the deferral of the question.
 The question carries three answers: allow once, allow always (the decision
@@ -240,6 +273,21 @@ question is asked of the connection the session belongs to."
                                                  (yeah-acp--output-for state)))
                  request)))))
 
+(defun yeah-acp--session-transport (state)
+  "Return the transport of the session of STATE.
+The transport of the service is the transport of every session, and the
+model of the session is bound around the call of that transport: the model
+in force is a property of the call, and two sessions that work at the same
+time do not see each other's model.  The transport keeps its shape -- it
+takes a prompt and a callback."
+  (let ((base (or yeah-acp--transport yeah-acp-default-transport
+                    (and (fboundp 'yeah-gptel-request) #'yeah-gptel-request))))
+    (if base
+        (lambda (prompt callback)
+          (let ((yeah-model--current (yeah-acp--session-model state)))
+            (funcall base prompt callback)))
+      base)))
+
 (defun yeah-acp--make-control (state)
   "Return the controller of STATE.
 The controller owns the turn of the session and its persistent pending
@@ -247,7 +295,7 @@ queue: the wire and the attached path share one queue, one set of journal
 events and one set of semantics.  The transport and the answerer are the
 service's, and the working directory travels with every input."
   (yeah-control-new (plist-get state :session)
-                    (or yeah-acp--transport yeah-acp-default-transport)
+                    (yeah-acp--session-transport state)
                     (yeah-acp--session-answerer state)
                     nil nil
                     (list :cwd (plist-get state :cwd))))
@@ -500,6 +548,12 @@ editor learns the queue from the journal and keeps no state of its own."
      ;; the mode from the replay of the journal.
      (list :sessionUpdate "current_mode_update"
            :currentModeId (plist-get fields :mode)))
+    ("session-model"
+     ;; The model of a session is its state in the same way: the journal
+     ;; names it, and the client learns it from the replay of the journal.
+     (list :sessionUpdate "config_option_update"
+           :configOptions (yeah-acp--config-options
+                           (plist-get fields :model))))
     (_ nil)))
 
 (defun yeah-acp--observe-event (state session type fields id)
@@ -542,12 +596,14 @@ created on, so its notifications reach that connection; when the session
 was created without a connection the current output function is used.
 The state also carries the rules the client remembered for this session:
 a decision of the client is remembered here and in no other session.
-The state carries the controller of the session: its turn and its queue."
+The state carries the model the client chose for this session, and the
+controller of the session: its turn and its queue."
   (let* ((id (plist-get session :id))
          (previous (gethash id yeah-acp--sessions))
          (state (list :id id :session session :cwd cwd :listener nil
                       :output yeah-acp--output
                       :connection yeah-acp--connection
+                      :model nil
                       :rules nil))
          (listener (lambda (observed-session type fields event-id)
                      (yeah-acp--observe-event state observed-session type fields event-id))))
@@ -563,16 +619,20 @@ The state carries the controller of the session: its turn and its queue."
 
 (defun yeah-acp-session-new (request)
   "Create a real Yeah session for ACP REQUEST and return its answer.
-The answer names the session and the modes it may be in: the modes are
-the permission profiles of the kernel, and the session is in the mode
-`build' until the client chooses another one."
+The answer names the session, the modes it may be in and the
+configuration options of the session: the modes are the permission
+profiles of the kernel, the session is in the mode `build' until the
+client chooses another one, and the options are the models the session may
+run on."
   (yeah-acp--validate-session-request request)
   (let* ((cwd (file-truename (plist-get request :cwd)))
          (root (yeah-product-session-root cwd))
-         (session (yeah-session-open (yeah-acp--fresh-id "session") root cwd)))
-    (yeah-acp--register-session session cwd)
+         (session (yeah-session-open (yeah-acp--fresh-id "session") root cwd))
+         (state (yeah-acp--register-session session cwd)))
     (list :sessionId (plist-get session :id)
-          :modes (yeah-acp--mode-state yeah-acp--default-mode))))
+          :modes (yeah-acp--mode-state yeah-acp--default-mode)
+          :configOptions (yeah-acp--config-options
+                          (yeah-acp--session-model state)))))
 
 (defun yeah-acp--journal-mode (session)
   "Return the mode the journal of SESSION names, or nil.
@@ -585,12 +645,24 @@ it was left in."
         (setq mode (plist-get record :mode))))
     mode))
 
+(defun yeah-acp--journal-model (session)
+  "Return the model the journal of SESSION names, or nil.
+The model of a session is part of its state, and the journal is where the
+state of a session lives: a session that is opened again keeps the model
+it was left in."
+  (let ((model nil))
+    (dolist (record (yeah-session-records session))
+      (when (equal "session-model" (plist-get record :type))
+        (setq model (plist-get record :model))))
+    model))
+
 (defun yeah-acp-session-load (request)
   "Load an existing session and replay its journal into the editor's view.
 The records of the session become session/update notifications, so that the
 editor can rebuild the transcript of a session it opens again.  The answer
-names the session, the number of records that were replayed and the modes
-of the session: the mode the journal names is the mode it is in."
+names the session, the number of records that were replayed, the modes of
+the session and its configuration options: the mode the journal names is
+the mode it is in, and the model it names is the model it runs on."
   (yeah-acp--validate-session-request request t)
   (let* ((cwd (file-truename (plist-get request :cwd)))
          (root (yeah-product-session-root cwd))
@@ -602,9 +674,12 @@ of the session: the mode the journal names is the mode it is in."
            (state (yeah-acp--register-session session cwd))
            (mode (or (yeah-acp--journal-mode session) yeah-acp--default-mode)))
       (plist-put state :mode mode)
+      (plist-put state :model (yeah-acp--journal-model session))
       (list :sessionId (plist-get session :id)
             :replayed (yeah-acp--replay state session)
-            :modes (yeah-acp--mode-state mode)))))
+            :modes (yeah-acp--mode-state mode)
+            :configOptions (yeah-acp--config-options
+                            (yeah-acp--session-model state))))))
 
 (defun yeah-acp--prompt-text (blocks)
   "Return prompt text from ACP content BLOCKS.
@@ -692,6 +767,35 @@ the new mode from the journal of the session, which names it."
       (plist-put state :mode mode-id)
       (yeah-events-write session "session-mode" :mode mode-id)
       (list))))
+
+(defun yeah-acp-session-set-config-option (request)
+  "Set the configuration option named by REQUEST and answer with the options.
+REQUEST carries the `sessionId', the `configId' and the `value'.  The only
+option the kernel offers now is the model: the client names the model the
+session runs on, and the model of the session is bound around the call of
+the transport, so the next run of the session goes to that model.  A model
+that no session may run on is refused: the catalog of the kernel names the
+models that can really run.
+
+The answer carries every option of the session with its new value, as ACP
+says, and the journal of the session names the model it was left in."
+  (let* ((session-id (plist-get request :sessionId))
+         (config-id (plist-get request :configId))
+         (value (plist-get request :value)))
+    (unless (stringp session-id)
+      (signal 'user-error (list "session/set_config_option needs sessionId")))
+    (unless (equal yeah-acp--model-option-id config-id)
+      (signal 'user-error
+              (list (format "session/set_config_option: unknown option %S"
+                            config-id))))
+    (unless (yeah-model-known-p value)
+      (signal 'user-error
+              (list (format "session/set_config_option: unknown model %S" value))))
+    (let* ((state (yeah-acp--session-state session-id t))
+           (session (plist-get state :session)))
+      (plist-put state :model value)
+      (yeah-events-write session "session-model" :model value)
+      (list :configOptions (yeah-acp--config-options value)))))
 
 (defun yeah-acp-session-close (request)
   "Close the session named by REQUEST and answer that it is closed.
@@ -916,6 +1020,8 @@ and asynchronously answered prompts."
      (yeah-acp--response id (yeah-acp-session-load params)))
     ("session/set_mode"
      (yeah-acp--response id (yeah-acp-session-set-mode params)))
+    ("session/set_config_option"
+     (yeah-acp--response id (yeah-acp-session-set-config-option params)))
     ("session/prompt"
      (yeah-acp-session-prompt params id))
     ("session/cancel"

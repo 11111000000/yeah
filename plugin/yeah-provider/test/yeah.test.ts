@@ -22,6 +22,7 @@ const launch: YeahLaunch = {
   lib: path.join(repoPathFromEnv(), "lib"),
   gptel: "/home/az/.emacs.d/elpa/gptel-20261104.2111",
   model: "MiniMax-M3.1-Flash",
+  models: ["MiniMax-M3.1-Flash", "MiniMax-M2"],
   host: "api.minimax.io",
   profile: "build",
   dataHome: "",
@@ -37,10 +38,17 @@ test("команда ACP — это Emacs в пакетном режиме и ф
 });
 
 test("форма запуска берёт живое из окружения, а не из текста команды", () => {
-  for (const name of [ENV.lib, ENV.gptel, ENV.model, ENV.host, ENV.key, ENV.profile]) {
+  for (const name of [ENV.lib, ENV.gptel, ENV.model, ENV.models, ENV.host, ENV.key, ENV.profile]) {
     assert.ok(LAUNCH_FORM.includes(name), `форма не читает ${name}`);
   }
   assert.ok(!LAUNCH_FORM.includes("MiniMax-M3.1-Flash\n"), "модель вшита в форму");
+});
+
+test("бэкенд знает все модели, на которых сервер может вести сессию", () => {
+  // Модель сессии меняется по проводу, а gptel берёт только ту модель,
+  // которую знает его бэкенд: список моделей — это то, что бэкенд принял.
+  assert.ok(LAUNCH_FORM.includes(":models (mapcar #'intern names)"), "бэкенд знает одну модель");
+  assert.ok(LAUNCH_FORM.includes(ENV.models), "форма не читает список моделей");
 });
 
 test("пустая переменная окружения — это отсутствие значения", () => {
@@ -64,6 +72,7 @@ test("окружение запуска несёт пути ядра и проф
   assert.equal(env[ENV.lib], launch.lib);
   assert.equal(env[ENV.gptel], launch.gptel);
   assert.equal(env[ENV.model], launch.model);
+  assert.equal(env[ENV.models], "MiniMax-M3.1-Flash,MiniMax-M2");
   assert.equal(env[ENV.host], launch.host);
 });
 

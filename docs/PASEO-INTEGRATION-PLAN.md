@@ -84,7 +84,7 @@ Provider is available
 | байты на проводе — байты текста | `lib/yeah-wire.el` (`yeah-wire-print-line`) | волна 40, claim `the-text-on-the-wire-is-the-text-the-model-wrote` |
 | ложный успех убран: прогон без эффекта → `refusal` | `lib/yeah-acp.el:508`–`526` (`yeah-acp--stop-reason`, `yeah-acp--completion-stop-reason`) | волна 39, claim `a-run-that-did-not-finish-is-not-a-success` |
 | разрешения по проводу в обе стороны | `lib/yeah-acp.el:95`–`127` | живой прогон 2026-11-16 (§2.10.5 разбора) |
-| модель публикуется плагином | `plugin/yeah-provider/server/catalog.ts` (`yeahCatalog`, `yeahConfigure`) | `paseo provider diagnostic yeah` → `Models: 1` |
+| модель сессии меняется по проводу | `lib/yeah-model.el`, `lib/yeah-acp.el` (`yeah-acp--config-options`, `yeah-acp-session-set-config-option`) | волна 43, часть 4, claim `a-session-changes-its-model-over-the-wire` |
 | род вызова инструмента ставит плагин | `plugin/yeah-provider/server/yeah.ts` (`TOOL_KINDS`, `yeahToolCallTransformer`) | живой прогон 2026-11-16 |
 | steering в ядре есть | `lib/yeah-acp.el:752` (`session/steer`), `lib/yeah-acp.el:598` | чтение кода; маршрут Paseo до него не доходит (§3.2) |
 
@@ -94,9 +94,10 @@ Provider is available
 сессии — последние только клиенту, который объявил расширение в `_meta` при
 `initialize`.
 
-**Диспетчер ACP знает ровно десять методов** (`lib/yeah-acp.el`, `yeah-acp--dispatch`):
-`initialize`, `session/new`, `session/load`, `session/prompt`, `session/cancel`,
-`session/close`, `session/set_mode`, `session/steer`, `session/withdraw`,
+**Диспетчер ACP знает ровно одиннадцать методов** (`lib/yeah-acp.el`,
+`yeah-acp--dispatch`): `initialize`, `session/new`, `session/load`,
+`session/prompt`, `session/cancel`, `session/close`, `session/set_mode`,
+`session/set_config_option`, `session/steer`, `session/withdraw`,
 `session/recover`. Всё остальное — `-32601`.
 
 ## 3. Разрывы
@@ -232,26 +233,34 @@ Paseo берёт режимы из ответа `session/new`
 `plan` запрещает мутирующие инструменты, `build` спрашивает человека.  Раньше
 профиль выбирался при старте процесса, а не на лету; теперь его меняет провод.
 
-**Осталось плагину:** публиковать режимы в каталоге провайдера
-(`ProviderCatalog.modes`, `packages/plugin/src/server/provider.ts:310`) и
-обрабатывать переключение. Это возможно **без правок Paseo**: трансформеры
-спрашиваются первыми (`connection.ts:729-740`), и трансформер `configure` может
-вернуть `"handled"`, не спрашивая ядро вовсе. Ответ плагина обязан подтвердить
-новое состояние через `notification`-трансформер с `{type: "config", config}`
-(`connection.ts:1021`).  Ядро теперь отвечает на `session/set_mode` сам, и плагин
-может либо спросить ядро, либо обработать переключение у себя.
+**Плагину осталось ничего:** режимы приходят в каталог провайдера из ответа
+`session/new` (`toProviderCatalog`,
+`packages/plugin/src/server/acp-internal/connection.ts:1248`), а переключение
+клиент шлёт в ядро (`connection.ts:737-747`) — ядро отвечает на
+`session/set_mode` само.  Трансформер `configure` плагина не нужен и удалён.
 
-### 3.5 Модель не входит в конфигурацию сессии — P1, ядро (§18.3, п.3)
+### 3.5 Модель входит в конфигурацию сессии — P1, ядро закрыто (волна 43, часть 4, 2026-11-18)
 
-Ядро не публикует `configOptions` и не знает `session/set_config_option`.
-Модель — одна на процесс, и приходит окружением при старте. Плагин закрывает
-это фикцией: `yeahCatalog` добавляет модель в каталог, `yeahConfigure`
-принимает запрос на **ту же** модель и пропускает чужую
-(`plugin/yeah-provider/server/catalog.ts`). То есть в UI Paseo модель видна и выбирается, но
-переключение на другую честно падает.
+**Ядро закрыто (волна 43, часть 4, 2026-11-18).**  Ответ `session/new` и
+`session/load` несёт `configOptions`: опция модели с категорией `model`, типом
+`select`, текущим значением и списком значений.  Метод
+`session/set_config_option` меняет модель сессии, журнал хранит смену записью
+`session-model`, клиент узнаёт о ней уведомлением `config_option_update`, а
+сессия, открытая снова, остаётся на той модели, на которой её оставили.  Модель
+доходит до вызова модели без изменения контракта транспорта: модель сессии
+связывается вокруг вызова транспорта (`yeah-model--current`), и
+`yeah-gptel-request` берёт её, когда модель не названа явно.  Claim:
+`a-session-changes-its-model-over-the-wire` (docs/PLAN.md §16.36).
 
-Смена модели на лету в ядре технически возможна: `gptel-model` — переменная,
-и транспорт `yeah-gptel-request` берёт её на каждом запросе.
+**Плагин перестал быть тем, кто меняет модель.**  Он регистрирует в бэкенде
+gptel все модели, которые знает (настройка `models`, список через запятую), и
+публикует их в каталоге провайдера (`yeahCatalog`); запрос на смену модели
+уходит в ядро, и ядро решает, может ли сессия работать на названной модели.
+
+Что было до этого: ядро не публиковало `configOptions` и не знало
+`session/set_config_option`, а плагин закрывал это фикцией — `yeahConfigure`
+принимал запрос на **ту же** модель и пропускал чужую.  В UI Paseo модель была
+видна и выбиралась, но переключение на другую честно падало.
 
 ### 3.6 `session/close` реализован — P1, ядро закрыто (волна 42, часть A, 2026-11-18)
 
