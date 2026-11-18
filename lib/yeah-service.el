@@ -24,6 +24,7 @@
 
 (require 'cl-lib)
 (require 'yeah-client)
+(require 'yeah-life)
 (require 'yeah-wire-socket)
 
 (defgroup yeah-service nil
@@ -143,25 +144,40 @@ CLEAN (the default) starts the service without the user's init; nil lets
 the service inherit the user's configuration, including the gptel backend.
 RULES is a list of permission rule plists: the standing permissions the
 person grants the service, which is how a headless service may edit at
-all."
+all.
+
+The service watches a life socket of this process: when this process
+ends, the service ends with it.  A service that outlived its owner would
+hold its socket and wait for a client that never comes."
   (let ((existing (gethash name yeah-service--processes)))
     (when (and existing (process-live-p existing))
       (signal 'user-error
               (list (format "yeah-service-start: %S is already running" name)))))
   (let* ((socket (yeah-service--socket-path name))
+         (life-tag (format "service-%s" name))
+         (life (yeah-life-socket-path (yeah-service--socket-directory) life-tag))
          (family (yeah-client-effective-network-family))
          (port (when (eq family 'ipv4)
                  (yeah-service--reserve-loopback-port)))
          (server-form
           (if (eq family 'local)
-              (format "(yeah-acp-serve-socket %S %s)"
+              (format "(yeah-acp-serve-socket %S %s nil 'local %S)"
                       socket
-                      (or transport "yeah-acp-default-transport"))
-            (format "(yeah-acp-serve-socket %d %s nil 'ipv4)"
+                      (or transport "yeah-acp-default-transport")
+                      life)
+            (format "(yeah-acp-serve-socket %d %s nil 'ipv4 %S)"
                     port
-                    (or transport "yeah-acp-default-transport"))))
+                    (or transport "yeah-acp-default-transport")
+                    life)))
          (buffer (generate-new-buffer (format " *yeah service %s*" name)))
-         (process
+         (process nil))
+    ;; The service watches a life socket of this process: when this
+    ;; process ends, the service ends with it.  A service that outlived
+    ;; its owner would hold its socket and wait for a client that never
+    ;; comes.
+    (yeah-life-socket-sweep (yeah-service--socket-directory))
+    (yeah-life-socket-create life)
+    (setq process
           (make-process
            :name (format "yeah-service-%s" name)
            :buffer buffer
@@ -179,7 +195,7 @@ all."
                                  (yeah-service--rules-eval rules)
                                  server-form)))
            :connection-type 'pipe
-           :noquery t)))
+           :noquery t))
     (when (eq family 'ipv4)
       (condition-case error
           (yeah-service--write-port-file socket port)
@@ -219,6 +235,9 @@ Waits up to TIMEOUT seconds (default 10) for the socket to appear."
     (let ((port-file (yeah-client-port-file socket)))
       (when (file-exists-p port-file)
         (ignore-errors (delete-file port-file)))))
+  (yeah-life-socket-close
+   (yeah-life-socket-path (yeah-service--socket-directory)
+                          (format "service-%s" name)))
   t)
 
 (provide 'yeah-service)

@@ -1,0 +1,29 @@
+{
+  "id": "wave-55",
+  "title": "the server does not outlive the owner that started it",
+  "intent": "The first half of wave 42 of the plan of the owner (docs/PLAN.md §18.2): the life cycle.  The defect of 2026-11-18 was measured on the server of a check that the gate of the map killed by its timeout: the server of the check was alive twelve seconds after its owner was killed, and it held the socket of the service.  A server that speaks over stdio has a pipe to read, and the pipe ends when the owner dies.  A server that speaks over a socket has no pipe: it waits for a client that never comes, and the death of its owner is invisible to it.  The wave gives the server a way to learn that its owner is gone.  The owner listens on a socket of its own -- the socket of the life -- and the server connects to it; the connection is a pipe of the kernel, so when the owner dies by any means (a clean exit, a signal, a crash) the kernel closes the connection, the server reads the end of it and ends.  The owner does not have to remember to stop the server: the server watches for its owner.  The socket of the life carries the pid of its owner in its name, so two owners never share one, and a socket left behind by a dead owner is swept by the next owner that starts.  The wave also removes the file of the socket of a server that ended: the socket of a dead service on the disk keeps the next service of the same name from binding it, which is the second half of the same leftover.  The measurement of the subject: the server of the service was alive 0.2 seconds after the owner was killed; the bound of the plan is ten seconds.  The control of the claim takes out the watch of the server and the defect comes back: the server was still alive ten seconds after the owner was killed, and the check failed by its own assertion.",
+  "touches": [
+    "lib/yeah-life.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-service.el",
+    "lib/yeah-wire-socket.el",
+    "tests/checks/check-a-server-left-behind-is-gone.el",
+    "spec.json",
+    "waves/wave-55.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev check tests/checks/check-a-server-left-behind-is-gone.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-server-does-not-outlive-its-owner"
+  ],
+  "commitment": [],
+  "objection": "The mechanism is a socket of the kernel, and the kernel is the one that decides when the connection ends: the wave trusts the kernel with the life of a process, and the kernel is the part of the system that has the fewest ways to be wrong about a closed socket.  The wave does not prove that the server ends by itself in every case: it proves it for the case of the defect (the owner was killed with SIGKILL, the signal that gives a process no chance to clean up), and the mechanism covers every other death of the owner as well, because the kernel closes the connection on any death.  The life socket is always a local socket, even when the service speaks over TCP: the life of the server is a separate question from the traffic of the service, and the wave does not tie them together.  The check measures the process of the server in `/proc', so it needs a platform with `/proc' and says so instead of skipping silently: unknown is not pass.  The check does not cover the service that is stopped the ordinary way (`yeah-service-stop'), which was never broken: the wave is about the owner that dies without saying goodbye.  The wave does not shorten the suite of the checks; the check of the wave costs 0.6 seconds, and the suite still waits for minutes.",
+  "refuted_by": "the server of the service outlives its owner by more than ten seconds, or the control of the claim does not bite by an assertion of its own check",
+  "note": "The subject of the claim: the owner of the service was killed with SIGKILL, and the server of the service was gone 0.2 seconds later -- the bound of the plan is ten seconds.  The socket of the service and the file of the life of the owner were gone as well; the file of the life of a dead owner is swept by the next owner that starts a service.  The control of the claim (`sed -i 's|(and watch (lambda () (not (yeah-life-alive-p watch))))|nil|' lib/yeah-acp.el') takes out the watch of the server, and the check failed by its own assertion: `the server of the service stayed behind after its owner was killed (pid 4729)' and `the socket of the service stayed behind'.  The check found a defect of itself on the first run: it killed the owner with `(signal-process pid \"KILL\")', and `signal-process' takes a symbol or a number, not a string -- the signal never went out, the owner stayed alive, and the check failed.  The check now uses the symbol `KILL' and asserts that the signal was sent, so a kill that did not happen is a failure of the check and not a verdict of the subject."
+}

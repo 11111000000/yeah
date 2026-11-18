@@ -2983,6 +2983,32 @@
       "register": "fact",
       "control": "sed -i 's|(accept-process-output nil 0.05)|(accept-process-output nil 0)|' lib/yeah-wire.el",
       "waiver": null
+    },
+    {
+      "id": "the-server-does-not-outlive-its-owner",
+      "text": "A server that speaks over a socket does not outlive the process that started it: when the owner of the service is killed, the server of the service and the socket of the service are gone within ten seconds.",
+      "scope": [
+        "lib/yeah-life.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-service.el",
+        "lib/yeah-wire-socket.el",
+        "tests/checks/check-a-server-left-behind-is-gone.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-server-left-behind-is-gone.el"
+        }
+      ],
+      "falsifier": "the server of the service is still alive ten seconds after its owner was killed, or the socket of the service stays on disk",
+      "register": "fact",
+      "control": "sed -i 's|(and watch (lambda () (not (yeah-life-alive-p watch))))|nil|' lib/yeah-acp.el",
+      "waiver": null
     }
   ]
 }

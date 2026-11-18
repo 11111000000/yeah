@@ -87,13 +87,24 @@ Return the server process."
                     connection))))))))
 
 ;;;###autoload
-(defun yeah-wire-socket-serve (service handler &optional family on-close)
+(defun yeah-wire-socket-serve (service handler &optional family on-close stop)
   "Serve connections on SERVICE with HANDLER until the server stops.
 FAMILY, HANDLER and ON-CLOSE mean what they mean in
-`yeah-wire-socket-server'."
+`yeah-wire-socket-server'.  STOP, when given, is called on every turn of
+the wait; a non-nil value ends the server.  The wait itself is the same
+one that the server has always used: it is a wait, not a spin."
   (let ((server (yeah-wire-socket-server service handler family on-close)))
-    (while (process-live-p server)
-      (accept-process-output nil 0.05))
+    (unwind-protect
+        (while (and (process-live-p server)
+                    (not (and stop (funcall stop))))
+          (accept-process-output nil 0.05))
+      ;; The socket of a server that ended is a leftover: the next server
+      ;; of the same name cannot bind a socket that is still on disk.
+      (when (and (eq (or family 'local) 'local)
+                 (file-exists-p service)
+                 (not (file-regular-p service))
+                 (not (file-directory-p service)))
+        (ignore-errors (delete-file service))))
     server))
 
 (provide 'yeah-wire-socket)

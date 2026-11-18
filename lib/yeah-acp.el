@@ -42,6 +42,7 @@
 (require 'yeah-acp-vocabulary)
 (require 'yeah-control)
 (require 'yeah-events)
+(require 'yeah-life)
 (require 'yeah-model)
 (require 'yeah-perm)
 (require 'yeah-product)
@@ -1137,26 +1138,43 @@ the process alive."
   nil)
 
 ;;;###autoload
-(defun yeah-acp-serve-socket (service &optional transport answerer family)
+(defun yeah-acp-serve-socket (service &optional transport answerer family life)
   "Serve ACP on the local socket SERVICE until the server stops.
 TRANSPORT and ANSWERER configure the agent for this service process.
 FAMILY is `local' for a Unix socket and `ipv4' for a loopback TCP port.
 The connection is a process, so the event loop keeps running while the
 server waits: a `session/cancel' that arrives during a running prompt is
 handled while that prompt is still running, and two connections are
-served at the same time."
+served at the same time.
+
+LIFE is the path of the life socket of the owner of this server.  The
+server watches it and ends when it ends: a server whose owner is gone
+has nobody to serve, and a server left behind by a finished session is
+gone with it.  Without LIFE the server ends the way it always ended --
+when its last session is closed."
   (setq yeah-acp--transport transport
         yeah-acp--answerer answerer)
-  (yeah-wire-socket-serve
-   service
-   (lambda (line respond &optional connection)
-     (let ((yeah-acp--output respond)
-           (yeah-acp--connection connection))
-       (let ((response (yeah-acp-handle-message line)))
-         (when response
-           (funcall respond response)))))
-   family
-   #'yeah-acp--connection-closed))
+  (let ((watch (and life (yeah-life-socket-connect life))))
+    (when (and life (null watch))
+      ;; The owner is gone before the server even started: there is
+      ;; nothing to serve, and a server that serves nobody is a leftover.
+      (yeah-life-socket-close life)
+      (error "yeah-acp-serve-socket: the owner of the server is gone"))
+    (unwind-protect
+        (yeah-wire-socket-serve
+         service
+         (lambda (line respond &optional connection)
+           (let ((yeah-acp--output respond)
+                 (yeah-acp--connection connection))
+             (let ((response (yeah-acp-handle-message line)))
+               (when response
+                 (funcall respond response)))))
+         family
+         #'yeah-acp--connection-closed
+         (and watch (lambda () (not (yeah-life-alive-p watch)))))
+      (when (and life (not (yeah-life-alive-p watch)))
+        ;; The owner is gone: the file of its life is a leftover.
+        (yeah-life-socket-close life)))))
 
 (defun yeah-acp--reset-for-test ()
   "Clear ACP sessions, listeners and pending questions for tests."
