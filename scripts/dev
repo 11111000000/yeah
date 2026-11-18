@@ -167,11 +167,27 @@ EOF
     clean_bytecode
     rc=0
     started="$(now_ms)"
+    # Every check owns a life socket.  The servers that the check starts
+    # watch that socket and end when the check ends -- even when the check
+    # was killed and never got the chance to stop them.  A server left
+    # behind by a finished check holds its socket and waits for a client
+    # that never comes.
+    life_dir="${XDG_RUNTIME_DIR:+$XDG_RUNTIME_DIR/yeah}"
+    if [ -z "$life_dir" ]; then
+      life_dir="${TMPDIR:-/tmp}/yeah-$(id -u)"
+    fi
+    mkdir -p "$life_dir" 2>/dev/null && chmod 700 "$life_dir" 2>/dev/null
+    n=0
     for f in "$@"; do
       before="$(now_ms)"
+      n=$((n + 1))
       case "$f" in
         *.el)
-          "$emacs_bin" -Q --batch -L lib -L . -l "$f" || rc=$?
+          life_sock="$life_dir/yeah-life-check-$n-$$.sock"
+          YEAH_LIFE_SOCKET="$life_sock" "$emacs_bin" -Q --batch -L lib -L . \
+            --eval "(progn (require 'yeah-life) (yeah-life-adopt-from-environment))" \
+            -l "$f" || rc=$?
+          rm -f "$life_sock"
           ;;
         *.sh)
           bash "$f" || rc=$?

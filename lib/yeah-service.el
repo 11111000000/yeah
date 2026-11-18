@@ -70,14 +70,7 @@ Anyone who can connect to the socket drives the agent with the person's
 permissions, so the socket never sits in a world-writable /tmp: it goes
 under XDG_RUNTIME_DIR when there is one, else under a directory of this
 user with mode 0700."
-  (let ((dir (if-let ((runtime (getenv "XDG_RUNTIME_DIR")))
-                 (expand-file-name "yeah" runtime)
-               (expand-file-name (format "yeah-%d" (user-uid))
-                                 (or (getenv "TMPDIR") "/tmp")))))
-    (unless (file-directory-p dir)
-      (make-directory dir t)
-      (set-file-modes dir #o700))
-    dir))
+  (yeah-life-directory))
 
 ;;;###autoload
 (defun yeah-service-socket-path (name)

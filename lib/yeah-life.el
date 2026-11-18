@@ -64,6 +64,62 @@ that is not alive any more."
   (and pid (> pid 0)
        (file-directory-p (format "/proc/%d" pid))))
 
+(defun yeah-life-directory ()
+  "Return the user-private directory that holds the life sockets.
+Anyone who can connect to a life socket can end the life of a child, so
+the directory is never world-writable: it goes under XDG_RUNTIME_DIR when
+there is one, else under a directory of this user with mode 0700."
+  (let ((dir (if-let ((runtime (getenv "XDG_RUNTIME_DIR")))
+                 (expand-file-name "yeah" runtime)
+               (expand-file-name (format "yeah-%d" (user-uid))
+                                 (or (getenv "TMPDIR") "/tmp")))))
+    (unless (file-directory-p dir)
+      (make-directory dir t)
+      (set-file-modes dir #o700))
+    dir))
+
+(defvar yeah-life--owned nil
+  "The path of the life socket this process listens on, or nil.")
+
+(defun yeah-life-adopt (path)
+  "Listen on the life socket PATH and return PATH.
+The process becomes the owner of the socket: the children that connect
+to it end when this process ends.  A socket left behind by a dead owner
+is removed first, because a file left on disk keeps the next owner from
+binding it; a socket of a living owner is never touched, because the life
+of a socket is not worth the risk of killing a living owner."
+  (when (file-exists-p path)
+    (let ((owner (yeah-life--pid-of path)))
+      (if (and owner (yeah-life--owner-alive-p owner))
+          (error "yeah-life-adopt: the life socket %s belongs to a living process"
+                 path)
+        (ignore-errors (delete-file path)))))
+  (make-directory (file-name-directory path) t)
+  (yeah-life-socket-create path)
+  (setq yeah-life--owned path)
+  path)
+
+(defun yeah-life-adopt-from-environment ()
+  "Adopt the life socket named by YEAH_LIFE_SOCKET and return its path.
+Return nil when the environment names no socket, or when this process
+already owns that socket: a process that owns the socket would not watch
+its own life, it would hold it."
+  (let ((path (getenv "YEAH_LIFE_SOCKET")))
+    (when (and path (not (equal path yeah-life--owned)))
+      (yeah-life-adopt path))))
+
+(defun yeah-life-inherited-path ()
+  "Return the life socket of the owner of this process, or nil.
+The owner names the socket in the environment variable YEAH_LIFE_SOCKET,
+and every child inherits the name.  The path is nil when this process
+owns that socket itself, and nil when the socket is gone: an owner that
+is gone cannot be watched any more."
+  (let ((path (getenv "YEAH_LIFE_SOCKET")))
+    (when (and path
+               (not (equal path yeah-life--owned))
+               (file-exists-p path))
+      path)))
+
 (defun yeah-life-socket-sweep (directory)
   "Remove the life sockets in DIRECTORY whose owner is dead.
 A socket of a living owner stays: the life of a socket is not worth the

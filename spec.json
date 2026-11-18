@@ -3009,6 +3009,33 @@
       "register": "fact",
       "control": "sed -i 's|(and watch (lambda () (not (yeah-life-alive-p watch))))|nil|' lib/yeah-acp.el",
       "waiver": null
+    },
+    {
+      "id": "the-check-leaves-no-server-behind",
+      "text": "A check that is killed leaves no server behind: the servers that the check started watch the life of the check, and when the check is killed the servers and their sockets are gone within ten seconds.",
+      "scope": [
+        "lib/yeah-life.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-service.el",
+        "scripts/dev",
+        "tests/support/yeah-check-server-fixture.el",
+        "tests/checks/check-a-check-that-is-killed-leaves-no-server.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-check-that-is-killed-leaves-no-server.el"
+        }
+      ],
+      "falsifier": "the server of a killed check is still alive ten seconds after the owner of the check was killed, or the socket of that server stays on disk",
+      "register": "fact",
+      "control": "sed -i 's|(let* ((life (or life (yeah-life-inherited-path)))|(let* ((life life)|' lib/yeah-acp.el",
+      "waiver": null
     }
   ]
 }

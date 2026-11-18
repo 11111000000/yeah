@@ -1150,11 +1150,13 @@ served at the same time.
 LIFE is the path of the life socket of the owner of this server.  The
 server watches it and ends when it ends: a server whose owner is gone
 has nobody to serve, and a server left behind by a finished session is
-gone with it.  Without LIFE the server ends the way it always ended --
-when its last session is closed."
+gone with it.  Without LIFE the server takes the socket that its owner
+named in YEAH_LIFE_SOCKET, and without that it ends the way it always
+ended -- when its last session is closed."
   (setq yeah-acp--transport transport
         yeah-acp--answerer answerer)
-  (let ((watch (and life (yeah-life-socket-connect life))))
+  (let* ((life (or life (yeah-life-inherited-path)))
+         (watch (and life (yeah-life-socket-connect life))))
     (when (and life (null watch))
       ;; The owner is gone before the server even started: there is
       ;; nothing to serve, and a server that serves nobody is a leftover.

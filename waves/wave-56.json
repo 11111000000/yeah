@@ -1,0 +1,31 @@
+{
+  "id": "wave-56",
+  "title": "the check of the gate leaves no server behind",
+  "intent": "The second half of wave 42 of the plan of the owner (docs/PLAN.md §18.2): the gate.  The gate of the map kills a check that took too long, and the check dies without a chance to clean up.  Wave 55 gave the server of a service a way to learn that its owner is gone, but it left the checks of the suite outside: a check starts its servers by itself, over a socket, and nothing named those servers.  The wave makes the life of the owner inheritable: the owner names the socket of its life in the environment variable YEAH_LIFE_SOCKET, every child inherits the name, and `yeah-acp-serve-socket' takes that socket when no other life is given -- so a server that the check started watches the check, and ends when the check ends, by any death of the check.  `scripts/dev check' gives every check a socket of its own and adopts it before the check runs, so the gate and a person who runs a check by hand travel the same path.  The check of the wave measures the gate itself: it starts a real check -- the fixture that starts a server and waits for ever -- through `scripts/dev check', kills the owner of that server the way the gate kills it (SIGKILL), and proves that the server and its socket are gone within ten seconds.  The control of the claim takes the inherited life out and the defect comes back with the very words of the defect: `the server of the check stayed behind after its owner was killed' and `the socket of the server stayed behind'.",
+  "touches": [
+    "lib/yeah-life.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-service.el",
+    "scripts/dev",
+    "tests/support/yeah-check-server-fixture.el",
+    "tests/checks/check-a-check-that-is-killed-leaves-no-server.el",
+    "spec.json",
+    "waves/wave-56.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev check tests/checks/check-a-check-that-is-killed-leaves-no-server.el",
+    "./scripts/dev check tests/checks/check-a-server-left-behind-is-gone.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-check-leaves-no-server-behind"
+  ],
+  "commitment": [],
+  "objection": "The name of the life travels in an environment variable, and an environment variable is a convention, not a contract: a server that is started by a process that never named a life keeps the old behaviour and lives as long as its client.  The wave does not hide that: the claim is about the checks of the gate, and the gate starts every check through `scripts/dev check', which names the life before the check runs.  The socket of the life is a local socket of a private directory (mode 0700 under XDG_RUNTIME_DIR, else under a directory of this user), so nobody else can end the life of a child by connecting to it.  The socket of the life of a dead owner is swept by the next owner that starts, and the file of a live owner is never touched: the life of a socket is not worth the risk of killing a living owner.  A check that is run outside `scripts/dev' -- by hand, with a plain `emacs -l' -- gets no life of its own, and the servers it starts behave as before: the wave does not make the whole world watch its owner, it makes the gate watch it.  The check of the wave needs a platform with `/proc' and says so instead of skipping silently: unknown is not pass.  The wave does not shorten the suite of the checks; the check of the wave costs 1.2 seconds, and the suite still waits for minutes.",
+  "refuted_by": "the server of a killed check outlives the check by more than ten seconds, or the control of the claim does not bite by an assertion of its own check",
+  "note": "The subject of the claim: a check of the suite was started through `scripts/dev check', the check started a server on a local socket, the owner of that server was killed with SIGKILL, and the server was gone within a second; the socket of the server was gone with it.  The control of the claim (`sed -i 's|(let* ((life (or life (yeah-life-inherited-path)))|(let* ((life life)|' lib/yeah-acp.el') takes the inherited life out, and the check failed by its own assertion: `the server of the check stayed behind after its owner was killed (pid 7401)' and `the socket of the server stayed behind'.  The check found two defects of itself on the first runs: it made the report of the fixture with `make-temp-file' and a directory instead of a file, and it built the path of the gate from the literal string `default-directory' instead of the value of that variable.  Both are the kind of mistake that a check which never fails can hide, and both are now the ordinary code of the check.  The fixture of the wave lives in `tests/support/' and not in `tests/checks/': it never ends by itself, so the gate must not run it as a check of its own."
+}
