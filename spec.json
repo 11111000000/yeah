@@ -2932,6 +2932,33 @@
       "register": "fact",
       "control": "sed -i 's|(yeah-model--current (yeah-acp--session-model state))|(yeah-model--current nil)|' lib/yeah-acp.el",
       "waiver": null
+    },
+    {
+      "id": "the-mcp-servers-of-a-session-reach-the-model",
+      "text": "The MCP servers of a session reach the model: the servers a client names in `session/new' are connected, their tools become the tools of the runs of that session, the model finds one of them and calls it, and the call of the model reaches the server with the environment the client named.",
+      "scope": [
+        "lib/yeah-session-mcp.el",
+        "lib/yeah-mcp-client.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-control.el",
+        "lib/yeah-turn.el",
+        "tests/checks/check-the-mcp-servers-of-a-session-reach-the-model.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-mcp-servers-of-a-session-reach-the-model.el"
+        }
+      ],
+      "falsifier": "the session is refused or opened without the tools of the servers, or the model of the session finds no tool of the server, or the call of the model does not reach the server",
+      "register": "fact",
+      "control": "sed -i 's|(let ((tools (yeah-control-tools control)))|(let ((tools nil))|' lib/yeah-control.el",
+      "waiver": null
     }
   ]
 }

@@ -46,6 +46,7 @@
 (require 'yeah-perm)
 (require 'yeah-product)
 (require 'yeah-result)
+(require 'yeah-session-mcp)
 (require 'yeah-turn)
 (require 'yeah-wire)
 (require 'yeah-wire-socket)
@@ -293,12 +294,20 @@ takes a prompt and a callback."
 The controller owns the turn of the session and its persistent pending
 queue: the wire and the attached path share one queue, one set of journal
 events and one set of semantics.  The transport and the answerer are the
-service's, and the working directory travels with every input."
+service's, and the working directory travels with every input.
+
+The tools of the session travel with it too: the tools of the MCP servers
+the client named belong to the runs of this session and to no other run.
+The frozen configuration names the servers, and only their names: the
+command of a server and its environment may hold secrets, and a secret is
+never written into the log."
   (yeah-control-new (plist-get state :session)
                     (yeah-acp--session-transport state)
                     (yeah-acp--session-answerer state)
                     nil nil
-                    (list :cwd (plist-get state :cwd))))
+                    (list :cwd (plist-get state :cwd)
+                          :mcp-servers (plist-get state :mcp-servers))
+                    (plist-get state :mcp-tools)))
 
 (defun yeah-acp-version ()
   "Return the ACP protocol version spoken by Yeah."
@@ -589,22 +598,25 @@ the session, in the order the journal holds them."
   (or (plist-get state :output) yeah-acp--output-function
       #'yeah-acp--print-line))
 
-(defun yeah-acp--register-session (session cwd)
+(defun yeah-acp--register-session (session cwd &optional tools servers)
   "Register SESSION for ACP and return its state plist.
 The state carries the output function of the connection the session was
 created on, so its notifications reach that connection; when the session
 was created without a connection the current output function is used.
 The state also carries the rules the client remembered for this session:
 a decision of the client is remembered here and in no other session.
-The state carries the model the client chose for this session, and the
-controller of the session: its turn and its queue."
+The state carries the model the client chose for this session, the tools
+of the MCP servers the client named, and the controller of the session:
+its turn and its queue."
   (let* ((id (plist-get session :id))
          (previous (gethash id yeah-acp--sessions))
          (state (list :id id :session session :cwd cwd :listener nil
                       :output yeah-acp--output
                       :connection yeah-acp--connection
                       :model nil
-                      :rules nil))
+                      :rules nil
+                      :mcp-tools tools
+                      :mcp-servers servers))
          (listener (lambda (observed-session type fields event-id)
                      (yeah-acp--observe-event state observed-session type fields event-id))))
     (when previous
@@ -623,12 +635,21 @@ The answer names the session, the modes it may be in and the
 configuration options of the session: the modes are the permission
 profiles of the kernel, the session is in the mode `build' until the
 client chooses another one, and the options are the models the session may
-run on."
+run on.
+
+The MCP servers the client names are connected before the session is
+opened: their tools are the tools of the session, and a session whose
+servers did not answer is not opened at all."
   (yeah-acp--validate-session-request request)
   (let* ((cwd (file-truename (plist-get request :cwd)))
          (root (yeah-product-session-root cwd))
+         (clients (yeah-session-mcp-connect (plist-get request :mcpServers)))
          (session (yeah-session-open (yeah-acp--fresh-id "session") root cwd))
-         (state (yeah-acp--register-session session cwd)))
+         (state (yeah-acp--register-session
+                 session cwd
+                 (yeah-session-mcp-tools clients)
+                 (yeah-session-mcp-names (plist-get request :mcpServers)))))
+    (plist-put state :mcp-clients clients)
     (list :sessionId (plist-get session :id)
           :modes (yeah-acp--mode-state yeah-acp--default-mode)
           :configOptions (yeah-acp--config-options
@@ -670,9 +691,14 @@ the mode it is in, and the model it names is the model it runs on."
     (unless (file-exists-p (yeah-session--path-for session-id root))
       (signal 'user-error
               (list (format "unknown ACP session: %s" session-id))))
-    (let* ((session (yeah-session-open session-id root cwd))
-           (state (yeah-acp--register-session session cwd))
+    (let* ((clients (yeah-session-mcp-connect (plist-get request :mcpServers)))
+           (session (yeah-session-open session-id root cwd))
+           (state (yeah-acp--register-session
+                   session cwd
+                   (yeah-session-mcp-tools clients)
+                   (yeah-session-mcp-names (plist-get request :mcpServers))))
            (mode (or (yeah-acp--journal-mode session) yeah-acp--default-mode)))
+      (plist-put state :mcp-clients clients)
       (plist-put state :mode mode)
       (plist-put state :model (yeah-acp--journal-model session))
       (list :sessionId (plist-get session :id)
@@ -816,6 +842,8 @@ server stops."
       (when-let ((listener (plist-get state :listener)))
         (setq yeah-events-write-functions
               (delete listener yeah-events-write-functions)))
+      (when-let ((clients (plist-get state :mcp-clients)))
+        (yeah-session-mcp-close clients))
       (remhash session-id yeah-acp--sessions)
       (when (= 0 (hash-table-count yeah-acp--sessions))
         (setq yeah-acp--last-session-closed t))))

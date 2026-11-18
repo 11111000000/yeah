@@ -684,6 +684,38 @@ work item. Never resolve it by silently making documentation more optimistic.
   that is a variable and not a function; and the check of the model and the
   check of the mode had the client of the checks written twice, so the client
   now lives in `tests/support/yeah-acp-client.el'.
+- Wave 43 (the fifth part) made the MCP servers of a session reach the model.
+  The `mcpServers' array of `session/new' and of `session/load' was checked
+  and thrown away: the kernel verified that it was an array and forgot it, so
+  a client that named a server got a session whose model could not use a
+  single tool of it.  The servers the client names are connected
+  (`lib/yeah-session-mcp.el'), the handshake of MCP is spoken (initialize,
+  then tools/list), and the tools of those servers become ordinary entries of
+  the registry of the runs of that session -- only stdio is spoken, and a
+  server of another transport is refused by name; a server that does not
+  answer in ten seconds refuses the session rather than opening it without
+  the tools the client asked for.  The tools live in the snapshot of the
+  registry of the run, and not in the shared registry, so the tools of one
+  session do not leak into the runs of another.  The journal holds only the
+  names of the servers: the command of a server and its environment may hold
+  secrets.  The environment of the server is given by the program `env' in
+  the command line, because `make-process' in Emacs 30 knows no
+  `:environment' and `process-environment' is a variable, not a function.
+  This wave found a defect of the core: the deferred permission -- the answer
+  of the person comes later, and the route of ACP defers the permission of
+  every tool -- ran the tool outside the binding of the registry, so a tool of
+  a session was not found and the run hung; `yeah-turn--run-or-refuse' binds
+  the registry of the turn around the call of the tool now.  The check is
+  `tests/checks/check-the-mcp-servers-of-a-session-reach-the-model.el' and the
+  claim is `the-mcp-servers-of-a-session-reach-the-model' (docs/PLAN.md
+  §16.37).  Four traps of this wave are worth keeping: `json-serialize' in
+  Emacs 30 reads a list as a plist, so an array on the wire is a vector and an
+  object is a hash table; the properties of a schema arrive as a plist with
+  keyword keys, and the name of a keyword carries its colon (`symbol-name' of
+  `:text' is ":text", not "text"); `force-output' and `flush-output' do not
+  exist in Emacs 30, neither as a function nor as a macro, while the stdout of
+  a batch Emacs is not buffered a line at a time; and `mcpServers: null' passed
+  the check "this is an array" and then went into `mapcar'.
 
 ## The commands
 

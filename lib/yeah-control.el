@@ -22,6 +22,7 @@
 (require 'yeah-turn)
 (require 'yeah-events)
 (require 'yeah-input)
+(require 'yeah-tools)
 
 (cl-defstruct (yeah-control (:constructor yeah-control--make))
   "Runtime control state for one session."
@@ -31,13 +32,17 @@
   budget
   max-nudges
   frozen-defaults
+  tools
   active-turn
   completion-listeners)
 
-(defun yeah-control-new (session &optional transport answerer budget max-nudges frozen)
+(defun yeah-control-new (session &optional transport answerer budget max-nudges frozen tools)
   "Return a controller for SESSION without starting any work.
 TRANSPORT, ANSWERER, BUDGET and MAX-NUDGES are frozen for subsequent inputs.
-FROZEN is additional serializable configuration recorded with each input."
+FROZEN is additional serializable configuration recorded with each input.
+TOOLS are the tools of the session that the shared registry does not
+hold: the tools of the MCP servers the client named.  They belong to
+the runs of this session and to no other run."
   (yeah-control--make
    :session session
    :transport (or transport
@@ -46,7 +51,24 @@ FROZEN is additional serializable configuration recorded with each input."
    :budget (or budget yeah-context-default-budget)
    :max-nudges (or max-nudges yeah-turn-default-max-nudges)
    :frozen-defaults frozen
+   :tools tools
    :completion-listeners (make-hash-table :test 'equal)))
+
+(defun yeah-control--registry (control)
+  "Return the registry snapshot of a run of CONTROL, or nil.
+The tools of the session are the tools of the registry of its runs: a
+session that named MCP servers has their tools, and the model sees them
+among the others.  The snapshot is a copy of the shared registry, so
+the tools of this session do not leak into the runs of the other
+sessions."
+  (let ((tools (yeah-control-tools control)))
+    (when tools
+      (let ((snapshot (yeah-tools-snapshot)))
+        (yeah-tools-with-registry snapshot
+          (dolist (spec tools)
+            (unless (yeah-tools-get (plist-get spec :name))
+              (yeah-tools-register spec))))
+        snapshot))))
 
 (defun yeah-control--frozen (control kind prompt frozen)
   "Build a new KIND input for PROMPT with FROZEN configuration."
@@ -196,7 +218,8 @@ Return the active turn or nil when the queue holds no ask."
                 (lambda (_turn)
                   (yeah-control--deliver-steering control))
                 input
-                (plist-get (plist-get input :frozen) :deadline-seconds))))
+                (plist-get (plist-get input :frozen) :deadline-seconds)
+                (yeah-control--registry control))))
           (unless (yeah-turn-done turn)
             (setf (yeah-control-active-turn control) turn))
           turn)))))

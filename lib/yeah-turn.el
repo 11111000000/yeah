@@ -441,12 +441,16 @@ ended is ignored, and an answer that is not a decision is a refusal."
 DONE is the continuation of the tool call.
 The session of the turn is bound while the tool runs: a tool that acts on
 the world of the run writes into the journal of this run and not into the
-journal of another one."
+journal of another one.  The registry of the turn is bound too: a tool
+that waits for the answer of the person runs after the batch that asked
+the question has ended, and the tools of the session must be there when
+it runs."
   (unless (yeah-turn-done turn)
     (if (eq (plist-get decision :effect) :allow)
-        (yeah-session-with (yeah-turn-session turn)
-          (yeah-tools-dispatch (plist-get slot :name)
-                               (plist-get slot :args) done))
+        (yeah-tools-with-registry (yeah-turn-tools-registry turn)
+          (yeah-session-with (yeah-turn-session turn)
+            (yeah-tools-dispatch (plist-get slot :name)
+                                 (plist-get slot :args) done)))
       (funcall done
                (yeah-result-error
                 (or (plist-get decision :reason)
