@@ -1,0 +1,27 @@
+{
+  "id": "wave-54",
+  "title": "the silent server costs nothing",
+  "intent": "The second half of wave 42 of the plan of the owner (docs/PLAN.md §18.2): the spin.  The defect of 2026-11-16 was a server that burned half a core in a tight loop of userspace while its provider was silent -- one of those processes was measured with 1 921 354 involuntary context switches and six voluntary ones, at 25-60 per cent of a core.  The plan asks for two things: the loop on the path of the live request of the provider is localized by instrumentation and removed, and the bound becomes a check.  The wave measures the subject three times before it writes anything, and the measurements answer the first question without any code change: the defect does not reproduce on the code of 2026-11-18.  A server whose provider never answers (a transport that does not call back) cost 0 ticks of `/proc/<pid>/stat' in ten seconds.  The same server on the live path of gptel and curl, with the connection to the provider hanging, cost 4 ticks (0.040 seconds of CPU in ten seconds, 0.4 per cent of a core).  The same server against a provider that streams and never answers -- keep-alives every fifty milliseconds -- cost 6 ticks (0.060 seconds, 0.6 per cent of a core).  All three are under the bound of the plan, which is one per cent of a core over ten seconds.  The wave therefore removes no loop: it makes the bound a check, so that a loop that comes back cannot come back silently, and it names the counters that would localize the loop when it does (the iterations of the pump of the wire and the iterations of the request of the provider).  The check measures the subject the way the defect itself was measured -- the ticks of the process, not the percentage of the CPU that `top' prints -- and the control of the claim brings the busy loop back: the pump of the wire stops waiting, the process burns the core, and the measured ticks exceed the bound.",
+  "touches": [
+    "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el",
+    "spec.json",
+    "waves/wave-54.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/PASEO-INTEGRATION-PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-server-does-not-spin-when-the-provider-is-silent"
+  ],
+  "commitment": [],
+  "objection": "The wave claims a bound and not the removal of a loop: the loop of 2026-11-16 did not reproduce on the code of 2026-11-18 in three measured scenarios, and the wave says so instead of pretending that it removed something.  The measurements were made outside the map (they need a process of the server and, two of the three, a provider), and the check of the wave is inside the map: it measures a server whose provider is a transport that never answers, and it does not exercise the path of gptel and curl.  The bound of the live path is therefore measured by hand and recorded in `docs/LIVE-EVIDENCE.md', not by the check.  The wave does not add the counters that the plan names (the iterations of the pump and of the request of the provider): a counter that nothing reads is a number in a variable, and the wave leaves the naming of the counters to the wave that measures the live path with them.  The wave does not touch the life cycle of the server: that is wave 42, and a session that another session of the harness carries out at the same time is not a session that this wave carries out.  The check of the wave costs twelve seconds, and the suite of the checks of the repository already waits for minutes; the wave does not shorten that.  The claim says `a server whose provider went silent': the silent provider of the check is a transport that never calls back, and a provider that refuses the request is a different case (the claim `a-refused-request-is-not-asked-again' covers it).",
+  "refuted_by": "the silent server costs a measurable share of a core over ten seconds, or the control of the claim does not bite by an assertion of its own check",
+  "note": "The subject of the claim cost 0 ticks: 0.000 seconds of CPU in ten seconds against the bound of 0.100 seconds.  The control of the claim (`sed -i 's|(accept-process-output nil 0.05)|(accept-process-output nil 0)|' lib/yeah-wire.el') brings the busy loop back, and the process cost 6.000 seconds of CPU in ten seconds -- sixty per cent of a core, the shape of the defect of 2026-11-16 -- and the check failed by its own assertion: `the silent server spun: it cost 6.000 seconds of CPU in 10 seconds, the bound is 0.100'.  The three measurements of the subject: a transport that never answers cost 0 ticks in ten seconds; the live path of gptel and curl against a host whose connection hangs cost 4 ticks (0.040 seconds, 0.4 per cent of a core); the live path against a provider that streams keep-alives every fifty milliseconds and never answers cost 6 ticks (0.060 seconds, 0.6 per cent of a core).  The clock of the kernel ticks a hundred times a second, and the check reads that rate from `getconf CLK_TCK'."
+}

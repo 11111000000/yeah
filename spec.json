@@ -2784,6 +2784,30 @@
       "register": "fact",
       "control": "sed -i 's|(yeah-turn--supervised-p turn)|nil|' lib/yeah-turn.el",
       "waiver": null
+    },
+    {
+      "id": "the-server-does-not-spin-when-the-provider-is-silent",
+      "text": "A server whose provider went silent costs less than one per cent of a core over ten seconds: waiting for an answer that never comes is not working.",
+      "scope": [
+        "lib/yeah-wire.el",
+        "lib/yeah-acp.el",
+        "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el"
+        }
+      ],
+      "falsifier": "the silent server costs a measurable share of a core over ten seconds",
+      "register": "fact",
+      "control": "sed -i 's|(accept-process-output nil 0.05)|(accept-process-output nil 0)|' lib/yeah-wire.el",
+      "waiver": null
     }
   ]
 }

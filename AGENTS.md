@@ -35,6 +35,9 @@
    orchestrator Paseo, the gaps of the ACP surface and the order of the work;
    the plugin of Paseo lives in `plugin/yeah-provider/` (TypeScript, outside
    `lib/`, which stays Elisp only).
+10. `docs/PLAN.md` §19 — the order of the work on the integration: the waves,
+    the four points outside the plan of the owner, and the decisions that only
+    the owner may make.
 
 If two sources contradict each other, report the contradiction in the open
 work item. Never resolve it by silently making documentation more optimistic.
@@ -587,6 +590,21 @@ work item. Never resolve it by silently making documentation more optimistic.
   service of the kernel.  The order of the work is the plan of the owner
   (`docs/PLAN.md` §18: waves 42 and 43); the plugin is TypeScript and lives
   outside `lib/`, which stays Elisp only.
+- The order of the work on the integration is written down in `docs/PLAN.md`
+  §19: it lays the order of the owner out over the waves and adds the four
+  points that the plan of the owner does not name (P-A…P-D).  Wave 54 is done
+  (2026-11-18): the spin of the server does not reproduce on the code of that
+  day, and the bound of one per cent of a core over ten seconds is now a
+  check.  Wave 42 — the life cycle of the server — is carried out by another
+  session of the harness at the same time (`waves/wave-42.json`, the extension
+  `session/exit`); do not take that wave and do not write the same files.
+- The finding that moves the order: `session/close` is a method of ACP, and
+  the client of Paseo already calls it (`connection.ts:690-698`, the SDK sends
+  it as a request and the error is swallowed).  The kernel answers `-32601`.
+  The extension `session/exit` of wave 42 does not reach that client by
+  itself, so either the kernel answers `session/close` as well, or the plugin
+  translates it.  This is written down in `docs/PASEO-INTEGRATION-PLAN.md`
+  §3.6 and §8; it is the first item of the wave that follows 42.
 
 ## The commands
 

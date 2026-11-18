@@ -29,6 +29,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-perm)
 (require 'yeah-session)
 (require 'yeah-tools)
 (require 'yeah-turn)
@@ -63,6 +64,14 @@ Return the value of PREDICATE."
       (accept-process-output nil 0.05))
     (funcall predicate)))
 
+(defun yeah-check--collect (target failures)
+  "Push each message of FAILURES onto the list TARGET.
+The messages stay whole: `append' would take a string apart into its
+characters, and a failure that reads as a row of numbers says nothing."
+  (dolist (failure failures)
+    (push failure target))
+  target)
+
 (defun yeah-check--run (name max-nudges)
   "Run a turn under the budget MAX-NUDGES and return the turn, the records and
 the failures of the run."
@@ -73,12 +82,20 @@ the failures of the run."
       (yeah-tools-register
        (list :name "probe" :description "A tool that runs." :input nil
              :handler (lambda () "the probe ran"))))
+    ;; The tool runs: the rules allow it.  A tool that waits for a person
+    ;; that is not there would leave the run without a tool, and the run
+    ;; would be premature for that reason and not for the reason this check
+    ;; is about.
+    (yeah-perm-rules-reset-for-test)
+    (yeah-perm-rules-add (yeah-perm-rule-make "probe" "*" 'allow))
     (let ((turn (yeah-turn-run session "do the thing" (yeah-check--works-then-reports)
                                 nil 60000 max-nudges)))
       (yeah-check--wait-for (lambda () (yeah-turn-done turn)))
       (unless (yeah-turn-done turn)
         (push "the turn did not finish" failures))
       (let ((records (yeah-check--records root name)))
+        (unless (yeah-check--some-record records "tool-end")
+          (push "the tool of the run did not run" failures))
         (ignore-errors (delete-directory root t t))
         (list turn records failures)))))
 
@@ -87,7 +104,7 @@ the failures of the run."
   (let* ((result (yeah-check--run "supervised" 2))
          (turn (nth 0 result))
          (records (nth 1 result)))
-    (push (nth 2 result) failures)
+    (yeah-check--collect failures (nth 2 result))
     (when (eq 'completed (yeah-turn-state turn))
       (push (format "the supervised run ended in %S: a text answer is not a completion"
                     (yeah-turn-state turn))
@@ -106,15 +123,15 @@ the failures of the run."
   ;; --- the unsupervised run ---
   (let* ((result (yeah-check--run "unsupervised" 0))
          (turn (nth 0 result)))
-    (push (nth 2 result) failures)
+    (yeah-check--collect failures (nth 2 result))
     (unless (eq 'completed (yeah-turn-state turn))
       (push (format "the unsupervised run ended in %S, not completed: nobody was there to nudge it"
                     (yeah-turn-state turn))
             failures)))
 
-  (dolist (failure (apply #'append failures))
+  (dolist (failure failures)
     (message "text-end: %s" failure))
-  (if (apply #'append failures)
+  (if failures
       (kill-emacs 1)
     (kill-emacs 0)))
 

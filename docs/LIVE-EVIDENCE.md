@@ -1391,6 +1391,42 @@ did, and the continuation of wave 42 waits for it.  The spin of the server
 process (`docs/PLAN.md` §17.1) was not located by this run either: it is the
 second half of wave 42 and it is measured on the ticks of `/proc/<pid>/stat`.
 
+## The spin of the server, measured three times (2026-11-18)
+
+The spin of the server process was the second half of wave 42 of the plan of
+the owner (`docs/PLAN.md` §18.2).  On 2026-11-16 a server process was measured
+with 1 921 354 involuntary context switches and six voluntary ones -- it never
+slept -- at 25-60 per cent of a core.  On 2026-11-18 the same thing was
+measured three times on the code of that day, and the defect did not
+reproduce.  The unit of the measurement is the tick of `/proc/<pid>/stat`
+(user time plus system time), the unit the defect itself was measured in, and
+not the percentage of the CPU that `top' prints.  The clock of the kernel
+ticks a hundred times a second.
+
+| Scenario | Ticks in 10 s | CPU | Share of a core | Bound (1 %) |
+|---|---|---|---|---|
+| A transport that never calls back | 0 | 0.000 s | 0.0 % | under |
+| The live path of gptel and curl, the connection to the provider hangs (host 192.0.2.1) | 4 | 0.040 s | 0.4 % | under |
+| The live path of gptel and curl, the provider streams keep-alives every 50 ms and never answers | 6 | 0.060 s | 0.6 % | under |
+
+The second and the third scenarios are the live path: gptel with the backend
+`gptel-openai`, the request going out through curl, the provider never
+answering.  The third one is the shape that the plan suspected -- a provider
+that speaks but does not answer, so that the output of the process is always
+there and the pump of the wire wakes on every piece of it.
+
+**What the measurement does not prove.**  It does not prove that the loop of
+2026-11-16 was in the pump of the wire: the counters that would localize it
+(the iterations of the pump and the iterations of the request of the provider)
+are not in the code, and the measurement says only what the cost was.  The
+bound is now a check of the repository
+(`tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el`,
+the claim `the-server-does-not-spin-when-the-provider-is-silent'), and its
+control brings the busy loop back: with the pump of the wire no longer
+waiting, the process cost 6.000 seconds of CPU in ten seconds -- sixty per
+cent of a core, the shape of the defect -- and the check failed by its own
+assertion.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live

@@ -1,0 +1,26 @@
+{
+  "id": "wave-42",
+  "title": "the server ends with the session of its client",
+  "intent": "The first half of wave 42 of the plan of the owner (docs/PLAN.md 18.2).  The defect: the process of the ACP server outlived the agent.  A client that kept the pipe of the server open after the last turn left a process of Emacs behind, and nothing closed it: the protocol has no way to say that the client will not ask for more work, so the server over stdio waited for the end of the file that the client was never going to send.  What changes: the client says that its session is over with the notification `session/exit', the name of which lives in the vocabulary of the wire (lib/yeah-acp-vocabulary.el), so that the server of Yeah and every client of it name it the same way.  The notification ends the session: the inputs that wait for a run are withdrawn, the run that runs now is cancelled, the session is forgotten and its questions are dropped.  The server over stdio serves one client alone, so the end of that session is the end of the server: the process returns from its loop and ends without waiting for the client to close the pipe.  The server over a socket serves many clients, so the end of the session of one of them ends that session and not the server: the flag that carries the request is bound to nil while one connection is served.  The check of the wave starts a real server process over stdio, drives a turn, ends the session with the notification and keeps the pipe of the client open; the process must be gone within ten seconds.  The second half of the wave (the spin of a server whose provider went silent) is not this wave: the claim `the-server-does-not-spin-when-the-provider-is-silent' is not registered here and the loop that spins is not localized here.",
+  "touches": [
+    "lib/yeah-acp.el",
+    "lib/yeah-acp-vocabulary.el",
+    "tests/checks/check-the-server-exits-when-the-session-is-over.el",
+    "spec.json",
+    "waves/wave-42.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-the-server-exits-when-the-session-is-over.el"
+  ],
+  "claims": [
+    "the-server-exits-when-the-session-is-over"
+  ],
+  "commitment": [],
+  "objection": "The wave adds a notification that is not part of ACP: a client that does not know `session/exit' gets the refusal `-32601' and the server keeps running, exactly as before.  The notification is therefore an extension of the wire, like the queue events of wave 40, and the name of it lives in the vocabulary of the wire so that both sides name it the same way.  The server over stdio ends with the session of its client, and that is a change of the life cycle of the process: a client that sends the notification and then wants to open another session on the same pipe gets a closed pipe.  A client that wants to keep the server has to keep its session, and the notification says the opposite.  The wave does not touch the spin of a server whose provider went silent: that is the second half of wave 42, the claim of it is not registered here, and nothing of the loop on the path of the live request of the provider was measured.  The wave does not prove the life cycle with the plugin of Paseo (`yeah-provider', outside this repository): the client of the check is an offline client that speaks the same JSON-RPC over the same two transports.  The wave does not change the transport of the primary deployment (a local socket), where the server must not end when one client leaves: that half is proven by the second case of the check.",
+  "refuted_by": "the server is still alive ten seconds after the client said that its session is over and kept the pipe open, or the server over a socket ended with the session of one client, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The check of the wave starts a real Emacs process that serves ACP over stdio, drives a turn with a fake model that answers at once with the `finish' tool, sends the notification `session/exit' and keeps the pipe of the client open: nothing else is sent and the end of the file never comes.  The process of the server ended in a fraction of a second, and the check passed.  The control of the claim (`sed -i 's/(setq yeah-acp--exit-requested t)/(setq yeah-acp--exit-requested nil)/' lib/yeah-acp.el') was applied to a copy of the tree and bit twice: the check ended with the code 1 and with its own words (`server-exit: the server is still alive ten seconds after the end of its session (pid ...)').  The second case of the check serves ACP over a local socket, ends the session of one client and proves that the server keeps serving the clients that are still there: the flag that carries the request is bound to nil while one connection is served.  What the wave did not prove: the life cycle with the plugin of Paseo, which lives outside this repository; the spin of a server whose provider went silent, which is the second half of wave 42 and is not registered here; and the end of the server of a placement that serves ACP over stdio and keeps other work in the same process, which the deployment of Yeah does not have (the service placement serves ACP over a socket, docs/PASEO-INTEGRATION.md)."
+}

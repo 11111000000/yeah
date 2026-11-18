@@ -227,6 +227,12 @@ and the run ends as a failed run that says it did not finish."
           (yeah-tools-register
            (list :name "probe" :description "probe" :input nil
                  :handler (lambda () "the probe ran")))
+          ;; The tool runs: the rules allow it.  A tool that waits for a
+          ;; person that is not there would leave the run without a tool,
+          ;; and the run would be premature for that reason and not for the
+          ;; reason this test is about.
+          (yeah-perm-rules-reset-for-test)
+          (yeah-perm-rules-add (yeah-perm-rule-make "probe" "*" 'allow))
           (let ((turn (yeah-turn-run
                         session "start"
                         (lambda (_prompt callback)
@@ -240,6 +246,7 @@ and the run ends as a failed run that says it did not finish."
                         nil 60000 2)))
             (should (yeah-turn-done turn))
             (should (eq 'failed (yeah-turn-state turn)))
+            (should (> calls 1))
             (should (= 2 (yeah-turn-nudges turn)))
             (should (cl-find-if
                      (lambda (record)
