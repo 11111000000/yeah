@@ -20,43 +20,35 @@
 ;;     the call;
 ;;   - a request that ends in an error is the end of the road.
 ;;
-;; Only text with content and a tool call are answers.  The decision lives
-;; here, and not in the stand, so that it can be tested offline: the stand
-;; itself needs a key and the network, and a stand that cannot be run cannot
-;; be checked.
+;; Only text with content and a tool call are answers.  The decision lives in
+;; the kernel (`lib/yeah-answer.el'), because the kernel has to make it too:
+;; the run loop and the compaction of the context meet the same shapes.  This
+;; file is the name that the stands of the tests have always used.
 
 ;;; Code:
+
+(require 'yeah-answer)
 
 (defun yeah-live-answer-shape (response)
   "Return the shape of RESPONSE.
 The shape is one of the symbols `none', `empty', `text', `stream',
 `reasoning', `tool-call', `tool-result', `error' and `unknown'."
-  (cond
-   ((null response) 'none)
-   ((stringp response) (if (string-empty-p response) 'empty 'text))
-   ((eq response t) 'stream)
-   ((and (consp response)
-         (memq (car response) '(reasoning tool-call tool-result)))
-    (car response))
-   ((and (consp response) (eq (car response) 'error)) 'error)
-   (t 'unknown)))
+  (yeah-answer-shape response))
 
 (defun yeah-live-answer-answered-p (response)
   "Return non-nil when RESPONSE is an answer of the model.
 Text with content and a tool call are answers: the model spoke, or it acted.
 The empty string, the streaming sentinel, the reasoning and the result of an
 earlier tool call are not: they are the road to the answer."
-  (memq (yeah-live-answer-shape response) '(text tool-call)))
+  (yeah-answer-answered-p response))
 
 (defun yeah-live-answer-error (response)
   "Return the reason of an error RESPONSE, or nil."
-  (when (eq (yeah-live-answer-shape response) 'error)
-    (cdr response)))
+  (yeah-answer-error response))
 
 (defun yeah-live-answer-text (response)
   "Return the text of RESPONSE, or nil when it carries none."
-  (when (eq (yeah-live-answer-shape response) 'text)
-    response))
+  (yeah-answer-text response))
 
 (provide 'yeah-live-answer)
 

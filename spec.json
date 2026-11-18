@@ -2234,9 +2234,11 @@
     },
     {
       "id": "the-live-stand-waits-for-an-answer",
-      "text": "The live stand waits for an answer and does not mistake the empty string of a reasoning model for one: text with content and a tool call are answers, and the empty string, the streaming sentinel and the reasoning are not.",
+      "text": "The live stand waits for an answer and does not mistake the empty string of a reasoning model for one: text with content and a tool call are answers, and the empty string, the streaming sentinel and the reasoning are not.  The decision lives in the kernel (lib/yeah-answer.el) and not in the stand: the run loop and the compaction of the context meet the same shapes of the provider, and the stand of the tests follows the kernel.",
       "scope": [
-        "tests/live/live-model-call.el", "tests/support/yeah-live-answer.el",
+        "lib/yeah-answer.el", "tests/live/live-model-call.el",
+        "tests/support/yeah-live-answer.el",
+        "tests/unit/test-yeah-answer.el",
         "tests/unit/test-yeah-live-answer.el"
       ],
       "source": null,
@@ -2247,12 +2249,12 @@
       "requirements": [
         {
           "kind": "verifier",
-          "spec": "./scripts/dev ert tests/unit/test-yeah-live-answer.el"
+          "spec": "./scripts/dev ert tests/unit/test-yeah-answer.el tests/unit/test-yeah-live-answer.el"
         }
       ],
-      "falsifier": "the stand calls an empty answer an answer, or it calls a tool call no answer",
+      "falsifier": "the stand calls an empty answer an answer, or it calls a tool call no answer, or the decision of the kernel and the decision of the stand differ",
       "register": "fact",
-      "control": "sed -i \"s|(if (string-empty-p response) 'empty 'text)|(if (string-empty-p response) 'text 'text)|\" tests/support/yeah-live-answer.el",
+      "control": "sed -i \"s|(if (string-empty-p response) 'empty 'text)|(if (string-empty-p response) 'text 'text)|\" lib/yeah-answer.el",
       "waiver": null
     },
     {
@@ -2665,6 +2667,52 @@
       "falsifier": "the run asks the model again without bound, or the run ends without saying why it stopped",
       "register": "fact",
       "control": "sed -i 's|       (< (yeah-turn-retries turn) (yeah-turn-max-retries turn)))|       t)|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-compaction-waits-for-an-answer",
+      "text": "The compaction of the context waits for the answer of the provider: the thinking of a model is the road to the answer and not the end of the request, so a run that meets a provider that thinks first keeps its summary instead of degrading for nothing.",
+      "scope": [
+        "lib/yeah-answer.el", "lib/yeah-context.el", "lib/yeah-compact.el",
+        "tests/checks/check-the-compaction-waits-for-an-answer.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-compaction-waits-for-an-answer.el"
+        }
+      ],
+      "falsifier": "the compaction takes the thinking of the provider for the answer, or the run degrades while the provider is still thinking",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-answer-end-p response)|t|' lib/yeah-context.el",
+      "waiver": null
+    },
+    {
+      "id": "the-outcome-of-a-compaction-arrives-once",
+      "text": "The outcome of a compaction is delivered once: a provider that answers the same request twice does not compact the context twice, and a run that meets such a provider is not broken by the second answer.",
+      "scope": [
+        "lib/yeah-context.el", "lib/yeah-compact.el", "lib/yeah-turn.el",
+        "tests/checks/check-the-compaction-waits-for-an-answer.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-compaction-waits-for-an-answer.el"
+        }
+      ],
+      "falsifier": "the outcome of a compaction is delivered twice, or the second answer of the provider breaks the run",
+      "register": "fact",
+      "control": "sed -i 's|(not delivered)|t|g' lib/yeah-context.el lib/yeah-compact.el && sed -i \"s|((eq (yeah-turn-state turn) 'compacting)|(t|\" lib/yeah-turn.el",
       "waiver": null
     }
   ]

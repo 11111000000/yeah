@@ -2175,6 +2175,70 @@ still ends where it ended before, and the wave buys the runs that meet a
 provider that dies once (§17.1); the shape of the provider that answers with
 a plan instead of an action is not repaired by this wave (§17.1).
 
+### 16.28 The compaction waits for the answer — **done on 2026-11-17 (wave 49)**
+
+The live run of the wave 41 on the code of the waves 47 and 48 (the run of
+2026-11-17 18:17, the journal `sessions/wave41e.jsonl`) died in the tools and
+not in the provider.  The context of the run overflowed, the harness asked the
+model for a summary of the conversation, and the provider that reasons answered
+with its thinking first.  The compaction took the first piece for the answer:
+
+- the record `compaction-failed` of id 2158 — the run degraded for nothing;
+- the record `compaction` of id 2163 — the summary that came later committed a
+  compaction and continued a run whose machine was in a state that has no such
+  transition;
+- the record `error` of id 2164 — `yeah-loop-tick: no transition from
+  awaiting-tool on continue`, and three more errors after it.
+
+**The compaction had to know what counts as an answer, and it could not know.**
+The decision lived in a file of the tests (`tests/support/yeah-live-answer.el`),
+where the kernel cannot reach it, and the compaction had its own idea of an
+answer: a string that is not blank.  The thinking of a model is the road to the
+answer, and the compaction took it for the end of the road.
+
+The wave moves the decision into the kernel:
+
+- `lib/yeah-answer.el` names the shapes of the provider (`none`, `empty`,
+  `text`, `stream`, `reasoning`, `tool-call`, `tool-result`, `error`,
+  `unknown`) and decides two things about them: what is an answer
+  (`yeah-answer-answered-p`: text with content and a tool call) and what ends
+  the request of the provider (`yeah-answer-end-p`: everything but the road to
+  the answer).
+- `yeah-context-summarize-async` waits for the answer of the provider and
+  delivers the result of the request once.  A provider that thinks first and
+  answers after its thinking gives the summary; a provider that ends the
+  request without an answer gives no summary, and the run degrades and goes on
+  as it did since wave 45.
+- `yeah-compact-run-async` delivers the outcome of a compaction once.  A
+  provider that answers the same request twice does not compact the context
+  twice, and the second answer does not continue the run.
+- The turn continues a run that the compaction answered only when the run is
+  still compacting; a compaction that answers when the run has moved on leaves
+  the summary in the journal and does not break the run.
+
+`tests/support/yeah-live-answer.el` is a wrapper around the kernel now, and
+the claim `the-live-stand-waits-for-an-answer` was amended and not rewritten:
+its scope grows by `lib/yeah-answer.el` and its control moves with the
+decision.
+
+The wave adds two claims: `the-compaction-waits-for-an-answer` and
+`the-outcome-of-a-compaction-arrives-once`.  Both controls were run against
+the code of this wave and bit, and each of them made the check fail by an
+assertion of the check and not by a crash of Emacs: the first on six
+assertions, the second on three — among them the error of the live run,
+`yeah-loop-tick: no transition from deciding on continue`.  The check was run
+against the code of the wave before the wave as well, and it fails there on
+seven assertions.
+
+**Open:** the wait has no bound of its own, so a provider that thinks and then
+says nothing leaves the run in the state `compacting` until the deadline of the
+run cancels it; the turn waits for the answer of the model in the same way
+(§17.1).  The decision of an answer is the decision of gptel, and a transport
+that answers with shapes of its own ends the request without a summary.  The
+compaction commits the first text that the provider sends, so a provider that
+streams its answer in pieces gives a summary of its first piece; the harness
+asks the model without streaming, and the wave does not change that.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then
@@ -2254,6 +2318,14 @@ agent may decide it silently (`docs/PLAN.md` §13).
   it.  A request the provider refused is not asked again.  What the wave does
   not repair is the run that meets a provider that is down: such a run ends
   after the budget of the retries, where it ended before the wave.
+- Since wave 49 the compaction of the context waits for the answer of the
+  provider: the thinking of a model is the road to the answer and not the end
+  of the request, and the outcome of a compaction is delivered once.  What the
+  wave does not repair: the wait has no bound of its own, so a provider that
+  thinks and then says nothing leaves the run in the state `compacting` until
+  the deadline of the run cancels it, and the decision of an answer is the
+  decision of the shapes of gptel, so a transport that answers with shapes of
+  its own ends the request of a summary without a summary.
 - A caller that wants the old behaviour of the kernel (a run that ends as soon
   as the model answers with text) must now say so with an explicit budget of
   zero.  The default changed for every caller at once.

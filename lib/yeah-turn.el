@@ -690,7 +690,8 @@ more and a run that cannot go on says so."
                       (yeah-turn--context turn)
                       :reason (yeah-turn--reason-text reason))
     (yeah-context-prune-session (yeah-turn-session turn))
-    (yeah-turn--continue-batch turn)))
+    (when (eq (yeah-turn-state turn) 'compacting)
+      (yeah-turn--continue-batch turn))))
 
 (defun yeah-turn--maybe-compact (turn transport)
   "Compact TURN's session before continuing when its budget overflows."
@@ -705,9 +706,17 @@ more and a run that cannot go on says so."
          transport
          (lambda (result _info)
            (unless (yeah-turn-done turn)
-             (if (plist-get result :error)
-                 (yeah-turn--compaction-failed turn (plist-get result :error))
-               (yeah-turn--continue-batch turn))))
+             (cond
+              ((plist-get result :error)
+               (yeah-turn--compaction-failed turn (plist-get result :error)))
+              ((eq (yeah-turn-state turn) 'compacting)
+               (yeah-turn--continue-batch turn))
+              (t
+               ;; The run has moved on while the context was compacted.  The
+               ;; summary is in the journal, and the run goes on its own way:
+               ;; continuing it here would be a transition that the machine of
+               ;; the run does not have.
+               nil))))
          (lambda () (not (yeah-turn-done turn)))))
     (yeah-turn--continue-batch turn)))
 

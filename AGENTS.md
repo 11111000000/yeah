@@ -392,16 +392,37 @@ work item. Never resolve it by silently making documentation more optimistic.
   carries the status, and all three of its controls were run and bit; docs/PLAN.md
   §16.27, docs/LIVE-EVIDENCE.md, "The run on the code of wave 47 and the death
   of the transport".
+- Wave 49 made the compaction wait for the answer of the provider.  The live run
+  of the wave 41 on the code of the waves 47 and 48 (2026-11-17 18:17) died in
+  the tools and not in the provider: the compaction took the thinking of the
+  provider for the answer, the run degraded for nothing, and the summary that
+  came later continued a run whose machine was in a state that has no such
+  transition — `yeah-loop-tick: no transition from awaiting-tool on continue'.
+  The decision what counts as an answer moved from the tree of the tests into
+  the kernel (lib/yeah-answer.el), because the run loop and the compaction meet
+  the same shapes of the provider: text with content and a tool call are
+  answers, the empty string, the streaming sentinel and the reasoning are not,
+  and everything but the road to the answer ends the request.  The compaction
+  waits for that answer and delivers its outcome once, so a provider that
+  answers twice does not compact the context twice and does not break the run
+  (the claims `the-compaction-waits-for-an-answer' and
+  `the-outcome-of-a-compaction-arrives-once'); the claim
+  `the-live-stand-waits-for-an-answer' was amended and not rewritten, and its
+  control moved with the decision.  The check of the wave plays the shape of
+  that live run with a fake provider, and both of its controls were run and
+  bit; docs/PLAN.md §16.28, docs/LIVE-EVIDENCE.md, "The self-development run
+  that found the compaction that did not wait".
 - The working directory of a session (`cwd') is still not applied to the
   tools: in the live check the `bash' of the agent ran in the directory of
   the process, not in the repository of the task (docs/PLAN.md §17.1).
 - The live stand of the transport was at fault, and not the provider: it stopped
   waiting at the first line that arrived, and the empty string that a
   reasoning model sends between its thinking and its answer was the absence of
-  an answer.  The decision what counts as an answer now lives in
-  tests/support/yeah-live-answer.el and is tested offline — text with content
-  and a tool call are answers, the empty string, the streaming sentinel and the
-  reasoning are not (the claim `the-live-stand-waits-for-an-answer').
+  an answer.  The decision what counts as an answer now lives in the kernel
+  (lib/yeah-answer.el, since the wave 49) and is tested offline — text with
+  content and a tool call are answers, the empty string, the streaming sentinel
+  and the reasoning are not (the claim
+  `the-live-stand-waits-for-an-answer').
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
@@ -525,7 +546,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-106 claim(s).
+120 claim(s).
 
 ```sh
 mathc run

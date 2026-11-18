@@ -255,6 +255,20 @@ and says why. The status of the wire decides which of the two it is, and the
 transport of gptel reports that status as a string, so it is read as a number
 and not only as a number.*
 
+*Amended on 2026-11-17 (wave 49): the compaction waits for the answer of the
+provider, and the decision of an answer lives in the kernel. The compaction
+took the first piece of the answer for the whole answer, and a provider that
+reasons sends its thinking first: a live run of the wave 41 degraded for
+nothing and died on a transition that its machine did not have. What counts as
+an answer is now decided in one place (`lib/yeah-answer.el`): text with
+content and a tool call are answers, the empty string, the streaming sentinel
+and the reasoning are not, and everything but the road to the answer ends the
+request of the provider. The compaction waits for that answer and delivers the
+outcome once, so a provider that answers twice does not compact the context
+twice and does not break the run. The promise above is kept and made explicit:
+the compaction commits only a complete, nonblank summary, and a request that
+ends without one leaves the journal unchanged and the run goes on.*
+
 ### D7 — The human is an asynchronous master
 
 Steering is delivered at a batch boundary, never halfway through a tool batch.

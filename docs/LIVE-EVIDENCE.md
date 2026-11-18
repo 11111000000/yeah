@@ -1186,6 +1186,59 @@ either wave (§17.1), and the guard that asks the model for the change after a
 number of calls of tools without one is still open (§17.1).  The run of 17:10
 was made before the code of wave 48, so it does not measure the retry either.
 
+## The self-development run that found the compaction that did not wait (2026-11-17, 17:58–18:17)
+
+A fourth live run of the wave 41 was made on the code of the waves 47 and 48, in the
+same copy of the repository (`/home/az/Projects/yeah-selfdev-1`), with the same
+task and the same model (MiniMax-M3.1-Flash).  The journal
+(`sessions/wave41e.jsonl`) holds 2170 records of 19 minutes.
+
+**The model wrote to the repository for the first time.**  337 calls of tools:
+205 `bash`, 68 `read`, 20 `write`, 16 `edit`, 7 `elisp-check`, 6 `grep`, 5
+`diagnostics`, 4 `glob`, 3 `git_status`, 2 `git_diff`, 1 `buffer-read`.  The
+`write` and the `edit` of the run went to the repository itself: the check
+`tests/checks/check-bridge-keeps-the-answer.el` was written and then edited
+nine times, and a second check,
+`tests/checks/check-bridge-check-decides-the-race-by-construction.el`, was
+written.  The first check passes on the code of the run
+(`./scripts/dev check tests/checks/check-bridge-keeps-the-answer.el`, exit 0).
+The model did not register the claims of the task in `spec.json`: that is the
+work the run did not finish.
+
+**The retry of wave 48 worked in the live run.**  Nine records of the type
+`retry`, among them the busy provider of the wave 48 (`overloaded_error`, the
+status `529` of the wire) and eight deaths of the transport (`Curl failed with
+exit code 28`).  Without the wave 48 the run would have died nine times.
+
+**The run died in the tools and not in the provider.**  At 18:17:33 the journal
+holds, in this order:
+
+- `compaction-failed` (id 2158) — the compaction of the context said that the
+  summary did not arrive;
+- `pruning` (id 2159) — the run degraded and went on;
+- `tool-request`, `permission-request`, `permission-decision` (ids 2160–2162) —
+  the model called a tool of its own;
+- `compaction` (id 2163) — the summary arrived after all, and committed a
+  compaction;
+- `error` (ids 2164–2166) — `yeah-loop-tick: no transition from awaiting-tool
+  on continue`, and the cascade that followed it.
+
+**This is the defect of wave 49 (`docs/PLAN.md` §16.28).**  The provider that
+reasons sends its thinking before its answer, and the compaction took the first
+piece for the answer: the run degraded for nothing, and the summary that came
+later continued a run whose machine was in a state that has no such transition.
+The compaction waits for the answer now, the outcome of a compaction is
+delivered once, and the decision of an answer lives in the kernel
+(`lib/yeah-answer.el`).
+
+**What this does not prove.**  The run says that the harness can write to a
+repository with a live provider and that the retry of wave 48 works in the
+world; it does not say that the model finishes the task, and it did not: the
+claims of the task were never registered in `spec.json`.  The shape of the
+provider that announces its next step instead of acting is still there (four
+assistant messages, all of them plans) and is not repaired by this wave
+(§17.1).
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live
