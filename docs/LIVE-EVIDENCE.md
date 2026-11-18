@@ -1913,6 +1913,43 @@ the comparison of strings needs `cl-remove-duplicates` with `:test #'string=`.  
 `git check-ignore --stdin` waits for EOF, which `process-send-string` does not
 send, so the check hung; the paths are passed as arguments.
 
+### The third gate of 2026-11-18 and the map that came out green
+
+The third full gate of 2026-11-18 (19:04–19:19 UTC) took 14 min 16 s, of which
+`user` was 2 min 34 s and `sys` 1 min 6 s: the rest was waiting and not work.
+Its exit code was 3 (Inconclusive) and it had exactly one non-green row — the
+judgment of the owner, `the-owner-decided-the-order-of-the-next-waves`, whose
+materials (`docs/PLAN.md`) had changed in wave 63, so the attestation of the
+earlier round had gone stale (`materials-changed`). Every other claim was
+`holds (current)` and `uncovered` was 0 file(s).
+
+The owner settled that row the way the method expects of a human:
+`mathc record the-owner-decided-the-order-of-the-next-waves owner --by az
+--outcome pass`. The map after that record:
+
+    verdict: green, exit 0
+    143 claims, 143 holds
+    uncovered: []
+    next: nothing to do - declared evidence is current and the tree is covered
+
+The order is not a detail. The record binds the materials of the claim, so it
+has to come after the last change of `docs/PLAN.md`, and the claim of the
+documentation binds the whole `docs` directory, so any documentation written
+after a gate makes that claim stale — and the map says so instead of hiding
+it. The sequence of this round was: the fix of wave 63, the gate, the record,
+and the map that came out green.
+
+**The machine after the round.**  0 `emacs`, load average 0.39, 0 copies of the
+method in `/tmp/mathc-v5-*`, `/tmp` 2.1 GB, the root at 72 GB of 99 GB. The
+before-measurement of the same day was 42 `emacs`, load 13.42 and 48 copies.
+
+**What this round says about the method.**  A green map of this repository was
+green dishonestly once, and the method did not see it (wave 62).  It was seen
+by a stand that repeats the recipe of the method word for word, and the fix was
+in the check, not in the method.  The question of the owner — whether a claim
+whose control bit for another reason may stay green — is still open and is
+written down in the list below.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
