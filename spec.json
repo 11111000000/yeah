@@ -3112,6 +3112,33 @@
       "register": "fact",
       "control": "sed -i 's|^  stop_tree_of_pilot$|  : control|' scripts/live-pilot",
       "waiver": null
+    },
+    {
+      "id": "a-gate-run-needs-no-watchdog",
+      "text": "The gate of the project needs no watchdog: the gate itself waits for the run of the method, a run that was killed is started again by the gate itself, the map of the project is written when the run ends, and nothing of the run is left behind when the gate answers.",
+      "scope": [
+        "scripts/gate",
+        "scripts/live-pilot",
+        "scripts/lib/method.sh",
+        "scripts/dev",
+        "tests/support/yeah-fake-method.sh",
+        "tests/checks/check-a-killed-gate-run-restarts-and-reaches-the-end.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-killed-gate-run-restarts-and-reaches-the-end.el"
+        }
+      ],
+      "falsifier": "the run that was killed is not started again by the gate, or the map of the project is not written when the run ends, or a process of the run is still alive when the gate answered, or the gate holds a command that sleeps, or the wrapper of the project keeps a gate of its own",
+      "register": "fact",
+      "control": "sed -i 's|^      attempt=\\$((attempt + 1))$|      verdict=3; break|' scripts/gate",
+      "waiver": null
     }
   ]
 }

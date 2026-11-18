@@ -10,7 +10,7 @@
 #   pixel                 — photograph the real interface and compare two pictures
 #   map                   — the standing specification: claims, states, uncovered
 #   run                   — execute the checks, bind the evidence, write the trail
-#   gate                  — run, then map; the exit code is the verdict
+#   gate                  — the gate of the project (scripts/gate); the exit code is the verdict
 #   help                  — this text
 #
 # Exit codes (the method's scale, A13/A14):
@@ -31,6 +31,14 @@ set -u
 cmd="${1:-help}"
 [ $# -gt 0 ] && shift
 
+# The place of the method is one thing, and it lives in one place: the
+# copy of the search that lives in two scripts is a copy that drifts
+# apart, and the copy that drifts is the one that runs the gate of the
+# project with no method at all.
+script_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
+# shellcheck source=scripts/lib/method.sh
+. "$script_dir/lib/method.sh"
+
 find_emacs() {
   if [ -n "${EMACS:-}" ] && [ -x "${EMACS}" ]; then
     printf '%s' "${EMACS}"
@@ -47,30 +55,12 @@ find_emacs() {
   return 1
 }
 
-find_mathc() {
-  if [ -n "${MATHC:-}" ]; then
-    printf '%s' "${MATHC}"
-    return 0
-  fi
-  if command -v mathc >/dev/null 2>&1; then
-    command -v mathc
-    return 0
-  fi
-  if [ -x "$HOME/.local/bin/mathc" ]; then
-    printf '%s' "$HOME/.local/bin/mathc"
-    return 0
-  fi
-  return 1
-}
-
 # The script that runs a check under a limit of time.  It lives next to
 # this script, so a clone of the repository runs the check the same way
 # whatever the working directory is.
 find_timeout() {
-  local dir
-  dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || return 1
-  if [ -x "$dir/dev-timeout" ]; then
-    printf '%s' "$dir/dev-timeout"
+  if [ -x "$script_dir/dev-timeout" ]; then
+    printf '%s' "$script_dir/dev-timeout"
     return 0
   fi
   return 1
@@ -111,7 +101,7 @@ Subcommands:
   pixel                 — photograph the real interface and compare two pictures
   map                   — the standing specification: claims, states, uncovered
   run                   — execute the checks, bind the evidence, write the trail
-  gate                  — run, then map; the exit code is the verdict
+  gate                  — the gate of the project (scripts/gate); the exit code is the verdict
   help                  — this text
 
 Exit codes:
@@ -128,6 +118,13 @@ Environment:
            passed the limit is stopped, and the run answers with the third
            answer (3, unknown): nothing was refuted, the method could not
            tell.
+  YEAH_GATE_TIMEOUT
+         — the limit of one attempt of the run of the gate, in seconds
+           (default: 1800).  A run that passed the limit is stopped, and
+           the gate answers with the third answer (3, unknown).
+  YEAH_GATE_ATTEMPTS
+         — the number of attempts of the gate (default: 3).  A run that
+           was killed is started again; a run that answered is not.
 EOF
     ;;
 
@@ -319,11 +316,16 @@ EOF
     ;;
 
   gate)
-    need_mathc
-    "$mathc_bin" --root . run
-    rc=$?
-    "$mathc_bin" --root . map
-    exit $rc
+    # The gate of the project is one runner: scripts/gate.  This wrapper
+    # does not keep a second copy of it.  Two copies of the gate are two
+    # verdicts, and the copy that drifts is the one that runs the
+    # project -- and the old copy was the one that waited for the run and
+    # left it behind when the run was killed.
+    if [ ! -x "$script_dir/gate" ]; then
+      echo "scripts/dev gate: scripts/gate is missing" >&2
+      exit 3
+    fi
+    exec "$script_dir/gate" "$@"
     ;;
 
   *)

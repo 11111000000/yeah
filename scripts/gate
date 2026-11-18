@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# scripts/gate — the gate of the project, in the foreground.
+#
+#   scripts/gate [--limit SECONDS] [--attempts N]
+#
+# The gate is a run of the method and the map that follows it.  The old way
+# around the death of a run was a watchdog: a detached process that read a
+# log file every five seconds and started the run again when the log did
+# not move.  The measurement of 2026-11-18: 147 commands `sleep' and forty-
+# four minutes of waiting a day, and copies of the run left behind when the
+# watchdog was stopped.
+#
+# This runner waits instead of watching.  The run of the method is started
+# in the foreground, the gate waits for it, and a run that was killed is
+# started again by the gate itself: the restart is not the work of a second
+# process.  Nothing is polled here -- no log is read, and this script holds
+# no command that sleeps.  The map is written when the run ends, so the map
+# always says how far the run came.
+#
+# The tree of the run is owned by the runner of the pilot (scripts/live-
+# pilot): the run of the method, its children and the group of the run are
+# stopped together, and they are stopped when the run ends as well as when
+# the gate is stopped.
+#
+# Exit codes (the scale of the method):
+#   0 — pass  (the map is green)
+#   1 — fail  (something was refuted)
+#   2 — blocked (the input of the run was wrong)
+#   3 — unknown (the method could not tell: the run was killed and the
+#       attempts ran out, or the run passed the limit of its time)
+
+set -u
+
+usage() {
+  echo "scripts/gate: usage: scripts/gate [--limit SECONDS] [--attempts N]" >&2
+  exit 2
+}
+
+dir="$(cd "$(dirname "$0")" && pwd)"
+root="$(cd "$dir/.." && pwd)"
+
+# The limit of one attempt, and the number of attempts.  A run that was
+# killed is started again; a run that answered is not: an answer of the
+# method is a statement, and a statement is not repeated.
+limit="${YEAH_GATE_TIMEOUT:-1800}"
+attempts="${YEAH_GATE_ATTEMPTS:-3}"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --limit)
+      [ $# -ge 2 ] || usage
+      limit="$2"
+      shift 2
+      ;;
+    --limit=*)
+      limit="${1#--limit=}"
+      shift
+      ;;
+    --attempts)
+      [ $# -ge 2 ] || usage
+      attempts="$2"
+      shift 2
+      ;;
+    --attempts=*)
+      attempts="${1#--attempts=}"
+      shift
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+case "$limit" in
+  ''|*[!0-9]*)
+    echo "scripts/gate: the limit must be a whole number of seconds" >&2
+    exit 2
+    ;;
+esac
+case "$attempts" in
+  ''|*[!0-9]*)
+    echo "scripts/gate: the number of attempts must be a whole number" >&2
+    exit 2
+    ;;
+esac
+if [ "$limit" -lt 1 ]; then
+  echo "scripts/gate: the limit must be at least one second" >&2
+  exit 2
+fi
+if [ "$attempts" -lt 1 ]; then
+  echo "scripts/gate: there must be at least one attempt" >&2
+  exit 2
+fi
+
+# The knowledge of /proc lives in one place, and the place of the method
+# lives in one place too.
+# shellcheck source=scripts/lib/tree.sh
+. "$dir/lib/tree.sh"
+# shellcheck source=scripts/lib/method.sh
+. "$dir/lib/method.sh"
+
+mathc_bin="$(find_mathc)" || {
+  echo "scripts/gate: the method is not on PATH and MATHC is not set." >&2
+  echo "  Get it from the math-coding repository: nix build  (it writes result/bin/mathc)." >&2
+  exit 3
+}
+
+cd "$root"
+
+pilot_pid=""
+
+# Stop the run of the method and everything it started.  The stop is a
+# signal to the tree of the run; the runner of the pilot stops it again
+# from its side, and the gate waits for the runner to be gone.
+stop_run() {
+  if [ -n "$pilot_pid" ]; then
+    stop_tree "$pilot_pid" TERM
+    wait "$pilot_pid" 2>/dev/null || true
+  fi
+}
+
+on_signal() {
+  stop_run
+  exit "$1"
+}
+
+trap 'on_signal 130' INT
+trap 'on_signal 143' TERM
+trap 'stop_run' EXIT
+
+verdict=3
+attempt=1
+while :; do
+  # The run is a child of the gate and the gate waits for it: the wait is
+  # the whole of the watching.
+  "$dir/live-pilot" --limit "$limit" -- "$mathc_bin" --root . run &
+  pilot_pid=$!
+  wait "$pilot_pid"
+  rc=$?
+  pilot_pid=""
+  case "$rc" in
+    0|1|2|3)
+      # The method answered.  The answer is the verdict of the gate.
+      verdict="$rc"
+      break
+      ;;
+    *)
+      # The run was killed by a signal.  The gate starts it again: the
+      # restart is the work of the gate, and not the work of a watcher
+      # that reads a log.
+      if [ "$attempt" -ge "$attempts" ]; then
+        echo "scripts/gate: the run was killed (code $rc) and the attempts ran out" >&2
+        verdict=3
+        break
+      fi
+      attempt=$((attempt + 1))
+      echo "scripts/gate: the run was killed (code $rc); it is started again (attempt $attempt of $attempts)" >&2
+      ;;
+  esac
+done
+
+# The map is written when the run ends: the map is the state of the
+# project, and it must say how far the run came -- even when the run was
+# killed.
+"$mathc_bin" --root . map
+exit "$verdict"
