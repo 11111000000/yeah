@@ -2290,6 +2290,54 @@ is whole), then 16.4 and 16.6 (the product works everywhere and is seen),
 then 16.7 (the goal is measured), and 16.5 and 16.8 whenever.
 
 
+### 16.30 The order of the work after the cycle of 2026-11-17
+
+The cycle of 2026-11-17 closed with a green map: 122 claims, two consecutive
+runs of the method that ended in `green`, and two waves of the plan of the
+owner (41 and 50) that the harness carried out by itself.  This section is
+the order of the work that follows.  It does not decide anything that §17.2
+leaves to the owner.
+
+1. **The leftovers of the cycle are committed.**  The paragraphs of §18.1, the
+   live evidence of the two green runs, the state of the README and the
+   warnings of `AGENTS.md` are one commit of documentation.  The claim of the
+   owner is re-recorded after it, because the material of that claim is the
+   plan itself.
+2. **Wave 42 — the life cycle of the server and its spin** (§18.2).  It goes
+   first because the process of the server outlived the agent nine times
+   during the cycle of 2026-11-17 (each of them burning a part of a core), and
+   because every wave below runs the server.
+3. **Wave 43 — the surface of ACP that an orchestrator needs** (§18.3), in the
+   order the plan names: the `cwd` of the session first (the tools of a
+   session must work in the repository of the task), then the kind of a call
+   and its named arguments, then `session/set_mode`, then the model of the
+   session, then the `mcpServers` of the session.
+4. **Wave 44 — parallel children in a live turn** (§18.4).
+5. **The debts that the cycle of 2026-11-17 found in the harness itself.**
+   They are repair waves of the same kind as 45 to 50, and their numbers
+   continue the series:
+   - **wave 51 — the journal of a run is protected from the run.**  The model
+     of the run of wave 50 deleted its own journal (`rm -f
+     sessions/wave50-1.jsonl').  The observation of a run must not be
+     erasable by the run; the claim of the wave is that the journal of a live
+     run survives the attempt of the run to delete it.
+   - **wave 52 — the `cwd` of a session reaches the tools** if wave 43 does
+     not carry it; §18.3 names it first for a reason, and a wave that is
+     carried out twice is one wave too many.
+   - The sender of the SIGTERM that killed three runs of the method is still
+     unknown.  That is a defect of the method's own process, not of Yeah, and
+     it does not take a wave of the harness; the way around it (a detached run
+     under a watchdog) is in `docs/LIVE-EVIDENCE.md`.
+6. **The pilot again** (§17.1): the same three tasks of the benchmark, on the
+   code of the waves 46 to 50, because the last pilot measured the code of
+   wave 38 and the failures it found were fixed afterwards.  It is a
+   measurement and not a verdict; the threshold is the owner's (§13).
+
+Every wave of this order is executed by the harness itself, in a live run on a
+copy of the repository with a clean tree, and every wave carries a control
+that bites.
+
+
 ## 17. What is left, and who decides it
 
 The work of waves 24–38 is closed and bound to fresh evidence.  What follows is
@@ -2664,12 +2712,14 @@ criteria of the exit and finished through the `finish` tool (the state of the
 run was `completed`).  The evidence of the wave is in docs/LIVE-EVIDENCE.md,
 the section "The self-development run that finished the wave 41".
 
-**What the execution does not prove.**  The second criterion of the exit (two
-consecutive runs of the method that end in `green`) is not met yet: the
-verdict of the map is still `unknown`, because the human review of the plan of
-the owner is outdated — the decision of the owner, and not a machine
-verifier.  The wave repairs the evidence of the bridge; it does not repair the
-harness and it does not measure the parity of the harnesses.
+**What the execution does not prove.**  The wave repairs the evidence of the
+bridge; it does not repair the harness and it does not measure the parity of
+the harnesses.  The second criterion of the exit (two consecutive runs of the
+method that end in `green`) depends on the human review of the plan of the
+owner being fresh at the time of the run: that review is a decision of the
+owner and not a machine verifier (docs/PLAN.md 17.2), and any later edit of
+this plan makes it stale again.  The runs, their verdicts and their dates are
+in docs/LIVE-EVIDENCE.md.
 
 ### 18.2 Wave 42 — the server does not outlive the agent, and it does not spin
 

@@ -78,7 +78,7 @@ for the same task.
 
 ## What exists today
 
-The repository contains 53 focused Elisp modules implementing pieces of the
+The repository contains 59 focused Elisp modules implementing pieces of the
 kernel and its Emacs-native interface:
 
 - a defined run state machine and model-turn orchestration;
@@ -164,7 +164,18 @@ kernel and its Emacs-native interface:
   in the preset, 900 seconds by default), and a child that ran out of time is
   cancelled and the parent is told why.
 
-After Stage 7, byte compilation is clean and 391 ERT unit tests pass, and
+**The harness develops itself.**  Two waves of the plan of the owner were carried
+out by Yeah itself, in a live run against a real provider, on a copy of this
+repository: wave 41 (the verifier of the bridge decides the race by
+construction) and wave 50 (the check of the wire decides its verdict by
+construction).  The model in those runs wrote the checks of the waves, found
+the defects of its own checks (three of them in the check of wave 41),
+registered the claims in the standing specification, proved that the negative
+controls bite, wrote the wave files and finished through the `finish` tool.
+The evidence of the runs is in `docs/LIVE-EVIDENCE.md`, and the history of the
+work units is in `waves/`.
+
+After Stage 7, byte compilation is clean and 424 ERT unit tests pass, and
 the fixed-point demonstration is verified with a real model.
 Direct canaries cover transport, scheduling, tool failures, real coding,
 asynchronous compaction, product installation entry points, the wire
@@ -173,8 +184,9 @@ socket, where a cancel preempts a running prompt), the placements
 (the same task in three real processes, compared event by event), the
 journey of a person (ask, steer, quit, restart, withdraw, recover, cancel),
 and the shared attached/service journal.  The math-coding v5 map/run/gate
-result is green for all 94 declared claims, each with a negative control
-shown to bite.
+result is green for all 122 declared claims, each with a negative control
+shown to bite; two consecutive runs of the method on the same tree ended in
+`green` (2026-11-18, 03:00 and 03:09 UTC).
 A real model (MiniMax-M3.1-Flash) finishes the Stage 1 coding task, and the
 interactive path works against a live provider: the journal mode, the cancel,
 the quit and the restart, the resume of the session, and the recovery of a
@@ -233,7 +245,7 @@ Do not infer a working product from the presence of a module:
   is lost; and no child of a live provider has run yet on a model other than
   the model of its parent;
 - the live checks under `tests/live/` are evidence without a claim: they need
-  a provider, so no control can bite and the green verdict of the 97 claims
+  a provider, so no control can bite and the green verdict of the 122 claims
   says nothing about them.  What each of them proves, how to run it and when
   it was last recorded is in `docs/LIVE-EVIDENCE.md`;
 - the parity with other harnesses was piloted on three tasks with a live

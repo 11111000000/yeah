@@ -447,10 +447,19 @@ work item. Never resolve it by silently making documentation more optimistic.
   finished through the finish tool — the state of the run was completed.  The
   first of the two runs died ten minutes into the work (the machine), the
   second picked the work up from the tree and finished it.  The second
-  criterion of the exit of the wave is not met: the verdict of the map is still
-  unknown, because the human review of the plan of the owner is outdated, and
-  that decision belongs to the owner (docs/PLAN.md §17.2, §18.1;
-  docs/LIVE-EVIDENCE.md, "The self-development run that finished the wave 41").
+  criterion of the exit of the wave was met on 2026-11-18: the owner recorded
+  the review of the plan of the owner, the paragraph of §18.1 that named the
+  verdict of the map was rewritten so that the plan carries no statement about
+  a verdict that the next run may change, and two consecutive runs of the
+  method ended in `green` (03:00:48 and 03:09:20 UTC, the code 0 both times).
+  The decision of the owner did not change (docs/PLAN.md §17.2, §18.1;
+  docs/LIVE-EVIDENCE.md, "The self-development run that finished the wave 41"
+  and "The map of the method came out green twice").
+- The journal of a live run lies in the working tree, and the model can erase
+  it: in the run of wave 50 the model deleted its own journal
+  (`rm -f sessions/wave50-1.jsonl').  The observation of a run is therefore not
+  protected from the run itself; this is an open defect of the harness and not
+  a wave yet.
 - The working directory of a session (`cwd') is still not applied to the
   tools: in the live check the `bash' of the agent ran in the directory of
   the process, not in the repository of the task (docs/PLAN.md §17.1).

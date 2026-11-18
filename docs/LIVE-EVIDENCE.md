@@ -1297,9 +1297,55 @@ no way to tell the work of the run from the work that was there before it.
 
 The run does not measure the parity of the harnesses, and the second criterion
 of the exit of the wave (two consecutive runs of the method that end in
-`green`) is not met: the verdict of the map is `unknown`, because the human
-review of the plan of the owner is outdated, and that decision belongs to the
-owner and not to a machine verifier (`docs/PLAN.md` §17.2).
+`green`) was not met at that time: the verdict of the map was `unknown`,
+because the human review of the plan of the owner was outdated, and that
+decision belongs to the owner and not to a machine verifier
+(`docs/PLAN.md` §17.2).  The criterion was met on 2026-11-18; the section
+below holds the two runs.
+
+## The map of the method came out green twice (2026-11-18, 03:00–03:18)
+
+The second criterion of the exit of the wave 41 (two consecutive runs of the
+method that end in `green`) needs three things at once: a run that reaches the
+end, a review of the plan of the owner that is fresh at the time of the run,
+and no change of the materials between the two runs.
+
+**The run has to be detached.**  Three runs of the method died with SIGTERM at
+the same place (the section above), and the sender of the signal is still
+unknown.  The way around it is a watchdog: the run starts in a session of its
+own (`setsid`), and after a death it starts again; the trail of evidence grows
+with every attempt, so every attempt moves the map forward, and the cycle ends
+when the map holds no claim that was never checked.  Both runs of this section
+were detached in that way, and both of them reached the end on the first
+attempt.
+
+**The review of the owner.**  The claim
+`the-owner-decided-the-order-of-the-next-waves` carries the review of the plan
+of the owner as its evidence, and the material of that claim is `docs/PLAN.md`
+itself: every edit of the plan makes the review stale, and a stale review makes
+the verdict of the map `unknown`.  The paragraph of §18.1 that named the
+verdict of the map as `unknown` was rewritten before the runs, so that the plan
+no longer carries a statement about a verdict that the next run may change, and
+the owner recorded the review again afterwards (`mathc record
+the-owner-decided-the-order-of-the-next-waves owner --by az --outcome pass`).
+The decision itself — the order of the waves of §18 — did not change.
+
+**The two runs.**
+
+| Run | Start | End | Duration | Code | Verdict |
+|-----|-------|-----|----------|------|---------|
+| A | 03:00:48 | 03:09:12 | 8 min 24 s | 0 | green |
+| B | 03:09:20 | 03:17:54 | 8 min 34 s | 0 | green |
+
+Every claim of the map (122 of them) holds, and 26 files are still uncovered.
+The two runs are the ones the exit criterion asks for: the same materials, the
+same review, two runs in a row, and the verdict `green` both times.
+
+**What this does not prove.**  The map is green because every claim of it was
+checked on this tree; it says nothing about the parity of the harnesses, which
+is measured on three tasks and has no decided threshold (`docs/PLAN.md` §13).
+The SIGTERM that killed three runs of the method is still unexplained, and the
+watchdog is a way around it, not a repair of it.
 
 ## What is still open
 
