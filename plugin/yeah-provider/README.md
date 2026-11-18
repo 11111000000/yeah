@@ -110,10 +110,14 @@ Latin-1 и писал их обратно как UTF-8, и весь не-ASCII �
 ## Проверка вручную
 
 ```sh
+npm ci                                   # если каталога node_modules нет
 npx tsx scripts/print-command.ts     # команда запуска, без значения ключа
 npx tsx scripts/probe-acp.ts         # initialize, session/new, session/prompt
 npm run typecheck && npm test        # типы и офлайн-тесты плагина
 ```
+
+Каталог `node_modules` под `.gitignore` и в дерево не входит: после клона
+репозитория его нужно поставить один раз (`npm ci`).
 
 ## Что ограничено по проводу
 
