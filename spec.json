@@ -2831,6 +2831,56 @@
       "register": "fact",
       "control": "sed -i 's|(file-name-as-directory yeah-session--cwd)|default-directory|' lib/yeah-session.el",
       "waiver": null
+    },
+    {
+      "id": "a-tool-call-carries-its-kind",
+      "text": "The call of a tool on the wire of ACP carries the kind of the call: the `tool_call' and the `tool_call_update' name the kind of the tool -- a read, a search, an edit, a shell -- and a client that renders the call by its kind does not see only the name of the tool.",
+      "scope": [
+        "lib/yeah-tools.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-turn.el",
+        "tests/checks/check-a-tool-call-carries-its-kind.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-tool-call-carries-its-kind.el"
+        }
+      ],
+      "falsifier": "the call of the tool travels on the wire without its kind",
+      "register": "fact",
+      "control": "sed -i 's|:kind kind|:kind nil|g' lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "a-tool-call-carries-named-arguments",
+      "text": "The call of a tool on the wire of ACP carries its arguments under the names the tool declared: `rawInput' is an object with a field for every argument of the call, so that a client that looks for `path' or `old_str' finds them, and not a list of values in the order they came.",
+      "scope": [
+        "lib/yeah-tools.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-turn.el",
+        "tests/checks/check-a-tool-call-carries-named-arguments.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-tool-call-carries-named-arguments.el"
+        }
+      ],
+      "falsifier": "the call of the tool travels on the wire with its arguments as a positional list, and a client that looks for a named field finds nothing",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-acp--tool-arguments fields)|(yeah-acp--tool-input (plist-get fields :args))|' lib/yeah-acp.el",
+      "waiver": null
     }
   ]
 }

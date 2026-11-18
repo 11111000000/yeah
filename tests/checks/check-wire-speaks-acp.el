@@ -445,8 +445,9 @@ found."
                     (when call
                       (let ((raw (plist-get (yeah-check--update call) :rawInput)))
                         ;; the arguments of the call are the values themselves
-                        (unless (and (or (listp raw) (vectorp raw))
-                                     (equal answer (car raw)))
+                        ;; under the names the tool declared
+                        (unless (and (listp raw)
+                                     (equal answer (plist-get raw :summary)))
                           (push (format "the call of the tool did not carry its input: %S"
                                         raw)
                                 yeah-check--failures)))))))

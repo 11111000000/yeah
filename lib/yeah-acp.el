@@ -319,16 +319,36 @@ the printed form travels to the client as it is."
         (error args))
     args))
 
-(defun yeah-acp--tool-call (tool-call-id name status &optional input result)
+(defun yeah-acp--tool-arguments (fields)
+  "Return the arguments of the call in FIELDS as a value for the wire.
+FIELDS are the fields of the record of the request of a tool.  The record
+carries the arguments under the names the tool declared, and the wire
+carries them under those names: a client that looks for `path' or
+`old_str' finds them.
+
+A record written before the kernel named the arguments holds the printed
+form of them only, and the wire falls back to the values in the order they
+came."
+  (let ((named (plist-get fields :named_args)))
+    (if named
+        named
+      (yeah-acp--tool-input (plist-get fields :args)))))
+
+(defun yeah-acp--tool-call (tool-call-id name kind status &optional input result)
   "Return a tool_call or tool_call_update ACP update for TOOL-CALL-ID.
-INPUT is what the tool was called with and RESULT is what it returned.
-The protocol has a field for each of them, and a client that shows the call
-of a tool shows them: a call without its input is a name."
+NAME is the name of the tool and KIND is its kind: a client renders the
+call of a tool by its kind, and the kind of a call is a fact of the tool
+and not a guess of its name.  INPUT is what the tool was called with and
+RESULT is what it returned.  The protocol has a field for each of them, and
+a client that shows the call of a tool shows them: a call without its input
+is a name."
   (if (eq status 'started)
       (let ((update (list :sessionUpdate "tool_call"
                            :toolCallId tool-call-id
                            :title name
                            :status "pending")))
+        (when (stringp kind)
+          (plist-put update :kind kind))
         (when input
           (plist-put update :rawInput input))
         update)
@@ -337,6 +357,8 @@ of a tool shows them: a call without its input is a name."
                          :status (if (eq status 'failed) "failed" "completed")
                          :content (vector (list :type "text"
                                                 :text (or result ""))))))
+      (when (stringp kind)
+        (plist-put update :kind kind))
       (when result
         (plist-put update :rawOutput result))
       update)))
@@ -384,12 +406,15 @@ editor learns the queue from the journal and keeps no state of its own."
     ("tool-request"
      (yeah-acp--tool-call
       (or (plist-get fields :tool_call_id) id)
-      (plist-get fields :tool) 'started
-      (yeah-acp--tool-input (plist-get fields :args))))
+      (plist-get fields :tool)
+      (plist-get fields :kind)
+      'started
+      (yeah-acp--tool-arguments fields)))
     ("tool-end"
      (yeah-acp--tool-call
       (or (plist-get fields :tool_call_id) id)
       (plist-get fields :tool)
+      (plist-get fields :kind)
       (if (yeah-events-boolean-p (plist-get fields :ok))
           'completed
         'failed)

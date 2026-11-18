@@ -153,6 +153,42 @@ test("инструмент без известного рода остаётся
   assert.equal(snapshot.kind, undefined);
 });
 
+test("имена аргументов правки переводятся в имена клиента", () => {
+  const snapshot = yeahToolCallTransformer({
+    id: "call-4",
+    title: "edit",
+    kind: "edit",
+    status: "pending",
+    input: {
+      path: "answer.txt",
+      old_str: "old",
+      new_str: "new",
+      version: "abc123",
+    },
+    output: null,
+    locations: [],
+  });
+  assert.deepEqual(snapshot.input, {
+    filePath: "answer.txt",
+    oldString: "old",
+    newString: "new",
+    version: "abc123",
+  });
+});
+
+test("вызов, который не правка, не меняется", () => {
+  const snapshot = yeahToolCallTransformer({
+    id: "call-5",
+    title: "read",
+    kind: "read",
+    status: "pending",
+    input: { path: "answer.txt" },
+    output: null,
+    locations: [],
+  });
+  assert.deepEqual(snapshot.input, { path: "answer.txt" });
+});
+
 test("Emacs ищется абсолютным путём", () => {
   const emacs = resolveEmacs();
   assert.ok(emacs.length > 0);

@@ -460,6 +460,8 @@ returned slot owns stable ids shared by request, permission and tool-end."
   (let* ((name (yeah-turn--tool-name (nth 0 call)))
          (args (yeah-tools-normalize-args name (nth 1 call)))
          (spec (yeah-tools-get name))
+         (kind (yeah-tools-kind name))
+         (named-args (yeah-tools-named-args name args))
          (resource (yeah-turn--resource args))
          (tool-call-id (format "%s-call-%d" (yeah-turn-id turn)
                                (+ (yeah-turn-calls turn) index 1)))
@@ -467,13 +469,16 @@ returned slot owns stable ids shared by request, permission and tool-end."
           (yeah-turn--write turn "tool-request"
                             (yeah-turn--context
                              turn tool-call-id (yeah-turn-turn-event-id turn))
-                            :tool name :args (format "%S" args)))
+                            :tool name :args (format "%S" args)
+                            :kind kind
+                            :named_args named-args))
          (permission-event-id
           (yeah-turn--write turn "permission-request"
                             (yeah-turn--context turn tool-call-id request-event-id)
                             :action name :resource resource
                             :arguments (yeah-turn--arguments args)))
          (slot (list :index index :name name :args args :spec spec
+                     :kind kind
                      :resource resource :tool-call-id tool-call-id
                      :request-event-id request-event-id
                      :permission-request-event-id permission-event-id
@@ -797,6 +802,7 @@ the results of every batch together."
            (result (aref results index))
            (fields
             (list :tool (plist-get slot :name)
+                  :kind (plist-get slot :kind)
                   :ok (if (and (not (aref refused index))
                                (yeah-result-success-p result))
                           t

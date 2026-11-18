@@ -164,15 +164,29 @@ follow-up в Paseo для агента Yeah — это `interrupt` (отмена
 
 ### 3.3 Аргументы вызова инструмента — позиционный список — P1, ядро (§18.3, п.4)
 
-Ядро читает напечатанную форму аргументов и кладёт в `rawInput` вектор
-значений (`lib/yeah-acp.el:296`, `yeah-acp--tool-input`):
+**Сделано 2026-11-18 (волна 43, часть 2).**  Ядро читало напечатанную форму
+аргументов и клало в `rawInput` вектор значений
+(`lib/yeah-acp.el`, `yeah-acp--tool-input`):
 
 ```text
 :rawInput ("answer.txt" "42" nil "")            ; write
 :rawInput ("pwd && ls -la" 30 "." 5000)         ; bash
 ```
 
-Paseo читает **именованные** поля и без них не рисует правку
+Теперь провод несёт объект с именами, которые объявил инструмент:
+
+```text
+:rawInput {"path": "answer.txt", "content": "42"}   ; write
+:rawInput {"command": "pwd && ls -la"}               ; bash
+```
+
+Имена — те же, что объявил инструмент в реестре (`lib/yeah-tools.el`,
+`yeah-tools-get`) и те же, что получила модель: `path`, `old_str`, `new_str`,
+`command`.  Это не `filePath`, `oldString` и `newString`, как писал этот план
+раньше: инструмент правки объявляет `path`, `old_str` и `new_str`, и менять их
+значит менять схему, которую видит модель.
+
+Paseo читает **именованные** поля в своём соглашении и без них не рисует правку
 (`packages/plugin/src/server/acp-internal/connection.ts:1337-1341`):
 
 ```ts
@@ -181,14 +195,14 @@ oldString: typeof input.oldString === "string" ? input.oldString : undefined
 newString: typeof input.newString === "string" ? input.newString : undefined
 ```
 
-Дифф появляется только при `kind === "edit"`; род сейчас ставит плагин по
-имени инструмента, а ядро его не шлёт (в этом же пункте плана — claim
-`a-tool-call-carries-its-kind`).
+Поэтому перевод имён — работа плагина (`plugin/yeah-provider/server/yeah.ts`):
+ядро шлёт то, что знает, а переходник шлёт то, что читает его клиент.  Перевод
+трогает только поля правки и только вызов с родом `edit`.
 
-**Где чинить.** Имена параметров известны ядру — они объявлены в спецификации
-инструмента (`lib/yeah-tools.el`, `yeah-tools-get`). Значит, `rawInput` должен
-быть объектом, собранным из имён: `filePath`, `oldString`, `newString` для
-`edit`; `path` для `read`/`write`; `command` для `bash`.
+Род вызова ядро теперь шлёт само: инструмент объявляет его в реестре
+(`:kind`), запись запроса в журнале его несёт, и провод его отдаёт.  Таблица
+`TOOL_KINDS` в плагине осталась запасным путём для ядра, которое род ещё не шлёт.
+Claim'ы: `a-tool-call-carries-its-kind`, `a-tool-call-carries-named-arguments`.
 
 ### 3.4 Режимы (Plan/Build) не публикуются — P1, ядро + плагин (§18.3, п.2)
 

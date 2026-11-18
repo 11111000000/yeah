@@ -608,12 +608,32 @@ work item. Never resolve it by silently making documentation more optimistic.
   the `bash' of the agent ran in the directory of the installation of the CLI of
   Paseo and not in the repository of the task.  The session carries its directory
   now, and the tools of the run are dispatched inside the binding of it — one
-  place, `yeah-session-with' in `lib/yeah-session.el', and through it pass the
+  place, `yeah-session-with' in `lib/yeah-session.el`, and through it pass the
   synchronous tools and the asynchronous ones alike.  A session that was opened
   without a directory (an older journal) leaves the directory of the process
   alone.  The check is
   `tests/checks/check-a-session-runs-in-its-own-directory.el', the claim is
   `a-session-runs-in-its-own-directory' (docs/PLAN.md §16.33).
+- Wave 43 (the second part) made the call of a tool carry its kind and its named
+  arguments.  The `tool_call' of the wire named the tool and carried what it was
+  called with, but no kind: a client that renders the call of a tool by its kind
+  saw the name and nothing else, and the plugin of Paseo had to guess the kind
+  from the name of the tool.  The arguments travelled as a positional list, so a
+  client that looks for named fields found nothing and could not draw the edit of
+  a file.  The tool declares its kind now — the new field `:kind' of the
+  specification in `lib/yeah-tools.el' — and the request of the call in the
+  journal carries the kind and the arguments under the names the tool declared;
+  the wire carries both, and the journal stays the source of truth: a record
+  written before the kernel named the arguments still travels the way it was
+  written.  The names on the wire are the names the tool declared and the names
+  the model was given (`path', `old_str', `new_str', `command'); the client of
+  Paseo reads `filePath', `oldString' and `newString', and that translation is
+  the work of the plugin, because it is the convention of Paseo and not the
+  convention of the kernel.  The checks are
+  `tests/checks/check-a-tool-call-carries-its-kind.el' and
+  `tests/checks/check-a-tool-call-carries-named-arguments.el', the claims are
+  `a-tool-call-carries-its-kind' and `a-tool-call-carries-named-arguments'
+  (docs/PLAN.md §16.34).
 
 ## The commands
 

@@ -509,18 +509,45 @@ returned: a call without its input is a name."
       (setq yeah-acp--output-function (lambda (text) (push text emitted)))
       (funcall listener session "tool-request"
                (list :tool "write" :args "(\"answer.txt\" \"42\")"
+                     :kind "edit"
+                     :named_args '(:path "answer.txt" :content "42")
                      :tool_call_id "call-1") 1)
       (funcall listener session "tool-end"
                (list :tool "write" :ok t :payload "the file is written"
+                     :kind "edit"
                      :tool_call_id "call-1") 2)
       (let* ((updates (reverse (yeah-acp-test--update-objects emitted)))
              (call (nth 0 updates))
              (end (nth 1 updates)))
         (should (equal "tool_call" (plist-get call :sessionUpdate)))
-        ;; the arguments are the values themselves and not their printed form
-        (should (equal '("answer.txt" "42") (plist-get call :rawInput)))
+        ;; the arguments are the values themselves under their names and not
+        ;; their printed form
+        (should (equal '(:path "answer.txt" :content "42")
+                       (plist-get call :rawInput)))
+        ;; the kind of the call is on the wire
+        (should (equal "edit" (plist-get call :kind)))
+        (should (equal "edit" (plist-get end :kind)))
         (should (equal "tool_call_update" (plist-get end :sessionUpdate)))
         (should (equal "the file is written" (plist-get end :rawOutput))))))
+
+(ert-deftest yeah-acp-a-record-without-named-arguments-travels-positional ()
+  "A record written before the kernel named the arguments holds the printed
+form of them only: the wire falls back to the values in the order they came."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (listener (plist-get state :listener))
+           (session (plist-get state :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (funcall listener session "tool-request"
+               (list :tool "write" :args "(\"answer.txt\" \"42\")"
+                     :tool_call_id "call-1") 1)
+      (let* ((updates (reverse (yeah-acp-test--update-objects emitted)))
+             (call (nth 0 updates)))
+        (should (equal '("answer.txt" "42") (plist-get call :rawInput)))
+        ;; a record that names no kind has no kind on the wire
+        (should (equal nil (plist-get call :kind)))))))
 
 (ert-deftest yeah-acp-the-input-of-a-tool-call-is-read-as-data ()
   "The arguments of a call come from the model, so the printed form of them is

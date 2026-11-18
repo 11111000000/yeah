@@ -31,6 +31,7 @@
                       :description
                       "End the run. Call this only when the task is done and its work is verified: the run stops with your summary. A run that has not touched anything yet has nothing to finish."
                       :input (list (list :name "summary" :type 'string))
+                      :kind "other"
                       :handler (lambda (summary) summary)
                       :concurrency 'exclusive))))
 

@@ -1,0 +1,45 @@
+{
+  "id": "wave-43b",
+  "title": "the call of a tool carries its kind and its named arguments",
+  "intent": "The second part of wave 43 of the plan of the owner (docs/PLAN.md 18.3, gap 4).  The defect: the `tool_call' of the wire named the tool and carried what it was called with and what it returned, but no kind -- a client that renders the call of a tool by its kind saw the name of the tool and nothing else, and the plugin of Paseo had to guess the kind from the name -- and the arguments of the call travelled as a positional list, so that a client that looks for named fields found nothing.  What changes: the tool declares its kind in the registry (`lib/yeah-tools.el`, the new field `:kind`), the request of the call in the journal carries the kind and the arguments under the names the tool declared, and the wire carries both.  The journal stays the source of truth: the wire is a projection of the record of the request, and a record written before the kernel named the arguments still travels the way it was written -- the values in the order they came.  The names of the arguments are the names the tool declared, and they are the names the model was given: `path', `old_str', `new_str', `command'.  The client of Paseo reads `filePath', `oldString' and `newString', and that is the convention of Paseo and not the convention of the kernel, so the translation of the names is the work of the plugin (`plugin/yeah-provider/server/yeah.ts`): the kernel sends what it knows, and the adapter sends what its client reads.  The other three gaps of the wave (`session/set_mode', the model of the session, the `mcpServers' of the session) are not this part: each of them is a claim of its own and none of them is registered here.",
+  "touches": [
+    "lib/yeah-tools.el",
+    "lib/yeah-files.el",
+    "lib/yeah-edit.el",
+    "lib/yeah-process.el",
+    "lib/yeah-emacs.el",
+    "lib/yeah-builtins.el",
+    "lib/yeah-events.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-acp.el",
+    "plugin/yeah-provider/server/yeah.ts",
+    "plugin/yeah-provider/test/yeah.test.ts",
+    "tests/support/yeah-acp-tool-call.el",
+    "tests/support/yeah-tool-call-model.el",
+    "tests/checks/check-a-tool-call-carries-its-kind.el",
+    "tests/checks/check-a-tool-call-carries-named-arguments.el",
+    "tests/unit/test-yeah-tools.el",
+    "tests/unit/test-yeah-acp.el",
+    "spec.json",
+    "waves/wave-43b.json",
+    "docs/PLAN.md",
+    "docs/PASEO-INTEGRATION-PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-tool-call-carries-its-kind.el",
+    "./scripts/dev check tests/checks/check-a-tool-call-carries-named-arguments.el",
+    "cd plugin/yeah-provider && npm test",
+    "cd plugin/yeah-provider && npm run typecheck"
+  ],
+  "claims": [
+    "a-tool-call-carries-its-kind",
+    "a-tool-call-carries-named-arguments"
+  ],
+  "commitment": [],
+  "objection": "Род вызова объявляет инструмент, и объявляет его ядро: род -- это факт инструмента, а не догадка по его имени.  Инструмент, который род не объявил, получает род `other', и клиент рисует его как `other' -- это честно, но не полезно: клиент, который различает чтение и запись по роду, не различает их там, где инструмент род не объявил.  Инструменты внешних серверов MCP объявляют род по-своему: их спецификация приходит извне, и ядро берёт род из неё, когда она его несёт, и `other' -- когда не несёт.  Имена аргументов на проводе -- это имена, которые объявил инструмент, и они совпадают с именами, которые получил модель: модель зовёт `edit' с `path' и `old_str', и клиент находит `path' и `old_str'`.  Клиент, который ждёт другие имена (`filePath', `oldString'), находит их только через плагин: ядро не знает соглашений клиентов и не переводит имена под них.  Перевод имён в плагине меняет то, что видит клиент, и не меняет то, что видит модель, и проверка ядра этого не видит: проверка плагина проверяет трансформер, а не провод.  Запись журнала, написанная до этой волны, несёт печатную форму аргументов и род не несёт: провод для такой записи остаётся прежним -- значения по местам и без рода, -- и клиент, который читает старый журнал, не увидит ни рода, ни имён.  Волна не проверяет живой прогон с провайдером: проверки волны работают без сети, на фиктивной модели.  Проверка волны доказывает, что род и имена доехали по проводу для `read'; она не доказывает, что клиент Paseo рисует правку: это доказывает тест плагина, который проверяет трансформер, а не живой таймлайн Paseo.",
+  "refuted_by": "the call of the tool travels on the wire without its kind, or with its arguments as a positional list, or the control of the claim does not make the check fail by its own assertion",
+  "note": "Проверка волны нашла тот же дефект, что и проверка волны 43 п.1: `cl-find-if' возвращает элемент, а не значение предиката.  Первый вариант проверки искала обновление вызова через `cl-find-if' и получала нотификацию целиком, а не обновление внутри неё, -- и читала род и аргументы не там, где они лежат.  Общая машина проверки вынесена в отдельный файл (`tests/support/yeah-acp-tool-call.el`), потому что две проверки волны нуждаются в одном и том же: сервер на stdio, сессия с каталогом, фиктивная модель и читатель провода.  Имена аргументов на проводе пришлось выбрать: план интеграции (`docs/PASEO-INTEGRATION-PLAN.md` 3.3) писал, что ядро объявляет `filePath', `oldString' и `newString', но инструмент правки объявляет `path', `old_str' и `new_str' -- это было ошибкой в тексте плана, а не в коде.  Имена инструмента не менялись: их знает модель, и смена их -- это другой ход и другой разговор с моделью.  Перевод имён в соглашение Paseo лежит в плагине, и ядро о нём не знает.  Проверки волны зелёные (0.7 и 0.7 секунды), контроли обоих claim'ов кусаются: `sed -i 's|:kind kind|:kind nil|g' lib/yeah-acp.el` -- проверка падает с кодом 1 и со своими словами (`the call of the tool did not carry its kind on the wire: it carried nil`), и `sed -i 's|(yeah-acp--tool-arguments fields)|(yeah-acp--tool-input (plist-get fields :args))|' lib/yeah-acp.el` -- проверка падает с кодом 1 (`the call of the tool did not carry its arguments by their names on the wire: it carried (\"marker.txt\")`).  Тесты плагина: 26 из 26, `tsc --noEmit` -- без ошибок."
+}

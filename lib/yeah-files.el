@@ -236,18 +236,21 @@ Return at most LIMIT path:line:text matches."
          :input (list (list :name "path" :type 'string)
                       (list :name "offset" :type 'integer :optional t)
                       (list :name "limit" :type 'integer :optional t))
+         :kind "read"
          :handler #'yeah-files--read)
    (list :name "glob"
          :description "List the relative paths of the files that match an Emacs regexp; it returns the paths, not their contents."
          :input (list (list :name "pattern" :type 'string)
                       (list :name "directory" :type 'string :optional t)
                       (list :name "limit" :type 'integer :optional t))
+         :kind "search"
          :handler #'yeah-files--glob)
    (list :name "grep"
          :description "Search the text files below a directory for an Emacs regexp and return path:line:text matches; it returns the matches, not the whole file."
          :input (list (list :name "pattern" :type 'string)
                       (list :name "directory" :type 'string :optional t)
                       (list :name "limit" :type 'integer :optional t))
+         :kind "search"
          :handler #'yeah-files--grep)))
 
 (provide 'yeah-files)

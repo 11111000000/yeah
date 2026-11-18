@@ -199,9 +199,10 @@ export function acpStream(
 /**
  * Род вызова инструмента по его имени.
  *
- * Ядро Yeah шлёт в обновлении только имя инструмента, а Paseo рисует
- * вызов без рода как «unknown». Род ставится здесь: он читается из названия
- * и не выдумывает ничего, чего нет в проводе.
+ * Ядро Yeah шлёт в обновлении род вызова сам: род — это факт инструмента,
+ * а не догадка по его названию. Таблица остаётся запасным путём для ядра,
+ * которое род ещё не шлёт: провод — источник истины, и род, который в
+ * проводе есть, не меняется.
  */
 const TOOL_KINDS: Record<string, string> = {
   read: "read",
@@ -215,6 +216,21 @@ const TOOL_KINDS: Record<string, string> = {
   finish: "other",
 };
 
+/**
+ * Имена аргументов правки, как их читает клиент Paseo.
+ *
+ * Ядро шлёт именованные аргументы под именами, которые объявил инструмент:
+ * `path`, `old_str`, `new_str`. Клиент Paseo рисует правку по полям
+ * `filePath`, `oldString` и `newString`, и без них он рисует вызов без
+ * правки. Перевод имён — работа плагина: это соглашение Paseo, а не
+ * соглашение ядра, и ядро его не знает.
+ */
+const EDIT_ARGUMENT_NAMES: Record<string, string> = {
+  path: "filePath",
+  old_str: "oldString",
+  new_str: "newString",
+};
+
 /** Имя инструмента в снимке: ядро шлёт его в заголовке. */
 export function toolNameOf(toolCall: AcpToolCallSnapshot): string {
   const candidates = [toolCall.name, toolCall.title];
@@ -225,15 +241,44 @@ export function toolNameOf(toolCall: AcpToolCallSnapshot): string {
 }
 
 /**
- * Дополнить вызов инструмента родом.
+ * Имена аргументов правки в том виде, в каком их читает клиент Paseo.
+ *
+ * Вызов, который не является правкой, и вызов без аргументов остаются как
+ * есть: перевод меняет только имена полей правки и ничего больше.
+ */
+export function yeahEditArguments(
+  toolCall: AcpToolCallSnapshot,
+): AcpToolCallSnapshot["input"] {
+  const input = toolCall.input as unknown;
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return toolCall.input;
+  }
+  const kind = toolCall.kind ?? TOOL_KINDS[toolNameOf(toolCall)];
+  if (kind !== "edit") return toolCall.input;
+  const source = input as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(source)) {
+    result[EDIT_ARGUMENT_NAMES[key] ?? key] = value;
+  }
+  return result as AcpToolCallSnapshot["input"];
+}
+
+/**
+ * Дополнить вызов инструмента родом и именами его аргументов.
  *
  * Снимок, у которого род уже есть, не меняется: провод — источник истины,
- * плагин только добавляет то, чего в проводе нет.
+ * плагин только добавляет то, чего в проводе нет. Имена аргументов
+ * переводятся всегда: это соглашение клиента, и провод его не меняет.
  */
 export function yeahToolCallTransformer(
   toolCall: AcpToolCallSnapshot,
 ): AcpToolCallSnapshot {
-  if (toolCall.kind) return toolCall;
-  const kind = TOOL_KINDS[toolNameOf(toolCall)];
-  return kind ? { ...toolCall, kind } : toolCall;
+  const withKind = toolCall.kind
+    ? toolCall
+    : (() => {
+        const kind = TOOL_KINDS[toolNameOf(toolCall)];
+        return kind ? { ...toolCall, kind } : toolCall;
+      })();
+  const input = yeahEditArguments(withKind);
+  return input === withKind.input ? withKind : { ...withKind, input };
 }

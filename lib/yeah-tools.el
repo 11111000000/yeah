@@ -29,6 +29,7 @@
 
 (require 'cl-lib)
 (require 'yeah-builtins)
+(require 'yeah-result)
 
 (defgroup yeah-tools nil
   "The Yeah in-process tool registry."
@@ -108,13 +109,19 @@ SPEC is a plist of shape
   (:name NAME :description DESC
    :input ((:name PARAM :type TYPE [:optional t]) ...)
    :handler FN
-   [:concurrency MODE] [:async t])
+   [:kind KIND] [:concurrency MODE] [:async t])
 
 where NAME is a string, DESC is a string, PARAM is a string, TYPE
 is one of `string', `integer', `symbol', `boolean', and FN is a
 function. Required parameters come first; optional ones come last.
 
-Two more fields are optional and say how the tool is run:
+Three more fields are optional and say what the tool is and how it runs:
+
+  :kind        the kind of the call of this tool on the wire of ACP:
+               `read', `edit', `search', `execute' or `other'.  A client
+               renders a call by its kind, and the kind of a tool is a
+               fact of the tool and not a guess of its name.  A tool that
+               declares no kind has the kind `other'.
 
   :concurrency  `shared' (the default) or `exclusive'. A shared tool
                 may run alongside the other shared tools of the same
@@ -169,6 +176,57 @@ touch at the same time declares itself `exclusive'."
   "Return the list of all registered tool names, in registration order."
   (yeah-tools--ensure-built-ins)
   (yeah-tools--active-order))
+
+(defconst yeah-tools--kinds
+  '("read" "edit" "delete" "move" "search" "execute" "think" "fetch"
+    "switch_mode" "other")
+  "The kinds a call of a tool may carry on the wire of ACP.
+The list is the vocabulary of the protocol; a tool that declares a kind
+outside it has the kind `other'.")
+
+(defun yeah-tools-kind (name)
+  "Return the kind of the tool NAME for the wire.
+The kind is what a client needs to render the call: a read, an edit, a
+shell.  It is a fact of the tool and not a guess of its name, so a tool
+that declares no kind has the kind `other', and so has a name that the
+registry does not know."
+  (let ((kind (plist-get (yeah-tools-get name) :kind)))
+    (if (and (stringp kind)
+             (cl-member kind yeah-tools--kinds :test #'equal))
+        kind
+      "other")))
+
+(defun yeah-tools-named-args (name args)
+  "Return the arguments ARGS of the tool NAME under the names it declared.
+The result is a plist with keyword keys, so that the wire carries the
+arguments of a call by their names and not by their places: a client that
+looks for `path' or `old_str' finds them.
+
+An optional argument the model did not give is left out: a call that named
+no `offset' has no `offset'.  A required argument is always there, even
+when it is nil, because a call that did not give it is a call that is
+refused.  The values are the JSON-safe ones, so that the wire and the
+journal can carry them.
+
+A call whose arguments are not a list has no names: such a call is
+refused by the dispatch, and the names of its arguments are not read."
+  (let ((spec (yeah-tools-get name)))
+    (if (or (null spec)
+            (not (listp args)))
+        nil
+      (let ((params (plist-get spec :input))
+            (result nil)
+            (index 0))
+        (dolist (param params)
+          (let ((value (nth index args))
+                (optional (plist-get param :optional)))
+            (when (or value (not optional))
+              (setq result
+                    (plist-put result
+                               (intern (format ":%s" (plist-get param :name)))
+                               (yeah-result-json-safe value))))
+            (setq index (1+ index))))
+        result))))
 
 (defun yeah-tools--required-count (params)
   "Return the number of required parameters in PARAMS."
