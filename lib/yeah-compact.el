@@ -93,34 +93,40 @@ TRANSPORT may be nil to use gptel or the configured test transport.  CALLBACK
 receives (RESULT INFO).  A failed or blank summary leaves the journal unchanged
 and produces a result with an :error field; no empty summary is committed.
 When optional LIVE-P is non-nil, it is called before committing and can cancel
-late compaction without modifying the journal."
+late compaction without modifying the journal.
+
+The outcome is delivered once: a request that the provider answers twice does
+not compact the context twice, and the run is not continued twice."
   (unless (functionp callback)
     (signal 'user-error (list "yeah-compact-run-async: invalid callback")))
   (let ((cut (yeah-compact-cut-point session target-chars)))
     (if (null cut)
         (funcall callback (yeah-compact--result session nil nil) nil)
-      (yeah-context-summarize-async
-       (mapconcat (lambda (record) (format "%S" record))
-                  (yeah-compact--before session cut) "\n")
-       transport
-       (lambda (summary info)
-         (cond
-          ((and live-p (not (funcall live-p)))
-           (funcall callback
-                    (yeah-compact--result session cut nil "cancelled")
-                    info))
-          ((not summary)
-           (funcall callback
-                    (yeah-compact--result
-                     session cut nil
-                     (format "compaction failed: %S" info))
-                    info))
-          (t
-           (yeah-session-record-compaction
-            session (list :cut-point cut :summary summary))
-           (funcall callback
-                    (yeah-compact--result session cut summary)
-                    info))))))))
+      (let ((delivered nil))
+        (yeah-context-summarize-async
+         (mapconcat (lambda (record) (format "%S" record))
+                    (yeah-compact--before session cut) "\n")
+         transport
+         (lambda (summary info)
+           (when (not delivered)
+             (setq delivered t)
+             (cond
+              ((and live-p (not (funcall live-p)))
+               (funcall callback
+                        (yeah-compact--result session cut nil "cancelled")
+                        info))
+              ((not summary)
+               (funcall callback
+                        (yeah-compact--result
+                         session cut nil
+                         (format "compaction failed: %S" info))
+                        info))
+              (t
+               (yeah-session-record-compaction
+                session (list :cut-point cut :summary summary))
+               (funcall callback
+                        (yeah-compact--result session cut summary)
+                        info))))))))))
 
 (defun yeah-compact-projection-length (session)
   "Return the number of records in SESSION's current projection."

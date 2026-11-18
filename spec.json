@@ -276,8 +276,11 @@
     },
     {
       "id": "nudge-only-for-plans",
-      "text": "an answer that only announces the next step, an answer that says nothing, or a result no tool backs, is nudged into the action; a result that a tool backs ends the run",
-      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
+      "text": "an answer that only announces the next step, an answer that says nothing, or a result no tool backs, is nudged into the action; the run itself ends through the `finish' tool, and a result in words alone ends nothing.  The two claims of the completion path were in contradiction until wave 53: this one read the words of the model as the end of the run, and `finish-is-the-only-completion-path' read them as not an end at all.  The stricter reading won, because the architecture and the prelude of the harness both say that the run ends through the call of `finish'.",
+      "scope": [
+        "lib/yeah-turn.el", "tests/unit/test-yeah-control.el",
+        "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
+      ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
@@ -289,7 +292,7 @@
           "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
         }
       ],
-      "falsifier": "the run ends without acting, or a run that acted and reported a result is nudged anyway",
+      "falsifier": "the run ends without acting, or a run that called the `finish' tool is nudged anyway, or a run that only reported its result in words ends as a completed job",
       "register": "fact",
       "control": "sed -i 's|(and (< (yeah-turn-nudge-spent turn) (yeah-turn-max-nudges turn))|(and nil (< (yeah-turn-nudge-spent turn) (yeah-turn-max-nudges turn))|' lib/yeah-turn.el",
       "waiver": null
@@ -365,10 +368,11 @@
     },
     {
       "id": "finish-is-the-only-completion-path",
-      "text": "with supervision, the model ends the run by calling the finish tool; a text answer alone is not a completion",
+      "text": "with supervision, the model ends the run by calling the finish tool; a text answer alone is not a completion.  A run that answers in words after its tools have run is nudged into the call of `finish', and a run that spends its budget without that call ends as a failed run that says it did not finish.",
       "scope": [
         "lib/yeah-turn.el", "lib/yeah-builtins.el", "lib/yeah-events.el",
-        "tests/unit/test-yeah-control.el"
+        "tests/unit/test-yeah-control.el",
+        "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -379,11 +383,15 @@
         {
           "kind": "verifier",
           "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+        },
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
         }
       ],
-      "falsifier": "a run completes on a text answer alone when supervision is on",
+      "falsifier": "a run completes on a text answer alone when supervision is on, or a run that spent its budget ends without saying that it did not finish",
       "register": "fact",
-      "control": "sed -i 's|(if finish|(if nil|' lib/yeah-turn.el",
+      "control": "sed -i 's|(yeah-turn--supervised-p turn)|nil|' lib/yeah-turn.el",
       "waiver": null
     },
     {
@@ -1302,6 +1310,29 @@
       "falsifier": "the bridge answers with an empty output although the attached Emacs printed the answer",
       "register": "fact",
       "control": "sed -i 's|(accept-process-output nil 0.05)|nil|' lib/yeah-bridge.el",
+      "waiver": null
+    },
+    {
+      "id": "the-bridge-check-decides-the-race-by-construction",
+      "text": "the check of the bridge gives the same verdict on ten consecutive runs of the control, and the control bites on each of them",
+      "scope": [
+        "lib/yeah-bridge.el", "tests/checks/check-bridge-keeps-the-answer.el",
+        "tests/checks/check-bridge-check-decides-the-race-by-construction.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-bridge-check-decides-the-race-by-construction.el"
+        }
+      ],
+      "falsifier": "the check of the bridge gives different verdicts on consecutive runs of the control, or the control does not bite on each of them",
+      "register": "fact",
+      "control": "sed -i 's/(defvar yeah-check--hold-the-answer t/(defvar yeah-check--hold-the-answer nil/' tests/checks/check-bridge-keeps-the-answer.el",
       "waiver": null
     },
     {
@@ -2234,9 +2265,11 @@
     },
     {
       "id": "the-live-stand-waits-for-an-answer",
-      "text": "The live stand waits for an answer and does not mistake the empty string of a reasoning model for one: text with content and a tool call are answers, and the empty string, the streaming sentinel and the reasoning are not.",
+      "text": "The live stand waits for an answer and does not mistake the empty string of a reasoning model for one: text with content and a tool call are answers, and the empty string, the streaming sentinel and the reasoning are not.  The decision lives in the kernel (lib/yeah-answer.el) and not in the stand: the run loop and the compaction of the context meet the same shapes of the provider, and the stand of the tests follows the kernel.",
       "scope": [
-        "tests/live/live-model-call.el", "tests/support/yeah-live-answer.el",
+        "lib/yeah-answer.el", "tests/live/live-model-call.el",
+        "tests/support/yeah-live-answer.el",
+        "tests/unit/test-yeah-answer.el",
         "tests/unit/test-yeah-live-answer.el"
       ],
       "source": null,
@@ -2247,12 +2280,12 @@
       "requirements": [
         {
           "kind": "verifier",
-          "spec": "./scripts/dev ert tests/unit/test-yeah-live-answer.el"
+          "spec": "./scripts/dev ert tests/unit/test-yeah-answer.el tests/unit/test-yeah-live-answer.el"
         }
       ],
-      "falsifier": "the stand calls an empty answer an answer, or it calls a tool call no answer",
+      "falsifier": "the stand calls an empty answer an answer, or it calls a tool call no answer, or the decision of the kernel and the decision of the stand differ",
       "register": "fact",
-      "control": "sed -i \"s|(if (string-empty-p response) 'empty 'text)|(if (string-empty-p response) 'text 'text)|\" tests/support/yeah-live-answer.el",
+      "control": "sed -i \"s|(if (string-empty-p response) 'empty 'text)|(if (string-empty-p response) 'text 'text)|\" lib/yeah-answer.el",
       "waiver": null
     },
     {
@@ -2362,6 +2395,21 @@
       "falsifier": "the bytes the server writes for a non-ASCII answer differ from the UTF-8 of that answer",
       "register": "fact",
       "control": "sed -i \"s|(decode-coding-string text 'utf-8)|text|\" lib/yeah-wire.el",
+      "waiver": null
+    },
+    {
+      "id": "the-wire-check-decides-its-verdict-by-construction",
+      "text": "the check of the wire gives the same verdict on twenty consecutive runs of the control, and the control bites on each of them",
+      "scope": ["lib/yeah-wire.el", "tests/checks/check-wire-carries-the-text.el", "tests/checks/check-wire-check-decides-its-verdict-by-construction.el"],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [{"kind": "verifier", "spec": "./scripts/dev check tests/checks/check-wire-check-decides-its-verdict-by-construction.el"}],
+      "falsifier": "the check of the wire gives different verdicts on consecutive runs of the control, or the control does not bite on one of them",
+      "register": "fact",
+      "control": "sed -i 's|(message \"wire-text: %s\" failure)|(message \"wire-text: %s at %s\" failure (float-time))|' tests/checks/check-wire-carries-the-text.el",
       "waiver": null
     },
     {
@@ -2665,6 +2713,76 @@
       "falsifier": "the run asks the model again without bound, or the run ends without saying why it stopped",
       "register": "fact",
       "control": "sed -i 's|       (< (yeah-turn-retries turn) (yeah-turn-max-retries turn)))|       t)|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-compaction-waits-for-an-answer",
+      "text": "The compaction of the context waits for the answer of the provider: the thinking of a model is the road to the answer and not the end of the request, so a run that meets a provider that thinks first keeps its summary instead of degrading for nothing.",
+      "scope": [
+        "lib/yeah-answer.el", "lib/yeah-context.el", "lib/yeah-compact.el",
+        "tests/checks/check-the-compaction-waits-for-an-answer.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-compaction-waits-for-an-answer.el"
+        }
+      ],
+      "falsifier": "the compaction takes the thinking of the provider for the answer, or the run degrades while the provider is still thinking",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-answer-end-p response)|t|' lib/yeah-context.el",
+      "waiver": null
+    },
+    {
+      "id": "the-outcome-of-a-compaction-arrives-once",
+      "text": "The outcome of a compaction is delivered once: a provider that answers the same request twice does not compact the context twice, and a run that meets such a provider is not broken by the second answer.",
+      "scope": [
+        "lib/yeah-context.el", "lib/yeah-compact.el", "lib/yeah-turn.el",
+        "tests/checks/check-the-compaction-waits-for-an-answer.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-compaction-waits-for-an-answer.el"
+        }
+      ],
+      "falsifier": "the outcome of a compaction is delivered twice, or the second answer of the provider breaks the run",
+      "register": "fact",
+      "control": "sed -i 's|(not delivered)|t|g' lib/yeah-context.el lib/yeah-compact.el && sed -i \"s|((eq (yeah-turn-state turn) 'compacting)|(t|\" lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "a-text-answer-does-not-end-a-supervised-run",
+      "text": "A supervised run ends through the `finish' tool: a text answer that reports a result is not a completion, the run nudges the model into the call that ends it and carries the state of the work, and a model that never calls `finish' spends the budget of the nudges and ends as a failed run that says it did not finish.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/unit/test-yeah-control.el",
+        "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
+        }
+      ],
+      "falsifier": "a supervised run ends as a completed job on a text answer alone, or a run that spent its budget ends without saying that it did not finish",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-turn--supervised-p turn)|nil|' lib/yeah-turn.el",
       "waiver": null
     }
   ]

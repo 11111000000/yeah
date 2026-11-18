@@ -65,8 +65,14 @@
                                       (list (list :name "probe") nil
                                             (lambda (_value)
                                               (funcall callback "the tool ran")))))
-                     ;; The model answers the delivered results.
-                     (funcall callback "the work is done"))))))
+                     ;; The model answers the delivered results and ends the
+                     ;; run through the call of `finish': a supervised run
+                     ;; does not end on the words of the model (wave 53).
+                     (funcall callback
+                              (list 'tool-call
+                                    (list (list :name "finish")
+                                          (list "the work is done")
+                                          (lambda (_answer) nil)))))))))
           (setq turn (yeah-turn-run session "start" transport nil 1))
           (let ((deadline (+ (float-time) 10)))
             (while (and (not (yeah-turn-done turn))

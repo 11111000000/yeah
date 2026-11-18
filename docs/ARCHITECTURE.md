@@ -255,6 +255,20 @@ and says why. The status of the wire decides which of the two it is, and the
 transport of gptel reports that status as a string, so it is read as a number
 and not only as a number.*
 
+*Amended on 2026-11-17 (wave 49): the compaction waits for the answer of the
+provider, and the decision of an answer lives in the kernel. The compaction
+took the first piece of the answer for the whole answer, and a provider that
+reasons sends its thinking first: a live run of the wave 41 degraded for
+nothing and died on a transition that its machine did not have. What counts as
+an answer is now decided in one place (`lib/yeah-answer.el`): text with
+content and a tool call are answers, the empty string, the streaming sentinel
+and the reasoning are not, and everything but the road to the answer ends the
+request of the provider. The compaction waits for that answer and delivers the
+outcome once, so a provider that answers twice does not compact the context
+twice and does not break the run. The promise above is kept and made explicit:
+the compaction commits only a complete, nonblank summary, and a request that
+ends without one leaves the journal unchanged and the run goes on.*
+
 ### D7 — The human is an asynchronous master
 
 Steering is delivered at a batch boundary, never halfway through a tool batch.
@@ -300,6 +314,26 @@ UTF-8, and it leaves the process as UTF-8: the words of the agent reach
 the client as the words the model wrote, and a Russian answer does not
 arrive as a Latin-1 reading of its own bytes. The wire carries text, not
 a promise about a character set.
+
+A supervised run ends through the `finish` tool. A text answer that reports
+a result is not a completion: the run nudges the model into the call that
+ends it, and the nudge carries the state of the work, so that the model
+continues instead of starting the task over. A model that never calls
+`finish` spends the budget of the nudges, and the run ends as a failed run
+that says what it did not do. A run that asked for no supervision at all (a
+budget of zero) ends on the word of the model, because there is nobody to
+nudge it.
+
+*Amended on 2026-11-18 (wave 53): the supervision was declared and not held.
+The kernel took every text answer of the model for the end of the run, so a
+live run of wave 42 that called 261 tools, finished nothing and was cut off
+in the middle of a sentence was recorded as `completed`. Two claims of one
+specification contradicted each other here — one said that the run ends
+through `finish`, the other read the words of the model as the end of the
+run — and the code followed the softer one. The promise above is kept and
+made explicit, not relaxed: the path of the completion is the call of the
+tool and not the talk of the model, and a run that says its result in words
+is nudged into the call that ends it.*
 
 *Amended on 2026-11-16 (wave 40): the wire carried two shapes that ACP does
 not have — the content of a chunk was an array of blocks instead of one

@@ -20,6 +20,7 @@
 (require 'cl-lib)
 (require 'yeah-session)
 (require 'yeah-events)
+(require 'yeah-answer)
 
 (defgroup yeah-context nil
   "Yeah context budgets and projections."
@@ -150,23 +151,34 @@ whole, defaulting to one quarter of the default token budget."
 (defun yeah-context-summarize-async (text transport callback)
   "Ask TRANSPORT to summarize TEXT and deliver the result to CALLBACK.
 CALLBACK receives (SUMMARY INFO).  SUMMARY is nil for provider failures,
-non-string responses and blank answers.  The function returns immediately."
+non-string responses and blank answers.  The function returns immediately.
+
+The provider answers in pieces, and the pieces are not the same thing: a
+model that reasons sends its thinking before its answer, and the thinking is
+the road to the answer, not the answer.  The request is over when the answer
+arrives, and the result of the request is delivered once: a request that is
+answered twice does not compact the context twice."
   (unless (functionp callback)
     (signal 'user-error (list "yeah-context-summarize-async: invalid callback")))
   (let ((transport (or transport
                        yeah-context--transport
                        (and (fboundp 'yeah-gptel-request)
-                            #'yeah-gptel-request))))
+                            #'yeah-gptel-request)))
+        (delivered nil))
     (unless transport
       (signal 'user-error (list "yeah-context-summarize-async: no transport")))
     (funcall transport
              (format yeah-context--summary-prompt text)
              (lambda (response &optional info)
-               (funcall callback
-                        (and (stringp response)
-                             (not (string-blank-p response))
-                             response)
-                        info)))))
+               (when (and (not delivered)
+                          (yeah-answer-end-p response))
+                 (setq delivered t)
+                 (let ((summary (yeah-answer-text response)))
+                   (funcall callback
+                            (and (stringp summary)
+                                 (not (string-blank-p summary))
+                                 summary)
+                            info)))))))
 
 (defun yeah-context-summarize (text &optional transport)
   "Return a summary only when TRANSPORT answers synchronously.
@@ -187,7 +199,8 @@ This compatibility wrapper never waits.  For real asynchronous providers use
               (list (format "yeah-context-summarize: no summary: %S" info))))
      (t
       (signal 'user-error
-              (list "yeah-context-summarize: response is asynchronous; use the async API"))))))
+              (list "yeah-context-summarize: the provider did not answer; \
+the answer is asynchronous, use the async API"))))))
 
 (provide 'yeah-context)
 ;;; yeah-context.el ends here

@@ -2175,12 +2175,225 @@ still ends where it ended before, and the wave buys the runs that meet a
 provider that dies once (§17.1); the shape of the provider that answers with
 a plan instead of an action is not repaired by this wave (§17.1).
 
+### 16.28 The compaction waits for the answer — **done on 2026-11-17 (wave 49)**
+
+The live run of the wave 41 on the code of the waves 47 and 48 (the run of
+2026-11-17 18:17, the journal `sessions/wave41e.jsonl`) died in the tools and
+not in the provider.  The context of the run overflowed, the harness asked the
+model for a summary of the conversation, and the provider that reasons answered
+with its thinking first.  The compaction took the first piece for the answer:
+
+- the record `compaction-failed` of id 2158 — the run degraded for nothing;
+- the record `compaction` of id 2163 — the summary that came later committed a
+  compaction and continued a run whose machine was in a state that has no such
+  transition;
+- the record `error` of id 2164 — `yeah-loop-tick: no transition from
+  awaiting-tool on continue`, and three more errors after it.
+
+**The compaction had to know what counts as an answer, and it could not know.**
+The decision lived in a file of the tests (`tests/support/yeah-live-answer.el`),
+where the kernel cannot reach it, and the compaction had its own idea of an
+answer: a string that is not blank.  The thinking of a model is the road to the
+answer, and the compaction took it for the end of the road.
+
+The wave moves the decision into the kernel:
+
+- `lib/yeah-answer.el` names the shapes of the provider (`none`, `empty`,
+  `text`, `stream`, `reasoning`, `tool-call`, `tool-result`, `error`,
+  `unknown`) and decides two things about them: what is an answer
+  (`yeah-answer-answered-p`: text with content and a tool call) and what ends
+  the request of the provider (`yeah-answer-end-p`: everything but the road to
+  the answer).
+- `yeah-context-summarize-async` waits for the answer of the provider and
+  delivers the result of the request once.  A provider that thinks first and
+  answers after its thinking gives the summary; a provider that ends the
+  request without an answer gives no summary, and the run degrades and goes on
+  as it did since wave 45.
+- `yeah-compact-run-async` delivers the outcome of a compaction once.  A
+  provider that answers the same request twice does not compact the context
+  twice, and the second answer does not continue the run.
+- The turn continues a run that the compaction answered only when the run is
+  still compacting; a compaction that answers when the run has moved on leaves
+  the summary in the journal and does not break the run.
+
+`tests/support/yeah-live-answer.el` is a wrapper around the kernel now, and
+the claim `the-live-stand-waits-for-an-answer` was amended and not rewritten:
+its scope grows by `lib/yeah-answer.el` and its control moves with the
+decision.
+
+The wave adds two claims: `the-compaction-waits-for-an-answer` and
+`the-outcome-of-a-compaction-arrives-once`.  Both controls were run against
+the code of this wave and bit, and each of them made the check fail by an
+assertion of the check and not by a crash of Emacs: the first on six
+assertions, the second on three — among them the error of the live run,
+`yeah-loop-tick: no transition from deciding on continue`.  The check was run
+against the code of the wave before the wave as well, and it fails there on
+seven assertions.
+
+**Open:** the wait has no bound of its own, so a provider that thinks and then
+says nothing leaves the run in the state `compacting` until the deadline of the
+run cancels it; the turn waits for the answer of the model in the same way
+(§17.1).  The decision of an answer is the decision of gptel, and a transport
+that answers with shapes of its own ends the request without a summary.  The
+compaction commits the first text that the provider sends, so a provider that
+streams its answer in pieces gives a summary of its first piece; the harness
+asks the model without streaming, and the wave does not change that.
+
+### 16.29 Проверка провода решает свой вердикт по построению — **сделано 2026-11-18 (волна 50)**
+
+Проверка провода была флаки, и причина была в самой проверке: `yeah-check--raw`
+читала части провода через `nreverse`, который разворачивает список на месте и
+оставляет переменную на ячейке, бывшей его головой.  Второе чтение провода
+находило одну часть, а не провод, а проверка читает провод много раз (рукопожатие,
+сессия, ответ агента и байты провода в конце), поэтому её вердикт зависел от
+того, сколько раз она читала провод до этого.  Свидетельство, чей вердикт зависит
+от порядка собственных чтений, нельзя прочитать.
+
+Первая часть волны починила чтение: список читается, а не разворачивается на
+месте, и строки режутся по байтам до декодирования.  Проверка даёт один и тот же
+вердикт на двадцати прогонах подряд.  Вторая часть делает это claim'ом, а не
+надеждой: новая проверка берёт контроль claim'а о тексте на проводе (декодирование
+байтов UTF-8, взятых из провода) и гоняет проверку провода против него двадцать
+раз подряд в копии репозитория.  Каждый из двадцати прогонов должен упасть на
+утверждении самой проверки, и каждый должен упасть одинаково: один и тот же код
+выхода и одни и те же слова.  Прогон, который вешает Emacs, прогон, который
+проходит, и прогон, который падает по-другому, — все они проваливают новую
+проверку.
+
+Волна переносит ожидание проверки провода с равенства текста на конец хода:
+равенство — это утверждение проверки, а не условие ожидания, а ожидание, которое
+просит равенства, ждёт весь таймаут на каждом прогоне, который сломал контроль.
+Из-за этой одной строки цикл из двадцати прогонов новой проверки стоит
+одиннадцать секунд, а не десять минут.
+
+Новая проверка: `tests/checks/check-wire-check-decides-its-verdict-by-construction.el`.
+Новый claim: `the-wire-check-decides-its-verdict-by-construction`; его контроль
+(момент часов в словах проверки) применён к копии дерева, и новая проверка падает
+там с одним отказом: девятнадцать из двадцати прогонов решили не так, как первый.
+
+**Open:** ожидание проверки провода — это ожидание с таймаутом в тридцать секунд:
+сервер, который отвечает на prompt и никогда не пишет сообщение агента,
+заставляет проверку сообщить об отказе после таймаута — вердикт верен, ожидание
+долго.  Новая проверка гоняет проверку провода против одного контроля (контроля
+claim'а о тексте на проводе) и ни против какого другого.  Вердикт прогона читается
+из слов проверки (строк, начинающихся с `wire-text:`), и шум Emacs в вердикт не
+входит.  Волна не чинит проверку моста: claim
+`the-bridge-check-decides-the-race-by-construction` всё ещё не проверен, и карта
+говорит об этом.  Весь набор проверок в этой сессии не гонялся: это десять минут
+ожидания, а провайдер рвёт соединение, пока ждёшь.
+
 ### The order
 
 16.1 first (it is small and it is the last piece of the kernel), then
 16.2 and 16.3 together (the service becomes the default when the control
 is whole), then 16.4 and 16.6 (the product works everywhere and is seen),
 then 16.7 (the goal is measured), and 16.5 and 16.8 whenever.
+
+
+### 16.30 The order of the work after the cycle of 2026-11-17
+
+The cycle of 2026-11-17 closed with a green map: 122 claims, two consecutive
+runs of the method that ended in `green`, and two waves of the plan of the
+owner (41 and 50) that the harness carried out by itself.  This section is
+the order of the work that follows.  It does not decide anything that §17.2
+leaves to the owner.
+
+1. **The leftovers of the cycle are committed.**  The paragraphs of §18.1, the
+   live evidence of the two green runs, the state of the README and the
+   warnings of `AGENTS.md` are one commit of documentation.  The claim of the
+   owner is re-recorded after it, because the material of that claim is the
+   plan itself.
+2. **Wave 42 — the life cycle of the server and its spin** (§18.2).  It goes
+   first because the process of the server outlived the agent nine times
+   during the cycle of 2026-11-17 (each of them burning a part of a core), and
+   because every wave below runs the server.
+3. **Wave 43 — the surface of ACP that an orchestrator needs** (§18.3), in the
+   order the plan names: the `cwd` of the session first (the tools of a
+   session must work in the repository of the task), then the kind of a call
+   and its named arguments, then `session/set_mode`, then the model of the
+   session, then the `mcpServers` of the session.
+4. **Wave 44 — parallel children in a live turn** (§18.4).
+5. **The debts that the cycle of 2026-11-17 found in the harness itself.**
+   They are repair waves of the same kind as 45 to 50, and their numbers
+   continue the series:
+   - **wave 51 — the journal of a run is protected from the run.**  The model
+     of the run of wave 50 deleted its own journal (`rm -f
+     sessions/wave50-1.jsonl').  The observation of a run must not be
+     erasable by the run; the claim of the wave is that the journal of a live
+     run survives the attempt of the run to delete it.
+   - **wave 52 — the `cwd` of a session reaches the tools** if wave 43 does
+     not carry it; §18.3 names it first for a reason, and a wave that is
+     carried out twice is one wave too many.
+   - The sender of the SIGTERM that killed three runs of the method is still
+     unknown.  That is a defect of the method's own process, not of Yeah, and
+     it does not take a wave of the harness; the way around it (a detached run
+     under a watchdog) is in `docs/LIVE-EVIDENCE.md`.
+6. **The pilot again** (§17.1): the same three tasks of the benchmark, on the
+   code of the waves 46 to 50, because the last pilot measured the code of
+   wave 38 and the failures it found were fixed afterwards.  It is a
+   measurement and not a verdict; the threshold is the owner's (§13).
+
+Every wave of this order is executed by the harness itself, in a live run on a
+copy of the repository with a clean tree, and every wave carries a control
+that bites.
+
+
+### 16.31 Слова модели не завершают надзорный ход — **сделано 2026-11-18 (волна 53)**
+
+Живой прогон волны 42 (2026-11-18 06:24–06:38, копия
+`/home/az/Projects/yeah-selfdev-2`) нашёл дефект ядра, а не дефект задачи.  Обе
+попытки прогона закончились строкой `final state: completed` — при том, что
+работа не была сделана: 261 вызов инструмента в первой попытке и 142 во второй,
+ни одного вызова `finish`, а последнее слово модели — обрывок фразы («Now the
+ACP module itself:», «Now the dispatcher and the serve loop:»).  Прогон был
+зачтён как успешный, и так он был записан в журнал.
+
+Причина была в том, что **любой текстовый ответ модели завершал ход**.  В
+ядре это было сделано как «результат, который подтверждает инструмент», но
+проверка была `null (yeah-turn-tools-used turn)`: инструменты хода были, а
+результата не было, — и слова модели принимались за конец работы.  Это прямо
+противоречило claim'у `finish-is-the-only-completion-path`, который говорил, что
+надзорный ход кончается вызовом `finish`, и claim'у `nudge-only-for-plans`,
+который читал слова модели как конец хода: **два claim'а одной спецификации
+противоречили друг другу, и код следовал более мягкому из них**.
+
+Волна 53 разрешила противоречие в пользу строгого чтения: то же, что держат
+комментарий в коде, `docs/ARCHITECTURE.md` §D7 и прелюдия модели
+(`lib/yeah-gptel.el:42-51`) — надзорный ход кончается вызовом `finish`.
+Конкретно:
+
+* `yeah-turn--supervised-p` отвечает на вопрос «надзорный ли это ход», и
+  надзорным считается ход с положительным бюджетом нуда.
+* Текстовый ответ надзорного хода — **преждевременный**, даже когда
+  инструменты хода уже отработали: модель описала результат словами и не
+  вызвала `finish`.
+* Нуда такого ответа (`yeah-turn--nudge-result-text`) просит вызвать `finish`
+  и несёт состояние работы: что ход уже сделал и какие инструменты ещё не
+  звал, — чтобы модель продолжила, а не начала задачу заново.
+* Ход без надзора (бюджет нуда равен нулю) ведёт себя как раньше: там нудить
+  некому, и слова модели кончают ход.
+* Запись прогона, который не закончился, называет форму: «the model reported
+  a result without calling `finish' N times» — рядом с «answered with an
+  empty message» и «described its next step».
+
+Новая проверка: `tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el`
+(надзорный ход → `failed` + запись `unfinished` + нет записи `finish`;
+ненадзорный → `completed`).  Новый claim:
+`a-text-answer-does-not-end-a-supervised-run`.  Тексты, область, фальсификатор
+и контроль двух claim'ов пути завершения поправлены: контроль теперь снимает
+надзор хода (`sed -i 's|(yeah-turn--supervised-p turn)|nil|' lib/yeah-turn.el`),
+и он кусается — проверка падает на своём утверждении, а не на ошибке кода.
+
+Волна тронула и чужие файлы, и это сказано здесь, а не спрятано: **двенадцать
+проверок и шесть файлов юнитов выдавали результат через слова модели** — фиктивная
+модель в них «заканчивала» ход разговором.  Теперь фиктивная модель кончает ход
+вызовом `finish`, а проверки, чей предмет — не путь завершения (журнал, отложенное
+разрешение, отказ инструмента), переведены на `max-nudges 0` с явным комментарием.
+425 юнитов и весь набор проверок зелёные после этих правок.
+
+**Open:** решение о том, какое чтение выигрывает, принадлежит владельцу
+(§17.2).  Волна взяла строгое чтение; если владелец решит иначе, claim'ы
+`finish-is-the-only-completion-path` и `nudge-only-for-plans` читаются заново.
 
 
 ## 17. What is left, and who decides it
@@ -2254,6 +2467,14 @@ agent may decide it silently (`docs/PLAN.md` §13).
   it.  A request the provider refused is not asked again.  What the wave does
   not repair is the run that meets a provider that is down: such a run ends
   after the budget of the retries, where it ended before the wave.
+- Since wave 49 the compaction of the context waits for the answer of the
+  provider: the thinking of a model is the road to the answer and not the end
+  of the request, and the outcome of a compaction is delivered once.  What the
+  wave does not repair: the wait has no bound of its own, so a provider that
+  thinks and then says nothing leaves the run in the state `compacting` until
+  the deadline of the run cancels it, and the decision of an answer is the
+  decision of the shapes of gptel, so a transport that answers with shapes of
+  its own ends the request of a summary without a summary.
 - A caller that wants the old behaviour of the kernel (a run that ends as soon
   as the model answers with text) must now say so with an explicit budget of
   zero.  The default changed for every caller at once.
@@ -2528,6 +2749,35 @@ its own assertion.
 
 **The estimate.**  Half a day to a day.  **What this wave does not fix.**  It
 repairs the evidence, not the harness: nothing of the run itself changes.
+
+**The execution (2026-11-17).**  The wave was carried out by the harness
+itself: a live model (`MiniMax-M3.1-Flash`) worked on a copy of the repository
+in a live run of Yeah, and the journals of the copy
+(`sessions/wave41g.jsonl`, `sessions/wave41h.jsonl`) hold the run.  The model
+wrote the check of the wave
+(`tests/checks/check-bridge-check-decides-the-race-by-construction.el`) and
+found three defects in it while it worked: the keys of a JSON object come as
+symbols from Emacs 30 (so the control of the claim of the bridge was never
+found and the check said "the claim of the bridge declares no control to
+run"), `file-copy-file` does not create the directory of the target, and the
+buffer of the words of a run was bound in a `let` that binds in parallel (the
+filter of the process saw a void variable).  The model registered the new
+claim in `spec.json` with a control that breaks the determinism of the check,
+and it did not touch the claim of the bridge, whose control bit ten times of
+ten.  The first run was killed by the machine after the changes were made and
+verified; the second run picked the work up from the tree, checked the three
+criteria of the exit and finished through the `finish` tool (the state of the
+run was `completed`).  The evidence of the wave is in docs/LIVE-EVIDENCE.md,
+the section "The self-development run that finished the wave 41".
+
+**What the execution does not prove.**  The wave repairs the evidence of the
+bridge; it does not repair the harness and it does not measure the parity of
+the harnesses.  The second criterion of the exit (two consecutive runs of the
+method that end in `green`) depends on the human review of the plan of the
+owner being fresh at the time of the run: that review is a decision of the
+owner and not a machine verifier (docs/PLAN.md 17.2), and any later edit of
+this plan makes it stale again.  The runs, their verdicts and their dates are
+in docs/LIVE-EVIDENCE.md.
 
 ### 18.2 Wave 42 — the server does not outlive the agent, and it does not spin
 

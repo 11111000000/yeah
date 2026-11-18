@@ -1186,6 +1186,211 @@ either wave (§17.1), and the guard that asks the model for the change after a
 number of calls of tools without one is still open (§17.1).  The run of 17:10
 was made before the code of wave 48, so it does not measure the retry either.
 
+## The self-development run that found the compaction that did not wait (2026-11-17, 17:58–18:17)
+
+A fourth live run of the wave 41 was made on the code of the waves 47 and 48, in the
+same copy of the repository (`/home/az/Projects/yeah-selfdev-1`), with the same
+task and the same model (MiniMax-M3.1-Flash).  The journal
+(`sessions/wave41e.jsonl`) holds 2170 records of 19 minutes.
+
+**The model wrote to the repository for the first time.**  337 calls of tools:
+205 `bash`, 68 `read`, 20 `write`, 16 `edit`, 7 `elisp-check`, 6 `grep`, 5
+`diagnostics`, 4 `glob`, 3 `git_status`, 2 `git_diff`, 1 `buffer-read`.  The
+`write` and the `edit` of the run went to the repository itself: the check
+`tests/checks/check-bridge-keeps-the-answer.el` was written and then edited
+nine times, and a second check,
+`tests/checks/check-bridge-check-decides-the-race-by-construction.el`, was
+written.  The first check passes on the code of the run
+(`./scripts/dev check tests/checks/check-bridge-keeps-the-answer.el`, exit 0).
+The model did not register the claims of the task in `spec.json`: that is the
+work the run did not finish.
+
+**The retry of wave 48 worked in the live run.**  Nine records of the type
+`retry`, among them the busy provider of the wave 48 (`overloaded_error`, the
+status `529` of the wire) and eight deaths of the transport (`Curl failed with
+exit code 28`).  Without the wave 48 the run would have died nine times.
+
+**The run died in the tools and not in the provider.**  At 18:17:33 the journal
+holds, in this order:
+
+- `compaction-failed` (id 2158) — the compaction of the context said that the
+  summary did not arrive;
+- `pruning` (id 2159) — the run degraded and went on;
+- `tool-request`, `permission-request`, `permission-decision` (ids 2160–2162) —
+  the model called a tool of its own;
+- `compaction` (id 2163) — the summary arrived after all, and committed a
+  compaction;
+- `error` (ids 2164–2166) — `yeah-loop-tick: no transition from awaiting-tool
+  on continue`, and the cascade that followed it.
+
+**This is the defect of wave 49 (`docs/PLAN.md` §16.28).**  The provider that
+reasons sends its thinking before its answer, and the compaction took the first
+piece for the answer: the run degraded for nothing, and the summary that came
+later continued a run whose machine was in a state that has no such transition.
+The compaction waits for the answer now, the outcome of a compaction is
+delivered once, and the decision of an answer lives in the kernel
+(`lib/yeah-answer.el`).
+
+**What this does not prove.**  The run says that the harness can write to a
+repository with a live provider and that the retry of wave 48 works in the
+world; it does not say that the model finishes the task, and it did not: the
+claims of the task were never registered in `spec.json`.  The shape of the
+provider that announces its next step instead of acting is still there (four
+assistant messages, all of them plans) and is not repaired by this wave
+(§17.1).
+
+## The self-development run that finished the wave 41 (2026-11-17, 18:48–19:15)
+
+The wave 41 of the plan of the owner (`docs/PLAN.md` §18.1) is the wave that
+repairs the evidence of the bridge: the check of `bridge-keeps-the-answer` used
+to race the subject, five runs of six bit and one did not, and the map of the
+method came out `unknown` for a reason that had nothing to do with the code it
+named.  The wave was carried out by the harness itself: a live model
+(`MiniMax-M3.1-Flash`) worked on a copy of the repository in a live run of
+Yeah, and the journals of the copy (`sessions/wave41g.jsonl`,
+`sessions/wave41h.jsonl`) hold the runs.
+
+**What the model wrote, and what it found in it.**  The check of the wave
+(`tests/checks/check-bridge-check-decides-the-race-by-construction.el`) reads
+the control of the claim of the bridge from the standing specification, copies
+`lib/` and `tests/` into a temporary directory, applies that control there and
+runs the check of the bridge ten times; every one of the ten runs must fail by
+an assertion of the check.  The model found three defects in that check while
+it worked:
+- the keys of a JSON object come as symbols from Emacs 30, so `alist-get "id"`
+  found nothing, the control was never found, and the check said "the claim of
+  the bridge declares no control to run";
+- `file-copy-file` does not create the directory of the target, so the copy of
+  the tree of the check failed;
+- the buffer of the words of a run was bound in a `let` that binds in parallel,
+  so the filter of the process saw a void variable (`void-variable (words)`).
+
+The model then registered the new claim `the-bridge-check-decides-the-race-by-construction`
+in `spec.json` with a control that breaks the determinism of the check (the
+holding of the answer of the child process is taken out), and it did not touch
+the claim of the bridge: its control bit twelve times of twelve, each time by
+the assertion of the check.
+
+**The two runs.**  The first run (the journal `wave41g.jsonl`) was killed by
+the machine ten minutes into the work — after both changes were written and
+after the control of the bridge had bitten twelve times in a row, and while the
+model was verifying the criteria of the exit.  The second run (the journal
+`wave41h.jsonl`) picked the work up from the tree, checked the three criteria
+(the check of the wave passes on the whole bridge; the ten runs of the control
+of the bridge each fail with `bridge-keep: the bridge lost the answer`; the
+control of the new claim makes the check of the wave fail with "the run N of
+the control ended with the code 0"), and finished through the `finish` tool at
+19:14:58.  The state of the run was `completed` and the exit code of the driver
+was 0.
+
+**What this proves, and what it does not.**  The harness carries a task of that
+size to its end with a live provider: the model reads the plan, writes the
+check, finds the defects of its own check, registers the claim in the standing
+specification, proves that the control bites and finishes.  The first run of
+the wave (of 15:45–15:53, the section above) did not, and the difference
+between the two runs is not the harness but the shape of the tree it was given:
+the first run found the uncommitted changes of the repair waves and went to
+verify them, and the second one found a clean tree and the work already done.
+That is a fact about the setup of a run and not about the model alone, and it
+belongs in the open list: a run that begins in a tree with changes in it has
+no way to tell the work of the run from the work that was there before it.
+
+The run does not measure the parity of the harnesses, and the second criterion
+of the exit of the wave (two consecutive runs of the method that end in
+`green`) was not met at that time: the verdict of the map was `unknown`,
+because the human review of the plan of the owner was outdated, and that
+decision belongs to the owner and not to a machine verifier
+(`docs/PLAN.md` §17.2).  The criterion was met on 2026-11-18; the section
+below holds the two runs.
+
+## The map of the method came out green twice (2026-11-18, 03:00–03:18)
+
+The second criterion of the exit of the wave 41 (two consecutive runs of the
+method that end in `green`) needs three things at once: a run that reaches the
+end, a review of the plan of the owner that is fresh at the time of the run,
+and no change of the materials between the two runs.
+
+**The run has to be detached.**  Three runs of the method died with SIGTERM at
+the same place (the section above), and the sender of the signal is still
+unknown.  The way around it is a watchdog: the run starts in a session of its
+own (`setsid`), and after a death it starts again; the trail of evidence grows
+with every attempt, so every attempt moves the map forward, and the cycle ends
+when the map holds no claim that was never checked.  Both runs of this section
+were detached in that way, and both of them reached the end on the first
+attempt.
+
+**The review of the owner.**  The claim
+`the-owner-decided-the-order-of-the-next-waves` carries the review of the plan
+of the owner as its evidence, and the material of that claim is `docs/PLAN.md`
+itself: every edit of the plan makes the review stale, and a stale review makes
+the verdict of the map `unknown`.  The paragraph of §18.1 that named the
+verdict of the map as `unknown` was rewritten before the runs, so that the plan
+no longer carries a statement about a verdict that the next run may change, and
+the owner recorded the review again afterwards (`mathc record
+the-owner-decided-the-order-of-the-next-waves owner --by az --outcome pass`).
+The decision itself — the order of the waves of §18 — did not change.
+
+**The two runs.**
+
+| Run | Start | End | Duration | Code | Verdict |
+|-----|-------|-----|----------|------|---------|
+| A | 03:00:48 | 03:09:12 | 8 min 24 s | 0 | green |
+| B | 03:09:20 | 03:17:54 | 8 min 34 s | 0 | green |
+
+Every claim of the map (122 of them) holds, and 26 files are still uncovered.
+The two runs are the ones the exit criterion asks for: the same materials, the
+same review, two runs in a row, and the verdict `green` both times.
+
+**What this does not prove.**  The map is green because every claim of it was
+checked on this tree; it says nothing about the parity of the harnesses, which
+is measured on three tasks and has no decided threshold (`docs/PLAN.md` §13).
+The SIGTERM that killed three runs of the method is still unexplained, and the
+watchdog is a way around it, not a repair of it.
+
+## The live run of wave 42 that found the words of the model (2026-11-18, 06:24–06:38)
+
+The live run of wave 42 (the life cycle of the ACP server) was the first run of
+the harness on the code of waves 46 to 50, and it found a defect of the kernel
+that no offline check had seen.  The run was on a copy of the repository
+(`/home/az/Projects/yeah-selfdev-2`), with the model `MiniMax-M3.1-Flash`, and
+its journal is `sessions/wave42-1.jsonl` (2464 records).
+
+| Attempt | Start | End | Calls of tools | Nudges | Retries | Last words of the model | Final state |
+|---|---|---|---|---|---|---|---|
+| 1 | 06:24:28 | 06:32:25 | 261 | 5 | 2 | "Now the ACP module itself:" | `completed` |
+| 2 | 06:35:08 | 06:38:45 | 142 | 4 | 0 | "Now the dispatcher and the serve loop:" | `completed` |
+
+Both attempts ended with `final state: completed`, and **neither of them called
+the `finish` tool**: the journal of the run holds no record of `finish` at all.
+The work was not done — the model had added `yeah-acp-session-exit-method` to
+`lib/yeah-acp-vocabulary.el` and implemented `yeah-acp-session-exit` and
+`yeah-acp--end-session` in `lib/yeah-acp.el` (+64 lines), but the routing in the
+dispatcher, the end of the server process, the check, the claim and the
+documentation of the wave were not written.  The second attempt was given the
+state of the work as its input, and it continued from there, and it was cut off
+in the same way.
+
+**The defect was in the kernel, and it was old.**  Every text answer of the
+model ended the turn: the words of the model were taken for the end of the
+work, and a run that had called 261 tools and finished nothing was recorded as
+a successful one.  This is the opposite of what the claim
+`finish-is-the-only-completion-path` says, and it is what the claim
+`nudge-only-for-plans` says in practice: two claims of one specification
+contradicted each other, and the code followed the softer one.  The strict
+reading won in wave 53 (a supervised run ends through the call of `finish';
+a text answer that reports a result is nudged into that call, and the nudge
+carries the state of the work), and the record of a run that did not finish
+names the form it had: "the model reported a result without calling `finish'
+N times".  A run that asked for no supervision (a budget of zero) keeps the
+old behaviour, because there is nobody to nudge it.
+
+**What this run does not prove.**  The provider cut the model off in the middle
+of a sentence twice, and the run of wave 42 is not finished; the wave 53
+repair makes such a run say that it did not finish instead of claiming that it
+did, and the continuation of wave 42 waits for it.  The spin of the server
+process (`docs/PLAN.md` §17.1) was not located by this run either: it is the
+second half of wave 42 and it is measured on the ticks of `/proc/<pid>/stat`.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live

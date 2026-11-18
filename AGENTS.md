@@ -392,16 +392,110 @@ work item. Never resolve it by silently making documentation more optimistic.
   carries the status, and all three of its controls were run and bit; docs/PLAN.md
   §16.27, docs/LIVE-EVIDENCE.md, "The run on the code of wave 47 and the death
   of the transport".
+- Wave 49 made the compaction wait for the answer of the provider.  The live run
+  of the wave 41 on the code of the waves 47 and 48 (2026-11-17 18:17) died in
+  the tools and not in the provider: the compaction took the thinking of the
+  provider for the answer, the run degraded for nothing, and the summary that
+  came later continued a run whose machine was in a state that has no such
+  transition — `yeah-loop-tick: no transition from awaiting-tool on continue'.
+  The decision what counts as an answer moved from the tree of the tests into
+  the kernel (lib/yeah-answer.el), because the run loop and the compaction meet
+  the same shapes of the provider: text with content and a tool call are
+  answers, the empty string, the streaming sentinel and the reasoning are not,
+  and everything but the road to the answer ends the request.  The compaction
+  waits for that answer and delivers its outcome once, so a provider that
+  answers twice does not compact the context twice and does not break the run
+  (the claims `the-compaction-waits-for-an-answer' and
+  `the-outcome-of-a-compaction-arrives-once'); the claim
+  `the-live-stand-waits-for-an-answer' was amended and not rewritten, and its
+  control moved with the decision.  The check of the wave plays the shape of
+  that live run with a fake provider, and both of its controls were run and
+  bit; docs/PLAN.md §16.28, docs/LIVE-EVIDENCE.md, "The self-development run
+  that found the compaction that did not wait".
+- Wave 50 made the check of the wire decide its verdict by construction.  The
+  check of the wire was flaky, and the reason was in the check itself:
+  `yeah-check--raw` read the chunks of the wire with `nreverse`, which turns
+  the list over in place and leaves the variable at the cell that was its
+  head, so the second reading of the wire found one chunk and not the wire,
+  and the verdict of the check depended on how many times it had read the
+  wire before.  The reading is repaired (the list is read and not turned over,
+  and the lines are cut out of the bytes before they are decoded), and the
+  check waits now for the end of the turn and not for the equality of the
+  text: the equality is the assertion of the check and not the condition of
+  the wait, so a run that the control has broken ends in a second and not in
+  thirty.  The new check
+  (tests/checks/check-wire-check-decides-its-verdict-by-construction.el) takes
+  the control of the claim of the text on the wire and runs the check of the
+  wire against it twenty times in a copy of the repository: every one of the
+  twenty runs must fail by an assertion of the check, and every one of them
+  must fail in the same way — the same code of the exit and the same words.
+  The claim `the-wire-check-decides-its-verdict-by-construction` is registered,
+  and its control (the moment of the clock in the words of the check) breaks
+  that determinism: nineteen of the twenty runs decided in another way than
+  the first one; docs/PLAN.md §16.29.
+- Wave 41 — the wave of the plan of the owner — was carried out by the harness
+  itself (2026-11-17 18:48–19:15): a live model (MiniMax-M3.1-Flash) worked on
+  a copy of the repository in a live run of Yeah, wrote the check of the wave
+  (tests/checks/check-bridge-check-decides-the-race-by-construction.el), found
+  three defects in its own check (the keys of a JSON object come as symbols
+  from Emacs 30, so the control of the claim of the bridge was never found;
+  file-copy-file does not create the directory of the target; the buffer of the
+  words of a run was bound in a let that binds in parallel), registered the new
+  claim the-bridge-check-decides-the-race-by-construction in spec.json, proved
+  that the control of the claim of the bridge bites twelve times of twelve and
+  that the control of the new claim breaks the determinism of the check, and
+  finished through the finish tool — the state of the run was completed.  The
+  first of the two runs died ten minutes into the work (the machine), the
+  second picked the work up from the tree and finished it.  The second
+  criterion of the exit of the wave was met on 2026-11-18: the owner recorded
+  the review of the plan of the owner, the paragraph of §18.1 that named the
+  verdict of the map was rewritten so that the plan carries no statement about
+  a verdict that the next run may change, and two consecutive runs of the
+  method ended in `green` (03:00:48 and 03:09:20 UTC, the code 0 both times).
+  The decision of the owner did not change (docs/PLAN.md §17.2, §18.1;
+  docs/LIVE-EVIDENCE.md, "The self-development run that finished the wave 41"
+  and "The map of the method came out green twice").
+- Wave 53 made the words of the model not end a supervised run.  The live run
+  of wave 42 (2026-11-18 06:24–06:38) found the defect: both attempts ended
+  with `final state: completed' while the work was not done — 261 calls of
+  tools in the first attempt, 142 in the second, no call of `finish' at all,
+  and the last words of the model cut off mid-phrase.  Every text answer of the
+  model ended the turn, so the run looked done.  Two claims of one
+  specification contradicted each other: `finish-is-the-only-completion-path'
+  said that a supervised run ends through the call of `finish', and
+  `nudge-only-for-plans' read the words of the model as the end of the run —
+  the code followed the softer one.  The stricter reading won, because the
+  comment in the code, `docs/ARCHITECTURE.md` §D7 and the prelude of the
+  harness all say the same: a supervised run (a run with a positive budget of
+  nudges) ends through the call of `finish'; a text answer that reports a
+  result is nudged into that call, and the nudge carries the state of the
+  work, so the model continues instead of starting the task over.  A run that
+  asked for no supervision (a budget of zero) still ends on the word of the
+  model, because there is nobody to nudge it.  The record of such a run names
+  the shape: "the model reported a result without calling `finish' N times".
+  The claim `a-text-answer-does-not-end-a-supervised-run' is registered, and
+  the controls of the two claims of the completion path (the supervision of the
+  run) bite: the check fails on its own assertion, not on an error of the code.
+  The wave changed the checks of others as well, and this is said here and not
+  hidden: twelve checks and six unit test files ended their run in words, and
+  their fake models now call `finish' (or the check asks for no supervision,
+  when its subject is not the path of the completion); docs/PLAN.md §16.31.
+- The journal of a live run lies in the working tree, and the model can erase
+  it: in the run of wave 50 the model deleted its own journal
+  (`rm -f sessions/wave50-1.jsonl').  The observation of a run is therefore not
+  protected from the run itself; this is an open defect of the harness and not
+  a wave yet.
 - The working directory of a session (`cwd') is still not applied to the
   tools: in the live check the `bash' of the agent ran in the directory of
   the process, not in the repository of the task (docs/PLAN.md §17.1).
 - The live stand of the transport was at fault, and not the provider: it stopped
   waiting at the first line that arrived, and the empty string that a
   reasoning model sends between its thinking and its answer was the absence of
-  an answer.  The decision what counts as an answer now lives in
-  tests/support/yeah-live-answer.el and is tested offline — text with content
-  and a tool call are answers, the empty string, the streaming sentinel and the
-  reasoning are not (the claim `the-live-stand-waits-for-an-answer').
+  an answer.  The decision what counts as an answer now lives in the kernel
+  (lib/yeah-answer.el, since the wave 49) and is tested offline — text with
+  content and a tool call are answers, the empty string, the streaming sentinel
+  and the reasoning are not (the claim
+  `the-live-stand-waits-for-an-answer').
 - Stage 6 is implemented offline: the run context owns the session, the
   transport, the answerer and the rules of one run, and the three
   placements — attached, service, batch — write the same events for the
@@ -525,7 +619,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-106 claim(s).
+122 claim(s).
 
 ```sh
 mathc run

@@ -1,0 +1,28 @@
+{
+  "id": "wave-50",
+  "title": "the check of the wire decides its verdict by construction",
+  "intent": "The check of the wire was flaky, and the reason was in the check itself: `yeah-check--raw' read the chunks of the wire with `nreverse', which turns the list over in place and leaves the variable at the cell that was its head.  The second reading of the wire found one chunk and not the wire, and the check reads the wire many times (the handshake, the session, the answer of the agent, and the bytes of the wire at the end), so its verdict depended on how many times it had read the wire before.  A check whose verdict depends on the order of its own readings cannot be read as evidence.  The first part of the wave repaired the reading (the list is read and not turned over, and the lines are cut out of the bytes before they are decoded) and the check gives the same verdict on twenty runs in a row.  The second part of the wave makes that a claim and not a hope: a new check takes the control of the claim of the text on the wire (the decoding of the UTF-8 bytes taken out of the wire) and runs the check of the wire against it twenty times in a copy of the repository.  Every one of the twenty runs must fail by an assertion of the check, and every one of them must fail in the same way: the same code of the exit and the same words.  A run that crashes Emacs, a run that hangs, a run that passes and a run that fails in another way are all failures of the new check.  The wave moves the wait of the check of the wire from the equality of the text to the end of the turn: the equality is the assertion of the check and not the condition of the wait, and a wait that asks for the equality waits the whole timeout on every run that the control has broken.  The loop of twenty runs of the new check costs eleven seconds and not ten minutes because of that one line.",
+  "touches": [
+    "tests/checks/check-wire-carries-the-text.el",
+    "tests/checks/check-wire-check-decides-its-verdict-by-construction.el",
+    "spec.json",
+    "waves/wave-50.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-wire-carries-the-text.el",
+    "./scripts/dev check tests/checks/check-wire-check-decides-its-verdict-by-construction.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-text-on-the-wire-is-the-text-the-model-wrote",
+    "the-wire-check-decides-its-verdict-by-construction"
+  ],
+  "commitment": [],
+  "objection": "The wait of the check of the wire is still a wait with a timeout of thirty seconds: a server that answers the prompt and never writes the message of the agent makes the check report the failure after the timeout, and the verdict is right and the wait is long.  The new check runs the check of the wire twenty times against one control -- the control of the claim of the text on the wire -- and against no other control of any other claim.  The verdict of a run is read from the words of the check (the lines that begin with `wire-text:'), and the noise of Emacs and of the server is not part of it: a check that printed its verdict in another place would decide in a way this check does not see.  The wave does not repair the check of the bridge: the claim `the-bridge-check-decides-the-race-by-construction' is still never checked, and the map still says so.  The wave does not run the whole set of the checks: the run of the whole set takes ten minutes of waiting and the provider drops the connection while it waits, so the evidence of the claims of the other waves stays outdated until the method runs the whole set again.  The wave does not change the wire itself: the bytes of the wire are the bytes that `yeah-wire-print-line' writes, and the claim of the text on the wire is the claim about them.",
+  "refuted_by": "the check of the wire gives different verdicts on consecutive runs of the control, or the control does not bite on one of them; or the check of the wire passes whatever the wire does",
+  "note": "The check of the wire passes on the whole tree (half a second) and the control of the claim of the text on the wire bites on each of the twenty runs of the new check: the same code of the exit (1) and the same words on every run.  The new check costs eleven seconds.  The control of the new claim (the moment of the clock in the words of the check) was applied to a copy of the tree, and the new check failed there with one failure: nineteen of the twenty runs decided in another way than the first one.  The subject check waits for the response to the prompt and not for the equality of the text: the message of the agent is on the wire before the response leaves, and the equality is the assertion.  A run that the control has broken ends in 0.6 seconds and not in thirty seconds, and its verdict is the same verdict as before the wave (the two assertions: the text of the answer is not on the wire as it was written, and the answer of the agent did not reach the client as its message).  The whole set of the checks was not run in this session: it is ten minutes of waiting and the provider drops the connection while it waits."
+}

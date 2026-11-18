@@ -181,7 +181,16 @@ failure of the check, not a crash of Emacs."
                                        (list (list :name "todo_add")
                                              (list "ask the model")
                                              (lambda (_value)
-                                               (funcall callback "the model is done")))))))
+                                               ;; The model ends the run through
+                                               ;; the call of `finish': a
+                                               ;; supervised run does not end
+                                               ;; on the words of the model
+                                               ;; (wave 53).
+                                               (funcall callback
+                                                        (list 'tool-call
+                                                              (list (list :name "finish")
+                                                                    (list "the task is written")
+                                                                    (lambda (_answer) nil))))))))))
                      (turn (yeah-turn-run session "do the work" transport)))
                 (unless (yeah-turn-done turn)
                   (push "the run did not finish" failures))

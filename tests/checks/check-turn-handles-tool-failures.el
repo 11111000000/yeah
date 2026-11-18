@@ -41,7 +41,12 @@ Return the completed turn, its records and model continuation observations."
                                    (lambda (value)
                                      (setq continuations (1+ continuations)
                                            continued-value value)
-                                     (funcall callback "finished")))))))))
+                                     (funcall callback "finished"))))))
+            ;; The run is not supervised: the subject of this check is the
+            ;; failure of a tool and not the path of the completion, and the
+            ;; words of the model end a run that asked for no supervision
+            ;; (wave 53).
+            nil 60000 0)))
       (setq outcome
             (list :turn turn
                   :records (yeah-session-records session)

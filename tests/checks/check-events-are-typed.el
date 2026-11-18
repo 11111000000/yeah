@@ -75,8 +75,15 @@
                                  (list (list :name "probe")
                                        (list "/tmp/probe-target")
                                        (lambda (value)
+                                         ;; The model ends the run through the
+                                         ;; call of `finish': a supervised run
+                                         ;; does not end on the words of the
+                                         ;; model (wave 53).
                                          (funcall callback
-                                                  (format "done: %s" value))))))
+                                                  (list 'tool-call
+                                                        (list (list :name "finish")
+                                                              (list (format "done: %s" value))
+                                                              (lambda (_answer) nil))))))))
                 (funcall callback "the model is done"))))
            (turn (yeah-turn-run session "do the thing" transport))
            (records (yeah-check--records root "events")))
@@ -85,7 +92,8 @@
       (unless (equal (yeah-check--types records)
                      '("header" "user-message" "tool-request"
                        "permission-request" "permission-decision"
-                       "tool-end" "assistant-message"))
+                       "tool-end" "tool-request" "permission-request"
+                       "permission-decision" "tool-end" "finish"))
         (push (format "the log holds the wrong events: %S"
                       (yeah-check--types records))
               failures))

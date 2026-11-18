@@ -32,6 +32,14 @@
   "---\nname: shallow\ndescription: Works only at the first level.\nmodel: cheap-model\ntools: read\ndepth: 1\n---\n\nYou are shallow.\n"
   "The preset that allows the depth one.")
 
+(defun yeah-delegate-depth-test--finish (summary)
+  "Return a gptel-shaped call of the `finish' tool with SUMMARY.
+A supervised run ends through this call and not through talk (wave 53)."
+  (list 'tool-call
+        (list (list :name "finish")
+              (list summary)
+              (lambda (_value) nil))))
+
 (defun yeah-delegate-depth-test--directory ()
   "Return a directory with the two presets of the test in it."
   (let ((directory (make-temp-file "yeah-delegate-depth" t)))
@@ -53,7 +61,7 @@
                    (list (list :name "delegate")
                          (list "reviewer" "look at the diff")
                          (lambda (_value)
-                           (funcall callback "the run is done")))))))
+                           (funcall callback (yeah-delegate-depth-test--finish "the run is done"))))))))
 
 (defun yeah-delegate-depth-test--grandchild-transport ()
   "Return the transport of the second turn: it asks for a grandchild."
@@ -62,7 +70,7 @@
              (list 'tool-call
                    (list (list :name "delegate")
                          (list "shallow" "look at the diff")
-                         (lambda (_value) (funcall callback "the run is done")))))))
+                         (lambda (_value) (funcall callback (yeah-delegate-depth-test--finish "the run is done"))))))))
 
 (defun yeah-delegate-depth-test--child-transport ()
   "Return the transport of a child that answers at once."

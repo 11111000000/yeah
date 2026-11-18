@@ -1,0 +1,47 @@
+{
+  "id": "wave-53",
+  "title": "the words of the model do not end a supervised run",
+  "intent": "A live run of the harness (wave 42, 2026-11-18) found the defect: the model called two hundred and sixty one tools, was in the middle of the work, answered `Now the ACP module itself:' and the run was recorded as a completed job.  The work that was left was thrown away with the run, and the journal of the run said that the work was done.  The standing specification says the opposite: the claim `finish-is-the-only-completion-path' says that with supervision the model ends the run by calling the `finish' tool and that a text answer alone is not a completion, and the comment in the code of the kernel says the same.  The implementation said otherwise: a text answer ended the run as soon as the run had called one tool.  The map of the method was green because no check of the repository covered that case: the unit test of the claim tested the `finish' call and not the text answer that comes instead of it.  The wave makes the code match the claim: a supervised run ends through the `finish' tool, a text answer that reports a result is not a completion, the run nudges the model into the call that ends it and carries the state of the work into the nudge, and a model that never calls `finish' spends the budget of the nudges and ends as a failed run that says it did not finish.  A run that asked for no supervision at all (a budget of zero) still ends on the word of the model: there is nobody to nudge it.  The wave repairs the control of the claim as well: it took away the context of the record of `finish' and not the subject of the claim, and it broke the code with a void variable instead of failing an assertion.  The control now takes away the supervision, and the assertion of the check fails by itself.",
+  "touches": [
+    "lib/yeah-turn.el",
+    "tests/support/scenario.el",
+    "tests/unit/test-yeah-control.el",
+    "tests/unit/test-yeah-run.el",
+    "tests/unit/test-yeah-delegate-asynchronous.el",
+    "tests/unit/test-yeah-delegate-depth-journal.el",
+    "tests/unit/test-yeah-delegate-journal.el",
+    "tests/unit/test-yeah-delegate-restart.el",
+    "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el",
+    "tests/checks/check-a-dropped-request-is-asked-again.el",
+    "tests/checks/check-approval-answers-later.el",
+    "tests/checks/check-compaction-degrades-when-the-summary-is-missing.el",
+    "tests/checks/check-events-are-typed.el",
+    "tests/checks/check-interactive-journey.el",
+    "tests/checks/check-interface-renders-events.el",
+    "tests/checks/check-model-turn-runs.el",
+    "tests/checks/check-the-compaction-waits-for-an-answer.el",
+    "tests/checks/check-three-placements.el",
+    "tests/checks/check-turn-compacts-asynchronously.el",
+    "spec.json",
+    "waves/wave-53.json",
+    "docs/PLAN.md",
+    "docs/ARCHITECTURE.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "a-text-answer-does-not-end-a-supervised-run",
+    "finish-is-the-only-completion-path",
+    "nudge-only-for-plans"
+  ],
+  "commitment": [],
+  "objection": "The words of the model are no longer the end of a supervised run: the run asks for the call of `finish' and the model has one more turn to make it, and a person who watches the timeline sees the nudge between the words of the model and the summary of the run.  The claim `nudge-only-for-plans' said the opposite -- `a result that a tool backs ends the run' -- and it contradicted the claim `finish-is-the-only-completion-path' word for word.  Two claims of one specification cannot hold at once, and the wave chose the stricter reading, because the architecture of the harness and the prelude that the model reads both say that the run ends through the call of `finish'.  The amendment of the claim is written into the claim itself, and the owner may read it there: the choice was between two claims that the repository held at once, and not between a claim and the absence of a claim.  The wave does not decide what happens to a model that never calls `finish': the budget of the nudges decides, and the budget is a decision of the owner (docs/PLAN.md §17.2).  The wave does not repair the ACP route for a client whose model answers in words: such a client now gets a nudge, and a refusal when the model does not call `finish' -- the wire still speaks ACP, and the stop reason of a run that did not finish is `refusal' (the claim `a-run-that-did-not-finish-is-not-a-success').  The wave does not touch the runs of the children of a delegation: their budget of the nudges is zero, so their words end their run as before (docs/PLAN.md §17.2).  The wave was carried out by the owner and not by the harness itself: the harness could not carry it out, because the defect is in the path that ends the run of the harness.",
+  "refuted_by": "a supervised run ends as a completed job on a text answer alone, or a run that spent its budget ends without the record that says it did not finish, or the control of the claim breaks the code instead of failing the assertion of the check",
+  "note": "The live run that found the defect is in the journal of the copy of the repository (/home/az/Projects/yeah-selfdev-2, sessions/wave42-1.jsonl): two hundred and sixty one calls of tools in the first attempt and a hundred and forty two in the second, four hundred and three in the two attempts together, and the last answer of the first attempt was `Now the ACP module itself:' while the last answer of the second was `Now the dispatcher and the serve loop:' -- the state of the run was `completed' both times and the run had no call of `finish' at all.  The change of the kernel is in lib/yeah-turn.el: `yeah-turn--supervised-p' decides that a run is supervised, `yeah-turn--answer-text' treats every text answer of a supervised run as premature, `yeah-turn--nudge-result-text' asks for the call of `finish' and carries the state of the work, and the record of a run that did not finish names the answers that reported a result without the call.  The unit tests of the repository that ended their run with words now end it with the call of `finish' (four files of the delegation) or ask for no supervision at all (two tests of the run), and one new unit test asserts that a supervised run does not end on a text answer.  The checks of the repository whose fake models ended their run in words were repaired the same way: six of them ended the run through the call of `finish' and six more ask for no supervision, and their subjects (the journal, the view, the journey, the turn) are the same as before.  The new check runs a supervised turn and an unsupervised one: the first ends as a failed run with the record `unfinished' and no record of `finish', the second ends as a completed job.  The control of the claim (`sed -i 's|(yeah-turn--supervised-p turn)|nil|' lib/yeah-turn.el') was applied to a copy of the tree, and the check failed there by its own assertion: the run ended as `completed'."
+}

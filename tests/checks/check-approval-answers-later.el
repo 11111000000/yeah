@@ -89,7 +89,12 @@ BODY is called with a function that says how many times the tool ran."
                         ;; The question is asked now: the request is
                         ;; already in the log and nothing is decided yet.
                         (setq seen (yeah-check--types session))
-                        (list :effect :allow :reply :once)))))
+                        (list :effect :allow :reply :once))
+                      ;; The run is not supervised: the subject of this
+                      ;; check is the question that waits for an answer,
+                      ;; and the words of the model end a run that asked
+                      ;; for no supervision (wave 53).
+                      60000 0)))
                 (should (member "permission-request" seen))
                 (should-not (member "permission-decision" seen))
                 (should (equal '("header" "user-message" "tool-request"
@@ -114,7 +119,8 @@ BODY is called with a function that says how many times the tool ran."
                       session "do it"
                       (yeah-check--transport)
                       (yeah-approval-async
-                       (lambda (_request done) (setq answer done))))))
+                       (lambda (_request done) (setq answer done)))
+                      60000 0)))
                 (should answer)
                 (should (= 0 (funcall ran)))
                 ;; the answer comes later
@@ -146,7 +152,8 @@ BODY is called with a function that says how many times the tool ran."
                session "do it"
                (yeah-check--transport)
                (yeah-approval-async
-                (lambda (_request done) (setq answer done))))
+                (lambda (_request done) (setq answer done)))
+               60000 0)
               (funcall answer (list :effect :allow :reply :once))
               (funcall answer (list :effect :deny :reply :reject))
               (should (= 1 (funcall ran)))
@@ -168,7 +175,8 @@ BODY is called with a function that says how many times the tool ran."
                       session "do it"
                       (yeah-check--transport)
                       (yeah-approval-async
-                       (lambda (_request done) (setq answer done))))))
+                       (lambda (_request done) (setq answer done)))
+                      60000 0)))
                 (yeah-turn-cancel turn "the run is over")
                 (funcall answer (list :effect :allow :reply :once))
                 (should (= 0 (funcall ran)))

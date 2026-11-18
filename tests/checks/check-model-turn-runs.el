@@ -46,7 +46,9 @@ the check see the same variable."
   "Return a transport that asks the model and then answers.
 The model first thinks out loud, then asks for the tool, then answers.
 The reasoning comes as its own chunk, exactly as a reasoning model sends
-it: the turn must not mistake the thinking for the answer. ASKED is a
+it: the turn must not mistake the thinking for the answer.  When the tool
+has run, the model ends the run through the call of `finish': a supervised
+run does not end on the words of the model (wave 53).  ASKED is a
 one element cell holding the number of times the model was asked."
   (lambda (prompt callback)
     (setf (car asked) (1+ (car asked)))
@@ -58,7 +60,18 @@ one element cell holding the number of times the model was asked."
                    (list (list :name "probe")
                          (list "/tmp/probe-target")
                          (lambda (value)
-                           (funcall callback (format "done: %s" value))))))))
+                          ;; The model ends the run through `finish' when the
+                          ;; tool ran.  A tool that the rules refused did not
+                          ;; run: the model reads the refusal, the run nudges
+                          ;; it, and the run that never finished does not end
+                          ;; as a completed job (wave 53).
+                          (if (string-prefix-p "deny:" (format "%s" value))
+                              (funcall callback "the tool was refused")
+                            (funcall callback
+                                     (list 'tool-call
+                                           (list (list :name "finish")
+                                                 (list (format "done: %s" value))
+                                                 (lambda (_answer) nil)))))))))))
 
 (defun yeah-check--log-records (root name)
   "Return the records of the log of session NAME under ROOT.
@@ -101,14 +114,16 @@ Returns a list of failures; an empty list means the turn behaved."
               failures))
       (unless (equal (yeah-turn-states turn)
                      '(deciding post-decide awaiting-tool accumulating
-                       post-decide deciding post-decide completed))
+                       post-decide deciding post-decide awaiting-tool
+                       accumulating post-decide completed))
         (push (format "the machine went through the wrong states: %S"
                       (yeah-turn-states turn))
               failures))
       (unless (equal (yeah-check--types records)
                      '("header" "user-message" "tool-request"
                        "permission-request" "permission-decision"
-                       "tool-end" "assistant-message"))
+                       "tool-end" "tool-request" "permission-request"
+                       "permission-decision" "tool-end" "finish"))
         (push (format "the log holds the wrong records: %S"
                       (yeah-check--types records))
               failures))

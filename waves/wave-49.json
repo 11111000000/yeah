@@ -1,0 +1,35 @@
+{
+  "id": "wave-49",
+  "title": "the compaction waits for the answer, and the decision of an answer lives in the kernel",
+  "intent": "A live run of the wave 41 (the run of 2026-11-17 18:17, the journal `sessions/wave41e.jsonl') died in the tools and not in the provider: the compaction of the context asked the model for a summary, the provider that reasons answered with its thinking first, and the compaction took the first piece for the answer.  The run degraded for nothing (the record `compaction-failed' of id 2158), the run went on, and the summary that came later committed a compaction (the record `compaction' of id 2163) and continued a run whose machine was in a state that has no such transition: `yeah-loop-tick: no transition from awaiting-tool on continue' (the record `error' of id 2164), and the cascade that followed killed the run with three more errors.  The compaction had to know what counts as an answer, and it did not: the decision lived in a file of the tests (`tests/support/yeah-live-answer.el'), where the kernel cannot reach it.  The wave moves the decision into the kernel (`lib/yeah-answer.el'), makes the compaction wait for the answer of the provider (the thinking is the road to the answer and not the end of the request), and delivers the outcome of a compaction once, so that a provider that answers twice does not compact the context twice and does not break the run.  The wave was found by a live run and not by an offline check, and the check that covers it plays the shape of that run with a fake provider: no network is touched, but the shape is the one that broke the harness, down to the thinking that comes before the answer.",
+  "touches": [
+    "lib/yeah-answer.el",
+    "lib/yeah-context.el",
+    "lib/yeah-compact.el",
+    "lib/yeah-turn.el",
+    "tests/support/yeah-live-answer.el",
+    "tests/unit/test-yeah-answer.el",
+    "tests/checks/check-the-compaction-waits-for-an-answer.el",
+    "spec.json",
+    "waves/wave-49.json",
+    "docs/ARCHITECTURE.md",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-the-compaction-waits-for-an-answer.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-compaction-waits-for-an-answer",
+    "the-outcome-of-a-compaction-arrives-once",
+    "the-live-stand-waits-for-an-answer"
+  ],
+  "commitment": [],
+  "objection": "The wait has no bound of its own: a provider that answers with its thinking and never answers again leaves the run in the state `compacting' until the deadline of the run (if there is one) cancels it.  The turn waits for the answer of the model in the same way, so the wave buys the runs that meet a provider that thinks and then answers, and not the runs that meet a provider that thinks and then says nothing.  The decision of an answer is the decision of gptel: the shapes are the shapes of gptel, and a transport that answers with shapes of its own is answered by the branch `unknown' of the decision, which ends the request without a summary.  The compaction commits the first text that the provider sends, so a provider that streams its answer in pieces gives a summary of its first piece; the harness asks the model without streaming, and the wave does not change that.  The guard of the turn (a compaction that answers when the run has moved on does not continue the run) is a net of the second line: with the outcome delivered once, the run cannot meet it, and the wave does not claim it separately.  The wave does not repair the defect of the working directory of a session (`cwd' is still not applied to the tools, docs/PLAN.md 17.1), and it does not repair the shape of the live runs that read the repository and changed nothing (docs/PLAN.md 17.1).  The wave does not touch the plan of the owner: the waves 41 to 44 keep their numbers and their order, and the run that found this defect was the run of the wave 41.",
+  "refuted_by": "the compaction takes the thinking of the provider for the answer, or the run degrades while the provider is still thinking; or the outcome of a compaction is delivered twice, or the second answer of the provider breaks the run; or the decision of an answer is not the decision of the kernel",
+  "note": "Both controls of the wave were run against the code of this wave and bit; each of them made the check fail by an assertion of the check and not by a crash of Emacs.  The control of `the-compaction-waits-for-an-answer' takes the wait out of the compaction (`(yeah-answer-end-p response)' becomes `t'), and the check fails on six assertions: the journal holds no compaction, the summary of the provider is not in the journal, the thinking of the provider ended the request of the summary, and the run that answers late holds no compaction either.  The control of `the-outcome-of-a-compaction-arrives-once' takes the guard of the outcome out of the compaction and of the context, and the check fails on three assertions: the journal holds two compactions instead of one, the run did not go on, and the run wrote the error `yeah-loop-tick: no transition from deciding on continue' into the journal -- the very error that killed the live run.  The check was run against the code of the wave before the wave and it fails there on seven assertions, among them the error of the live run: the check is a proof that the wave repaired the defect and not a proof that the code of the wave is the code of the check.  The claim `the-live-stand-waits-for-an-answer' was amended and not rewritten: its scope grows by `lib/yeah-answer.el', its decision moves there from the file of the tests, and its control moves with it (`tests/support/yeah-live-answer.el' is a wrapper around the kernel now, and a control that breaks the decision of the stand would break nothing).  The control of the amended claim was run and bit: the unit tests of the kernel and of the stand fail on two assertions."
+}

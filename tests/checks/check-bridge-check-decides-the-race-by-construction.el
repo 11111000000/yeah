@@ -58,16 +58,26 @@ the depth of its own file.")
 (defconst yeah-check--bridge-check "tests/checks/check-bridge-keeps-the-answer.el"
   "The check of the bridge, the one this check runs.")
 
+(defun yeah-check--field (object key)
+  "Return the value of the field KEY of OBJECT, or nil when it has none.
+The keys of a JSON object come as symbols from Emacs 30 and as strings
+from the older Emacs: the check asks for both and finds the field
+whichever way the specification was read."
+  (and (listp object)
+       (or (alist-get key object)
+           (alist-get (symbol-name key) object nil #'string=))))
+
 (defun yeah-check--control-of (claim-id)
   "Return the control of the claim CLAIM-ID, or nil when it has none.
 The control is read from the standing specification: the check runs
 the control that the claim declares, and not a copy of it."
   (let* ((json-object-type 'alist)
          (spec (json-read-file (expand-file-name "spec.json" yeah-check--root)))
-         (claims (alist-get "claims" spec))
-         (claim (seq-find (lambda (entry) (equal (alist-get "id" entry) claim-id))
+         (claims (yeah-check--field spec 'claims))
+         (claim (seq-find (lambda (entry) (equal (yeah-check--field entry 'id)
+                                                 claim-id))
                            claims)))
-    (and claim (alist-get "control" claim))))
+    (and claim (yeah-check--field claim 'control))))
 
 (defun yeah-check--copy-tree (source target)
   "Copy the tree of the directory SOURCE into the directory TARGET."
@@ -76,7 +86,7 @@ the control that the claim declares, and not a copy of it."
     (let ((name (file-name-nondirectory entry)))
       (if (file-directory-p entry)
           (yeah-check--copy-tree entry (expand-file-name name target))
-        (file-copy-file entry (expand-file-name name target))))))
+        (copy-file entry (expand-file-name name target))))))
 
 (defun yeah-check--bridge-command (directory)
   "Return the command that runs the check of the bridge in DIRECTORY."
@@ -89,17 +99,17 @@ the control that the claim declares, and not a copy of it."
   "Run the check of the bridge in DIRECTORY.
 Return the code of the run and the words it printed.  The code of a
 run that did not finish in time is the symbol `timeout'."
-  (let ((output "")
-        (words (generate-new-buffer " *yeah-bridge-check words*"))
-        (process (make-process
-                  :name "yeah-bridge-check-run"
-                  :command (yeah-check--bridge-command directory)
-                  :connection-type 'pipe
-                  :noquery t
-                  :coding '(utf-8 . utf-8)
-                  :filter (lambda (_process chunk)
-                            (setq output (concat output chunk)))
-                  :stderr words)))
+  (let* ((output "")
+         (words (generate-new-buffer " *yeah-bridge-check words*"))
+         (process (make-process
+                    :name "yeah-bridge-check-run"
+                    :command (yeah-check--bridge-command directory)
+                    :connection-type 'pipe
+                    :noquery t
+                    :coding '(utf-8 . utf-8)
+                    :filter (lambda (_process chunk)
+                              (setq output (concat output chunk)))
+                    :stderr words)))
     (unwind-protect
         (let ((deadline (+ (float-time) yeah-check--run-timeout)))
           (while (and (process-live-p process)

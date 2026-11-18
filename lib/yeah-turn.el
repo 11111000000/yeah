@@ -98,6 +98,11 @@ run twice."
   (nudge-spent 0)
   (nudge-calls 0)
   (silent-nudges 0)
+  ;; RESULT-NUDGES counts the nudges that answered an answer of the model
+  ;; which reported a result without the call of `finish'.  A supervised run
+  ;; ends through `finish' (wave 53), so such an answer is not a completion
+  ;; and the run says so instead of looking done.
+  (result-nudges 0)
   ;; A request that the provider dropped is asked again (wave 48).  RETRIES
   ;; counts the tries of the request that is being asked now, MAX-RETRIES is
   ;; the budget of those tries, and PROMPT is the question of the last
@@ -690,7 +695,8 @@ more and a run that cannot go on says so."
                       (yeah-turn--context turn)
                       :reason (yeah-turn--reason-text reason))
     (yeah-context-prune-session (yeah-turn-session turn))
-    (yeah-turn--continue-batch turn)))
+    (when (eq (yeah-turn-state turn) 'compacting)
+      (yeah-turn--continue-batch turn))))
 
 (defun yeah-turn--maybe-compact (turn transport)
   "Compact TURN's session before continuing when its budget overflows."
@@ -705,9 +711,17 @@ more and a run that cannot go on says so."
          transport
          (lambda (result _info)
            (unless (yeah-turn-done turn)
-             (if (plist-get result :error)
-                 (yeah-turn--compaction-failed turn (plist-get result :error))
-               (yeah-turn--continue-batch turn))))
+             (cond
+              ((plist-get result :error)
+               (yeah-turn--compaction-failed turn (plist-get result :error)))
+              ((eq (yeah-turn-state turn) 'compacting)
+               (yeah-turn--continue-batch turn))
+              (t
+               ;; The run has moved on while the context was compacted.  The
+               ;; summary is in the journal, and the run goes on its own way:
+               ;; continuing it here would be a transition that the machine of
+               ;; the run does not have.
+               nil))))
          (lambda () (not (yeah-turn-done turn)))))
     (yeah-turn--continue-batch turn)))
 
@@ -878,6 +892,11 @@ for the nudges that no effect answered."
   (cl-incf (yeah-turn-nudges turn))
   (when (yeah-turn--silent-p answer)
     (cl-incf (yeah-turn-silent-nudges turn)))
+  (when (and (not (yeah-turn--silent-p answer))
+             (not (yeah-turn--plan-p answer)))
+    ;; The answer reported a result and did not call `finish': it is the
+    ;; answer that a supervised run nudges into the call that ends it.
+    (cl-incf (yeah-turn-result-nudges turn)))
   (when spend
     (cl-incf (yeah-turn-nudge-spent turn)))
   (setf (yeah-turn-nudge-calls turn) (yeah-turn-calls turn))
@@ -898,16 +917,22 @@ for the nudges that no effect answered."
 (defun yeah-turn--unfinished-payload (turn)
   "Return the payload of the `unfinished' record of TURN.
 It names what the model did: how many times it answered with an empty
-message, how many times it described its next step, how many tools the run
-called, and whether the run had an effect at all.  A record that says
-`without an effect' when the run called its tools is a false record."
+message, how many times it reported a result without calling `finish', how
+many times it described its next step, how many tools the run called, and
+whether the run had an effect at all.  A record that says `without an effect'
+when the run called its tools is a false record."
   (let* ((empty (yeah-turn-silent-nudges turn))
-         (plans (- (yeah-turn-nudges turn) empty))
+         (results (yeah-turn-result-nudges turn))
+         (plans (- (yeah-turn-nudges turn) empty results))
          (calls (yeah-turn-calls turn))
          (parts (delq nil
                       (list (when (> empty 0)
                              (format "the model answered with an empty message %s"
                                      (yeah-turn--counted empty "time")))
+                            (when (> results 0)
+                             (format (concat "the model reported a result without "
+                                             "calling `finish' %s")
+                                     (yeah-turn--counted results "time")))
                             (when (> plans 0)
                              (format "the model described its next step %s"
                                      (yeah-turn--counted plans "time")))))))
@@ -918,10 +943,19 @@ called, and whether the run had an effect at all.  A record that says
               (string-join parts ", ")
               (yeah-turn--counted calls "tool")))))
 
+(defun yeah-turn--supervised-p (turn)
+  "Return non-nil when the run of TURN is supervised.
+A supervised run ends through the `finish' tool: a text answer alone is not a
+completion, and the run nudges the model into the call that ends it.  A run
+that asked for no supervision at all ends on the word of the model, because
+there is nobody to nudge it."
+  (> (yeah-turn-max-nudges turn) 0))
+
 (defun yeah-turn--answer-text (turn answer transport answerer)
   "Handle a text ANSWER from the model: record it, nudge it or end the run.
 A plan, an answer that says nothing, and a result that no tool backs, are
-nudged into the action; a result that a tool backs ends the run.  A run that
+nudged into the action; a supervised run ends through `finish' and not through
+talk, so a text answer of a supervised run is never a completion.  A run that
 spent its nudge budget without an effect ends as a failed run: it did not do
 the work, and it must not look as if it had.
 
@@ -949,9 +983,14 @@ ended by the noise of the provider."
                           ;; work.
                           silent
                           ;; A result that no tool backs is premature: the run
-                          ;; has not touched anything yet.  And a run that is
-                          ;; supervised ends through `finish', not through talk.
-                          (null (yeah-turn-tools-used turn)))))
+                          ;; has not touched anything yet.
+                          (null (yeah-turn-tools-used turn))
+                          ;; A supervised run ends through `finish', not through
+                          ;; talk.  A model that reports a result in words and
+                          ;; never calls the tool has not finished the run, and
+                          ;; a run that took the words for the finish would
+                          ;; throw away the work that is left.
+                          (yeah-turn--supervised-p turn))))
       (yeah-turn--tick turn 'stream-end)
       (cond
        ((and acted premature)
@@ -1192,6 +1231,62 @@ because it is the cheapest safe way to touch the project for real."
                         (plist-get spec :input)))))
      unused)))
 
+(defun yeah-turn--nudge-plan-text (turn answer)
+  "Return the nudge for an answer that only announces the next step.
+The nudge names the tools the run has not called yet and, when one of them
+takes a path, the exact call to make: a model that describes its next step is
+answered with the step itself, and a second nudge says that the next answer
+must contain the call, not a plan."
+  (let* ((unused (yeah-turn--unused-tools turn))
+         (tool (yeah-turn--unused-path-tool turn))
+         (path (yeah-turn--answer-path answer))
+         (repeated (> (yeah-turn-nudges turn) 1)))
+    (concat
+     (when repeated
+       "You have already been asked to act: your next answer must contain the tool call, not a plan.\n\n")
+     (if (null unused)
+         yeah-turn-nudge-message
+       (format (concat "%s\n\nYou have not called these tools yet: %s. "
+                       "Call one of them now, with the arguments it needs, "
+                       "or call `finish' with a summary when the task is done "
+                       "and verified. "
+                       "Do not describe what you are about to do instead of "
+                       "doing it.")
+               yeah-turn-nudge-message
+               (string-join unused ", ")))
+     (cond
+      ((and tool path)
+       (format (concat "\n\nMake this call now: `%s' on %s. "
+                       "Your next answer must be the tool call, not a plan.")
+               tool path))
+      (tool
+       (format (concat "\n\nMake this call now: `%s', with the `path' argument. "
+                       "Your next answer must be the tool call, not a plan.")
+               tool))
+      (t "")))))
+
+(defun yeah-turn--nudge-result-text (turn)
+  "Return the nudge for an answer that reports a result without the `finish' call.
+A supervised run ends through the `finish' tool: the words of the model are
+not the end of the run.  The nudge asks for the call that ends the run, or
+for the work that is left, and it carries the state of the work so that the
+model continues instead of starting the task over."
+  (let* ((unused (yeah-turn--unused-tools turn))
+         (repeated (> (yeah-turn-nudges turn) 1)))
+    (concat
+     (when repeated
+       "You have already been asked to finish: your next answer must be the call of `finish' or the next tool call, not another report.\n\n")
+     "Your answer is not a completion: this run ends through the `finish' tool.\n\n"
+     (yeah-turn--work-state-text turn)
+     (if (null unused)
+         (concat "If the work is done and verified, call `finish' with a summary of "
+                 "what you changed and how you checked it. If it is not done, "
+                 "continue with the tools you still need.\n\n")
+       (format (concat "If the work is done and verified, call `finish' with a summary "
+                       "of what you changed and how you checked it. If it is not done, "
+                       "continue with the tools you have not called yet: %s.\n\n")
+               (string-join unused ", "))))))
+
 (defun yeah-turn--nudge-text (turn &optional answer)
   "Return the nudge text for TURN after the model answered ANSWER.
 The nudge names the tools the run has not called yet and, when one of
@@ -1203,40 +1298,22 @@ A silence is not a plan: the model said nothing, and the run does not
 know what it meant to do next.  The nudge of a silence carries the state
 of the work instead — the tools the run called and what they returned —
 and it does not name an unused tool as the next call, because a model
-that is told to repeat a call starts the work over."
-  (if (yeah-turn--silent-p answer)
-      (concat "Your last answer was empty: you have said nothing, and the task is not done.\n\n"
-              (yeah-turn--work-state-text turn)
-              (concat "Continue the work from there: do not repeat the calls you have "
-                      "already made with the same arguments. "
-                      "When the work is done, call `finish' with a summary.\n\n"))
-    (let* ((unused (yeah-turn--unused-tools turn))
-           (tool (yeah-turn--unused-path-tool turn))
-           (path (yeah-turn--answer-path answer))
-           (repeated (> (yeah-turn-nudges turn) 1)))
-      (concat
-       (when repeated
-         "You have already been asked to act: your next answer must contain the tool call, not a plan.\n\n")
-       (if (null unused)
-           yeah-turn-nudge-message
-         (format (concat "%s\n\nYou have not called these tools yet: %s. "
-                         "Call one of them now, with the arguments it needs, "
-                         "or call `finish' with a summary when the task is done "
-                         "and verified. "
-                         "Do not describe what you are about to do instead of "
-                         "doing it.")
-                 yeah-turn-nudge-message
-                 (string-join unused ", ")))
-       (cond
-        ((and tool path)
-         (format (concat "\n\nMake this call now: `%s' on %s. "
-                         "Your next answer must be the tool call, not a plan.")
-                 tool path))
-        (tool
-         (format (concat "\n\nMake this call now: `%s', with the `path' argument. "
-                         "Your next answer must be the tool call, not a plan.")
-                 tool))
-        (t ""))))))
+that is told to repeat a call starts the work over.
+
+A result that reports itself in words is neither: the run is supervised,
+so the words are not the end of it.  The nudge of such an answer asks
+for the call of `finish' or for the work that is left."
+  (cond
+   ((yeah-turn--silent-p answer)
+    (concat "Your last answer was empty: you have said nothing, and the task is not done.\n\n"
+            (yeah-turn--work-state-text turn)
+            (concat "Continue the work from there: do not repeat the calls you have "
+                    "already made with the same arguments. "
+                    "When the work is done, call `finish' with a summary.\n\n")))
+   ((yeah-turn--plan-p answer)
+    (yeah-turn--nudge-plan-text turn answer))
+   (t
+    (yeah-turn--nudge-result-text turn))))
 
 (defun yeah-turn--ask (turn prompt transport answerer)
   "Ask the model PROMPT with TRANSPORT, and continue TURN when it answers.
