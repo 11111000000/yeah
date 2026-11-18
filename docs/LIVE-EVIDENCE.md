@@ -1843,8 +1843,86 @@ the `.git` of the copy was 21 MB and the clone took 97 ms; after `git gc
 this one.  `git status' did not change and the working tree was not touched:
 this is the hygiene of the object store and not a change of the project.
 
+### Wave 63 — the control bites for its own reason
+
+The second full gate of 2026-11-18 (14 min 7 s) gave the map one non-green row —
+the judgment of the owner — and every other claim `holds (current)` with
+`uncovered: 0 file(s)`.  The log of that gate said something the map did not: the
+check of the documentation reported four documents naming `bench/results/*.jsonl`
+and `tests/artifacts`, names that are not there.  A green check that reports four
+broken names is not a green check, and the map had believed a claim that the
+working tree and the isolated copy of the method answered differently about.
+
+**The cause.**  The method runs every control in an isolated copy of the repository
+(`adapter/isolated_run.ml` of the method repository).  The copy holds the files of
+the repository and nothing else: `git clone --no-hardlinks --no-checkout`, `git
+checkout --detach HEAD`, the files of `git ls-files -z --cached --others
+--exclude-standard`, and `git add -A -- .`.  `bench/results/` and
+`tests/artifacts/` are ignored by `.gitignore`, so they are the output of a run and
+not files of the repository, and the copy does not have them.  The check of wave 62
+listed the directories of the working tree and took every name that began with a
+known thing of the top level to be a path of the repository: in the working tree
+`tests/artifacts` is there and the name is true, in the copy it is not there and
+the name is a dead end.  The same check, two answers.
+
+**The consequence for the control.**  The control of the claim
+`the-documentation-points-at-files-that-exist` appends the name of a file that is
+not there to `docs/PLAN.md` and expects the check to fall.  In the copy the check
+fell — but it fell on three other names (`tests/artifacts` in `README.md` and
+`docs/LIVE-EVIDENCE.md`, `bench/results` in `docs/PLAN-NEXT.md`) and not on the name
+the control had put there.  Reach was `subject`, the code after the control was 1,
+and the check had bitten for a reason that had nothing to do with the control.  A
+control of that kind proves that the check can fail, and nothing more.
+
+**The stand that lied.**  The first measurement of the controls of wave 62 said
+`5 of 5 BITES`.  That stand copied the repository with `shutil.copytree` and
+`ignore_patterns("tests/artifacts")`, and `fnmatch` compares the basename, so a
+pattern with a slash in it never matched: the ignored directories came into the
+copy, the base line was green there, and the control bit.  The stand was wrong,
+not the checks.  The second stand repeats the recipe of the method word for word
+(`git clone --no-hardlinks --no-checkout`, `git checkout --detach HEAD`, the files
+of `git ls-files -z --cached --others --exclude-standard` over the checkout, `git
+add -A -- .`), and with it four of the five claims of wave 62 bite honestly
+(`the-support-fixtures-load`, `the-live-tests-are-whole-files`,
+`the-interface-is-seen`, `the-site-shows-the-current-version` — all `BITES: True`),
+and the fifth does not bite at all: `BITES: False`, base line exit 1, and the check
+falls with the three names that the copy does not have.
+
+**The fix.**  The rule of the check is now: the repository decides what a path of
+the repository is.  The files of the repository are the files git knows (`git
+ls-files --cached --others --exclude-standard`), the top level of the repository is
+built from that list and not from a listing of directories, and an ignored name is
+the output of a run and not a path of the repository — git says so (`git
+check-ignore`), and such a name is left alone.  Every name is asked about twice,
+as it is written and with a slash at the end of it: the rule `tests/artifacts/`
+matches only a name that git knows to be a directory, and the directory is not
+there in the copy of the method, so the form with the slash is the one that
+answers the same way in both places.  The check still has to find at least one
+name, or it falls with "no name of the documentation was followed".
+
+**The measurement after the fix.**  Base line exit 0 (497 ms), after the control
+exit 1 (620 ms), the scope changed, the code of the control was 0, and the check
+fell with its own finding: "docs: PLAN.md: line 3721: it names
+docs/there-is-no-such-file.md, and there is no such file".  The working tree: exit
+0, 435 ms.  The other four claims of wave 62 keep biting on the same stand:
+support 2495 ms exit 0 and 2502 ms exit 1, live 262 ms exit 0 and 247 ms exit 1,
+pixel 6006 ms exit 0 and 5363 ms exit 1, site 230 ms exit 0 and 253 ms exit 1.
+
+**Two dialects found on the way.**  `delete-dups` in Emacs 30.2 takes one argument;
+the comparison of strings needs `cl-remove-duplicates` with `:test #'string=`.  And
+`git check-ignore --stdin` waits for EOF, which `process-send-string` does not
+send, so the check hung; the paths are passed as arguments.
+
 ## What is still open
 
+- A control that bites for the wrong reason is green for the method.  The
+  control of the claim `the-documentation-points-at-files-that-exist` fell on three
+  names that had nothing to do with the control, and the map held the claim as
+  green (wave 62, 2026-11-18).  The method asks for `reach = subject` and for the
+  code of the check after the control, and both were there; it does not ask
+  whether the check fell on the thing the control touched.  Wave 63 fixed the
+  check, not the method, and the question of the owner is whether the method
+  should tell the two apart.
 - The spin of the daemon of a live session is neither localized nor closed.
   The measurement of 2026-11-18 (399–498 ticks in ten seconds, 80–100 % of a
   core) was taken on the code of that day; the waves 55–61 closed leaks, not
