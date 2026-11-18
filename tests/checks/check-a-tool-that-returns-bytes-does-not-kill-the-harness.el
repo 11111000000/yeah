@@ -40,7 +40,8 @@
 (require 'yeah-session)
 (require 'yeah-process)
 (let* ((root (or (getenv \"YEAH_CHILD_ROOT\") \"/tmp\"))
-       (session (yeah-session-open \"child\" root)))
+       (session (yeah-session-open \"child\" root))
+       (done nil))
   (yeah-process-bash
    (list (or (getenv \"YEAH_CHILD_COMMAND\") \"true\") 30 root nil)
    (lambda (result)
@@ -49,10 +50,15 @@
      (princ (if (multibyte-string-p (plist-get result :content)) \"t\" \"nil\"))
      (terpri)
      (princ \"CHILD-OK\")
-     (terpri))))
-(let ((deadline (+ (float-time) 20)))
-  (while (< (float-time) deadline)
-    (accept-process-output nil 0.2)))
+     (terpri)
+     ;; The journal of the tool is on the disk when this callback ends: the
+     ;; journal is written with `write-region', not buffered.  The child has
+     ;; nothing left to wait for, and it says so instead of guessing how long
+     ;; the work takes.
+     (setq done t)))
+  (let ((deadline (+ (float-time) 60)))
+    (while (and (not done) (< (float-time) deadline))
+      (accept-process-output nil 0.1))))
 (kill-emacs 0)
 "
   "The Elisp source of the child that runs the real path of the tool.")

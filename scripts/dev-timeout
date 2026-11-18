@@ -1,0 +1,180 @@
+#!/usr/bin/env bash
+# scripts/dev-timeout — run a command under a limit of time.
+#
+#   scripts/dev-timeout SECONDS COMMAND [ARGUMENT...]
+#
+# The gate of the map runs a check and waits for it.  A check that never
+# ends never lets the gate finish: the gate eats the wall clock of the
+# machine, the map stays empty, and nothing says why.  This script bounds
+# the wait.  The command runs in a process group of its own; when the
+# limit passes, the group is asked to stop (SIGTERM) and then stopped
+# (SIGKILL) three seconds later.
+#
+# The children of the command are stopped as well.  Emacs 30.2 gives every
+# child of `make-process' a process group of its own, so a signal to the
+# group of the command does not reach them: they are found through /proc
+# and stopped by their own group.
+#
+# Exit codes:
+#   0 — the command held
+#   1 — the command is refuted (the code of the command itself)
+#   2 — the usage is wrong
+#   3 — the limit passed: the method could not tell
+#
+# The third answer is not a soft version of the first: a command that was
+# stopped did not fail.  The method reads the third answer as "unknown"
+# (adapter/process.ml and lib/verdict.ml of math-coding), and the map says
+# so about the claim instead of calling it refuted.
+
+set -u
+
+if [ $# -lt 2 ]; then
+  echo "scripts/dev-timeout: usage: scripts/dev-timeout SECONDS COMMAND [ARGUMENT...]" >&2
+  exit 2
+fi
+
+limit="$1"
+shift
+
+case "$limit" in
+  ''|*[!0-9]*)
+    echo "scripts/dev-timeout: the limit must be a whole number of seconds" >&2
+    exit 2
+    ;;
+esac
+if [ "$limit" -lt 1 ]; then
+  echo "scripts/dev-timeout: the limit must be at least one second" >&2
+  exit 2
+fi
+
+now_ms() {
+  printf '%s' "$(( $(date +%s%N) / 1000000 ))"
+}
+
+# The process group of the process PID, or nothing when the process is gone.
+process_group() {
+  awk '{ i = index($0, ")"); if (i == 0) next
+         rest = substr($0, i + 2); split(rest, f, " ")
+         print f[3] }' "/proc/$1/stat" 2>/dev/null
+}
+
+# The descendants of PID, the deepest first.
+#
+# The name of a process may hold spaces and parentheses, so the fields of
+# /proc/PID/stat are read after the last closing parenthesis: what is left
+# is the state, the parent, the group, the session, and the rest.
+descendants() {
+  local parent="$1" child
+  while read -r child; do
+    [ -n "$child" ] || continue
+    descendants "$child"
+    printf '%s\n' "$child"
+  done <<CHILDREN
+$(awk -v p="$parent" '
+  FNR == 1 { split(FILENAME, parts, "/"); pid = parts[3] }
+  { i = index($0, ")"); if (i == 0) next
+    rest = substr($0, i + 2); split(rest, f, " ")
+    if (f[2] + 0 == p + 0) print pid }' /proc/[0-9]*/stat 2>/dev/null)
+CHILDREN
+}
+
+own_group="$(process_group $$)"
+
+# Signal the group of PID, but only when PID leads a group of its own.
+# The group of this script is never signalled: a mistake here would kill
+# the gate that runs the check.
+kill_group() {
+  local pid="$1" signal="$2" group
+  group="$(process_group "$pid")"
+  if [ -n "$group" ] && [ "$group" = "$pid" ] && [ "$group" != "$own_group" ]; then
+    kill -"$signal" "-$group" 2>/dev/null || true
+  fi
+}
+
+# Stop the process PID and everything it started.
+stop_tree() {
+  local pid="$1" signal="$2" child
+  for child in $(descendants "$pid"); do
+    kill_group "$child" "$signal"
+    kill -"$signal" "$child" 2>/dev/null || true
+  done
+  kill_group "$pid" "$signal"
+  kill -"$signal" "$pid" 2>/dev/null || true
+}
+
+# Stop the process PID the way a timer stops it.
+stop_now() {
+  stop_tree "$1" TERM
+}
+
+pid=""
+timer=""
+running=0
+marker="${TMPDIR:-/tmp}/yeah-timeout-$$.marker"
+
+cleanup() {
+  if [ -n "$timer" ]; then
+    kill_group "$timer" TERM
+    kill -TERM "$timer" 2>/dev/null || true
+    timer=""
+  fi
+  if [ "$running" -eq 1 ] && [ -n "$pid" ]; then
+    stop_now "$pid"
+    running=0
+  fi
+  rm -f "$marker"
+}
+
+on_signal() {
+  cleanup
+  exit "$1"
+}
+
+trap 'on_signal 130' INT
+trap 'on_signal 143' TERM
+trap 'cleanup' EXIT
+
+# The command leads a process group of its own: the signals that stop it
+# reach the children that stayed in the group.  The timer leads a group of
+# its own as well: a timer that is stopped must not leave its sleep behind.
+set -m
+"$@" &
+pid=$!
+
+# The timer: when the limit passes, the command is asked to stop, and then
+# stopped.  The marker is written before the first signal, so the code
+# that reads it knows that the limit, and not the command, ended it.
+(
+  sleep "$limit"
+  : > "$marker" 2>/dev/null || true
+  stop_tree "$pid" TERM
+  sleep 3
+  stop_tree "$pid" KILL
+) &
+timer=$!
+set +m
+
+started="$(now_ms)"
+wait "$pid"
+rc=$?
+running=0
+elapsed=$(( $(now_ms) - started ))
+
+kill_group "$timer" TERM
+kill -TERM "$timer" 2>/dev/null || true
+timer=""
+
+timed_out=0
+if [ -f "$marker" ]; then
+  timed_out=1
+elif [ "$rc" -ge 128 ] && [ "$elapsed" -ge $(( limit * 1000 - 100 )) ]; then
+  # the marker is gone, but the command died by a signal at the limit
+  timed_out=1
+fi
+rm -f "$marker"
+
+if [ "$timed_out" -eq 1 ]; then
+  echo "scripts/dev-timeout: the command ran longer than ${limit}s and was stopped" >&2
+  exit 3
+fi
+exit "$rc"

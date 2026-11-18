@@ -5,6 +5,7 @@
 #   smoke                 — print "yeah-dev ok" and exit 0
 #   byte-compile-all      — byte-compile every file under lib/ and the package entry
 #   ert FILE...           — run ERT test files (tests/unit/*.el)
+#   check FILE...         — run the checks; every check has a limit of time
 #   bench [--run]         — validate the benchmark task set, or run the benchmark
 #   pixel                 — photograph the real interface and compare two pictures
 #   map                   — the standing specification: claims, states, uncovered
@@ -17,7 +18,8 @@
 #   1 — fail       (Red)
 #   2 — blocked    (input error: bad arguments, unknown subcommand)
 #   3 — unknown    (the method could not tell: a tool is missing, a check
-#                    did not run, a control did not bite)
+#                    did not run, a control did not bite, a check passed its
+#                    limit of time and was stopped)
 #
 # The method binary is `mathc`: set MATHC to its path, or put it on PATH.
 # It comes from the math-coding repository (`nix build` there writes
@@ -61,6 +63,19 @@ find_mathc() {
   return 1
 }
 
+# The script that runs a check under a limit of time.  It lives next to
+# this script, so a clone of the repository runs the check the same way
+# whatever the working directory is.
+find_timeout() {
+  local dir
+  dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || return 1
+  if [ -x "$dir/dev-timeout" ]; then
+    printf '%s' "$dir/dev-timeout"
+    return 0
+  fi
+  return 1
+}
+
 need_mathc() {
   mathc_bin="$(find_mathc)" || {
     echo "scripts/dev $cmd: mathc is not on PATH and MATHC is not set." >&2
@@ -91,6 +106,7 @@ Subcommands:
   smoke                 — print "yeah-dev ok" and exit 0
   byte-compile-all      — byte-compile lib/*.el (including lib/yeah.el), no warnings
   ert FILE...           — run ERT test files (tests/unit/*.el)
+  check FILE...         — run the checks; every check has a limit of time
   bench [--run]         — validate the benchmark task set, or run the benchmark
   pixel                 — photograph the real interface and compare two pictures
   map                   — the standing specification: claims, states, uncovered
@@ -107,6 +123,11 @@ Exit codes:
 Environment:
   MATHC  — path to the math-coding binary (default: `mathc` on PATH)
   EMACS  — path to the Emacs binary (default: `emacs` on PATH)
+  YEAH_CHECK_TIMEOUT
+         — the limit of one check, in seconds (default: 120).  A check that
+           passed the limit is stopped, and the run answers with the third
+           answer (3, unknown): nothing was refuted, the method could not
+           tell.
 EOF
     ;;
 
@@ -164,8 +185,26 @@ EOF
       echo "scripts/dev check: emacs is not on PATH and EMACS is not set" >&2
       exit 3
     }
+    timeout_bin="$(find_timeout)" || {
+      echo "scripts/dev check: scripts/dev-timeout is missing" >&2
+      exit 3
+    }
+    # A check that hangs must not eat the gate: the gate waits for the
+    # check, and a check that never ends never lets the gate finish.
+    # Every check runs under a limit, and a check that passed the limit
+    # is stopped and reported with the third answer -- the method could
+    # not tell.  It is not a refutation: nothing was refuted.
+    limit="${YEAH_CHECK_TIMEOUT:-120}"
+    case "$limit" in
+      ''|*[!0-9]*)
+        echo "scripts/dev check: YEAH_CHECK_TIMEOUT must be a whole number of seconds" >&2
+        exit 2
+        ;;
+    esac
     clean_bytecode
-    rc=0
+    blocked=0
+    failed=0
+    unknown=0
     started="$(now_ms)"
     # Every check owns a life socket.  The servers that the check starts
     # watch that socket and end when the check ends -- even when the check
@@ -184,23 +223,48 @@ EOF
       case "$f" in
         *.el)
           life_sock="$life_dir/yeah-life-check-$n-$$.sock"
-          YEAH_LIFE_SOCKET="$life_sock" "$emacs_bin" -Q --batch -L lib -L . \
+          YEAH_LIFE_SOCKET="$life_sock" "$timeout_bin" "$limit" \
+            "$emacs_bin" -Q --batch -L lib -L . \
             --eval "(progn (require 'yeah-life) (yeah-life-adopt-from-environment))" \
-            -l "$f" || rc=$?
+            -l "$f"
+          rc=$?
           rm -f "$life_sock"
           ;;
         *.sh)
-          bash "$f" || rc=$?
+          "$timeout_bin" "$limit" bash "$f"
+          rc=$?
           ;;
         *)
           echo "scripts/dev check: unknown kind of check: $f" >&2
           exit 2
           ;;
       esac
+      case "$rc" in
+        0) ;;
+        1) failed=1 ;;
+        2) blocked=1 ;;
+        3)
+          unknown=1
+          echo "scripts/dev check: the check passed the limit of ${limit}s and was stopped: $f" >&2
+          ;;
+        *) failed=1 ;;
+      esac
       printf 'check: %6d ms  %s\n' "$(( $(now_ms) - before ))" "$f"
     done
     printf 'check: %6d ms  total for %s file(s)\n' "$(( $(now_ms) - started ))" "$#"
-    exit $rc
+    # The order of the answers is the order of their strength: a blocked
+    # run is not a run, a refutation is a statement, and "unknown" is the
+    # absence of one.
+    if [ "$blocked" -eq 1 ]; then
+      exit 2
+    fi
+    if [ "$failed" -eq 1 ]; then
+      exit 1
+    fi
+    if [ "$unknown" -eq 1 ]; then
+      exit 3
+    fi
+    exit 0
     ;;
 
   bench)

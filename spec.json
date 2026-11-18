@@ -3036,6 +3036,31 @@
       "register": "fact",
       "control": "sed -i 's|(let* ((life (or life (yeah-life-inherited-path)))|(let* ((life life)|' lib/yeah-acp.el",
       "waiver": null
+    },
+    {
+      "id": "the-gate-stops-a-check-that-hangs",
+      "text": "A check that hangs does not eat the gate: the gate stops the check at its limit of time, stops the children of the check as well, and answers with the third answer (unknown) and not with a refutation.",
+      "scope": [
+        "scripts/dev-timeout",
+        "scripts/dev",
+        "tests/support/yeah-hanging-check-fixture.el",
+        "tests/checks/check-a-check-that-hangs-is-stopped.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-check-that-hangs-is-stopped.el"
+        }
+      ],
+      "falsifier": "the check that hangs is still alive fifteen seconds after the limit of the gate passed, or the child of that check is still alive, or the gate answers the run of a stopped check with a code other than three",
+      "register": "fact",
+      "control": "sed -i 's|^  stop_tree \"$pid\" TERM$|  : control|; s|^  stop_tree \"$pid\" KILL$|  : control|' scripts/dev-timeout",
+      "waiver": null
     }
   ]
 }
