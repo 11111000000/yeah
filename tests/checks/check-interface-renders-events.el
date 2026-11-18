@@ -53,7 +53,16 @@
                                       (lambda (value)
                                         (funcall callback
                                                  (format "done: %s" value))))))
-               (funcall callback "the model is done")))))
+               ;; The model says what it did and ends the run through the
+               ;; call of `finish': a supervised run does not end on the
+               ;; words of the model (wave 53).  The words of the first
+               ;; answer are premature, the run nudges the model, and the
+               ;; second answer is the call that ends the run.
+               (funcall callback
+                        (list 'tool-call
+                              (list (list :name "finish")
+                                    (list "the work is done")
+                                    (lambda (_answer) nil))))))))
       (yeah-turn-run session "do the thing" transport))
     (yeah-ui-view
      (yeah-session-records (yeah-session-open "view" root)))))
@@ -85,30 +94,42 @@
 
   ;; the transcript: what was said, in the order it was said
   (let ((transcript (plist-get view :transcript)))
-    (unless (= 2 (length transcript))
-      (push (format "the transcript holds %d messages, expected 2"
+    (unless (= 3 (length transcript))
+      (push (format "the transcript holds %d messages, expected 3"
                     (length transcript))
             failures))
-    (when (>= (length transcript) 2)
+    (when (>= (length transcript) 3)
       (unless (equal (plist-get (nth 0 transcript) :role) "user")
         (push "the transcript does not start with the person" failures))
       (unless (equal (plist-get (nth 0 transcript) :text) "do the thing")
         (push "the transcript does not hold what was asked" failures))
       (unless (equal (plist-get (nth 1 transcript) :role) "assistant")
-        (push "the transcript does not end with the model" failures))))
+        (push "the transcript does not hold the answer of the model" failures))
+      ;; The nudge of the harness is an input of the model, and the
+      ;; transcript holds it as one: the run asked the model to end the
+      ;; run through the call of `finish' (wave 53).
+      (unless (equal (plist-get (nth 2 transcript) :role) "user")
+        (push "the transcript does not hold the nudge of the harness"
+              failures))))
 
   ;; the calls: what the model asked, and what became of it
   (let ((calls (plist-get view :calls)))
-    (unless (= 1 (length calls))
-      (push (format "the view holds %d calls, expected 1" (length calls))
+    (unless (= 2 (length calls))
+      (push (format "the view holds %d calls, expected 2" (length calls))
             failures))
-    (when (>= (length calls) 1)
+    (when (>= (length calls) 2)
       (unless (equal (plist-get (car calls) :tool) "probe")
         (push "the view does not show the tool that ran" failures))
       (unless (eq (plist-get (car calls) :state) 'done)
         (push "the view does not show the call as finished" failures))
       (unless (plist-get (car calls) :ok)
-        (push "the view does not show the call as successful" failures))))
+        (push "the view does not show the call as successful" failures))
+      ;; The run ended through the call of `finish', and the view shows it.
+      (unless (equal (plist-get (cadr calls) :tool) "finish")
+        (push "the view does not show the call that ended the run" failures))
+      (unless (eq (plist-get (cadr calls) :state) 'done)
+        (push "the view does not show the call of `finish' as finished"
+              failures))))
 
   ;; the approvals: none are waiting, the rules answered
   (unless (null (plist-get view :pending))

@@ -30,8 +30,14 @@
 
 (defconst yeah-journey--expected-events
   '("header" "input-queued" "input-taken" "user-message" "tool-request"
-    "permission-request" "permission-decision" "tool-end" "assistant-message")
-  "The events of the work, in order.")
+    "permission-request" "permission-decision" "tool-end" "assistant-message"
+    "nudge" "user-message" "tool-request" "permission-request"
+    "permission-decision" "tool-end" "finish")
+  "The events of the work, in order.
+The fake model asks for one tool, says what it did, and ends the run
+through the call of `finish': a supervised run does not end on the words
+of the model (wave 53), so the run nudges it and the second answer is
+the call that ends the run.")
 
 (defun yeah-journey--register-probe ()
   "Register the tool `probe'."
@@ -43,14 +49,26 @@
            :handler (lambda (path) (format "probe saw %s" path))))))
 
 (defun yeah-journey--working-transport ()
-  "Return a transport that asks for `probe' and then answers."
-  (lambda (_prompt callback)
-    (funcall callback
-             (list 'tool-call
-                   (list (list :name "probe")
-                         (list "/tmp/probe-target")
-                         (lambda (value)
-                           (funcall callback (format "done: %s" value))))))))
+  "Return a transport that asks for `probe', says what it saw, and finishes.
+The model ends the run through the call of `finish': a supervised run does
+not end on the words of the model (wave 53).  The words of the first answer
+are premature, the run nudges the model, and the second answer is the call
+that ends the run."
+  (let ((asked 0))
+    (lambda (_prompt callback)
+      (setq asked (1+ asked))
+      (if (= asked 1)
+          (funcall callback
+                   (list 'tool-call
+                         (list (list :name "probe")
+                               (list "/tmp/probe-target")
+                               (lambda (value)
+                                 (funcall callback (format "done: %s" value))))))
+        (funcall callback
+                 (list 'tool-call
+                       (list (list :name "finish")
+                             (list "the work is done")
+                             (lambda (_answer) nil))))))))
 
 (defun yeah-journey--silent-transport ()
   "Return a transport that asks for the model and never answers."
@@ -89,9 +107,9 @@
             (let ((view (yeah-ui-view records)))
               (unless (equal (mapcar (lambda (entry) (plist-get entry :role))
                                      (plist-get view :transcript))
-                             '("user" "assistant"))
+                             '("user" "assistant" "user"))
                 (push "the view does not show the conversation" failures))
-              (unless (= 1 (length (plist-get view :calls)))
+              (unless (= 2 (length (plist-get view :calls)))
                 (push "the view does not show the tool that ran" failures))))
 
         ;; --- the person steers a run that is still busy ---

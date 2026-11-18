@@ -115,7 +115,13 @@ that request too."
       ('plan
        (funcall callback "I'll read the file next."))
       (_
-       (funcall callback "the work is done")))))
+       ;; The model ends the run through the call of `finish': a supervised
+       ;; run does not end on the words of the model (wave 53).
+       (funcall callback
+                (list 'tool-call
+                      (list (list :name "finish")
+                            (list "the work is done")
+                            (lambda (_answer) nil))))))))
 
 (defun yeah-check--transport (script record)
   "Return a transport that plays SCRIPT, and that tells RECORD every prompt.

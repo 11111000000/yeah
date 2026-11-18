@@ -276,8 +276,11 @@
     },
     {
       "id": "nudge-only-for-plans",
-      "text": "an answer that only announces the next step, an answer that says nothing, or a result no tool backs, is nudged into the action; a result that a tool backs ends the run",
-      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
+      "text": "an answer that only announces the next step, an answer that says nothing, or a result no tool backs, is nudged into the action; the run itself ends through the `finish' tool, and a result in words alone ends nothing.  The two claims of the completion path were in contradiction until wave 53: this one read the words of the model as the end of the run, and `finish-is-the-only-completion-path' read them as not an end at all.  The stricter reading won, because the architecture and the prelude of the harness both say that the run ends through the call of `finish'.",
+      "scope": [
+        "lib/yeah-turn.el", "tests/unit/test-yeah-control.el",
+        "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
+      ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
@@ -289,7 +292,7 @@
           "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
         }
       ],
-      "falsifier": "the run ends without acting, or a run that acted and reported a result is nudged anyway",
+      "falsifier": "the run ends without acting, or a run that called the `finish' tool is nudged anyway, or a run that only reported its result in words ends as a completed job",
       "register": "fact",
       "control": "sed -i 's|(and (< (yeah-turn-nudge-spent turn) (yeah-turn-max-nudges turn))|(and nil (< (yeah-turn-nudge-spent turn) (yeah-turn-max-nudges turn))|' lib/yeah-turn.el",
       "waiver": null
@@ -365,10 +368,11 @@
     },
     {
       "id": "finish-is-the-only-completion-path",
-      "text": "with supervision, the model ends the run by calling the finish tool; a text answer alone is not a completion",
+      "text": "with supervision, the model ends the run by calling the finish tool; a text answer alone is not a completion.  A run that answers in words after its tools have run is nudged into the call of `finish', and a run that spends its budget without that call ends as a failed run that says it did not finish.",
       "scope": [
         "lib/yeah-turn.el", "lib/yeah-builtins.el", "lib/yeah-events.el",
-        "tests/unit/test-yeah-control.el"
+        "tests/unit/test-yeah-control.el",
+        "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -379,11 +383,15 @@
         {
           "kind": "verifier",
           "spec": "./scripts/dev ert tests/unit/test-yeah-control.el"
+        },
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
         }
       ],
-      "falsifier": "a run completes on a text answer alone when supervision is on",
+      "falsifier": "a run completes on a text answer alone when supervision is on, or a run that spent its budget ends without saying that it did not finish",
       "register": "fact",
-      "control": "sed -i 's|(if finish|(if nil|' lib/yeah-turn.el",
+      "control": "sed -i 's|(yeah-turn--supervised-p turn)|nil|' lib/yeah-turn.el",
       "waiver": null
     },
     {
@@ -2751,6 +2759,30 @@
       "falsifier": "the outcome of a compaction is delivered twice, or the second answer of the provider breaks the run",
       "register": "fact",
       "control": "sed -i 's|(not delivered)|t|g' lib/yeah-context.el lib/yeah-compact.el && sed -i \"s|((eq (yeah-turn-state turn) 'compacting)|(t|\" lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "a-text-answer-does-not-end-a-supervised-run",
+      "text": "A supervised run ends through the `finish' tool: a text answer that reports a result is not a completion, the run nudges the model into the call that ends it and carries the state of the work, and a model that never calls `finish' spends the budget of the nudges and ends as a failed run that says it did not finish.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "tests/unit/test-yeah-control.el",
+        "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
+        }
+      ],
+      "falsifier": "a supervised run ends as a completed job on a text answer alone, or a run that spent its budget ends without saying that it did not finish",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-turn--supervised-p turn)|nil|' lib/yeah-turn.el",
       "waiver": null
     }
   ]

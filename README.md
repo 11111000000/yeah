@@ -102,9 +102,10 @@ kernel and its Emacs-native interface:
   the tools the run has not called yet and the exact call to make (the
   unused path tool and the file the model named), and a repeated nudge
   requires the next answer to contain the call, not another plan — while
-  "I fixed it, the test passes" ends the run; a run that is supervised ends through the `finish' tool,
-  not through talk, and a run that spends its nudge budget without
-  finishing says so in the journal instead of looking done; and a model
+  "I fixed it, the test passes" ends nothing: a supervised run ends through
+  the `finish' tool and not through talk, the nudge asks for that call and
+  carries the state of the work, and a run that spends its nudge budget
+  without finishing says so in the journal instead of looking done; and a model
   that answers while the harness is still
   waiting for a tool no longer breaks the state machine.  Supervision is the
   default of the kernel: a run is supervised unless the caller asks for no

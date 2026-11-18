@@ -38,7 +38,15 @@
                             (list 'tool-call
                                   (list (list :name "probe") nil
                                         (lambda (_value)
-                                          (funcall callback "finished")))))))))
+                                          ;; The model ends the run through
+                                          ;; the call of `finish': a supervised
+                                          ;; run does not end on the words of
+                                          ;; the model (wave 53).
+                                          (funcall callback
+                                                   (list 'tool-call
+                                                         (list (list :name "finish")
+                                                               (list "finished")
+                                                               (lambda (_answer) nil))))))))))))
           (setq turn (yeah-turn-run session "start" transport nil 1))
           (unless (eq 'compacting (yeah-turn-state turn))
             (message "turn did not enter compacting without blocking: %S"
@@ -57,13 +65,16 @@
                               (lambda (record)
                                 (equal "compaction" (plist-get record :type)))
                               records))
-                 (assistant (cl-find-if
-                             (lambda (record)
-                               (equal "assistant-message" (plist-get record :type)))
-                             records)))
-            (unless (and compaction assistant
+                 ;; The answer of the model is the call of `finish': a
+                 ;; supervised run ends through it and not through talk
+                 ;; (wave 53).
+                 (answer (cl-find-if
+                          (lambda (record)
+                            (equal "finish" (plist-get record :type)))
+                          records)))
+            (unless (and compaction answer
                          (< (plist-get compaction :id)
-                            (plist-get assistant :id)))
+                            (plist-get answer :id)))
               (message "compaction did not precede the continued answer: %S" records)
               (kill-emacs 1))
             (unless (equal "the retained summary" (plist-get compaction :summary))

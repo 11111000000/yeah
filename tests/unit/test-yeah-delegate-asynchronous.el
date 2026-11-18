@@ -32,6 +32,14 @@
                     (expand-file-name "reviewer.md" directory)))
     directory))
 
+(defun yeah-delegate-async-test--finish (summary)
+  "Return a gptel-shaped call of the `finish' tool with SUMMARY.
+A supervised run ends through this call and not through talk (wave 53)."
+  (list 'tool-call
+        (list (list :name "finish")
+              (list summary)
+              (lambda (_value) nil))))
+
 (defun yeah-delegate-async-test--parent-answer (asked callback)
   "Return the next answer of the parent run.
 ASKED counts the answers the parent gave already: the parent delegates twice,
@@ -48,7 +56,7 @@ and the model of the parent goes on where it left off."
                       (funcall callback
                                (yeah-delegate-async-test--parent-answer
                                 asked callback)))))
-      "the parent is done")))
+      (yeah-delegate-async-test--finish "the parent is done"))))
 
 (defun yeah-delegate-async-test--parent-transport (asked)
   "Return the transport of the parent run.

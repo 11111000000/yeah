@@ -183,6 +183,11 @@ supervision of the model."
                  (yeah-run-context-create
                   :placement 'batch
                   :session session
+                  ;; The run is not supervised: the subject of this test is
+                  ;; the order of the records of the journal, and a supervised
+                  ;; run ends through the `finish' tool and not through talk
+                  ;; (wave 53).
+                  :max-nudges 0
                   :transport
                   (lambda (_prompt callback)
                     (funcall callback
@@ -219,6 +224,11 @@ supervision of the model."
                   (yeah-run-context-create
                    :placement 'batch
                    :session session
+                   ;; The run is not supervised: the subject of this test is
+                   ;; the record of the decision that comes later, and a
+                   ;; supervised run ends through the `finish' tool and not
+                   ;; through talk (wave 53).
+                   :max-nudges 0
                    :transport
                    (lambda (_prompt callback)
                      (funcall callback

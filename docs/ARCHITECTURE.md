@@ -315,6 +315,26 @@ the client as the words the model wrote, and a Russian answer does not
 arrive as a Latin-1 reading of its own bytes. The wire carries text, not
 a promise about a character set.
 
+A supervised run ends through the `finish` tool. A text answer that reports
+a result is not a completion: the run nudges the model into the call that
+ends it, and the nudge carries the state of the work, so that the model
+continues instead of starting the task over. A model that never calls
+`finish` spends the budget of the nudges, and the run ends as a failed run
+that says what it did not do. A run that asked for no supervision at all (a
+budget of zero) ends on the word of the model, because there is nobody to
+nudge it.
+
+*Amended on 2026-11-18 (wave 53): the supervision was declared and not held.
+The kernel took every text answer of the model for the end of the run, so a
+live run of wave 42 that called 261 tools, finished nothing and was cut off
+in the middle of a sentence was recorded as `completed`. Two claims of one
+specification contradicted each other here — one said that the run ends
+through `finish`, the other read the words of the model as the end of the
+run — and the code followed the softer one. The promise above is kept and
+made explicit, not relaxed: the path of the completion is the call of the
+tool and not the talk of the model, and a run that says its result in words
+is nudged into the call that ends it.*
+
 *Amended on 2026-11-16 (wave 40): the wire carried two shapes that ACP does
 not have — the content of a chunk was an array of blocks instead of one
 block, and the events of the pending queue travelled to every client as if

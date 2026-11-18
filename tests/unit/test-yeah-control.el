@@ -31,6 +31,15 @@
   "Return a gptel-shaped tool-call for NAME, ARGS and CONTINUATION."
   (list 'tool-call (list (list :name name) args continuation)))
 
+(defun yeah-control-test--finish (summary)
+  "Return a gptel-shaped call of the `finish' tool with SUMMARY.
+A supervised run ends through this call and not through talk (wave 53), so a
+fake model that means to finish the run calls it."
+  (list 'tool-call
+        (list (list :name "finish")
+              (list summary)
+              (lambda (_value) nil))))
+
 (defun yeah-control-test--wait (predicate)
   "Pump the event loop until PREDICATE is true or two seconds pass."
   (let ((deadline (+ (float-time) 2)))
@@ -205,6 +214,44 @@
             (should (= 0 (yeah-turn-nudges turn)))))
       (ignore-errors (delete-directory root t t)))))
 
+(ert-deftest yeah-turn-a-text-answer-does-not-end-a-supervised-run ()
+  "A supervised run ends through the `finish' tool: a text answer that reports
+a result is not a completion, and the run nudges the model into the call that
+ends it.  A model that never calls `finish' spends the budget of the nudges,
+and the run ends as a failed run that says it did not finish."
+  (let* ((root (make-temp-file "yeah-text-end" t))
+         (session (yeah-session-open "text-end" root))
+         (calls 0))
+    (unwind-protect
+        (progn
+          (yeah-tools-register
+           (list :name "probe" :description "probe" :input nil
+                 :handler (lambda () "the probe ran")))
+          (let ((turn (yeah-turn-run
+                        session "start"
+                        (lambda (_prompt callback)
+                          (setq calls (1+ calls))
+                          (funcall callback
+                                   (yeah-control-test--answer
+                                    "probe" nil
+                                    (lambda (_value)
+                                      (funcall callback
+                                               "I fixed the bug; the test passes.")))))
+                        nil 60000 2)))
+            (should (yeah-turn-done turn))
+            (should (eq 'failed (yeah-turn-state turn)))
+            (should (= 2 (yeah-turn-nudges turn)))
+            (should (cl-find-if
+                     (lambda (record)
+                       (equal "unfinished" (plist-get record :type)))
+                     (yeah-session-records session)))
+            (should-not (cl-find-if
+                          (lambda (record)
+                            (equal "finish" (plist-get record :type)))
+                          (yeah-session-records session))))
+      (yeah-tools-unregister "probe")
+      (ignore-errors (delete-directory root t t))))))
+
 (ert-deftest yeah-turn-a-result-that-no-tool-backs-is-nudged ()
   "With supervision, a result without a tool is premature: the run nudges it."
   (let* ((root (make-temp-file "yeah-early" t))
@@ -372,7 +419,10 @@ starts the work over."
                                 "probe" nil
                                 (lambda (_value)
                                   (funcall callback
-                                           (if (= round 1) "" "the work is done"))))))
+                                           (if (= round 1)
+                                               ""
+                                             (yeah-control-test--finish
+                                              "the work is done")))))))
                     nil 60000 2)))
               (should (yeah-turn-done turn)))
             (dolist (record (yeah-session-records session))

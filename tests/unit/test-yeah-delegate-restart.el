@@ -26,6 +26,14 @@
   "---\nname: reviewer\ndescription: Reviews a diff and says what is wrong.\nmodel: cheap-model\ntools: read, grep\n---\n\nYou are a reviewer.\n"
   "The preset the test delegates to.")
 
+(defun yeah-delegate-restart-test--finish (summary)
+  "Return a gptel-shaped call of the `finish' tool with SUMMARY.
+A supervised run ends through this call and not through talk (wave 53)."
+  (list 'tool-call
+        (list (list :name "finish")
+              (list summary)
+              (lambda (_value) nil))))
+
 (defun yeah-delegate-restart-test--directory ()
   "Return a directory with one preset in it."
   (let ((directory (make-temp-file "yeah-delegate-restart" t)))
@@ -46,7 +54,7 @@ STATE holds the id that the delegate tool answered with."
                          (lambda (text)
                            (when (string-match "sub-[0-9]+" (or text ""))
                              (setf (plist-get state :id) (match-string 0 text)))
-                           (funcall callback "the run is done")))))))
+                           (funcall callback (yeah-delegate-restart-test--finish "the run is done"))))))))
 
 (defun yeah-delegate-restart-test--result-transport (state)
   "Return the transport of the second turn: it asks for the child.
@@ -56,7 +64,7 @@ STATE holds the id that the delegate tool answered with."
              (list 'tool-call
                    (list (list :name "delegate-result")
                          (list (or (plist-get state :id) "sub-1"))
-                         (lambda (_value) (funcall callback "the run is done")))))))
+                         (lambda (_value) (funcall callback (yeah-delegate-restart-test--finish "the run is done"))))))))
 
 (defun yeah-delegate-restart-test--child-transport ()
   "Return the transport of a child that answers at once."

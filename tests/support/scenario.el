@@ -33,16 +33,22 @@
   (yeah-tools-get "probe"))
 
 (defun yeah-scenario-transport (prompt callback)
-  "Ask for the probe, then answer with what the probe saw.
+  "Ask for the probe, then end the run with what the probe saw.
 
 PROMPT is what the turn asked; CALLBACK takes the answer in the shape
-gptel uses."
+gptel uses.  A supervised run ends through the call of `finish' and not
+through talk (wave 53), so the fake model calls it: the words of a model
+are not the end of a run."
   (funcall callback
            (list 'tool-call
                  (list (list :name "probe")
                        (list "/tmp/probe-target")
                        (lambda (value)
-                         (funcall callback (format "done: %s" value)))))))
+                         (funcall callback
+                                  (list 'tool-call
+                                        (list (list :name "finish")
+                                              (list (format "done: %s" value))
+                                              (lambda (_answer) nil)))))))))
 
 (yeah-scenario-register)
 

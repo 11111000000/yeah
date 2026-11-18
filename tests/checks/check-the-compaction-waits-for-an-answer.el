@@ -95,9 +95,11 @@
         result))))
 
 (defun yeah-check--the-model-acts (&optional delay)
-  "Return a transport whose model calls the probe tool and then answers.
+  "Return a transport whose model calls the probe tool and answers after DELAY.
 The answer that follows the tool comes after DELAY seconds, so that the run
-is still alive when the provider answers again."
+is still alive when the provider answers again.  The model ends the run
+through the call of `finish': a supervised run does not end on the words of
+the model (wave 53)."
   (lambda (_prompt callback)
     (funcall callback
              (list 'tool-call
@@ -106,8 +108,16 @@ is still alive when the provider answers again."
                            (if delay
                                (run-with-timer delay nil
                                                (lambda ()
-                                                 (funcall callback "the tool ran")))
-                             (funcall callback "the tool ran"))))))))
+                                                 (funcall callback
+                                                          (list 'tool-call
+                                                                (list (list :name "finish")
+                                                                      (list "the tool ran")
+                                                                      (lambda (_answer) nil))))))
+                             (funcall callback
+                                      (list 'tool-call
+                                            (list (list :name "finish")
+                                                  (list "the tool ran")
+                                                  (lambda (_answer) nil)))))))))))
 
 (defun yeah-check--the-thinking-is-not-the-answer ()
   "The thinking of the provider is not the end of the request of a summary."
@@ -187,7 +197,9 @@ is still alive when the provider answers again."
                                   (lambda ()
                                     (funcall callback yeah-check--summary nil))))
               ;; The model acts, and it answers late: the run waits for the
-              ;; answer of the model.
+              ;; answer of the model.  The answer is the call of `finish': a
+              ;; supervised run does not end on the words of the model
+              ;; (wave 53).
               (funcall callback
                        (list 'tool-call
                              (list (list :name "probe") (list)
@@ -195,7 +207,11 @@ is still alive when the provider answers again."
                                      (run-with-timer
                                       0.3 nil
                                       (lambda ()
-                                        (funcall callback "the work is done"))))))))))
+                                        (funcall callback
+                                                 (list 'tool-call
+                                                       (list (list :name "finish")
+                                                             (list "the work is done")
+                                                             (lambda (_answer) nil)))))))))))))
          (result (yeah-check--run transport))
          (turn (plist-get result :turn))
          (records (plist-get result :records)))

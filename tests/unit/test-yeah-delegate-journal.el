@@ -27,6 +27,14 @@
   "---\nname: reviewer\ndescription: Reviews a diff and says what is wrong.\nmodel: cheap-model\ntools: read, grep\n---\n\nYou are a reviewer.\n"
   "The preset the test delegates to.")
 
+(defun yeah-delegate-journal-test--finish (summary)
+  "Return a gptel-shaped call of the `finish' tool with SUMMARY.
+A supervised run ends through this call and not through talk (wave 53)."
+  (list 'tool-call
+        (list (list :name "finish")
+              (list summary)
+              (lambda (_value) nil))))
+
 (defun yeah-delegate-journal-test--directory ()
   "Return a directory with one preset in it."
   (let ((directory (make-temp-file "yeah-delegate-journal" t)))
@@ -53,7 +61,7 @@ tool call calls it again, and the model of the run goes on where it left off."
                         (funcall callback
                                  (yeah-delegate-journal-test--answer
                                   asked calls callback)))))
-        "the run is done"))))
+        (yeah-delegate-journal-test--finish "the run is done")))))
 
 (defun yeah-delegate-journal-test--transport (asked calls)
   "Return the transport of a run that makes the calls CALLS.

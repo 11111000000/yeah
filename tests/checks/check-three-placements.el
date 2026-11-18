@@ -34,8 +34,12 @@
 
 (defconst yeah-check--expected-events
   '("user-message" "tool-request" "permission-request"
-    "permission-decision" "tool-end" "assistant-message")
-  "The events the task of the check must produce, in order.")
+    "permission-decision" "tool-end" "tool-request" "permission-request"
+    "permission-decision" "tool-end" "finish")
+  "The events the task of the check must produce, in order.
+The fake model asks for one tool and then ends the run with the call of
+`finish': a supervised run ends through that call and not through talk
+(wave 53).")
 
 (defun yeah-check--project ()
   "Return the directory of the project the task is about."

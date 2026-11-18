@@ -1347,6 +1347,50 @@ is measured on three tasks and has no decided threshold (`docs/PLAN.md` §13).
 The SIGTERM that killed three runs of the method is still unexplained, and the
 watchdog is a way around it, not a repair of it.
 
+## The live run of wave 42 that found the words of the model (2026-11-18, 06:24–06:38)
+
+The live run of wave 42 (the life cycle of the ACP server) was the first run of
+the harness on the code of waves 46 to 50, and it found a defect of the kernel
+that no offline check had seen.  The run was on a copy of the repository
+(`/home/az/Projects/yeah-selfdev-2`), with the model `MiniMax-M3.1-Flash`, and
+its journal is `sessions/wave42-1.jsonl` (2464 records).
+
+| Attempt | Start | End | Calls of tools | Nudges | Retries | Last words of the model | Final state |
+|---|---|---|---|---|---|---|---|
+| 1 | 06:24:28 | 06:32:25 | 261 | 5 | 2 | "Now the ACP module itself:" | `completed` |
+| 2 | 06:35:08 | 06:38:45 | 142 | 4 | 0 | "Now the dispatcher and the serve loop:" | `completed` |
+
+Both attempts ended with `final state: completed`, and **neither of them called
+the `finish` tool**: the journal of the run holds no record of `finish` at all.
+The work was not done — the model had added `yeah-acp-session-exit-method` to
+`lib/yeah-acp-vocabulary.el` and implemented `yeah-acp-session-exit` and
+`yeah-acp--end-session` in `lib/yeah-acp.el` (+64 lines), but the routing in the
+dispatcher, the end of the server process, the check, the claim and the
+documentation of the wave were not written.  The second attempt was given the
+state of the work as its input, and it continued from there, and it was cut off
+in the same way.
+
+**The defect was in the kernel, and it was old.**  Every text answer of the
+model ended the turn: the words of the model were taken for the end of the
+work, and a run that had called 261 tools and finished nothing was recorded as
+a successful one.  This is the opposite of what the claim
+`finish-is-the-only-completion-path` says, and it is what the claim
+`nudge-only-for-plans` says in practice: two claims of one specification
+contradicted each other, and the code followed the softer one.  The strict
+reading won in wave 53 (a supervised run ends through the call of `finish';
+a text answer that reports a result is nudged into that call, and the nudge
+carries the state of the work), and the record of a run that did not finish
+names the form it had: "the model reported a result without calling `finish'
+N times".  A run that asked for no supervision (a budget of zero) keeps the
+old behaviour, because there is nobody to nudge it.
+
+**What this run does not prove.**  The provider cut the model off in the middle
+of a sentence twice, and the run of wave 42 is not finished; the wave 53
+repair makes such a run say that it did not finish instead of claiming that it
+did, and the continuation of wave 42 waits for it.  The spin of the server
+process (`docs/PLAN.md` §17.1) was not located by this run either: it is the
+second half of wave 42 and it is measured on the ticks of `/proc/<pid>/stat`.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live

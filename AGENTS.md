@@ -455,6 +455,31 @@ work item. Never resolve it by silently making documentation more optimistic.
   The decision of the owner did not change (docs/PLAN.md §17.2, §18.1;
   docs/LIVE-EVIDENCE.md, "The self-development run that finished the wave 41"
   and "The map of the method came out green twice").
+- Wave 53 made the words of the model not end a supervised run.  The live run
+  of wave 42 (2026-11-18 06:24–06:38) found the defect: both attempts ended
+  with `final state: completed' while the work was not done — 261 calls of
+  tools in the first attempt, 142 in the second, no call of `finish' at all,
+  and the last words of the model cut off mid-phrase.  Every text answer of the
+  model ended the turn, so the run looked done.  Two claims of one
+  specification contradicted each other: `finish-is-the-only-completion-path'
+  said that a supervised run ends through the call of `finish', and
+  `nudge-only-for-plans' read the words of the model as the end of the run —
+  the code followed the softer one.  The stricter reading won, because the
+  comment in the code, `docs/ARCHITECTURE.md` §D7 and the prelude of the
+  harness all say the same: a supervised run (a run with a positive budget of
+  nudges) ends through the call of `finish'; a text answer that reports a
+  result is nudged into that call, and the nudge carries the state of the
+  work, so the model continues instead of starting the task over.  A run that
+  asked for no supervision (a budget of zero) still ends on the word of the
+  model, because there is nobody to nudge it.  The record of such a run names
+  the shape: "the model reported a result without calling `finish' N times".
+  The claim `a-text-answer-does-not-end-a-supervised-run' is registered, and
+  the controls of the two claims of the completion path (the supervision of the
+  run) bite: the check fails on its own assertion, not on an error of the code.
+  The wave changed the checks of others as well, and this is said here and not
+  hidden: twelve checks and six unit test files ended their run in words, and
+  their fake models now call `finish' (or the check asks for no supervision,
+  when its subject is not the path of the completion); docs/PLAN.md §16.31.
 - The journal of a live run lies in the working tree, and the model can erase
   it: in the run of wave 50 the model deleted its own journal
   (`rm -f sessions/wave50-1.jsonl').  The observation of a run is therefore not
