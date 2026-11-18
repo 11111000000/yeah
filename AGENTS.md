@@ -601,6 +601,19 @@ work item. Never resolve it by silently making documentation more optimistic.
   the method of ACP.  The check is
   `tests/checks/check-the-server-exits-when-the-session-is-over.el', the claim is
   `the-server-exits-when-the-session-is-over' (docs/PLAN.md §16.32).
+- Wave 43 (the first part) made the tools of a session run in the directory of the
+  session.  The `cwd' that the client sends in `session/new' was recorded in the
+  journal and in the frozen input of the run, and the tools did not read it: a
+  relative path of a tool was counted from the directory of the Emacs process, so
+  the `bash' of the agent ran in the directory of the installation of the CLI of
+  Paseo and not in the repository of the task.  The session carries its directory
+  now, and the tools of the run are dispatched inside the binding of it — one
+  place, `yeah-session-with' in `lib/yeah-session.el', and through it pass the
+  synchronous tools and the asynchronous ones alike.  A session that was opened
+  without a directory (an older journal) leaves the directory of the process
+  alone.  The check is
+  `tests/checks/check-a-session-runs-in-its-own-directory.el', the claim is
+  `a-session-runs-in-its-own-directory' (docs/PLAN.md §16.33).
 
 ## The commands
 

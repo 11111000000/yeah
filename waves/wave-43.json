@@ -1,0 +1,30 @@
+{
+  "id": "wave-43",
+  "title": "the tools of a session run in the directory of the session",
+  "intent": "The first part of wave 43 of the plan of the owner (docs/PLAN.md 18.3).  The defect: the `cwd' that the client sends in `session/new' was recorded in the journal and in the frozen input of the run, and the tools did not read it.  A relative path of a tool was counted from the directory of the Emacs process: in the live check the `bash' of the agent ran in the directory of the installation of the CLI of Paseo and not in the repository of the task.  What changes: the session carries its directory, the tools of the run are dispatched inside the binding of that directory, and a relative path of a tool is counted from it.  The binding lives in one place -- `yeah-session-with' in lib/yeah-session.el -- and every tool of the run goes through it, the synchronous ones and the asynchronous ones alike, because the handler of a tool reads the directory of the process while the binding holds.  The directory of the session is the directory of the child of a delegation too: the child works where the parent works.  The check of the wave starts a real ACP server over stdio, creates a session whose `cwd' is a temporary directory with a file in it, lets the model of the server read that file by its relative name and proves on the wire that the tool of the session saw the temporary directory: the text of the call carries the content of the file.  The verdict is decided by construction -- the file exists in one directory only, and the server of the check runs in another one.  The other four gaps of the wave (the kind of a call and its named arguments, `session/set_mode', the model of the session, the `mcpServers' of the session) are not this part: each of them is a claim of its own and none of them is registered here.",
+  "touches": [
+    "lib/yeah-session.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-product.el",
+    "lib/yeah-placement.el",
+    "lib/yeah-subagent.el",
+    "tests/support/yeah-session-cwd-model.el",
+    "tests/checks/check-a-session-runs-in-its-own-directory.el",
+    "spec.json",
+    "waves/wave-43.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-session-runs-in-its-own-directory.el"
+  ],
+  "claims": [
+    "a-session-runs-in-its-own-directory"
+  ],
+  "commitment": [],
+  "objection": "The binding of the directory of the session is the binding of `default-directory', and `default-directory' is a global of Emacs: a tool of the run that starts a process of its own, or that writes into the buffer of the person, sees the directory of the session and not the one of the process.  That is the intent of the wave, but a plugin of Emacs that relies on `default-directory' while the tools of a run are dispatched sees the directory of the task and not the one of the user.  The binding is held only while the tool of the run is dispatched, and a tool that runs later -- the callback of an asynchronous tool -- reads the directory of the process again; the directory of such a tool is the one the tool was given, and the wave does not change that.  The check of the wave proves the case of the `read' tool, which is synchronous and relative; the case of the `bash' of the plan is the same binding and is not proven by a second check here.  The wave does not change the directory of a session that was opened before it: a session that is loaded keeps the directory it was created with, and the directory of a session of an older journal is nil, so its tools run in the directory of the process.  The wave does not prove the integration with Paseo: the client of the check is an offline client that speaks the same JSON-RPC over the same pipe.",
+  "refuted_by": "the tool of the session ran in the directory of the process and did not find the file of the session, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The check of the wave found three defects of its own before it proved anything, and all three are written down here because the next check will meet them.  The reader of the wire of the check lost a message that the pipe had cut in two: a line that the server had not finished was dropped with its first half, and the tool of the read never answered; the reader now waits for the end of the line.  The reader turned the list of the messages over in place with `nreverse' and left the variable at the cell that was its head, so the second reading of the wire found one message and not the wire; it now copies the list with `reverse' instead.  And the search of the call of the tool used `cl-find-if' as if it returned the value of its predicate: it returns the element, so the id of the call was the whole notification and the search for the result of the call compared a notification with a string and found nothing.  The model of the check is a file of its own (tests/support/yeah-session-cwd-model.el) and not a string in the check: the string was written with the number of parentheses of a source that has to be right, and the source of the model is a file that the compiler reads.  The check passes in the tree of the wave (0.7 seconds) and the control of the claim (`sed -i 's|(file-name-as-directory yeah-session--cwd)|default-directory|' lib/yeah-session.el') was applied to a copy of the tree and bit: the check ended with the code 1 and with its own words (`session-cwd: the tool of the session did not run in the directory of the session: it answered \"yeah-files read: file does not exist: /tmp/w43-ctl/marker.txt\"').  The name of the claim is the name of the gap in the plan of the owner (`a-session-runs-in-its-own-directory')."
+}

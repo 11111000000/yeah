@@ -264,7 +264,8 @@ resumes an existing session of the project instead of starting a new one."
          (session-root (yeah-product-session-root root))
          (session (yeah-session-open (or session-id
                                          (yeah-product--session-id root))
-                                     session-root))
+                                     session-root
+                                     root))
          (profile (or profile "build"))
          (control
           (yeah-control-new

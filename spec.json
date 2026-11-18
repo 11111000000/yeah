@@ -2807,6 +2807,30 @@
       "register": "fact",
       "control": "sed -i 's/(setq yeah-acp--last-session-closed t)/(setq yeah-acp--last-session-closed nil)/' lib/yeah-acp.el",
       "waiver": null
+    },
+    {
+      "id": "a-session-runs-in-its-own-directory",
+      "text": "The tools of a session run in the directory of the session: the `cwd' that the client sent in `session/new' is the directory the tools of that session work in, a relative path of a tool is counted from it, and the file of the task is found there.",
+      "scope": [
+        "lib/yeah-session.el",
+        "lib/yeah-acp.el",
+        "tests/checks/check-a-session-runs-in-its-own-directory.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-session-runs-in-its-own-directory.el"
+        }
+      ],
+      "falsifier": "the tool of the session ran in the directory of the process and did not find the file of the session",
+      "register": "fact",
+      "control": "sed -i 's|(file-name-as-directory yeah-session--cwd)|default-directory|' lib/yeah-session.el",
+      "waiver": null
     }
   ]
 }

@@ -469,7 +469,7 @@ The state carries the controller of the session: its turn and its queue."
   (yeah-acp--validate-session-request request)
   (let* ((cwd (file-truename (plist-get request :cwd)))
          (root (yeah-product-session-root cwd))
-         (session (yeah-session-open (yeah-acp--fresh-id "session") root)))
+         (session (yeah-session-open (yeah-acp--fresh-id "session") root cwd)))
     (yeah-acp--register-session session cwd)
     (list :sessionId (plist-get session :id))))
 
@@ -485,7 +485,7 @@ names the session and the number of records that were replayed."
     (unless (file-exists-p (yeah-session--path-for session-id root))
       (signal 'user-error
               (list (format "unknown ACP session: %s" session-id))))
-    (let* ((session (yeah-session-open session-id root))
+    (let* ((session (yeah-session-open session-id root cwd))
            (state (yeah-acp--register-session session cwd)))
       (list :sessionId (plist-get session :id)
             :replayed (yeah-acp--replay state session)))))
