@@ -42,6 +42,7 @@
 (require 'yeah-acp-vocabulary)
 (require 'yeah-control)
 (require 'yeah-events)
+(require 'yeah-perm)
 (require 'yeah-product)
 (require 'yeah-result)
 (require 'yeah-turn)
@@ -90,6 +91,62 @@ The standing permissions of the service come first and the decisions the
 client remembered for this session come last: the last match wins."
   (let ((state (yeah-acp--session-state session-id)))
     (append (yeah-perm-rules-list) (plist-get state :rules))))
+
+(defconst yeah-acp--default-mode "build"
+  "The mode a session is in when the client has not chosen another one.
+The mode is the permission profile of the session: in `build' the tools
+that change the world are asked about, one by one.")
+
+(defconst yeah-acp--mode-names
+  '(("plan" "Plan" "the agent may look at the world, but not change it")
+    ("build" "Build" "the agent may change the world, and the person decides each step"))
+  "The name and the description of every mode of a session.
+The modes themselves are the permission profiles of the kernel
+(`yeah-perm-profiles'); this table only names them for the client, which
+shows the names and the descriptions to the person.")
+
+(defun yeah-acp--available-modes ()
+  "Return the modes a session may be in.
+Every mode is a permission profile of the kernel, and every profile has a
+name and a description for the client.  The modes travel as a vector: a
+list of objects does not serialize, and the wire of ACP carries an array."
+  (apply #'vector
+         (mapcar
+          (lambda (id)
+            (let ((entry (assoc id yeah-acp--mode-names)))
+              (list :id id
+                    :name (if entry (nth 1 entry) id)
+                    :description (if entry (nth 2 entry)))))
+          (yeah-perm-profiles))))
+
+(defun yeah-acp--mode-state (mode-id)
+  "Return the state of the modes of a session in MODE-ID.
+The state names the mode the session is in and every mode it may be in."
+  (list :currentModeId mode-id
+        :availableModes (yeah-acp--available-modes)))
+
+(defun yeah-acp--mode-effect (mode request)
+  "Return the effect the mode MODE gives for REQUEST.
+The mode is a permission profile: `plan' denies the tools that change the
+world, and every other profile leaves the question to the person.  A mode
+that the kernel does not know decides nothing."
+  (let ((rules (yeah-perm-profile (or mode yeah-acp--default-mode))))
+    (if rules
+        (yeah-perm-effect (plist-get request :action)
+                          (plist-get request :resource)
+                          rules)
+      'ask)))
+
+(defun yeah-acp--mode-denies-p (mode request)
+  "Return non-nil when the mode MODE forbids REQUEST.
+The mode of a session is the decision of the person and not a question to
+the person: a mode that forbids an action refuses it without asking."
+  (eq (yeah-acp--mode-effect mode request) 'deny))
+
+(defun yeah-acp--session-mode (session-id)
+  "Return the mode of SESSION-ID."
+  (let ((state (yeah-acp--session-state session-id)))
+    (or (plist-get state :mode) yeah-acp--default-mode)))
 
 (defun yeah-acp--ask-client (session-id output request)
   "Ask the client about REQUEST and return the deferral of the question.
@@ -165,14 +222,23 @@ messages of one connection do not reach another one.")
 
 (defun yeah-acp--session-answerer (state)
   "Return the answerer of STATE: the client of the session over the wire.
-The rules of the session decide first; what they do not name is asked of
-the client as a `session/request_permission', and the call waits for the
-answer.  The question is asked of the connection the session belongs to."
+The mode of the session decides first: a mode that forbids an action
+refuses it without a question, because a mode is the decision of the
+person and not a question to the person.  The rules of the session decide
+next; what they do not name is asked of the client as a
+`session/request_permission', and the call waits for the answer.  The
+question is asked of the connection the session belongs to."
   (lambda (request)
-    (funcall (or yeah-acp--answerer
-                 (yeah-acp--client-answerer (plist-get state :id)
-                                             (yeah-acp--output-for state)))
-             request)))
+    (let ((mode (plist-get state :mode)))
+      (if (yeah-acp--mode-denies-p mode request)
+          (list :effect :deny :reply :reject
+                :reason (format "the %s mode does not allow %s"
+                                (or mode yeah-acp--default-mode)
+                                (plist-get request :action)))
+        (funcall (or yeah-acp--answerer
+                     (yeah-acp--client-answerer (plist-get state :id)
+                                                 (yeah-acp--output-for state)))
+                 request)))))
 
 (defun yeah-acp--make-control (state)
   "Return the controller of STATE.
@@ -428,6 +494,12 @@ editor learns the queue from the journal and keeps no state of its own."
      (yeah-acp--input-update "input_recovered" fields))
     ((and (guard queue-events) "input-withdrawn")
      (yeah-acp--input-update "input_withdrawn" fields))
+    ("session-mode"
+     ;; The mode of a session is its state, and the journal is where the
+     ;; state of a session lives: a client that opens a session again learns
+     ;; the mode from the replay of the journal.
+     (list :sessionUpdate "current_mode_update"
+           :currentModeId (plist-get fields :mode)))
     (_ nil)))
 
 (defun yeah-acp--observe-event (state session type fields id)
@@ -490,19 +562,35 @@ The state carries the controller of the session: its turn and its queue."
     state))
 
 (defun yeah-acp-session-new (request)
-  "Create a real Yeah session for ACP REQUEST and return `(:sessionId ID)'."
+  "Create a real Yeah session for ACP REQUEST and return its answer.
+The answer names the session and the modes it may be in: the modes are
+the permission profiles of the kernel, and the session is in the mode
+`build' until the client chooses another one."
   (yeah-acp--validate-session-request request)
   (let* ((cwd (file-truename (plist-get request :cwd)))
          (root (yeah-product-session-root cwd))
          (session (yeah-session-open (yeah-acp--fresh-id "session") root cwd)))
     (yeah-acp--register-session session cwd)
-    (list :sessionId (plist-get session :id))))
+    (list :sessionId (plist-get session :id)
+          :modes (yeah-acp--mode-state yeah-acp--default-mode))))
+
+(defun yeah-acp--journal-mode (session)
+  "Return the mode the journal of SESSION names, or nil.
+The mode of a session is part of its state, and the journal is where the
+state of a session lives: a session that is opened again keeps the mode
+it was left in."
+  (let ((mode nil))
+    (dolist (record (yeah-session-records session))
+      (when (equal "session-mode" (plist-get record :type))
+        (setq mode (plist-get record :mode))))
+    mode))
 
 (defun yeah-acp-session-load (request)
   "Load an existing session and replay its journal into the editor's view.
 The records of the session become session/update notifications, so that the
 editor can rebuild the transcript of a session it opens again.  The answer
-names the session and the number of records that were replayed."
+names the session, the number of records that were replayed and the modes
+of the session: the mode the journal names is the mode it is in."
   (yeah-acp--validate-session-request request t)
   (let* ((cwd (file-truename (plist-get request :cwd)))
          (root (yeah-product-session-root cwd))
@@ -511,9 +599,12 @@ names the session and the number of records that were replayed."
       (signal 'user-error
               (list (format "unknown ACP session: %s" session-id))))
     (let* ((session (yeah-session-open session-id root cwd))
-           (state (yeah-acp--register-session session cwd)))
+           (state (yeah-acp--register-session session cwd))
+           (mode (or (yeah-acp--journal-mode session) yeah-acp--default-mode)))
+      (plist-put state :mode mode)
       (list :sessionId (plist-get session :id)
-            :replayed (yeah-acp--replay state session)))))
+            :replayed (yeah-acp--replay state session)
+            :modes (yeah-acp--mode-state mode)))))
 
 (defun yeah-acp--prompt-text (blocks)
   "Return prompt text from ACP content BLOCKS.
@@ -581,6 +672,26 @@ same stop reasons as before."
 A server that serves one client over a pipe ends with that session: the
 process must not outlive the agent.  A service on a socket outlives its
 sessions by design and does not read this flag.")
+
+(defun yeah-acp-session-set-mode (request)
+  "Set the mode of the session named by REQUEST and answer that it is set.
+REQUEST carries the `sessionId' and the `modeId'.  A mode is the permission
+profile of the session: in the `plan' mode the tools that change the world
+are refused without a question, and in the `build' mode the person decides
+each one of them.  The answer is empty, as ACP says, and the client learns
+the new mode from the journal of the session, which names it."
+  (let* ((session-id (plist-get request :sessionId))
+         (mode-id (plist-get request :modeId)))
+    (unless (stringp session-id)
+      (signal 'user-error (list "session/set_mode needs sessionId")))
+    (unless (and (stringp mode-id) (member mode-id (yeah-perm-profiles)))
+      (signal 'user-error
+              (list (format "session/set_mode: unknown mode %S" mode-id))))
+    (let* ((state (yeah-acp--session-state session-id t))
+           (session (plist-get state :session)))
+      (plist-put state :mode mode-id)
+      (yeah-events-write session "session-mode" :mode mode-id)
+      (list))))
 
 (defun yeah-acp-session-close (request)
   "Close the session named by REQUEST and answer that it is closed.
@@ -803,6 +914,8 @@ and asynchronously answered prompts."
      (yeah-acp--response id (yeah-acp-session-new params)))
     ("session/load"
      (yeah-acp--response id (yeah-acp-session-load params)))
+    ("session/set_mode"
+     (yeah-acp--response id (yeah-acp-session-set-mode params)))
     ("session/prompt"
      (yeah-acp-session-prompt params id))
     ("session/cancel"

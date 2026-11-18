@@ -1,0 +1,34 @@
+{
+  "id": "wave-43c",
+  "title": "the permission profile of a session changes over the wire",
+  "intent": "The third part of wave 43 of the plan of the owner (docs/PLAN.md 18.3, gap 2).  The defect: the method `session/set_mode' did not exist, and a client that asked was answered with `-32601'.  The permission profile of a session was chosen when the process started and could not be changed over the wire, so a person could not tell the agent to look without touching, and the client of Paseo had no modes to show: it takes the modes from the answer of `session/new' and switches them through `session/set_mode'.  What changes: the modes of a session are the permission profiles of the kernel (`plan' and `build', `lib/yeah-perm.el'), `session/new' publishes them together with the mode the session is in, `session/set_mode' changes the mode of a session, and the mode decides before anybody is asked: a mode that forbids an action refuses it without a question to the client.  The journal stays the source of truth: the change of the mode is a record of the session (`session-mode'), and the wire carries it as the `current_mode_update' notification that ACP names -- a session that is opened again keeps the mode it was left in.  The two other gaps of the wave (the model of the session, the `mcpServers' of the session) are not this part: each of them is a claim of its own and none of them is registered here.",
+  "touches": [
+    "lib/yeah-acp.el",
+    "lib/yeah-events.el",
+    "tests/support/yeah-acp-wire.el",
+    "tests/support/yeah-acp-tool-call.el",
+    "tests/support/yeah-acp-mode.el",
+    "tests/support/yeah-mode-model.el",
+    "tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
+    "tests/unit/test-yeah-acp.el",
+    "spec.json",
+    "waves/wave-43c.json",
+    "docs/PLAN.md",
+    "docs/PASEO-INTEGRATION-PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
+    "./scripts/dev check tests/checks/check-a-tool-call-carries-its-kind.el",
+    "./scripts/dev check tests/checks/check-a-tool-call-carries-named-arguments.el"
+  ],
+  "claims": [
+    "a-session-changes-its-permission-profile-over-the-wire"
+  ],
+  "commitment": [],
+  "objection": "Режим сессии -- это профиль прав, а не режим работы агента в смысле ACP: в ACP режим может означать что-то другое (у клиента ACP режимы -- это то, что агент сам объявляет, и их смысл задаёт агент).  Ядро объявляет два режима -- `plan' и `build' -- и они совпадают с профилями прав ядра, потому что других режимов у ядра нет; когда профилей станет больше, режимов станет столько же.  Смена режима меняет решение о правах, а не набор инструментов: в режиме `plan' инструмент `write' не запрещён как таковой -- запрещено то, что он меняет мир, и решение об этом принимает профиль.  Клиент, который не знает профилей, всё равно может менять режим, но толку от этого ему мало: он показывает режим, а не эффект.  Проверка волны работает через сервис на сокете, а не через сервер на stdio: сервер на stdio читает вход между запросами, и ответ клиента на вопрос о правах пришёл бы уже после того, как прогон, которому он принадлежит, закончился.  Это ограничение stdio, а не дефект проверки, и живое развёртывание Yeah -- сервис на сокете.  Проверка доказывает, что режим меняет решение о правах для инструмента `write'; она не доказывает, что клиент Paseo рисует переключатель режимов: это доказывает живой прогон с клиентом, который в этой волне не проводился.",
+  "refuted_by": "the wire refuses the mode of a session with -32601, or the mode of a session changes nothing and the tool it forbids still runs, or the control of the claim does not make the check fail by its own assertion",
+  "note": "Проверка волны нашла дефект в самой себе до того, как что-то доказала: список вопросов и список уведомлений жили в замыкании support-файла, а проверка читала свои копии, -- `push` меняет список той функции, в которой он вызван, и не список вызывающего.  Читатели стали функциями, и проверка читает то, что пришло.  Вторая находка: фиктивная модель завершала ход сама, а модель ядра завершает ход через колбэк инструмента -- транспорт хода зовётся один раз, и ответ приходит из колбэка.  Модель проверки режимов теперь отвечает вызовом `write' и завершает ход из колбэка этого вызова.  Третья находка: `json-serialize' не сериализует список объектов (`wrong-type-argument symbolp'), поэтому режимы едут вектором.  Общая машина провода вынесена в `tests/support/yeah-acp-wire.el`: сервер на stdio, читатель сообщений и ожидание ответа нужны были трём проверкам, а написанный дважды код -- это написанный дважды неправильно код.  Контроль claim'а (sed -i 's|(yeah-acp--mode-denies-p mode request)|nil|' lib/yeah-acp.el) кусается: проверка падает с кодом 1 и со своими словами (`the client was asked about a permission in the plan mode' и `the session in the plan mode wrote the file although its mode forbids it').  Проверка зелёная (около секунды), юниты ACP -- 26 из 26."
+}

@@ -634,6 +634,25 @@ work item. Never resolve it by silently making documentation more optimistic.
   `tests/checks/check-a-tool-call-carries-named-arguments.el', the claims are
   `a-tool-call-carries-its-kind' and `a-tool-call-carries-named-arguments'
   (docs/PLAN.md §16.34).
+- Wave 43 (the third part) made the permission profile of a session change over
+  the wire.  The method `session/set_mode' did not exist and a client that asked
+  was answered with `-32601'; the profile was chosen when the process started and
+  could not be changed, so a person could not tell the agent to look without
+  touching and the client of Paseo had no modes to show.  The modes of a session
+  are the permission profiles of the kernel (`plan' and `build'), `session/new'
+  publishes them with the mode the session is in, `session/set_mode' changes the
+  mode, and the mode decides before anybody is asked: a mode that forbids an
+  action refuses it without a question to the client.  The journal stays the
+  source of truth — the change of the mode is a record of the session
+  (`session-mode') and the wire carries it as the `current_mode_update'
+  notification that ACP names, so a session that is opened again keeps the mode
+  it was left in.  The check is
+  `tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el'
+  and the claim is `a-session-changes-its-permission-profile-over-the-wire'
+  (docs/PLAN.md §16.35).  The check runs against a service on a socket and not
+  against a server on stdio: a server on stdio reads its input between the
+  requests, so the answer of the client to a question about a permission would
+  come after the run it belongs to had ended.
 
 ## The commands
 

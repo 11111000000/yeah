@@ -587,5 +587,84 @@ does not know is refused with -32601."
           (should-not
            (= -32601 (plist-get (plist-get response :error) :code))))))))
 
+(ert-deftest yeah-acp-session-new-publishes-the-modes-of-the-session ()
+  "A new session names the mode it is in and every mode it may be in.
+The modes are the permission profiles of the kernel, and the client shows
+their names to the person."
+  (yeah-acp-test--with-server
+    (let* ((answer (yeah-acp-session-new
+                    (list :cwd (file-truename yeah-data-home)
+                          :mcpServers nil)))
+           (modes (plist-get answer :modes))
+           (available (plist-get modes :availableModes)))
+      (should (equal "build" (plist-get modes :currentModeId)))
+      (should (equal '("build" "plan")
+                     (sort (mapcar (lambda (mode) (plist-get mode :id)) available)
+                           #'string<)))
+      (should (cl-every (lambda (mode) (stringp (plist-get mode :name)))
+                        available)))))
+
+(ert-deftest yeah-acp-set-mode-changes-the-mode-of-the-session ()
+  "The wire answers `session/set_mode', and the client is told about it.
+The mode is the state of the session, and the journal names it."
+  (yeah-acp-test--with-server
+    (let* ((session-id (yeah-acp-test--new-session))
+           (emitted nil))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (let ((response
+             (yeah-acp-handle-message
+              (json-serialize
+               (list :jsonrpc "2.0" :id 5 :method "session/set_mode"
+                     :params (list :sessionId session-id :modeId "plan"))))))
+        (should response)
+        (should-not (plist-get (yeah-acp-test--parse response) :error)))
+      (should (equal "plan" (yeah-acp--session-mode session-id)))
+      (should (cl-some
+               (lambda (text)
+                 (let ((update (plist-get (plist-get (yeah-acp-test--parse text)
+                                                     :params)
+                                           :update)))
+                   (and (equal "current_mode_update"
+                               (plist-get update :sessionUpdate))
+                        (equal "plan" (plist-get update :currentModeId)))))
+               emitted))
+      ;; a session that is opened again keeps the mode it was left in
+      (let ((loaded (yeah-acp-session-load
+                     (list :sessionId session-id :cwd yeah-data-home
+                           :mcpServers nil))))
+        (should (equal "plan" (plist-get (plist-get loaded :modes)
+                                         :currentModeId)))))))
+
+(ert-deftest yeah-acp-set-mode-refuses-a-mode-the-kernel-does-not-know ()
+  (yeah-acp-test--with-server
+    (let ((session-id (yeah-acp-test--new-session)))
+      (should-error (yeah-acp-session-set-mode
+                     (list :sessionId session-id :modeId "rewrite"))
+                    :type 'user-error))))
+
+(ert-deftest yeah-acp-the-mode-of-a-session-decides-before-the-client-is-asked ()
+  "The mode of a session decides first: a mode that forbids an action
+refuses it without a question, and a mode that does not forbid it lets the
+client decide."
+  (yeah-acp-test--with-server
+    (let* ((session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (asked 0))
+      (setq yeah-acp--answerer
+            (lambda (_request)
+              (setq asked (1+ asked))
+              (list :effect :allow :reply :once)))
+      (let ((decide (yeah-acp--session-answerer state)))
+        (plist-put state :mode "plan")
+        (let ((decision (funcall decide (list :action "write"
+                                                :resource "written.txt"))))
+          (should (eq :deny (plist-get decision :effect)))
+          (should (equal 0 asked)))
+        (plist-put state :mode "build")
+        (let ((decision (funcall decide (list :action "write"
+                                                :resource "written.txt"))))
+          (should (eq :allow (plist-get decision :effect)))
+          (should (equal 1 asked)))))))
+
 (provide 'test-yeah-acp)
 ;;; test-yeah-acp.el ends here

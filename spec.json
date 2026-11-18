@@ -2881,6 +2881,31 @@
       "register": "fact",
       "control": "sed -i 's|(yeah-acp--tool-arguments fields)|(yeah-acp--tool-input (plist-get fields :args))|' lib/yeah-acp.el",
       "waiver": null
+    },
+    {
+      "id": "a-session-changes-its-permission-profile-over-the-wire",
+      "text": "The permission profile of a session changes over the wire: the method `session/set_mode' of ACP is answered, the profile of the session changes with it, and a tool that the profile forbids is refused without a question to the client.",
+      "scope": [
+        "lib/yeah-acp.el",
+        "lib/yeah-perm.el",
+        "lib/yeah-events.el",
+        "tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el"
+        }
+      ],
+      "falsifier": "the wire refuses the mode of a session with -32601, or the mode of a session changes nothing and the tool it forbids still runs",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-acp--mode-denies-p mode request)|nil|' lib/yeah-acp.el",
+      "waiver": null
     }
   ]
 }
