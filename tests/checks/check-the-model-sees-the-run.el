@@ -48,10 +48,11 @@
   "This is what has been done in this run so far:"
   "The words the transcript of a run begins with.")
 
-(defun yeah-check--fail (ok message)
-  "Return MESSAGE when OK is nil, and nil when OK holds."
-  (unless ok
-    message))
+(defun yeah-check--fail (violation message)
+  "Return MESSAGE when VIOLATION holds, and nil when it does not.
+A violation is a fact that breaks the promise of the check; the check fails
+when a violation is found."
+  (when violation message))
 
 (defun yeah-check--records-of-type (records type)
   "Return the records of TYPE in RECORDS."
@@ -116,10 +117,10 @@ request is the one that must carry the work of the run."
          (prompts (plist-get result :prompts)))
     (list
      (yeah-check--fail
-      prompts
+      (null prompts)
       "the model was asked nothing")
      (yeah-check--fail
-      (equal "start" (car prompts))
+      (not (equal "start" (car prompts)))
       (format "the first request of the run is %S, not the request itself"
               (car prompts))))))
 
@@ -130,21 +131,20 @@ request is the one that must carry the work of the run."
          (second (nth 1 prompts)))
     (list
      (yeah-check--fail
-      second
+      (null second)
       "the model was asked only once")
      (yeah-check--fail
-      (or (null second)
-          (string-prefix-p yeah-check--transcript-prefix second))
+      (and second (not (string-prefix-p yeah-check--transcript-prefix second)))
       (format "the second request does not carry the transcript of the run: %S"
               second))
      (yeah-check--fail
-      (and second (string-match-p "\\[tool probe" second))
+      (and second (not (string-match-p "\\[tool probe" second)))
       (format "the request does not name the call the model made: %S" second))
      (yeah-check--fail
-      (and second (string-match-p "the output of the probe" second))
+      (and second (not (string-match-p "the output of the probe" second)))
       (format "the request does not carry the result of the call: %S" second))
      (yeah-check--fail
-      (and second (string-match-p "I'll read the file next" second))
+      (and second (not (string-match-p "I'll read the file next" second)))
       (format "the request does not carry the answer the model gave: %S" second)))))
 
 (defun yeah-check--the-journal-keeps-the-plain-prompt ()
@@ -162,15 +162,15 @@ request is the one that must carry the work of the run."
            messages)))
     (list
      (yeah-check--fail
-      messages
+      (null messages)
       "the journal holds no message of the run")
      (yeah-check--fail
-      (cl-find-if (lambda (record)
-                    (equal "start" (plist-get record :payload)))
-                  messages)
+      (null (cl-find-if (lambda (record)
+                           (equal "start" (plist-get record :payload)))
+                         messages))
       "the journal does not hold the plain request of the run")
      (yeah-check--fail
-      (null holds-transcript)
+      holds-transcript
       "the journal holds the transcript: the projection is a copy of the run"))))
 
 (let ((failures (delq nil
