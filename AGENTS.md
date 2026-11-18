@@ -587,6 +587,20 @@ work item. Never resolve it by silently making documentation more optimistic.
   service of the kernel.  The order of the work is the plan of the owner
   (`docs/PLAN.md` §18: waves 42 and 43); the plugin is TypeScript and lives
   outside `lib/`, which stays Elisp only.
+- Wave 42 (the first half) made the server end with the session of its client.  The
+  core answers the request `session/close' — the method of ACP that Paseo calls when
+  it closes the session of the agent, and the error of the answer is swallowed there,
+  so a core that did not know the method kept its session and its process alive
+  without a word.  The server over stdio serves one client, so the end of that
+  session is the end of the process: it leaves its loop without waiting for the pipe
+  of the client to close.  The server over a socket serves many clients and keeps
+  running when one of them closes its session.  The live run of the self-development
+  copy had built the end of the session as the notification `session/exit' — a name
+  that is not part of ACP and that no client sends; the contradiction with the plan
+  of the integration is written down in `waves/wave-42.json`, and the decision took
+  the method of ACP.  The check is
+  `tests/checks/check-the-server-exits-when-the-session-is-over.el', the claim is
+  `the-server-exits-when-the-session-is-over' (docs/PLAN.md §16.32).
 
 ## The commands
 

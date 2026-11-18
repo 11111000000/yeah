@@ -2784,6 +2784,29 @@
       "register": "fact",
       "control": "sed -i 's|(yeah-turn--supervised-p turn)|nil|' lib/yeah-turn.el",
       "waiver": null
+    },
+    {
+      "id": "the-server-exits-when-the-session-is-over",
+      "text": "The process of the ACP server over stdio is gone within ten seconds after the client closes its session with the request `session/close', even when the client keeps the pipe of the server open; the server over a socket serves many clients and keeps running when one of them closes its session, and the session that is over answers no prompt.",
+      "scope": [
+        "lib/yeah-acp.el",
+        "tests/checks/check-the-server-exits-when-the-session-is-over.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-server-exits-when-the-session-is-over.el"
+        }
+      ],
+      "falsifier": "the server is still alive ten seconds after the client closed its session and kept the pipe open, or the server over a socket ended with the session of one client, or the session that is over answered a prompt",
+      "register": "fact",
+      "control": "sed -i 's/(setq yeah-acp--last-session-closed t)/(setq yeah-acp--last-session-closed nil)/' lib/yeah-acp.el",
+      "waiver": null
     }
   ]
 }

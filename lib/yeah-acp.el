@@ -240,7 +240,10 @@ they are: `yeah-wire-print-line' knows how."
               :promptCapabilities (list :image :false
                                         :audio :false
                                         :embeddedContext :false)
-              :mcpCapabilities (list :http :false :sse :false))))
+              :mcpCapabilities (list :http :false :sse :false)
+              ;; `session/close' is a part of ACP: the client asks the agent
+              ;; to close the session, and the agent says it did.
+              :sessionCapabilities (list :close (list)))))
 
 (defun yeah-acp--remember-capabilities (handshake)
   "Remember the client capabilities of HANDSHAKE for the current connection.
@@ -548,6 +551,36 @@ same stop reasons as before."
                              (yeah-acp--completion-stop-reason completion))))))))
   nil)
 
+(defvar yeah-acp--last-session-closed nil
+  "Non-nil when the client closed the last session of this server.
+A server that serves one client over a pipe ends with that session: the
+process must not outlive the agent.  A service on a socket outlives its
+sessions by design and does not read this flag.")
+
+(defun yeah-acp-session-close (request)
+  "Close the session named by REQUEST and answer that it is closed.
+The turn that runs in the session is cancelled, the session leaves the
+registry of the server, and the server that serves one client over a pipe
+ends with it -- the process must not outlive the agent, and the client
+that keeps the pipe open does not decide when the process goes.
+
+ACP says `session/close' is a request, so the answer leaves before the
+server stops."
+  (yeah-acp--require-session-id request "session/close")
+  (let* ((session-id (plist-get request :sessionId))
+         (state (yeah-acp--session-state session-id t)))
+    (when state
+      (let ((control (plist-get state :control)))
+        (when control
+          (yeah-control-cancel control "closed by the ACP client")))
+      (when-let ((listener (plist-get state :listener)))
+        (setq yeah-events-write-functions
+              (delete listener yeah-events-write-functions)))
+      (remhash session-id yeah-acp--sessions)
+      (when (= 0 (hash-table-count yeah-acp--sessions))
+        (setq yeah-acp--last-session-closed t))))
+  (list :closed t))
+
 (defun yeah-acp-session-cancel (request)
   "Handle the session/cancel notification REQUEST.
 The cancel reaches the run of the session's controller: it stops the turn
@@ -749,6 +782,8 @@ and asynchronously answered prompts."
      (yeah-acp-session-prompt params id))
     ("session/cancel"
      (yeah-acp-session-cancel params))
+    ("session/close"
+     (yeah-acp--response id (yeah-acp-session-close params)))
     ("session/steer"
      (yeah-acp--response id (yeah-acp-session-steer params)))
     ("session/withdraw"
@@ -803,13 +838,21 @@ After each request the server lets the work it started settle, so an
 asynchronous prompt answer leaves before the next request is read.
 A cancellation that arrives while a prompt runs is therefore read only
 after that prompt settled; `yeah-acp-serve-socket' does not have this
-limit."
+limit.
+
+The server ends with its last session: a client that closes the session
+with `session/close' and keeps the pipe of the server open does not keep
+the process alive."
   (setq yeah-acp--transport transport
         yeah-acp--answerer answerer
         yeah-acp--output-function (or output-function #'yeah-acp--print-line))
   (let ((yeah-acp--output yeah-acp--output-function))
     (catch 'eof
       (while t
+        ;; The client closed the last session: the server ends with it, even
+        ;; when the client keeps the pipe of the server open.
+        (when yeah-acp--last-session-closed
+          (throw 'eof nil))
         (let ((line (yeah-acp--read-line)))
           (unless line
             (throw 'eof nil))
@@ -854,7 +897,8 @@ served at the same time."
   (clrhash yeah-acp--sessions)
   (clrhash yeah-acp--pending-permissions)
   (clrhash yeah-acp--client-capabilities)
-  (setq yeah-acp--counter 0))
+  (setq yeah-acp--counter 0
+        yeah-acp--last-session-closed nil))
 
 (provide 'yeah-acp)
 ;;; yeah-acp.el ends here
