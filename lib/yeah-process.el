@@ -329,21 +329,25 @@ without changing its status."
                       (list :name "timeout" :type 'integer :optional t)
                       (list :name "directory" :type 'string :optional t)
                       (list :name "idle" :type 'integer :optional t))
+         :kind "execute"
          :async t
          :handler #'yeah-process-bash)
    (list :name "job-status"
          :description "Return a job's status and a bounded output excerpt."
          :input (list (list :name "id" :type 'string))
+         :kind "execute"
          :handler #'yeah-process-job-status)
    (list :name "job-read"
          :description "Read a character slice of a job's combined output."
          :input (list (list :name "id" :type 'string)
                       (list :name "offset" :type 'integer :optional t)
                       (list :name "limit" :type 'integer :optional t))
+         :kind "execute"
          :handler #'yeah-process-job-read)
    (list :name "job-cancel"
          :description "Delete a job's managed process; descendants are not guaranteed to stop."
          :input (list (list :name "id" :type 'string))
+         :kind "execute"
          :handler #'yeah-process-job-cancel)))
 
 (provide 'yeah-process)

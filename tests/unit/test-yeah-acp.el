@@ -509,18 +509,45 @@ returned: a call without its input is a name."
       (setq yeah-acp--output-function (lambda (text) (push text emitted)))
       (funcall listener session "tool-request"
                (list :tool "write" :args "(\"answer.txt\" \"42\")"
+                     :kind "edit"
+                     :named_args '(:path "answer.txt" :content "42")
                      :tool_call_id "call-1") 1)
       (funcall listener session "tool-end"
                (list :tool "write" :ok t :payload "the file is written"
+                     :kind "edit"
                      :tool_call_id "call-1") 2)
       (let* ((updates (reverse (yeah-acp-test--update-objects emitted)))
              (call (nth 0 updates))
              (end (nth 1 updates)))
         (should (equal "tool_call" (plist-get call :sessionUpdate)))
-        ;; the arguments are the values themselves and not their printed form
-        (should (equal '("answer.txt" "42") (plist-get call :rawInput)))
+        ;; the arguments are the values themselves under their names and not
+        ;; their printed form
+        (should (equal '(:path "answer.txt" :content "42")
+                       (plist-get call :rawInput)))
+        ;; the kind of the call is on the wire
+        (should (equal "edit" (plist-get call :kind)))
+        (should (equal "edit" (plist-get end :kind)))
         (should (equal "tool_call_update" (plist-get end :sessionUpdate)))
         (should (equal "the file is written" (plist-get end :rawOutput))))))
+
+(ert-deftest yeah-acp-a-record-without-named-arguments-travels-positional ()
+  "A record written before the kernel named the arguments holds the printed
+form of them only: the wire falls back to the values in the order they came."
+  (yeah-acp-test--with-server
+    (let* ((emitted nil)
+           (session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (listener (plist-get state :listener))
+           (session (plist-get state :session)))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (funcall listener session "tool-request"
+               (list :tool "write" :args "(\"answer.txt\" \"42\")"
+                     :tool_call_id "call-1") 1)
+      (let* ((updates (reverse (yeah-acp-test--update-objects emitted)))
+             (call (nth 0 updates)))
+        (should (equal '("answer.txt" "42") (plist-get call :rawInput)))
+        ;; a record that names no kind has no kind on the wire
+        (should (equal nil (plist-get call :kind)))))))
 
 (ert-deftest yeah-acp-the-input-of-a-tool-call-is-read-as-data ()
   "The arguments of a call come from the model, so the printed form of them is
@@ -559,6 +586,171 @@ does not know is refused with -32601."
         (let ((response (yeah-acp-test--response method nil)))
           (should-not
            (= -32601 (plist-get (plist-get response :error) :code))))))))
+
+(ert-deftest yeah-acp-session-new-publishes-the-modes-of-the-session ()
+  "A new session names the mode it is in and every mode it may be in.
+The modes are the permission profiles of the kernel, and the client shows
+their names to the person."
+  (yeah-acp-test--with-server
+    (let* ((answer (yeah-acp-session-new
+                    (list :cwd (file-truename yeah-data-home)
+                          :mcpServers nil)))
+           (modes (plist-get answer :modes))
+           (available (plist-get modes :availableModes)))
+      (should (equal "build" (plist-get modes :currentModeId)))
+      (should (equal '("build" "plan")
+                     (sort (mapcar (lambda (mode) (plist-get mode :id)) available)
+                           #'string<)))
+      (should (cl-every (lambda (mode) (stringp (plist-get mode :name)))
+                        available)))))
+
+(ert-deftest yeah-acp-set-mode-changes-the-mode-of-the-session ()
+  "The wire answers `session/set_mode', and the client is told about it.
+The mode is the state of the session, and the journal names it."
+  (yeah-acp-test--with-server
+    (let* ((session-id (yeah-acp-test--new-session))
+           (emitted nil))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (let ((response
+             (yeah-acp-handle-message
+              (json-serialize
+               (list :jsonrpc "2.0" :id 5 :method "session/set_mode"
+                     :params (list :sessionId session-id :modeId "plan"))))))
+        (should response)
+        (should-not (plist-get (yeah-acp-test--parse response) :error)))
+      (should (equal "plan" (yeah-acp--session-mode session-id)))
+      (should (cl-some
+               (lambda (text)
+                 (let ((update (plist-get (plist-get (yeah-acp-test--parse text)
+                                                     :params)
+                                           :update)))
+                   (and (equal "current_mode_update"
+                               (plist-get update :sessionUpdate))
+                        (equal "plan" (plist-get update :currentModeId)))))
+               emitted))
+      ;; a session that is opened again keeps the mode it was left in
+      (let ((loaded (yeah-acp-session-load
+                     (list :sessionId session-id :cwd yeah-data-home
+                           :mcpServers nil))))
+        (should (equal "plan" (plist-get (plist-get loaded :modes)
+                                         :currentModeId)))))))
+
+(ert-deftest yeah-acp-set-mode-refuses-a-mode-the-kernel-does-not-know ()
+  (yeah-acp-test--with-server
+    (let ((session-id (yeah-acp-test--new-session)))
+      (should-error (yeah-acp-session-set-mode
+                     (list :sessionId session-id :modeId "rewrite"))
+                    :type 'user-error))))
+
+(defun yeah-acp-test--model-option (options)
+  "Return the option of the model among the configuration OPTIONS."
+  (cl-find-if (lambda (option) (equal "model" (plist-get option :category)))
+              options))
+
+(ert-deftest yeah-acp-session-new-publishes-the-model-of-the-session ()
+  "A new session names the models it may run on and the one it runs on.
+The option of the model is what a client looks for, and the client of
+Paseo reads it by its category."
+  (yeah-acp-test--with-server
+    (let* ((yeah-model-catalog '("model-a" "model-b"))
+           (answer (yeah-acp-session-new (list :cwd (file-truename yeah-data-home)
+                                               :mcpServers nil)))
+           (option (yeah-acp-test--model-option (plist-get answer :configOptions))))
+      (should option)
+      (should (equal "model-a" (plist-get option :currentValue)))
+      (should (equal '("model-a" "model-b")
+                     (mapcar (lambda (value) (plist-get value :value))
+                             (plist-get option :options)))))))
+
+(ert-deftest yeah-acp-set-config-option-changes-the-model-of-the-session ()
+  "The wire answers `session/set_config_option', and the client is told about it.
+The model is the state of the session, and the journal names it."
+  (yeah-acp-test--with-server
+    (let* ((yeah-model-catalog '("model-a" "model-b"))
+           (session-id (yeah-acp-test--new-session))
+           (emitted nil))
+      (setq yeah-acp--output-function (lambda (text) (push text emitted)))
+      (let ((response
+             (yeah-acp-handle-message
+              (json-serialize
+               (list :jsonrpc "2.0" :id 6 :method "session/set_config_option"
+                     :params (list :sessionId session-id
+                                   :configId "model"
+                                   :value "model-b"))))))
+        (should response)
+        (should-not (plist-get (yeah-acp-test--parse response) :error)))
+      (should (cl-some
+               (lambda (text)
+                 (let* ((update (plist-get (plist-get (yeah-acp-test--parse text)
+                                                     :params)
+                                            :update))
+                        (option (yeah-acp-test--model-option
+                                 (plist-get update :configOptions))))
+                   (and (equal "config_option_update"
+                               (plist-get update :sessionUpdate))
+                        (equal "model-b" (plist-get option :currentValue)))))
+               emitted))
+      ;; a session that is opened again keeps the model it was left in
+      (let ((loaded (yeah-acp-session-load
+                     (list :sessionId session-id :cwd yeah-data-home
+                           :mcpServers nil))))
+        (should (equal "model-b"
+                       (plist-get (yeah-acp-test--model-option
+                                   (plist-get loaded :configOptions))
+                                  :currentValue)))))))
+
+(ert-deftest yeah-acp-set-config-option-refuses-a-model-the-kernel-does-not-know ()
+  (yeah-acp-test--with-server
+    (let* ((yeah-model-catalog '("model-a" "model-b"))
+           (session-id (yeah-acp-test--new-session)))
+      (should-error (yeah-acp-session-set-config-option
+                     (list :sessionId session-id
+                           :configId "model"
+                           :value "model-c"))
+                    :type 'user-error))))
+
+(ert-deftest yeah-acp-the-model-of-a-session-is-bound-around-the-transport ()
+  "The model of the session is the model the transport runs on.
+The transport of the service is one for every session, and the model of a
+session is bound around the call of that transport."
+  (yeah-acp-test--with-server
+    (let* ((yeah-model-catalog '("model-a" "model-b"))
+           (seen nil)
+           (session-id (yeah-acp-test--new-session
+                        (lambda (_prompt _callback)
+                          (setq seen (yeah-model-current))))))
+      (funcall (yeah-acp--session-transport (yeah-acp--session-state session-id))
+               "prompt" #'ignore)
+      (should (equal "model-a" seen))
+      (yeah-acp-session-set-config-option
+       (list :sessionId session-id :configId "model" :value "model-b"))
+      (funcall (yeah-acp--session-transport (yeah-acp--session-state session-id))
+               "prompt" #'ignore)
+      (should (equal "model-b" seen)))))
+
+(ert-deftest yeah-acp-the-mode-of-a-session-decides-before-the-client-is-asked ()
+  "The mode of a session decides first: a mode that forbids an action
+refuses it without a question, and a mode that does not forbid it lets the
+client decide."
+  (yeah-acp-test--with-server
+    (let* ((session-id (yeah-acp-test--new-session))
+           (state (yeah-acp--session-state session-id))
+           (asked 0))
+      (setq yeah-acp--answerer
+            (lambda (_request)
+              (setq asked (1+ asked))
+              (list :effect :allow :reply :once)))
+      (let ((decide (yeah-acp--session-answerer state)))
+        (plist-put state :mode "plan")
+        (let ((decision (funcall decide (list :action "write"
+                                                :resource "written.txt"))))
+          (should (eq :deny (plist-get decision :effect)))
+          (should (equal 0 asked)))
+        (plist-put state :mode "build")
+        (let ((decision (funcall decide (list :action "write"
+                                                :resource "written.txt"))))
+          (should (eq :allow (plist-get decision :effect)))
+          (should (equal 1 asked)))))))
 
 (provide 'test-yeah-acp)
 ;;; test-yeah-acp.el ends here

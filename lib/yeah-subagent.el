@@ -182,7 +182,8 @@ Signals `user-error' when the depth of the child would reach
            (child-id (cl-incf yeah-subagent--next-id))
            (parent-id (plist-get parent-session :id))
            (child-session-id (format "%s.sub-%d" parent-id child-id))
-           (child-session (yeah-session-open child-session-id root))
+           (child-session (yeah-session-open child-session-id root
+                                              (plist-get parent-session :cwd)))
            (child-depth (1+ d))
            (record nil))
       (setq record (list :id child-id

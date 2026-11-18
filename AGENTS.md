@@ -595,16 +595,143 @@ work item. Never resolve it by silently making documentation more optimistic.
   points that the plan of the owner does not name (P-A…P-D).  Wave 54 is done
   (2026-11-18): the spin of the server does not reproduce on the code of that
   day, and the bound of one per cent of a core over ten seconds is now a
-  check.  Wave 42 — the life cycle of the server — is carried out by another
-  session of the harness at the same time (`waves/wave-42.json`, the extension
-  `session/exit`); do not take that wave and do not write the same files.
+  check.
 - The finding that moves the order: `session/close` is a method of ACP, and
   the client of Paseo already calls it (`connection.ts:690-698`, the SDK sends
   it as a request and the error is swallowed).  The kernel answers `-32601`.
-  The extension `session/exit` of wave 42 does not reach that client by
-  itself, so either the kernel answers `session/close` as well, or the plugin
-  translates it.  This is written down in `docs/PASEO-INTEGRATION-PLAN.md`
-  §3.6 and §8; it is the first item of the wave that follows 42.
+  The extension `session/exit` does not reach that client by itself, so either
+  the kernel answers `session/close` as well, or the plugin translates it.
+  This is written down in `docs/PASEO-INTEGRATION-PLAN.md` §3.6 and §8; wave
+  42 answered it with the method of ACP.
+- Wave 42 (the first half) made the server end with the session of its client.  The
+  core answers the request `session/close' — the method of ACP that Paseo calls when
+  it closes the session of the agent, and the error of the answer is swallowed there,
+  so a core that did not know the method kept its session and its process alive
+  without a word.  The server over stdio serves one client, so the end of that
+  session is the end of the process: it leaves its loop without waiting for the pipe
+  of the client to close.  The server over a socket serves many clients and keeps
+  running when one of them closes its session.  The live run of the self-development
+  copy had built the end of the session as the notification `session/exit' — a name
+  that is not part of ACP and that no client sends; the contradiction with the plan
+  of the integration is written down in `waves/wave-42.json`, and the decision took
+  the method of ACP.  The check is
+  `tests/checks/check-the-server-exits-when-the-session-is-over.el', the claim is
+  `the-server-exits-when-the-session-is-over' (docs/PLAN.md §16.32).
+- Wave 43 (the first part) made the tools of a session run in the directory of the
+  session.  The `cwd' that the client sends in `session/new' was recorded in the
+  journal and in the frozen input of the run, and the tools did not read it: a
+  relative path of a tool was counted from the directory of the Emacs process, so
+  the `bash' of the agent ran in the directory of the installation of the CLI of
+  Paseo and not in the repository of the task.  The session carries its directory
+  now, and the tools of the run are dispatched inside the binding of it — one
+  place, `yeah-session-with' in `lib/yeah-session.el`, and through it pass the
+  synchronous tools and the asynchronous ones alike.  A session that was opened
+  without a directory (an older journal) leaves the directory of the process
+  alone.  The check is
+  `tests/checks/check-a-session-runs-in-its-own-directory.el', the claim is
+  `a-session-runs-in-its-own-directory' (docs/PLAN.md §16.33).
+- Wave 43 (the second part) made the call of a tool carry its kind and its named
+  arguments.  The `tool_call' of the wire named the tool and carried what it was
+  called with, but no kind: a client that renders the call of a tool by its kind
+  saw the name and nothing else, and the plugin of Paseo had to guess the kind
+  from the name of the tool.  The arguments travelled as a positional list, so a
+  client that looks for named fields found nothing and could not draw the edit of
+  a file.  The tool declares its kind now — the new field `:kind' of the
+  specification in `lib/yeah-tools.el' — and the request of the call in the
+  journal carries the kind and the arguments under the names the tool declared;
+  the wire carries both, and the journal stays the source of truth: a record
+  written before the kernel named the arguments still travels the way it was
+  written.  The names on the wire are the names the tool declared and the names
+  the model was given (`path', `old_str', `new_str', `command'); the client of
+  Paseo reads `filePath', `oldString' and `newString', and that translation is
+  the work of the plugin, because it is the convention of Paseo and not the
+  convention of the kernel.  The checks are
+  `tests/checks/check-a-tool-call-carries-its-kind.el' and
+  `tests/checks/check-a-tool-call-carries-named-arguments.el', the claims are
+  `a-tool-call-carries-its-kind' and `a-tool-call-carries-named-arguments'
+  (docs/PLAN.md §16.34).
+- Wave 43 (the third part) made the permission profile of a session change over
+  the wire.  The method `session/set_mode' did not exist and a client that asked
+  was answered with `-32601'; the profile was chosen when the process started and
+  could not be changed, so a person could not tell the agent to look without
+  touching and the client of Paseo had no modes to show.  The modes of a session
+  are the permission profiles of the kernel (`plan' and `build'), `session/new'
+  publishes them with the mode the session is in, `session/set_mode' changes the
+  mode, and the mode decides before anybody is asked: a mode that forbids an
+  action refuses it without a question to the client.  The journal stays the
+  source of truth — the change of the mode is a record of the session
+  (`session-mode') and the wire carries it as the `current_mode_update'
+  notification that ACP names, so a session that is opened again keeps the mode
+  it was left in.  The check is
+  `tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el'
+  and the claim is `a-session-changes-its-permission-profile-over-the-wire'
+  (docs/PLAN.md §16.35).  The check runs against a service on a socket and not
+  against a server on stdio: a server on stdio reads its input between the
+  requests, so the answer of the client to a question about a permission would
+  come after the run it belongs to had ended.
+- Wave 43 (the fourth part) made the model of a session change over the wire.
+  Neither `session/set_model' nor `session/set_config_option' existed, and a
+  client that asked was answered with `-32601'; the model was chosen when the
+  process started, so a person could see the model and not switch it.  The
+  catalog of the models is what the client may choose from, and it names the
+  models that can really run: the models of the backend of gptel
+  (`lib/yeah-model.el').  `session/new' and `session/load' publish them as
+  `configOptions' -- an array, because `json-serialize' does not serialize a
+  list of objects -- with the category `model' that the client of Paseo looks
+  for, and `session/set_config_option' changes the model, refuses a model that
+  no session may run on, and answers with the options and their new values.
+  The journal names the new model (the record `session-model'), the wire
+  carries it as the `config_option_update' notification, and a session that is
+  opened again keeps the model it was left in.  The model reaches the call of
+  the model without a change of the contract of the transport: the transport of
+  the service is one for every session, and the model of the session is bound
+  around the call of that transport (`yeah-model--current'), and
+  `yeah-gptel-request' takes it when nobody named a model explicitly -- the
+  same shape as the working directory of the session (wave 43, part 1).  The
+  plugin of Paseo stopped being the one who changes the model: it registers
+  every model it knows in the backend of gptel (the setting `models', a list
+  through a comma) and does not intercept the change -- the request goes to the
+  kernel, and the kernel decides whether the session may run on the named
+  model.  The check is
+  `tests/checks/check-a-session-changes-its-model-over-the-wire.el' and the
+  claim is `a-session-changes-its-model-over-the-wire' (docs/PLAN.md §16.36).
+  Two traps of this wave are worth keeping: the catalog of the models was
+  empty because the check asked for `gptel-backend' through `fboundp', and
+  that is a variable and not a function; and the check of the model and the
+  check of the mode had the client of the checks written twice, so the client
+  now lives in `tests/support/yeah-acp-client.el'.
+- Wave 43 (the fifth part) made the MCP servers of a session reach the model.
+  The `mcpServers' array of `session/new' and of `session/load' was checked
+  and thrown away: the kernel verified that it was an array and forgot it, so
+  a client that named a server got a session whose model could not use a
+  single tool of it.  The servers the client names are connected
+  (`lib/yeah-session-mcp.el'), the handshake of MCP is spoken (initialize,
+  then tools/list), and the tools of those servers become ordinary entries of
+  the registry of the runs of that session -- only stdio is spoken, and a
+  server of another transport is refused by name; a server that does not
+  answer in ten seconds refuses the session rather than opening it without
+  the tools the client asked for.  The tools live in the snapshot of the
+  registry of the run, and not in the shared registry, so the tools of one
+  session do not leak into the runs of another.  The journal holds only the
+  names of the servers: the command of a server and its environment may hold
+  secrets.  The environment of the server is given by the program `env' in
+  the command line, because `make-process' in Emacs 30 knows no
+  `:environment' and `process-environment' is a variable, not a function.
+  This wave found a defect of the core: the deferred permission -- the answer
+  of the person comes later, and the route of ACP defers the permission of
+  every tool -- ran the tool outside the binding of the registry, so a tool of
+  a session was not found and the run hung; `yeah-turn--run-or-refuse' binds
+  the registry of the turn around the call of the tool now.  The check is
+  `tests/checks/check-the-mcp-servers-of-a-session-reach-the-model.el' and the
+  claim is `the-mcp-servers-of-a-session-reach-the-model' (docs/PLAN.md
+  §16.37).  Four traps of this wave are worth keeping: `json-serialize' in
+  Emacs 30 reads a list as a plist, so an array on the wire is a vector and an
+  object is a hash table; the properties of a schema arrive as a plist with
+  keyword keys, and the name of a keyword carries its colon (`symbol-name' of
+  `:text' is ":text", not "text"); `force-output' and `flush-output' do not
+  exist in Emacs 30, neither as a function nor as a macro, while the stdout of
+  a batch Emacs is not buffered a line at a time; and `mcpServers: null' passed
+  the check "this is an array" and then went into `mapcar'.
 
 ## The commands
 

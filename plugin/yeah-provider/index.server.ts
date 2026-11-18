@@ -17,7 +17,7 @@ import {
   resolveEmacs,
   resolveGptelDir,
 } from "./server/environment";
-import { yeahCatalog, yeahConfigure } from "./server/catalog";
+import { yeahCatalog } from "./server/catalog";
 import {
   acpCommand,
   acpStream,
@@ -25,7 +25,7 @@ import {
   yeahToolCallTransformer,
   type YeahLaunch,
 } from "./server/yeah";
-import { yeahSettings, type YeahSettingsValues } from "./shared/settings";
+import { yeahModelsOf, yeahSettings, type YeahSettingsValues } from "./shared/settings";
 import { repoPathFromEnv } from "./shared/paths";
 
 /** Настройки по умолчанию: те же значения, что в схеме настроек. */
@@ -34,6 +34,7 @@ const DEFAULTS: YeahSettingsValues = {
   gptelPath: "",
   emacsPath: "",
   model: "MiniMax-M3.1-Flash",
+  models: "",
   host: "api.minimax.io",
   profile: "build",
   keyFile: "~/.config/yeah/live.env",
@@ -48,6 +49,7 @@ export function launchOf(values: YeahSettingsValues): YeahLaunch {
     lib: path.join(repo, "lib"),
     gptel: resolveGptelDir(values.gptelPath),
     model: values.model,
+    models: yeahModelsOf(values),
     host: values.host,
     profile: values.profile,
     dataHome: values.dataHome ? expandHome(values.dataHome) : "",
@@ -113,10 +115,11 @@ export default function contribute(server: PluginServerContext) {
       transformers: [
         { toolCall: yeahToolCallTransformer },
         {
-          // Ядро не публикует модель по проводу: каталог и смена модели
-          // — работа плагина, и модель там одна, та, что задана настройкой.
-          discover: (catalog) => yeahCatalog(catalog, values.model),
-          configure: (change) => yeahConfigure(change, values.model),
+          // Модель сессии меняет ядро: оно публикует модели в ответе
+          // `session/new` и меняет модель через `session/set_config_option`.
+          // Плагин публикует каталог моделей, которые знает его бэкенд, и
+          // не перехватывает смену модели -- запрос уходит в ядро.
+          discover: (catalog) => yeahCatalog(catalog, yeahModelsOf(values)),
         },
       ],
     }),

@@ -106,12 +106,16 @@ by compaction records."
                        :note (format "the record holds a value that the journal cannot write: %S"
                                      (plist-get record :type))))))))
 
-(defun yeah-session-open (session-id &optional root)
+(defun yeah-session-open (session-id &optional root cwd)
   "Open (or create) the session log for SESSION-ID under ROOT.
 If the file does not exist, it is created with a single
 `header' record. If it does exist, the records are read into
 memory; the in-memory state is the source of truth for the
 returned session object. Idempotent.
+
+CWD is the directory the work of the session happens in: the tools of
+the session run there, and a relative path of a tool is counted from it.
+It is nil when the session has no directory of its own.
 
 Malformed nonempty lines are omitted from the readable records and reported
 in a `:recovery' plist with `:malformed-lines', `:partial-tail' and
@@ -120,7 +124,7 @@ line.  Corruption emits a warning, but never rewrites the log or appends a
 recovery event.  Clean logs have no `:recovery' metadata and emit no warning.
 
 Returns a plist of shape:
-  (:id ID :path PATH :records LIST :next-id N [:recovery RECOVERY])"
+  (:id ID :path PATH :records LIST :next-id N [:cwd CWD] [:recovery RECOVERY])"
   (unless (and (stringp session-id) (> (length session-id) 0))
     (signal 'user-error
             (list (format "yeah-session-open: bad session id %S" session-id))))
@@ -176,6 +180,8 @@ Returns a plist of shape:
               next-id 0)))
     (append (list :id session-id :path path :records records
                   :next-id (1+ next-id))
+            (when cwd
+              (list :cwd cwd))
             (when recovery
               (list :recovery recovery)))))
 
@@ -190,10 +196,21 @@ and never leaks into another run.")
   "Evaluate BODY with SESSION as the session of the run that is running.
 SESSION is evaluated once, in the scope of BODY.  A tool that acts on the
 world of the run -- a delegation, a write -- reads the session through
-`yeah-session-current' and writes into the journal of that run."
+`yeah-session-current' and writes into the journal of that run.
+
+The tools of the run also work in the directory of the session: a relative
+path of a tool is counted from the `cwd' of the session and not from the
+directory of the process.  A session without a directory of its own leaves
+the directory of the process alone."
   (declare (indent 0) (debug t))
-  `(let ((yeah-session--current ,session))
-     ,@body))
+  `(let* ((yeah-session--current ,session)
+          (yeah-session--cwd (plist-get yeah-session--current :cwd)))
+     (let ((default-directory
+            (if (and (stringp yeah-session--cwd)
+                     (file-directory-p yeah-session--cwd))
+                (file-name-as-directory yeah-session--cwd)
+              default-directory)))
+       ,@body)))
 
 (defun yeah-session-current ()
   "Return the session of the run that is running right now, or nil.

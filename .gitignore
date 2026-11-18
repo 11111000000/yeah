@@ -12,5 +12,5 @@ _target/
 .math/
 bench/results/
 tests/artifacts/
-plugin/*/node_modules/
+plugin/*/node_modules
 plugin/*/yeah/

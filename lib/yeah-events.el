@@ -43,7 +43,8 @@
     (:type "assistant-message"
      :required (:payload))
     (:type "tool-request"
-     :required (:tool :args))
+     :required (:tool :args)
+     :optional (:kind :named_args))
     (:type "permission-request"
      :required (:action :resource)
      :optional (:arguments))
@@ -52,7 +53,7 @@
      :optional (:reply :reason))
     (:type "tool-end"
      :required (:tool :ok :payload)
-     :optional (:details))
+     :optional (:details :kind))
     (:type "tool-dropped"
      :required (:tool :reason)
      :optional (:args))
@@ -99,7 +100,11 @@
     (:type "unfinished"
      :required (:payload :reason))
     (:type "finish"
-     :required (:summary)))
+     :required (:summary))
+    (:type "session-mode"
+     :required (:mode))
+    (:type "session-model"
+     :required (:model)))
   "The event vocabulary, with required and optional payload fields.")
 
 (defun yeah-events-types ()

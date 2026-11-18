@@ -24,8 +24,15 @@ export const yeahSettings = defineSettings({
     gptelPath: z.string().max(4096).default(""),
     /** Путь к Emacs; пусто — искать в известных местах. */
     emacsPath: z.string().max(4096).default(""),
-    /** Имя модели провайдера. */
+    /** Имя модели провайдера: на ней сервер стартует. */
     model: z.string().max(200).default("MiniMax-M3.1-Flash"),
+    /**
+     * Модели провайдера: список через запятую.
+     *
+     * Модель сессии меняется по проводу, и gptel берёт только ту модель,
+     * которую знает его бэкенд.  Пустой список — одна модель из `model`.
+     */
+    models: z.string().max(2000).default(""),
     /** Хост провайдера. */
     host: z.string().max(200).default("api.minimax.io"),
     /** Профиль разрешений: `build` спрашивает человека, `plan` запрещает. */
@@ -39,3 +46,19 @@ export const yeahSettings = defineSettings({
 
 /** Значения настроек провайдера. */
 export type YeahSettingsValues = z.output<typeof yeahSettings.schema>;
+
+/**
+ * Модели провайдера: те, что перечислены в настройке, и модель запуска.
+ *
+ * Модель запуска есть в списке всегда: сервер стартует на ней, а gptel
+ * берёт только ту модель, которую знает его бэкенд.  Пустой список — одна
+ * модель запуска.
+ */
+export function yeahModelsOf(values: YeahSettingsValues): string[] {
+  const listed = values.models
+    .split(",")
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  const models = listed.length > 0 ? listed : [values.model];
+  return models.includes(values.model) ? models : [values.model, ...models];
+}

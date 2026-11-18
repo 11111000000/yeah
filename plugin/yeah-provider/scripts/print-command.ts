@@ -16,6 +16,7 @@ const launch: YeahLaunch = {
   lib: path.join(repoPathFromEnv(), "lib"),
   gptel: resolveGptelDir(),
   model: values.YEAH_TEST_MODEL ?? "MiniMax-M3.1-Flash",
+  models: [values.YEAH_TEST_MODEL ?? "MiniMax-M3.1-Flash"],
   host: values.YEAH_TEST_HOST ?? "api.minimax.io",
   profile: "build",
   dataHome: "",

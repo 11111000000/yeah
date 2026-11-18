@@ -151,5 +151,62 @@ and to `yeah-tools-names'."
     (should (eq t (plist-get result :ok)))
     (should (string= (plist-get result :content) content))))
 
+(ert-deftest yeah-tools-kind-is-declared-by-the-tool ()
+  "The kind of a tool is a fact of the tool: it is the kind the tool declares,
+and a tool that declares none has the kind `other'."
+  (yeah-tools-reset-for-test)
+  (let ((spec (list :name "tmp-kind"
+                    :description "A throwaway tool for the kind test."
+                    :kind "execute"
+                    :input (list (list :name "p" :type 'string))
+                    :handler (lambda (_) nil))))
+    (yeah-tools-register spec)
+    (should (equal "execute" (yeah-tools-kind "tmp-kind"))))
+  (yeah-tools-reset-for-test)
+  (should (equal "other" (yeah-tools-kind "read-without-a-kind"))))
+
+(ert-deftest yeah-tools-kind-of-an-unknown-tool-is-other ()
+  "A name the registry does not know has no kind to declare, and the kind of
+such a call is `other'."
+  (should (equal "other" (yeah-tools-kind "tmp-no-such-tool"))))
+
+(ert-deftest yeah-tools-built-in-tools-declare-their-kind ()
+  "The built-in tools declare the kind the wire of ACP knows: a read is a
+read, a search is a search, an edit is an edit and a shell is an execute."
+  (yeah-tools-reset-for-test)
+  (should (equal "read" (yeah-tools-kind "read")))
+  (should (equal "search" (yeah-tools-kind "grep")))
+  (should (equal "search" (yeah-tools-kind "glob")))
+  (should (equal "edit" (yeah-tools-kind "edit")))
+  (should (equal "edit" (yeah-tools-kind "write")))
+  (should (equal "execute" (yeah-tools-kind "bash"))))
+
+(ert-deftest yeah-tools-named-args-carry-the-names-of-the-tool ()
+  "The arguments of a call travel under the names the tool declared: a client
+that looks for `path' finds it."
+  (yeah-tools-reset-for-test)
+  (should (equal '(:path "answer.txt")
+                 (yeah-tools-named-args "read" (list "answer.txt")))))
+
+(ert-deftest yeah-tools-named-args-leave-out-an-argument-that-was-not-given ()
+  "An optional argument the model did not give is not on the wire: a call that
+named no `offset' has no `offset'.  A required argument is always there."
+  (yeah-tools-reset-for-test)
+  (should (equal '(:path "answer.txt")
+                 (yeah-tools-named-args "read" (list "answer.txt" nil nil))))
+  (should (equal '(:path "answer.txt" :offset 3)
+                 (yeah-tools-named-args "read" (list "answer.txt" 3 nil)))))
+
+(ert-deftest yeah-tools-named-args-of-an-unknown-tool-are-empty ()
+  "A name the registry does not know declares no names, so the arguments of
+its call travel without names."
+  (should (equal nil (yeah-tools-named-args "tmp-no-such-tool" (list "x")))))
+
+(ert-deftest yeah-tools-named-args-of-a-call-without-arguments-are-empty ()
+  "A call whose arguments are not a list has no names to read: such a call is
+refused by the dispatch, and the names of its arguments are not read."
+  (should (equal nil (yeah-tools-named-args "read" "not-a-list")))
+  (should (equal nil (yeah-tools-named-args "read" 42))))
+
 (provide 'test-yeah-tools)
 ;;; test-yeah-tools.el ends here

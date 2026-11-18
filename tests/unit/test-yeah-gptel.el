@@ -76,6 +76,20 @@
       (should (equal '(global-tool) gptel-tools))
       (should (eq 'system gptel-use-context)))))
 
+(ert-deftest yeah-gptel-request-uses-the-model-of-the-run-in-force ()
+  "The model of the session reaches the model.
+The model of a session is bound around the call of the transport, and the
+transport of gptel takes that model when nobody named another one."
+  (yeah-gptel-test--with-contract
+    (let (captured)
+      (cl-letf (((symbol-function 'gptel-request)
+                 (lambda (_prompt &rest _keys)
+                   (setq captured gptel-model)
+                   nil)))
+        (let ((yeah-model--current "MiniMax-M2"))
+          (yeah-gptel-request "question" #'ignore :tools nil)))
+      (should (eq 'MiniMax-M2 captured)))))
+
 (ert-deftest yeah-gptel-request-builds-registry-tools-by-default ()
   (yeah-gptel-test--with-contract
     (let (captured)

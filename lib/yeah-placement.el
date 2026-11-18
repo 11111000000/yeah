@@ -100,7 +100,8 @@ PLACEMENT names the session; ID names the session file when given."
   (let* ((root (file-truename (expand-file-name root)))
          (session-root (yeah-product-session-root root)))
     (yeah-session-open (or id (yeah-placement-session-id (or placement "run")))
-                        session-root)))
+                        session-root
+                        root)))
 
 (defun yeah-placement-allow-rules (names)
   "Return the rules that allow the tool NAMEs and nothing else.

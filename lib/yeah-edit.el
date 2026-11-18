@@ -266,6 +266,7 @@ read."
                       (list :name "tick" :type 'integer :optional t)
                       (list :name "replace_all" :type 'boolean :optional t)
                       (list :name "version" :type 'string :optional t))
+         :kind "edit"
          :handler #'yeah-edit--edit
          :concurrency 'exclusive)
    (list :name "write"
@@ -275,6 +276,7 @@ read."
                       (list :name "content" :type 'string)
                       (list :name "overwrite" :type 'boolean :optional t)
                       (list :name "version" :type 'string :optional t))
+         :kind "edit"
          :handler #'yeah-edit--write
          :concurrency 'exclusive)))
 

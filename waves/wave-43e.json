@@ -1,0 +1,35 @@
+{
+  "id": "wave-43e",
+  "title": "the MCP servers of a session reach the model",
+  "intent": "The fifth part of wave 43 of the plan of the owner (docs/PLAN.md 18.3, gap 4).  The defect: the `mcpServers' array of `session/new' and of `session/load' was checked and thrown away -- the kernel verified that it was an array and forgot it, so a client that named a server got a session whose model could not use a single tool of it.  What changes: a new module (`lib/yeah-session-mcp.el') connects to the servers the client named, speaks the handshake of MCP (initialize, then tools/list), and turns the tools of those servers into ordinary entries of the registry of the runs of that session.  Only the stdio transport is spoken: the agent announces that it speaks stdio and no other transport, and a server of another transport is refused by name instead of being half-connected.  A server that does not answer in `yeah-session-mcp-timeout' (10 seconds) refuses the session: a session is not opened without the tools the client asked for.  The tools of the servers live in the snapshot of the registry of the run (`yeah-control--registry'), not in the shared registry: the tools of one session do not leak into the runs of another session.  The journal holds only the names of the servers: the command of a server and its environment may hold secrets, and a secret is never written into the log.  The environment of the server is given by the program `env' in the command line, because `make-process' in Emacs 30 knows no `:environment' and `process-environment' is a variable, not a function.  The tools reach the model through the registry of the run, and that found a defect of the core: the deferred permission -- the answer of the person comes later, which is what the route of ACP does with every tool -- ran the tool outside the binding of the registry, so a tool of a session was not found and the run hung; now `yeah-turn--run-or-refuse' binds the registry of the turn around the call of the tool.  The check plays the shape of a real client: a real ACP service on a socket, a session that names an MCP server, a fake model that finds its tool among the tools of the run, calls it and writes what it answered into a file.",
+  "touches": [
+    "lib/yeah-session-mcp.el",
+    "lib/yeah-mcp-client.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-control.el",
+    "lib/yeah-turn.el",
+    "tests/support/yeah-mcp-server.el",
+    "tests/support/yeah-session-mcp-model.el",
+    "tests/support/yeah-acp-mcp.el",
+    "tests/checks/check-the-mcp-servers-of-a-session-reach-the-model.el",
+    "spec.json",
+    "waves/wave-43e.json",
+    "docs/PLAN.md",
+    "docs/PASEO-INTEGRATION-PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-the-mcp-servers-of-a-session-reach-the-model.el",
+    "./scripts/dev check tests/checks/check-acp-dispatcher-routes-every-method.el",
+    "./scripts/dev check tests/checks/*.el"
+  ],
+  "claims": [
+    "the-mcp-servers-of-a-session-reach-the-model"
+  ],
+  "commitment": [],
+  "objection": "MCP-серверы сессии -- это чужой инструмент в мире Yeah, и их правила не правила Yeah: сервер может читать и писать всё, а модель не знает, что он умеет.  Ответ: импортированный инструмент -- обычная запись реестра, и система прав применяется к нему как к любому другому инструменту (`plan' запрещает изменение мира, `build' спрашивает человека); вид и имя инструмента видны модели в списке инструментов хода, как и любого другого.  Второе возражение: инструменты живут в снимке реестра конкретного прогона, а не в общем реестре, -- это состояние, которого не было раньше, и его легко потерять.  Ответ: потеря была найдена самой проверкой волны (см. note): отложенное решение о правах исполняло инструмент вне связывания, и прогон зависал; связывание теперь есть в `yeah-turn--run-or-refuse'.  Третье: транспорты http и sse не поддержаны, и клиент, назвавший такой сервер, получает отказ.  Ответ: агент объявляет в `initialize', что говорит только stdio; молча открывать сессию без инструментов хуже, чем отказать поимённо.  Четвёртое: проверка доказывает офлайн-путь, а не живой провод с клиентом Paseo; живой прогон в этой волне не проводился.",
+  "refuted_by": "the session is refused or opened without the tools of the servers, or the model of the session finds no tool of the server, or the call of the model does not reach the server, or the control of the claim does not make the check fail by its own assertion",
+  "note": "Проверка волны нашла четыре дефекта до того, как что-то доказала.  Первый: `json-serialize' в Emacs 30 читает список как plist, поэтому массив на проводе -- вектор (`mcpServers', `args', `env', `tools', `required'), а объект -- hash-table (свойства схемы): список строк сериализуется как plist и падает с `wrong-type-argument symbolp'.  Второй: свойства схемы приходят разобранными как plist с ключевыми-словами, и имя ключевого слова несёт своё двоеточие -- `symbol-name :text' даёт \":text\", а имя аргумента должно быть \"text\"; из-за этого именованные аргументы инструмента не совпадали.  Третий: `force-output' и `flush-output' в Emacs 30 не существуют (и функции, и макроса), а сервер проверок на них опирался; при этом stdout в batch-режиме Emacs построчно не буферизуется -- ответ сервера приходит сразу, это проверено.  Четвёртый: `mcpServers: null' проходил проверку \"это массив\", но уходил в `mapcar' и ронял `session/new' -- существующая проверка `check-acp-dispatcher-routes-every-method.el' это поймала.  Пятый (в ядре, не в новом коде): отложенное решение о правах -- а маршрут ACP откладывает права на каждый инструмент -- исполняло инструмент вне связывания реестра прогона, и инструмент сессии не находился: прогон зависал на 30 секунд.  Контроль claim'а (sed -i 's|(let ((tools (yeah-control-tools control)))|(let ((tools nil))|' lib/yeah-control.el) кусается: проверка падает с кодом 1 и своими словами (`the tool of the MCP server did not reach the model of the session').  Проверка зелёная (около секунды), юниты -- 441 из 441, компиляция -- чисто."
+}

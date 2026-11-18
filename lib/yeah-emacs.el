@@ -190,6 +190,7 @@ start a language server."
          :description "Look up the Emacs documentation, source or matching symbols for a symbol; no variable values are returned."
          :input (list (list :name "symbol" :type 'string)
                       (list :name "kind" :type 'string :optional t))
+         :kind "search"
          :handler #'yeah-emacs-introspect)
    (list :name "buffer-read"
          :description "Read the content of a live Emacs buffer by its buffer name, from a 1-based line offset, up to a line limit. Use it for a buffer that is open in this Emacs."
@@ -197,14 +198,17 @@ start a language server."
                       (list :name "offset" :type 'integer :optional t)
                       (list :name "limit" :type 'integer :optional t)
                       (list :name "widen" :type 'boolean :optional t))
+         :kind "read"
          :handler #'yeah-emacs-buffer-read)
    (list :name "elisp-check"
          :description "Check that an Elisp source parses: reader syntax and balanced parentheses, without evaluating any form."
          :input (list (list :name "path" :type 'string))
+         :kind "execute"
          :handler #'yeah-emacs-elisp-check)
    (list :name "diagnostics"
          :description "Return the Flymake/Eglot diagnostics of a buffer that visits a path, or of the current buffer; it returns the diagnostics, not the content of the buffer."
          :input (list (list :name "path" :type 'string :optional t))
+         :kind "search"
          :handler #'yeah-emacs-diagnostics)))
 
 (provide 'yeah-emacs)
