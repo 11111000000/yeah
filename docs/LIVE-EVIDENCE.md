@@ -1427,6 +1427,210 @@ waiting, the process cost 6.000 seconds of CPU in ten seconds -- sixty per
 cent of a core, the shape of the defect -- and the check failed by its own
 assertion.
 
+## The leaks of the run, measured and closed (2026-11-18, 12:00–15:00)
+
+Six waves, six defects of one family: a process of the run outlived the thing
+that started it.  The plan of the owner called it a spin
+(`docs/PLAN.md` §16.39–§16.44), and the measurement said otherwise.  What
+burned the core and filled the disk was not a loop but a leak: servers that
+stayed alive after their owner was killed, checks that hung for ever, copies
+of the project that survived the run that made them, and a watchdog that
+waited instead of acting.  Each wave below states what was measured, what the
+control did to the subject, and what the check found wrong with itself — the
+last part is the reason the waves are trustworthy: every one of these checks
+failed on its first run for a reason of its own.
+
+### Wave 55 — the server of a service outlived its owner
+
+The owner of a service was killed with SIGKILL, and the server of the service
+was gone 0.2 seconds later — the bound of the plan is ten seconds.  The socket
+of the service and the file of the life of the owner were gone as well; the
+file of the life of a dead owner is swept by the next owner that starts a
+service.  The control took the watch of the server out
+(`sed -i 's|(and watch (lambda () (not (yeah-life-alive-p watch))))|nil|' lib/yeah-acp.el`),
+and the check failed by its own assertion: `the server of the service stayed
+behind after its owner was killed (pid 4729)' and `the socket of the service
+stayed behind'.
+
+The check found a defect of itself on the first run: it killed the owner with
+`(signal-process pid "KILL")', and `signal-process' takes a symbol or a
+number, not a string — the signal never went out, the owner stayed alive, and
+the check failed.  The check now uses the symbol `KILL' and asserts that the
+signal was sent, so a kill that did not happen is a failure of the check and
+not a verdict of the subject.
+
+### Wave 56 — a check of the gate leaves no server behind
+
+A check of the suite was started through `scripts/dev check', the check
+started a server on a local socket, the owner of that server was killed with
+SIGKILL, and the server was gone within a second; the socket of the server
+was gone with it.  The control took the inherited life out
+(`sed -i 's|(let* ((life (or life (yeah-life-inherited-path)))|(let* ((life life)|' lib/yeah-acp.el`),
+and the check failed by its own assertion: `the server of the check stayed
+behind after its owner was killed (pid 7401)' and `the socket of the server
+stayed behind'.
+
+The check found two defects of itself on the first runs: it made the report
+of the fixture with `make-temp-file' and a directory instead of a file, and
+it built the path of the gate from the literal string `default-directory'
+instead of the value of that variable.  Both are the kind of mistake that a
+check which never fails can hide, and both are now the ordinary code of the
+check.  The fixture of the wave lives in `tests/support/' and not in
+`tests/checks/': it never ends by itself, so the gate must not run it as a
+check of its own.
+
+A third defect of this check was found by wave 58, and it is worth naming
+here: the check ended its gate with `(kill-emacs (process-id gate))', and
+`kill-emacs' with an argument does not kill a process — it ends Emacs with
+that pid as the exit code, so the code of the check was the pid of the gate
+modulo 256, and the check passed or failed by an accident of the pid.  The
+repair (kill the tree by pid with SIGKILL) belongs to this wave and not to
+the wave that found it: a commit that carries a check which fails in its own
+state is a commit that breaks `git bisect'.
+
+### Wave 57 — the check that hangs does not eat the gate
+
+`check-a-tool-that-returns-bytes-does-not-kill-the-harness.el' took 20 462 ms
+before the repair and 460 ms after it — forty-four times faster; the base
+sweep of the 79 checks on an idle machine took 2 min 19.6 s before it.  The
+check of the wave itself runs 5.3 s.  The control took the stop of the timer
+away (a `sed' over `scripts/dev-timeout'), and the check failed after 45 s
+with its four assertions: `the check that hangs was not stopped (pid 6196)',
+`the child of the check that hangs stayed behind (pid 6201)', `the gate did
+not finish the run of the check that hangs', `the gate did not say that the
+check passed its limit'.  The second control (a fast one) changed the answer
+of a stopped command from 3 to 1, and the check failed with `the gate
+answered 1 to the check that hangs, the third answer is 3'.
+
+The check of the wave found two defects of itself: the fixture wrote its
+report after a twenty-second wait — the gate with a five-second limit killed
+it earlier, and the report was never read — and `kill_group' passed its
+arguments to `call-process' as a list, while in Emacs 30 the fourth positional
+argument of `call-process' is DISPLAY and ARGS come later as separate
+strings; the call failed in silence under `condition-case', killing nothing.
+One more reason to wait three seconds before the KILL came out on the way:
+Emacs defers SIGTERM while it sleeps in `sleep-for', so the stop reaches the
+child only through SIGKILL.
+
+### Wave 58 — the pilot leaves no server behind
+
+The orphan server of the pilot had been running for three and a half hours.
+The watchdog that guarded it was a loop of `sleep 5' plus a grep over the
+log, with `MAX_ATTEMPTS=6' — forty-four minutes of waiting a day, and a
+server that waited with it.  The runner of the pilot is now a foreground
+process: an interrupted pilot is stopped in 4.1 s, and a pilot at its limit
+takes 13.4 s (a limit of ten seconds plus the stop).
+
+The control of the first check (two lines of `signal_pilot') brought the
+defect back: the check failed after 19 s with its assertion `the server of
+the pilot stayed behind after the pilot was interrupted (pid 5825)'.  The
+control of the second (the line of the timer) failed after 45.9 s with three
+assertions: the server stayed behind (pid 2442), the runner answered 0
+instead of the third answer, the runner did not stop at the limit (pid 2429).
+The fast control (exit 3 → exit 0) failed in 13.4 s with one assertion.
+
+The checks of the wave found three defects of themselves.  First: the path of
+Emacs that the check gave to the runner was `/proc/self/exe', and that name
+means "whoever opens it" — the runner, not Emacs; the runner ran itself and
+died with `-Q: invalid option'.  The path is now read once as `(car
+(file-attributes "/proc/self/exe"))' and passed as a name.  Second: the
+`kill-emacs' of wave 56, described above; now all three checks kill their
+tree by pid (SIGKILL) and name the reason.  Third: the socket file of a
+server killed by a signal stays on the disk, because Emacs does not clean up
+on SIGTERM; the first version of the check demanded that the file be gone,
+the assertion was removed, and the reason was written into the objection.
+
+### Wave 59 — a gate run needs no watchdog
+
+`scripts/gate' is the foreground runner of the gate: it starts the run again
+when the run was killed, it writes the map at the end whatever happened, and
+the codes 0/1/2/3 are the answers of the method while a code of 128 or more
+is a kill.  The measurement of the wave is 6.5 s.  Five controls were shown to
+bite: A (the gate does not start the killed run again) failed after 3.8 s
+with `the killed run was not started again: the run was started 1 time(s)';
+B (the gate does not wait for the run) failed in 0.8 s with `the run of the
+gate was left behind when the gate answered'; C (the gate does not write the
+map) failed in 7.1 s with `the map of the run did not reach the end'; D (the
+gate polls through `sleep') failed in 11.7 s with `the gate holds a command
+that sleeps'; E (the wrapper holds a gate of its own) failed in 0.3 s with
+`the wrapper does not run the one gate of the project'.
+
+Measured separately: a gate killed with SIGKILL two seconds after the start
+(the background run of 2026-11-18) left the processes of the run behind —
+`bash scripts/gate', `bash live-pilot', `sleep 300' — and they died by
+themselves after 63 s, when the limit of the pilot (60 s) expired.  That was
+left in the objection and not hidden: fixing it is the work of wave 60.
+
+The check of the wave found a defect of itself: it read the report of the
+attempts as a plist and searched it with `assq', and `assq' reads an alist —
+on a plist in Emacs 30 it silently returns nil.  The predicate of the wait
+was therefore always nil (`the run of the gate never started'), the count was
+always zero (`the killed run was not started again: 0 time(s)'), the pid of
+the probe was never read, nothing was killed, the pilot fired on its limit
+and the gate answered with the third answer.  Checked directly: `(assq :run
+'(:run 1 :pid 4210))' → nil; `(memq :run …)' → ok; `(plist-get …)' → 1;
+`(car :run)' → wrong-type-argument.  The report of the attempts is an alist
+now, the docstring says why, and the check reads the pid of the probe and
+kills by that pid.
+
+### Wave 60 — the killed run leaves no copy behind
+
+The copies of the method are named `mathc-v5-<pid>-<n>'
+(`adapter/io.ml:18-25`, `adapter/isolated_run.ml`), and `Fun.protect' does
+not run in a process that was killed: the copy of a dead run stayed in the
+temporary directory for ever.  The measurement of 2026-11-18 found 48 copies,
+about a gigabyte, piling up for months.  The sweep of the wave takes only the
+copy of a dead run (there is no `/proc/<pid>' for it), a non-numeric pid is
+skipped, and the copy of a living run is not touched.  The measurement of the
+check is 6.6 s.  Control A (the gate does not call the sweep) failed after
+6.5 s with `the copy of the run that was killed stayed behind:
+/tmp/mathc-v5-6205-0'; control B (the sweep does not check whether the run
+is alive) failed after 6.5 s with `the copy of the living run was removed:
+/tmp/mathc-v5-6435-0'.
+
+The check of the wave found four defects of itself.  It started the gate
+through `call-process', and `call-process' leaves no process in the
+destination buffer: `(get-buffer-process output)' gives nil, and
+`process-exit-status' dies with `wrong-type-argument (processp nil)'.  The
+working path is `make-process' + `accept-process-output' +
+`process-exit-status'.  Second: `process-environment' in Emacs 30 in this
+environment is a full snapshot of the environment and not nil; replaced with a
+list of its own, it takes PATH away from the child, and the gate dies with
+the code 3 (`dirname: command not found', `scripts/gate is missing').  The
+environment of the child is built as a base (`process-environment', otherwise
+`/proc/self/environ') plus the overridable entries MATHC,
+YEAH_FAKE_METHOD_DIR and TMPDIR — the names are cleaned out of the base and
+added again; the TMPDIR of the gate is made equal to the TMPDIR of the
+check, otherwise the sweep looks elsewhere.  Third: `make-process' has no
+`:environment' key — the environment is set by a dynamic `let' around
+`make-process' only — and `/proc/self/exe' cannot be given to another
+process, one needs `(car (file-attributes "/proc/self/exe"))'.  Fourth: the
+report of the failure is printed before the buffer is killed, because after
+`kill-buffer' the content cannot be read any more, and `Selecting deleted
+buffer' masks the real message.
+
+### The watchdog and the sender of the signal
+
+The watchdog is gone: four scripts were removed (`watchdog-mathc.sh',
+`watchdog-selfdev.sh', `watchdog-selfdev-b.sh', `watchdog-selfdev-w42.sh'),
+and `yeah-site/artifacts/run-selfdev.sh' now runs through
+`scripts/live-pilot' with a limit of 3300 s.  A watchdog that waits is not a
+watchdog; the runner that stops the tree itself is one.
+
+Three runs of the method were killed with SIGTERM, and not by the method: the
+only kill the method does is a SIGKILL over the group of the verifier
+(`adapter/process.ml:60'), and a SIGTERM was never sent by it.  The sender was
+outside the method — most likely the timeout of the tool of the agent.  That
+is a candidate D10 in `math-coding', and it is not a repair of `yeah'.
+
+**What the measurements do not prove.**  They prove that the six leaks above
+are closed on the paths that were measured, and that every one of the six
+claims has a control that was shown to bite.  They do not prove that the
+provider path never leaks: the live path needs a key of the provider, and the
+checks of the live path were not run here.  They do not prove that no other
+kind of leak exists — they prove that six kinds were found by measurement and
+closed by measurement, and the six kinds were the ones the plan named.
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live

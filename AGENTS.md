@@ -754,6 +754,37 @@ is blocked tooling, not a successful check.
 Exit codes are: `0` pass, `1` fail, `2` blocked/input error and `3` unknown.
 Unknown is never pass.
 
+### The runners
+
+The gate is one foreground runner.  `./scripts/dev gate` is `scripts/gate`; the
+gate waits for the run of the method instead of watching it.  No runner in this
+repository polls a log to find out whether a run is alive, and no runner holds a
+command that sleeps.
+
+| Runner | What it owns |
+|---|---|
+| `scripts/gate` | the run of the method: it starts a run that was killed again and writes the map when the run ends |
+| `scripts/live-pilot` | the tree of the run: the group of the run, its children, the limit of the time |
+| `scripts/dev-timeout` | one check: the limit of the check, and the answer 3 (unknown) when the limit is reached |
+| `scripts/lib/tree.sh` | the one implementation of the tree of processes |
+
+| Variable | Meaning | Default |
+|---|---|---|
+| `YEAH_CHECK_TIMEOUT` | the limit of one check, in seconds | 120 |
+| `YEAH_GATE_TIMEOUT` | the limit of one attempt of the gate, in seconds | 1800 |
+| `YEAH_GATE_ATTEMPTS` | how many times a killed run is started again | 3 |
+| `YEAH_LIFE_SOCKET` | the socket of the life of the owner | — |
+
+The life of a server is a socket, not a poll: `lib/yeah-life.el` describes it,
+the server watches it, and the file of the socket of a dead owner is swept by
+the next owner that starts a service.  An owner passes its socket of life
+through `YEAH_LIFE_SOCKET`, so a server that a check started goes away with the
+check.
+
+The copies of a run of the method (`mathc-v5-<pid>-<n>` in the temporary
+directory) belong to the run that made them: they are swept when that run is
+gone and left alone while it is alive.
+
 ## The method
 
 Start with the map when the compatible method binary is available:
@@ -781,7 +812,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-122 claim(s).
+138 claim(s).
 
 ```sh
 mathc run
@@ -832,6 +863,15 @@ measurement, not a reason to change the work.
   use `setq` only for intended global/session mutation. See ELISP §11.1.
 - Subprocesses use `make-process`, never blocking `shell-command` in tools.
 - Interactive execution never waits by spinning the event loop.
+- One implementation of the tree of processes: `scripts/lib/tree.sh`.  A second
+  copy of the stop of a tree is a second behaviour of the stop.
+- The run of the method is waited for, not watched: no log is polled to find out
+  whether a run is alive, and no runner holds a command that sleeps.
+- A server goes away with the owner that started it: the life of the server is
+  the socket of the life (`lib/yeah-life.el`), and the owner passes it through
+  `YEAH_LIFE_SOCKET`.
+- Every check has a limit (`YEAH_CHECK_TIMEOUT`), and a check that reached the
+  limit answers 3 — unknown, never pass.
 - Run context, permissions and sessions must not leak through new global
   mutable state.
 - No telemetry, secret logging, global default keybindings or global gptel
