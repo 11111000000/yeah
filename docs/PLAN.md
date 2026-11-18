@@ -2601,6 +2601,33 @@ its own assertion.
 **The estimate.**  Half a day to a day.  **What this wave does not fix.**  It
 repairs the evidence, not the harness: nothing of the run itself changes.
 
+**The execution (2026-11-17).**  The wave was carried out by the harness
+itself: a live model (`MiniMax-M3.1-Flash`) worked on a copy of the repository
+in a live run of Yeah, and the journals of the copy
+(`sessions/wave41g.jsonl`, `sessions/wave41h.jsonl`) hold the run.  The model
+wrote the check of the wave
+(`tests/checks/check-bridge-check-decides-the-race-by-construction.el`) and
+found three defects in it while it worked: the keys of a JSON object come as
+symbols from Emacs 30 (so the control of the claim of the bridge was never
+found and the check said "the claim of the bridge declares no control to
+run"), `file-copy-file` does not create the directory of the target, and the
+buffer of the words of a run was bound in a `let` that binds in parallel (the
+filter of the process saw a void variable).  The model registered the new
+claim in `spec.json` with a control that breaks the determinism of the check,
+and it did not touch the claim of the bridge, whose control bit ten times of
+ten.  The first run was killed by the machine after the changes were made and
+verified; the second run picked the work up from the tree, checked the three
+criteria of the exit and finished through the `finish` tool (the state of the
+run was `completed`).  The evidence of the wave is in docs/LIVE-EVIDENCE.md,
+the section "The self-development run that finished the wave 41".
+
+**What the execution does not prove.**  The second criterion of the exit (two
+consecutive runs of the method that end in `green`) is not met yet: the
+verdict of the map is still `unknown`, because the human review of the plan of
+the owner is outdated — the decision of the owner, and not a machine
+verifier.  The wave repairs the evidence of the bridge; it does not repair the
+harness and it does not measure the parity of the harnesses.
+
 ### 18.2 Wave 42 — the server does not outlive the agent, and it does not spin
 
 **The defect.**  Two defects of one life cycle.  The process of the ACP

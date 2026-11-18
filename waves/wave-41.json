@@ -1,0 +1,29 @@
+{
+  "id": "wave-41",
+  "title": "the verifier of the bridge decides the race by construction",
+  "intent": "The wave of the plan of the owner (docs/PLAN.md 18.1) that repairs the evidence of the bridge.  The check of `bridge-keeps-the-answer' used to race the subject: it read the buffer of an attached Emacs a hundred and twenty times while a thread kept the parent late, and it failed only when the answer was really lost.  Six runs of the evidence on 2026-11-16 gave five bites and one miss, the claim came out `inconclusive' and the map of the method came out `unknown'.  The code was not the cause of that verdict; the evidence was.  The wave was carried out by the harness itself: a live model (MiniMax-M3.1-Flash) worked on a copy of the repository in a live run of Yeah (the journals `sessions/wave41g.jsonl' and `sessions/wave41h.jsonl' of the copy).  The model wrote the check of the wave, found three defects in it while it worked (the keys of a JSON object come as symbols from Emacs 30, so the control of the claim of the bridge was never found; `file-copy-file' does not create the directory of the target; the buffer of the words of a run was bound in a `let' that binds in parallel, and the filter of the process saw a void variable), registered the new claim `the-bridge-check-decides-the-race-by-construction' in the standing specification with a control that breaks the determinism of the check, and left the claim of the bridge alone, because its control bit twelve times of twelve.  The second run picked the work up from the tree, checked the three criteria of the exit and finished through the `finish' tool: the state of the run was `completed'.",
+  "touches": [
+    "tests/checks/check-bridge-check-decides-the-race-by-construction.el",
+    "tests/checks/check-bridge-keeps-the-answer.el",
+    "lib/yeah-bridge.el",
+    "spec.json",
+    "waves/wave-41.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-bridge-keeps-the-answer.el",
+    "./scripts/dev check tests/checks/check-bridge-check-decides-the-race-by-construction.el"
+  ],
+  "claims": [
+    "bridge-keeps-the-answer",
+    "the-bridge-check-decides-the-race-by-construction"
+  ],
+  "commitment": [],
+  "objection": "The wave repairs the evidence and not the harness: nothing of the run itself changes, and the run that carried the wave out was stopped by the machine after ten minutes (the first of the two runs) and by the timeout of the provider (three retries with `Curl failed with exit code 28') in the other.  The second criterion of the exit of the wave is not met: the verdict of the map is still `unknown', because the human review of the plan of the owner is outdated, and that decision belongs to the owner (docs/PLAN.md 17.2).  The check of the wave copies `lib/' and `tests/' into a temporary directory and runs the check of the bridge there ten times, so it costs about seven seconds and it is the price of every run of the map for this claim.  The model that wrote the check is a live model and not a person: what it wrote was checked, and what it found in its own check was three real defects, but the wave does not claim that a model writes such a check by itself every time.  The wave does not touch the plan of the owner: the waves 42, 43 and 44 keep their numbers and their order, and the repair waves of the harness keep the numbers 45 to 49.",
+  "refuted_by": "the check of the bridge gives different verdicts on the consecutive runs of the control, or the control of the claim of the bridge does not bite on each of them, or the control of the new claim does not break the determinism of the check",
+  "note": "The check of the wave was written by the model of the live run and was proved by it: the ten runs of the control of the claim of the bridge each ended with the code 1 and the words `bridge-keep: the bridge lost the answer', and the check of the wave itself ended with the code 0 on the whole bridge.  The control of the new claim (`sed -i 's/(defvar yeah-check--hold-the-answer t/(defvar yeah-check--hold-the-answer nil/' tests/checks/check-bridge-keeps-the-answer.el') was applied to a copy of the tree by the model, and the check of the wave fell on its own assertion (\"the run N of the control ended with the code 0').  The claim of the bridge was not changed: its control bit twelve times of twelve before the wave, and the map of the method reads it the same way now.  The evidence of the run is in docs/LIVE-EVIDENCE.md, the section `The self-development run that finished the wave 41'.  The wave was executed by the harness and not by a person, and that is the point of it: the harness of the owner carried the task of the owner to its end, wrote the check, proved the control and finished."
+}

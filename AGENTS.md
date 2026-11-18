@@ -412,6 +412,24 @@ work item. Never resolve it by silently making documentation more optimistic.
   that live run with a fake provider, and both of its controls were run and
   bit; docs/PLAN.md §16.28, docs/LIVE-EVIDENCE.md, "The self-development run
   that found the compaction that did not wait".
+- Wave 41 — the wave of the plan of the owner — was carried out by the harness
+  itself (2026-11-17 18:48–19:15): a live model (MiniMax-M3.1-Flash) worked on
+  a copy of the repository in a live run of Yeah, wrote the check of the wave
+  (tests/checks/check-bridge-check-decides-the-race-by-construction.el), found
+  three defects in its own check (the keys of a JSON object come as symbols
+  from Emacs 30, so the control of the claim of the bridge was never found;
+  file-copy-file does not create the directory of the target; the buffer of the
+  words of a run was bound in a let that binds in parallel), registered the new
+  claim the-bridge-check-decides-the-race-by-construction in spec.json, proved
+  that the control of the claim of the bridge bites twelve times of twelve and
+  that the control of the new claim breaks the determinism of the check, and
+  finished through the finish tool — the state of the run was completed.  The
+  first of the two runs died ten minutes into the work (the machine), the
+  second picked the work up from the tree and finished it.  The second
+  criterion of the exit of the wave is not met: the verdict of the map is still
+  unknown, because the human review of the plan of the owner is outdated, and
+  that decision belongs to the owner (docs/PLAN.md §17.2, §18.1;
+  docs/LIVE-EVIDENCE.md, "The self-development run that finished the wave 41").
 - The working directory of a session (`cwd') is still not applied to the
   tools: in the live check the `bash' of the agent ran in the directory of
   the process, not in the repository of the task (docs/PLAN.md §17.1).
@@ -546,7 +564,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-120 claim(s).
+121 claim(s).
 
 ```sh
 mathc run

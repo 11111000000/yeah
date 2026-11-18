@@ -1305,6 +1305,29 @@
       "waiver": null
     },
     {
+      "id": "the-bridge-check-decides-the-race-by-construction",
+      "text": "the check of the bridge gives the same verdict on ten consecutive runs of the control, and the control bites on each of them",
+      "scope": [
+        "lib/yeah-bridge.el", "tests/checks/check-bridge-keeps-the-answer.el",
+        "tests/checks/check-bridge-check-decides-the-race-by-construction.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-bridge-check-decides-the-race-by-construction.el"
+        }
+      ],
+      "falsifier": "the check of the bridge gives different verdicts on consecutive runs of the control, or the control does not bite on each of them",
+      "register": "fact",
+      "control": "sed -i 's/(defvar yeah-check--hold-the-answer t/(defvar yeah-check--hold-the-answer nil/' tests/checks/check-bridge-keeps-the-answer.el",
+      "waiver": null
+    },
+    {
       "id": "supervised-run-says-it-did-not-finish",
       "text": "A supervised run whose nudge budget is spent without the model finishing writes the unfinished event: a run that ends without the effect must not look done.",
       "scope": [

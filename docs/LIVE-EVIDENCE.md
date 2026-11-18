@@ -1239,6 +1239,68 @@ provider that announces its next step instead of acting is still there (four
 assistant messages, all of them plans) and is not repaired by this wave
 (§17.1).
 
+## The self-development run that finished the wave 41 (2026-11-17, 18:48–19:15)
+
+The wave 41 of the plan of the owner (`docs/PLAN.md` §18.1) is the wave that
+repairs the evidence of the bridge: the check of `bridge-keeps-the-answer` used
+to race the subject, five runs of six bit and one did not, and the map of the
+method came out `unknown` for a reason that had nothing to do with the code it
+named.  The wave was carried out by the harness itself: a live model
+(`MiniMax-M3.1-Flash`) worked on a copy of the repository in a live run of
+Yeah, and the journals of the copy (`sessions/wave41g.jsonl`,
+`sessions/wave41h.jsonl`) hold the runs.
+
+**What the model wrote, and what it found in it.**  The check of the wave
+(`tests/checks/check-bridge-check-decides-the-race-by-construction.el`) reads
+the control of the claim of the bridge from the standing specification, copies
+`lib/` and `tests/` into a temporary directory, applies that control there and
+runs the check of the bridge ten times; every one of the ten runs must fail by
+an assertion of the check.  The model found three defects in that check while
+it worked:
+- the keys of a JSON object come as symbols from Emacs 30, so `alist-get "id"`
+  found nothing, the control was never found, and the check said "the claim of
+  the bridge declares no control to run";
+- `file-copy-file` does not create the directory of the target, so the copy of
+  the tree of the check failed;
+- the buffer of the words of a run was bound in a `let` that binds in parallel,
+  so the filter of the process saw a void variable (`void-variable (words)`).
+
+The model then registered the new claim `the-bridge-check-decides-the-race-by-construction`
+in `spec.json` with a control that breaks the determinism of the check (the
+holding of the answer of the child process is taken out), and it did not touch
+the claim of the bridge: its control bit twelve times of twelve, each time by
+the assertion of the check.
+
+**The two runs.**  The first run (the journal `wave41g.jsonl`) was killed by
+the machine ten minutes into the work — after both changes were written and
+after the control of the bridge had bitten twelve times in a row, and while the
+model was verifying the criteria of the exit.  The second run (the journal
+`wave41h.jsonl`) picked the work up from the tree, checked the three criteria
+(the check of the wave passes on the whole bridge; the ten runs of the control
+of the bridge each fail with `bridge-keep: the bridge lost the answer`; the
+control of the new claim makes the check of the wave fail with "the run N of
+the control ended with the code 0"), and finished through the `finish` tool at
+19:14:58.  The state of the run was `completed` and the exit code of the driver
+was 0.
+
+**What this proves, and what it does not.**  The harness carries a task of that
+size to its end with a live provider: the model reads the plan, writes the
+check, finds the defects of its own check, registers the claim in the standing
+specification, proves that the control bites and finishes.  The first run of
+the wave (of 15:45–15:53, the section above) did not, and the difference
+between the two runs is not the harness but the shape of the tree it was given:
+the first run found the uncommitted changes of the repair waves and went to
+verify them, and the second one found a clean tree and the work already done.
+That is a fact about the setup of a run and not about the model alone, and it
+belongs in the open list: a run that begins in a tree with changes in it has
+no way to tell the work of the run from the work that was there before it.
+
+The run does not measure the parity of the harnesses, and the second criterion
+of the exit of the wave (two consecutive runs of the method that end in
+`green`) is not met: the verdict of the map is `unknown`, because the human
+review of the plan of the owner is outdated, and that decision belongs to the
+owner and not to a machine verifier (`docs/PLAN.md` §17.2).
+
 ## What is still open
 
 - A real editor (an agent-shell, or a person's Emacs) against a live
