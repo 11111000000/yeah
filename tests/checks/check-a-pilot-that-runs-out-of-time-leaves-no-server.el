@@ -24,13 +24,28 @@
 ;; The check starts a real pilot through `scripts/live-pilot' with a
 ;; limit of ten seconds -- the fixture of the pilot waits for ever, so
 ;; the limit is what ends it -- and then proves three things: the pilot
-;; reported a living server, the server is gone within fifteen seconds
+;; reported a living server, the server is dead within fifteen seconds
 ;; of the limit, and the runner answered 3.
 ;;
 ;; The check measures the subject the way the defect was measured: the
 ;; process of the server, by its pid, in `/proc'.  It does not ask the
 ;; server whether it is alive: a server that answers is a server that
 ;; lives.
+;;
+;; "Dead" is read from the STATE of the process, not from the clock.
+;; The state of a process in `/proc/<pid>/stat' is the letter that
+;; follows the name of the process: `S' and `R' for a process that runs,
+;; and `Z' for a zombie -- a process that has already died and waits to
+;; be reaped.  A zombie burns no CPU, answers nobody and holds no
+;; client: the server of the pilot is gone the moment it becomes one.
+;; The reaping itself is not the subject of this claim -- it is the
+;; business of the init of the host -- and waiting for it in seconds of
+;; wall time made the check depend on the speed of the host: on the
+;; night of 2026-11-19, under a host that was swapping, the check
+;; waited fifteen seconds for the reaping of a process that had died
+;; at once, and it refuted a claim that holds.  The repair of wave 75
+;; measures the death of the server, and the wall time is only the
+;; bound of the wait, not the measure of the subject.
 ;;
 ;; The control of the claim takes the limit away from the runner: the
 ;; runner waits for the pilot for ever, and the check then fails by its
@@ -50,10 +65,30 @@
 (defvar yeah-limit--failures nil
   "The failures this check found.")
 
+(defun yeah-limit--state (pid)
+  "Return the state field of the process PID, or nil when the process is gone.
+The state is the letter that follows the name of the process in
+`/proc/<pid>/stat': `S' and `R' for a process that runs, `Z' for a
+zombie -- a process that is dead and waits to be reaped -- and so on.
+The name of the process is in parentheses and may hold spaces and
+parentheses of its own, so the state is read after the LAST closing
+parenthesis of the line."
+  (let ((path (format "/proc/%d/stat" pid)))
+    (when (file-exists-p path)
+      (with-temp-buffer
+        (insert-file-contents path)
+        (let ((text (buffer-string)))
+          (when (string-match ".*) \\([A-Za-z]\\)" text)
+            (match-string 1 text)))))))
+
 (defun yeah-limit--alive-p (pid)
-  "Return non-nil when the process PID is alive."
+  "Return non-nil when the process PID is alive.
+A zombie is not alive: it has died already and waits to be reaped, it
+burns no CPU and answers nobody.  The answer comes from the state of
+the process, so it does not depend on the speed of the host."
   (and pid (integerp pid) (> pid 0)
-       (file-directory-p (format "/proc/%d" pid))))
+       (let ((state (yeah-limit--state pid)))
+         (and state (not (string= state "Z"))))))
 
 (defun yeah-limit--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
@@ -159,10 +194,13 @@ the pid of the server and the path of the socket of the server."
                   (push (format "the runner of the pilot answered %s when the limit passed, the third answer is 3"
                                 (or status "nothing"))
                         yeah-limit--failures)))
-              ;; and the server of the pilot must go with the pilot
+              ;; and the server of the pilot must go with the pilot: the
+              ;; state of the process is the measure, and the seconds of
+              ;; the wall clock are only the bound of the wait
               (unless (yeah-limit--await-dead server 15)
-                (push (format "the server of the pilot stayed behind after the limit passed (pid %d)"
-                              server)
+                (push (format "the server of the pilot was still alive fifteen seconds after the limit passed (pid %d, state %S)"
+                              server
+                              (or (yeah-limit--state server) "gone"))
                       yeah-limit--failures))))))
     ;; the check leaves nothing behind
     (yeah-limit--kill server)

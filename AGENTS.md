@@ -973,9 +973,31 @@ work item. Never resolve it by silently making documentation more optimistic.
   fifteen seconds of wall time for that death, the host was swapping (4.7 GiB
   of swap, zram full) while the run took twice as long as usual, and the check
   passes outside the run -- eleven times before, and twice more after.  The
-  cause is not established, the map stands in `red' because of it, and the
-  repair (a check that does not depend on the speed of the host) is a wave of
-  its own whose order the owner decides (docs/PLAN.md §16.62).
+  cause is not established, the map stood in `red' because of it, and the
+  repair (a check that does not depend on the speed of the host) was a wave of
+  its own; the owner took its order on 2026-11-19 -- wave 75, the bullet below
+  (docs/PLAN.md §16.62, §16.63).
+- Wave 75 repaired that refutation, and the repair is a change of the measure:
+  the server of the pilot dies at once when the limit passes (the state of its
+  process changes from `S' to `Z' and the entry leaves `/proc' within a tenth
+  of a second), and what lingers is its corpse, which waits to be reaped by the
+  init of the host -- the init of the host is not the subject of the claim.
+  The check now reads the state of the process in `/proc/<pid>/stat' and counts
+  a zombie as dead, so the measure of the claim does not depend on the speed
+  of the host; the fifteen seconds stayed the bound of the wait and are no
+  longer the measure of the death, and the wording of the claim followed the
+  measure ("dead" and "still running", not "gone" and "still alive").  The
+  host that refuted the claim (swapping, zram full) was not reproduced, so
+  nobody may quote this wave as the proof that the refutation is gone
+  (docs/PLAN.md §16.63, waves/wave-75.json).
+- The gate of 19 November 2026 (18:29–18:44 UTC, after wave 75) holds 152
+  claims of 153 as `holds (current)`: no `inconclusive`, no `refuted`,
+  `uncovered: 0`.  The one claim that is not current is the order of the
+  waves, which the owner named: its scope is `docs/PLAN.md`, the document
+  moved with the waves, and its evidence is stale -- a human settles it with
+  `mathc record the-owner-decided-the-order-of-the-next-waves owner --by WHO
+  --outcome OUTCOME` (docs/PLAN.md §16.64).  The verdict of the map is
+  `unknown` because of that one claim and not because of the code.
 
 ## The commands
 
@@ -1056,7 +1078,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-138 claim(s).
+153 claim(s).
 
 ```sh
 mathc run

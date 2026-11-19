@@ -2402,6 +2402,52 @@ repair of it is a wave of its own (the check must not depend on the speed of
 the host), and the order of the waves is a decision of the owner
 (docs/PLAN.md §16.62).
 
+## The server of the pilot dies at once, and only its corpse waits — wave 75 (2026-11-19, 18:10–18:25)
+
+The claim that a loaded host refuted was measured before it was repaired, and the
+measurement says something the refutation did not.
+
+**What the refutation saw.**  The check waits for the server of the pilot to leave
+`/proc` within fifteen seconds of the limit, and under a swapping host it did not
+manage: "limit: the server of the pilot stayed behind after the limit passed (pid
+7457)".  The claim was written `refuted` and the map went `red`.
+
+**What the process did.**  The server of the pilot was watched in `/proc` from
+the moment the pilot reported it (`pilot=4933 server=4946`, a real pilot
+through `scripts/live-pilot` with a limit of ten seconds):
+
+```
+probe: t=0.0s server state="S" alive=t      <- the server lives with the pilot
+probe: t=8.9s server state="S" alive=t
+probe: t=9.4s server state="Z" alive=t      <- the limit passed: the process died
+probe: t=9.4s server state=nil alive=nil    <- and left /proc at once
+```
+
+The death is immediate: the state changes from `S` to `Z` and the entry is gone
+within a tenth of a second.  What lingers is not the server but its corpse: a
+zombie waits to be reaped by the init of the host, and the init of the host is
+not the subject of the claim.  The check counted the corpse as a living server
+and waited for the reaping in seconds of wall time.
+
+**What the repair measures.**  The check reads the state of the process and
+counts a zombie as dead — it burns no CPU, answers nobody and holds no client.
+The fifteen seconds stay the bound of the wait and are no longer the measure of
+the death.  The wording of the claim follows the measure.
+
+**The evidence of the repair.**  The check passes on the clean tree (13.3 s) and
+under four busy cores (13.7 s), both with the code 0.  The control of the claim
+was applied to a copy of the tree and bit by the assertion of the check and not
+by a crash: the runner was told not to stop the tree of the pilot, and the check
+ended with the code 1 and with its own words — "the server of the pilot was still
+alive fifteen seconds after the limit passed (pid 6531, state "S")", "the runner
+of the pilot did not stop when the limit passed", "the runner of the pilot
+answered 0 when the limit passed, the third answer is 3".
+
+**What this does not prove.**  The host that refuted the claim was swapping with
+a full zram, and that host was not reproduced.  The repair does not make the
+corpse disappear faster; it stops the measure of the claim from depending on the
+reaping, which was never the subject of the claim.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The

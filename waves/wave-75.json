@@ -1,0 +1,26 @@
+{
+  "id": "wave-75",
+  "title": "the check of the pilot measures the process, not the clock",
+  "intent": "The recalculation of 19 November 2026 (16:23-16:37 UTC) refuted one claim outside the package: the-pilot-that-runs-out-of-time-leaves-no-server-behind.  The check waited for the server of the pilot to leave /proc within fifteen seconds of the limit, and under a host that was swapping the wait ran out: the check failed with its own words, and the method wrote 'refuted'.  The measurement of this wave: the server of the pilot does not die slowly -- it dies at once, when the limit passes, and the state of its process in /proc changes from 'S' to 'Z' and back to nothing within a tenth of a second.  What lingers is not the server but the corpse of it: a zombie waits to be reaped by the init of the host, and the init of the host is not the subject of the claim.  What changes: the check reads the state of the process in /proc/<pid>/stat and treats a zombie as dead -- it burns no CPU, answers nobody and holds no client -- so the measure of the subject no longer depends on the speed of the host; the bound of fifteen seconds stays the bound of the wait and is no longer the measure of the death.  The wording of the claim follows the measure: 'the server of the pilot is dead within fifteen seconds of the limit' and 'the server of the pilot is still running fifteen seconds after the limit of the pilot passed'.  The check of the claim still fails by its own assertion when the runner does not stop the tree of the pilot.",
+  "touches": [
+    "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
+    "spec.json",
+    "waves/wave-75.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-pilot-that-runs-out-of-time-leaves-no-server-behind"
+  ],
+  "commitment": [],
+  "objection": "The wave does not make the server of the pilot disappear from /proc faster: the corpse of it is still reaped by the init of the host, and on a host that is swapping the reaping can take a minute.  The claim is not about the reaping: it is about the server that stays alive and holds the socket and waits for a client that never comes, and that is what the state of the process measures.  A check that asked for the corpse to be gone would be a check about the init of the host, and the method would then measure a property of the host and not of the harness.  The wave changes the wording of the claim, and a change of the measure is a change of the claim: the falsifier now says 'still running', and the text says 'dead', and the difference between the two words is the whole of the wave.  The bound of fifteen seconds stays: a server that keeps running past the fifteenth second after the limit is a refutation, and the control of the claim brings exactly that back by one line of the runner.  The measurement that the wave rests on was made on an idle host and under four busy cores; the host that refuted the claim was swapping with a full zram, and that host was not reproduced, so the wave does not claim that the refutation is gone -- it claims that the measure no longer depends on the speed of the host.",
+  "refuted_by": "the server of the pilot is still running fifteen seconds after the limit of the pilot passed, or the runner of the pilot did not stop when the limit passed, or the runner of the pilot answered a code other than three, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The owner took the order of this wave on 2026-11-19 ('делай и коммить'), which closed the open point of docs/PLAN.md 16.62.  The measurement behind the wave: the server of the pilot was watched in /proc from the moment the pilot reported it.  It lived in the states 'S' and 'R' while the pilot lived, and at the limit it changed to 'Z' and left /proc within a tenth of a second -- the death is immediate, the reaping is what takes time.  The check of the claim passes on the clean tree (13.3 s) and under four busy cores (13.7 s), and the control of the claim was applied to a copy of the tree and bit by the assertion of the check and not by a crash: the runner was told not to stop the tree of the pilot, and the check ended with the code 1 and with its own words -- 'the server of the pilot was still alive fifteen seconds after the limit passed (pid 6531, state \"S\")', 'the runner of the pilot did not stop when the limit passed' and 'the runner of the pilot answered 0 when the limit passed, the third answer is 3'."
+}
