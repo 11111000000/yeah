@@ -59,6 +59,16 @@ of a stream that is over.  The reasoning and the result of a tool that ran do
 not end it: the answer comes after them."
   (not (memq (yeah-answer-shape response) '(reasoning tool-result))))
 
+(defun yeah-answer-road-p (response)
+  "Return non-nil when RESPONSE is the road to an answer and not the answer.
+The reasoning of the model, the result of a tool that ran and the sentinel of
+a stream that is over are the road: the answer comes after them.
+
+The road carries the same tokens as the answer that follows it -- the
+transport of gptel hands the info of the request to every shape of it -- and
+the cost of a request is written once: the road does not write it again."
+  (memq (yeah-answer-shape response) '(reasoning tool-result stream)))
+
 (defun yeah-answer-error (response)
   "Return the reason of an error RESPONSE, or nil."
   (when (eq (yeah-answer-shape response) 'error)

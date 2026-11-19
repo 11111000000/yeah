@@ -1,0 +1,31 @@
+{
+  "id": "wave-68",
+  "title": "the journal writes a list as an array",
+  "intent": "A live run of the orchestrator (19 November 2026) left a record of the journal that was a stand-in: `{\"type\":\"input-queued\",\"id\":1,\"unserializable\":true,...}` -- the record itself was gone, and the stand-in said only that the journal could not write it.  The cause was found and is not the orchestrator: the frozen configuration of an ACP session holds the names of its MCP servers (the names alone -- the command of a server and its environment may hold secrets, and a secret is never written into the log), and the names are a list.  `json-serialize' in Emacs 30 writes a list as an object or refuses it, so the record of the queued input -- the record that names the cwd of the session and its servers -- could not be written and was replaced by the stand-in.  Three such stand-ins sat in the journals of the project, one per live run that named an MCP server.  What changes: the journal writes a list as an array.  The record keeps every other field, the reader of a JSON array gives a vector back -- the same rule the tasks of a todo event already follow (lib/yeah-todo.el) -- and the stand-in stays what it was meant for: a value that JSON cannot hold at all (a symbol, a cons that is not a list of pairs).  The fix is in the kernel and not in the plugin: the defect belongs to the journal of every session, and the plugin is not the only writer of a frozen configuration.  The check proves three things: a record that holds a list is written with the list as an array and is not a stand-in; the journal file holds the whole record; and the record of a queued input whose frozen configuration names MCP servers -- the shape the live run lost -- holds the whole record.  The number of the wave is the next free one: the wave is outside the plan of the owner (the plan of the integration with the orchestrator, docs/PASEO-INTEGRATION-PLAN.md), and the owner may rename it.",
+  "touches": [
+    "lib/yeah-session.el",
+    "tests/unit/test-yeah-session.el",
+    "tests/checks/check-a-list-in-a-record-is-written-as-an-array.el",
+    "spec.json",
+    "waves/wave-68.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/ARCHITECTURE.md",
+    "AGENTS.md",
+    "plugin/yeah-provider/README.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-journal-survives-a-record-it-cannot-write.el",
+    "./scripts/dev check tests/checks/check-a-list-in-a-record-is-written-as-an-array.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-journal-writes-a-list-as-an-array"
+  ],
+  "commitment": [],
+  "objection": "The wave changes the shape of the journal: a list is now an array on the disk, and the reader of the journal gives a vector back where it used to give nothing (the record was lost).  A reader that expects a list must read a vector; the tasks of a todo event and the fields of the wire already travel that way, and the rule of the journal is now stated in one place (lib/yeah-session.el, `yeah-session--json-value').  The in-memory record of a session keeps the list it was given, and the file holds the array: the journal is the projection of the record and not a second copy of it.  The stand-in is not gone: a symbol, a cons that is not a list of pairs and every other value that JSON cannot hold are still written as a stand-in, because the journal is append-only and the run must go on (the claim `the-journal-never-refuses-a-record', wave 45).  The wave does not rewrite the journal of the project: the three stand-ins of the live runs of 19 November stay where they are, because the journal has no operation that rewrites a record, and the records that follow them are unaffected.  The alist keeps its old shape (an object whose keys are the literal names of the pairs), because it was written before the wave and the wave does not change it.  The wave does not claim that every list of every record is now an array: a list that is a plist is an object and stays an object.  The proof of the wave is a live run: the journal of the session of the run of 19 November 2026 holds the record of the queued input with the names of the servers as an array, and the record of the run before the wave holds the stand-in.",
+  "refuted_by": "a record that holds a list is written as a stand-in, or the list is not written as an array, or a field of the record is lost, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The control of the claim (`sed -i 's|((and (consp value) (proper-list-p value))|((and nil (consp value) (proper-list-p value))|' lib/yeah-session.el') was applied to a copy of the tree and bit: the check ended with the code 1 and with its own words -- `journal-list: the journal wrote a stand-in instead of the record that holds a list' and six more of its own assertions; the clean tree ended with the code 0.  The check costs about a third of a second.  The live proof of the defect and of the repair: the run of 19 November 2026, 07:40 UTC, through the orchestrator named two MCP servers, and the journal of its session (`session-1-c7dd0e.jsonl') holds the record of the queued input in full -- `{\"type\":\"input-queued\",...,\"frozen\":{\"budget\":60000,\"max-nudges\":3,\"submitted-at\":1795072250.679943,\"cwd\":\"/home/az/Projects/yeah\",\"mcp-servers\":[\"paseo\",\"shared-browser\"]}}` -- with no stand-in in the file; the session of the run before the wave (`session-1-530ba2.jsonl') still holds the stand-in, because the journal does not rewrite what it has written (docs/LIVE-EVIDENCE.md)."
+}

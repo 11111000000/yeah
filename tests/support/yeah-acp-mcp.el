@@ -66,6 +66,21 @@ as a plist and refuses a list of strings -- and the wire carries arrays."
                 :env (vector (list :name "YEAH_CHECK_ENV"
                                    :value yeah-acp-mcp--environment)))))
 
+(defconst yeah-acp-mcp--token "the-token-of-the-check"
+  "The value of the header the client of the checks names.
+The server of the checks answers with it, and the check reads the answer:
+the header the client named reached the server.")
+
+(defun yeah-acp-mcp--http-servers (port)
+  "Return the `mcpServers' array of the server over HTTP on PORT.
+The array is a vector, and so is the array of the headers: the wire carries
+arrays, and `json-serialize' does not serialize a list as an array."
+  (vector (list :name yeah-acp-mcp--server-name
+                :type "http"
+                :url (format "http://127.0.0.1:%s/mcp" port)
+                :headers (vector (list :name "X-Check-Token"
+                                       :value yeah-acp-mcp--token)))))
+
 (defun yeah-acp-mcp--model-file ()
   "Return the file that holds the fake model of the server."
   (expand-file-name "tests/support/yeah-session-mcp-model.el"))

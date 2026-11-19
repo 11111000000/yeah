@@ -37,6 +37,17 @@ export const yeahSettings = defineSettings({
     host: z.string().max(200).default("api.minimax.io"),
     /** Профиль разрешений: `build` спрашивает человека, `plan` запрещает. */
     profile: z.union([z.literal("plan"), z.literal("build")]).default("build"),
+    /**
+     * Размещение ядра: `spawn` — свой Emacs на соединение, `service` — один
+     * Emacs на всех агентов, сессии приходят к нему по сокету.
+     *
+     * По умолчанию — `spawn`: так плагин работал, и человек ничего не
+     * выбирал.  Сервисное размещение меняет то, как агент получает ядро, и
+     * решение о нём — за человеком.
+     */
+    serviceMode: z.union([z.literal("spawn"), z.literal("service")]).default("spawn"),
+    /** Имя сервиса: имя его сокета; сервисы с разным именем не мешают друг другу. */
+    serviceName: z.string().max(200).default("paseo"),
     /** Файл окружения с ключом провайдера; вне дерева репозитория. */
     keyFile: z.string().max(4096).default("~/.config/yeah/live.env"),
     /** Каталог данных Yeah; пусто — умолчание ядра. */

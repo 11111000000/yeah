@@ -17,6 +17,12 @@
 ;; Public operations open/close sessions, append and read records, build a
 ;; compacted projection, record compaction and test whether a session is
 ;; idle.  Destructive delete/rewrite operations deliberately do not exist.
+;;
+;; The file of a session appears when the session writes its first record, and
+;; not when the session is opened: a session that never did anything leaves no
+;; file behind, and the journal of a project stays readable.  The orchestrator
+;; opens a session to read the catalog of the models and never runs anything in
+;; it (wave 67).
 
 ;;; Code:
 
@@ -30,6 +36,16 @@
 
 (defconst yeah-session-schema-version 1
   "Schema version written in every newly appended journal record.")
+
+(defcustom yeah-session-journal-from-the-start nil
+  "Write the file of a session when the session opens, and not when it writes.
+The journal of a session holds its header and its records, and it appears when
+the session writes its first record: a session that never did anything leaves
+no file behind.  A person who wants to see a session in the list of the
+sessions of the project before it did anything sets this to non-nil, and every
+session has its file from the start."
+  :type 'boolean
+  :group 'yeah-session)
 
 (defcustom yeah-session--root nil
   "Override the root below which `sessions/<id>.jsonl' is stored.
@@ -84,10 +100,52 @@ for uniqueness; this is the lowest-level mutation primitive."
       (insert line "\n")
       (write-region (point-min) (point-max) path 'append 'no-message))))
 
+(defun yeah-session--plist-p (value)
+  "Return non-nil when VALUE is a proper plist with symbol keys."
+  (and (consp value)
+       (proper-list-p value)
+       (zerop (% (length value) 2))
+       (cl-loop for tail on value by #'cddr
+                always (symbolp (car tail)))))
+
+(defun yeah-session--alist-p (value)
+  "Return non-nil when VALUE is an alist of pairs with symbol keys.
+A plist is an alist as well; the caller asks about the plist first."
+  (and (consp value)
+       (proper-list-p value)
+       (cl-every (lambda (cell) (and (consp cell) (symbolp (car cell))))
+                 value)))
+
+(defun yeah-session--json-value (value)
+  "Return VALUE in a shape that `json-serialize' can write.
+The journal is JSONL: a list is written as an array, and the reader of a
+JSON array gives a vector back -- the same rule the tasks of a todo event
+follow.  A plist and an alist are objects, and they keep their shape.
+A value that JSON cannot hold at all (a symbol, a cons that is not a list)
+is returned as it is: the writer of the journal decides what to do with it."
+  (cond
+   ((yeah-session--plist-p value)
+    (let (result)
+      (while value
+        (push (car value) result)
+        (push (yeah-session--json-value (cadr value)) result)
+        (setq value (cddr value)))
+      (nreverse result)))
+   ((yeah-session--alist-p value)
+    (mapcar (lambda (cell) (cons (car cell) (yeah-session--json-value (cdr cell))))
+            value))
+   ((and (consp value) (proper-list-p value))
+    (vconcat (mapcar #'yeah-session--json-value value)))
+   ((vectorp value)
+    (vconcat (mapcar #'yeah-session--json-value value)))
+   (t value)))
+
 (defun yeah-session--serialize (record)
   "Serialize RECORD (a plist) to a one-line JSON string.
 Every string of the record is valid UTF-8: a tool can hand back bytes that
 are not text, and a byte that is not text becomes the replacement character.
+A list in the record is written as an array: the journal keeps the whole
+record instead of losing it to a stand-in.
 A record that JSON cannot hold at all is written as a stand-in that says so,
 because the journal is append-only and the run must go on.
 The `:id' field is preserved on the wire for cross-reference
@@ -97,7 +155,7 @@ by compaction records."
     (when id
       (setq copy (plist-put copy :id id)))
     (or (condition-case nil
-            (json-serialize (yeah-text-value-valid copy))
+            (json-serialize (yeah-session--json-value (yeah-text-value-valid copy)))
           (error nil))
         (json-serialize
          (append (list :type (or (plist-get record :type) "unknown"))
@@ -108,8 +166,12 @@ by compaction records."
 
 (defun yeah-session-open (session-id &optional root cwd)
   "Open (or create) the session log for SESSION-ID under ROOT.
-If the file does not exist, it is created with a single
-`header' record. If it does exist, the records are read into
+If the file does not exist, the session is opened but its file is not
+written yet: the file appears with its header when the session writes its
+first record.  A session that never did anything therefore leaves no file
+behind -- the orchestrator opens a session to read the catalog of the models
+and never runs anything in it, and such a session must not litter the journal
+of the project.  If the file does exist, the records are read into
 memory; the in-memory state is the source of truth for the
 returned session object. Idempotent.
 
@@ -124,7 +186,8 @@ line.  Corruption emits a warning, but never rewrites the log or appends a
 recovery event.  Clean logs have no `:recovery' metadata and emit no warning.
 
 Returns a plist of shape:
-  (:id ID :path PATH :records LIST :next-id N [:cwd CWD] [:recovery RECOVERY])"
+  (:id ID :path PATH :records LIST :next-id N :header RECORD
+   :pending-header BOOL [:cwd CWD] [:recovery RECOVERY])"
   (unless (and (stringp session-id) (> (length session-id) 0))
     (signal 'user-error
             (list (format "yeah-session-open: bad session id %S" session-id))))
@@ -132,7 +195,9 @@ Returns a plist of shape:
          (exists (file-exists-p path))
          (records nil)
          (next-id 0)
-         (recovery nil))
+         (recovery nil)
+         (header nil)
+         (pending-header nil))
     (if exists
         (progn
           (let* ((text (yeah-session--read-file path))
@@ -169,17 +234,20 @@ Returns a plist of shape:
                                      :message message))
                 (display-warning 'yeah-session message :warning))))
           (setq records (nreverse records)))
-      (let* ((header (list :type "header"
-                           :schema_version yeah-session-schema-version
-                           :id 0
-                           :timestamp (format-time-string "%Y-%m-%dT%H:%M:%S%z")
-                           :session_id session-id))
-             (serialized (yeah-session--serialize header)))
-        (yeah-session--write-line path serialized)
-        (setq records (list header)
-              next-id 0)))
+      (setq header (list :type "header"
+                          :schema_version yeah-session-schema-version
+                          :id 0
+                          :timestamp (format-time-string "%Y-%m-%dT%H:%M:%S%z")
+                          :session_id session-id)
+            records (list header)
+            next-id 0
+            pending-header (not yeah-session-journal-from-the-start))
+      (unless pending-header
+        (yeah-session--write-line path (yeah-session--serialize header))))
     (append (list :id session-id :path path :records records
-                  :next-id (1+ next-id))
+                  :next-id (1+ next-id)
+                  :header header
+                  :pending-header pending-header)
             (when cwd
               (list :cwd cwd))
             (when recovery
@@ -252,6 +320,19 @@ and a tool that needs one says so instead of guessing."
         (setq rest (cddr rest))))
     normalized))
 
+(defun yeah-session--flush-header (session)
+  "Write the header of SESSION to disk when the session has not written it yet.
+The header is the first line of the file and the file is created by it: a
+session that writes nothing leaves no file behind.  A file that exists
+already is left alone -- another writer has created it, and a second header
+would be a lie."
+  (when (plist-get session :pending-header)
+    (let ((path (plist-get session :path)))
+      (unless (file-exists-p path)
+        (yeah-session--write-line
+         path (yeah-session--serialize (plist-get session :header))))
+    (plist-put session :pending-header nil))))
+
 (defun yeah-session-append (session record &optional context)
   "Append RECORD to SESSION with a fresh common envelope.
 CONTEXT may contain `:run_id', `:turn_id', `:tool_call_id' and
@@ -263,6 +344,7 @@ monotonic integer id."
   (unless (and (consp record) (stringp (plist-get record :type)))
     (signal 'user-error
             (list (format "yeah-session-append: record missing :type %S" record))))
+  (yeah-session--flush-header session)
   (let* ((path (plist-get session :path))
          (next (yeah-session--next-id (plist-get session :records)))
          (metadata (yeah-session--context context))

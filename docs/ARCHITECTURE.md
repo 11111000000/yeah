@@ -126,6 +126,46 @@ record and not a transcript. The reason is cut at two thousand characters,
 the fields that name the failure are kept, and the place where the text was
 cut is said.*
 
+*Amended on 2026-11-19 (wave 68): a list in a record is not a value that JSON
+cannot hold. `json-serialize' writes a list as an object or refuses it, and a
+record that held a list — the record of a queued input, whose frozen
+configuration names the MCP servers of the session — was therefore written as a
+stand-in, and the record was lost. The journal writes a list as an array: the
+other fields of the record survive, and the reader of a JSON array gives a
+vector back, the same rule the tasks of a todo event follow. The stand-in
+keeps its meaning and its scope: a value JSON cannot hold at all — a symbol, a
+cons that is not a list of pairs — is still written as a stand-in, and the
+journal still takes the records that follow. The promise of the journal as the
+source of truth is strengthened, not weakened: a record that holds a list is a
+record, not a stand-in.*
+
+*Amended on 2026-11-19 (wave 67): the file of a session appears when the
+session writes its first record, and not when the session is opened. The
+orchestrator reads the catalog of the models through a real session and never
+closes it, so every list of the models left a session behind — a file with a
+single header and nothing else, in the place where a person looks for the
+truth about a run. The promise is strengthened, not weakened: a journal that
+holds a session that never happened holds a thing that did not happen. The
+journal stays append-only, the header stays the first line of the file, and a
+session that never wrote anything leaves no file at all. The same wave amends
+the contract of `session/load`: the kernel refuses only a session it knows
+nothing about, and a session of this process that never wrote loads with
+nothing to replay — the absence of a file is not the absence of a session.*
+
+*Amended on 2026-11-19 (wave 70): the journal held the cost of one request
+twice. The transport of gptel hands the info of a request to every shape of it
+— the reasoning of the model and the answer that follows it carry the same
+tokens — and the turn wrote the usage of the request for every shape that
+carried it, so a model that thinks was paid twice in the journal and the
+reported cost of the run was twice the cost of the run. The usage of a request
+is written once: the road to the answer — the reasoning, the result of a tool
+that ran and the sentinel of a stream that is over — is not a second request,
+and the decision of what the road is lives in one place
+(`lib/yeah-answer.el`). The promise of the journal as the source of truth is
+kept and made explicit, not relaxed: a record of the cost that is written twice
+is not the truth about the cost. The journal stays append-only, and the records
+that were written twice stay where they are.*
+
 ### D2 — Yeah owns its execution state machine
 
 Yeah does not build its correctness on advice to gptel internals. gptel owns
@@ -344,6 +384,35 @@ kept and made explicit, not relaxed. The same wave found that the words
 themselves were spoiled on the way out: Emacs read the bytes of a
 unibyte string as Latin-1 and wrote them back as UTF-8, so every
 non-ASCII answer arrived at the client written twice over.*
+
+*Amended on 2026-11-19 (wave 69): the answer of `session/prompt` carried a
+stop reason and nothing else, and the orchestrator counted the tokens of a run
+of Yeah it never saw — it reads them from the field `usage` of that answer.
+The answer carries the usage of its turn now: the tokens the provider reported,
+as `inputTokens`, `outputTokens` and `totalTokens`. The usage is the usage of
+the turn and not the usage of the session — the records of the usage of a run
+share the run id of that run, and a run is one prompt. A provider that reported
+nothing has no field in its answer: the kernel has no tokenizer of the provider
+and does not estimate the cost of a run. The promises above are kept and made
+explicit, not relaxed: a client that knows nothing of the field ignores the
+key, and the answer of a run that spent nothing it reported is an answer
+without the field.*
+
+*Amended on 2026-11-19 (wave 71): the answer of `session/prompt` reaches the
+orchestrator through a connection that keeps one stop reason and throws the
+rest away, so the field `usage` of the answer never reached the counter of the
+agent. The tokens of a turn travel by a second path, which this repository
+owns: the kernel sends them as the notification `yeah/usage` — a method of Yeah
+and not of ACP — to the clients that asked for them in the `_meta` of their
+capabilities, and the plugin of the orchestrator translates the notification
+into the event of the provider `session.usage`, the only event the orchestrator
+carries into that counter. The translation completes one part of the usage with
+the other and replaces neither: the size of the window comes from the update
+of the context of ACP, and the tokens of the turn come from the kernel, and the
+counter of the agent holds both whichever of the two the orchestrator handles
+last. The promises above are kept and made explicit, not relaxed: the
+notification travels only to the clients that asked for it, and the kernel
+sends nothing when the provider reported nothing.*
 
 ### D8 — Agents and skills are declarative
 

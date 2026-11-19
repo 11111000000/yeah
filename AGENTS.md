@@ -319,9 +319,12 @@ work item. Never resolve it by silently making documentation more optimistic.
   `the-text-of-the-harness-is-always-text').  The journal never refuses a
   record: a record that JSON cannot write is written as a stand-in that
   says so, and the journal takes the records that follow (the claim
-  `the-journal-never-refuses-a-record').  An error of the harness that
-  happens inside the callback of an asynchronous tool becomes a failed tool
-  and not the death of the process.  A run whose summary the provider did
+  `the-journal-never-refuses-a-record').  A list in a record is not such a
+  value: the journal writes a list as an array, the record keeps its other
+  fields, and the reader of a JSON array gives a vector back (the claim
+  `the-journal-writes-a-list-as-an-array', wave 68).  An error of the
+  harness that happens inside the callback of an asynchronous tool becomes
+  a failed tool and not the death of the process.  A run whose summary the provider did
   not write does not die either: the old outputs of the tools are pruned,
   the journal says that the summary did not arrive, and the run goes on (the
   claim `a-run-degrades-when-the-summary-does-not-arrive').  The reason of
@@ -710,7 +713,10 @@ work item. Never resolve it by silently making documentation more optimistic.
   the registry of the runs of that session -- only stdio is spoken, and a
   server of another transport is refused by name; a server that does not
   answer in ten seconds refuses the session rather than opening it without
-  the tools the client asked for.  The tools live in the snapshot of the
+  the tools the client asked for.  (Wave 66 amended this sentence and not
+  the wave: the transport of HTTP was added to the transports the kernel
+  speaks, because the orchestrator names its own MCP server over HTTP and no
+  agent of Yeah could run inside it at all.)  The tools live in the snapshot of the
   registry of the run, and not in the shared registry, so the tools of one
   session do not leak into the runs of another.  The journal holds only the
   names of the servers: the command of a server and its environment may hold
@@ -732,6 +738,244 @@ work item. Never resolve it by silently making documentation more optimistic.
   exist in Emacs 30, neither as a function nor as a macro, while the stdout of
   a batch Emacs is not buffered a line at a time; and `mcpServers: null' passed
   the check "this is an array" and then went into `mapcar'.
+- Wave 65 made the wire tell the orchestrator how the run ended.  The kernel
+  writes into its journal everything a person needs to know about a run -- the
+  tokens it spent, the nudge that pushed it, the run that ended without an
+  effect and the error that stopped it -- and the wire carried none of it: the
+  client of the orchestrator saw `stopReason' and the words of the agent, and a
+  run that ended without an effect looked like a run that had ended.  The
+  kernel projects the outcome now, and only to the clients that asked for it:
+  the client announces `yeah.runOutcome' in the `_meta' of its capabilities at
+  `initialize', the same way it asks for the queue events (`yeah.queueEvents').
+  The tokens travel as `usage_update', which is a part of ACP; the nudge, the
+  unfinished run and the error travel as a notification of the method of Yeah
+  (`yeah/outcome'), which is not a method of ACP and which the plugin of the
+  orchestrator translates into a vendor update.  A client that knows nothing of
+  the vocabulary of Yeah is served plain ACP, as it was before.  The size of
+  the context in `usage_update' is the budget of the kernel and not the window
+  of the provider: the kernel does not know the window of the provider and
+  does not guess it.  The wave found that the schema of the wire
+  (`schemas/acp-v1.json') was behind the implementation -- waves 42 and 43 had
+  added `session/close', `session/set_mode', `session/set_config_option',
+  `current_mode_update' and `config_option_update' without touching it -- and
+  the schema is the measure of the wire, so the wave brought it in line.  The
+  check is `tests/checks/check-the-wire-tells-the-orchestrator-how-the-run-ended.el',
+  the claim is `the-wire-tells-how-the-run-ended' (docs/PLAN.md §16.49).  The live
+  path was measured on 2026-11-19 (06:05) with the wire of the plugin against the
+  real kernel: `nudge' three times and `unfinished' once reached the orchestrator
+  as the notices of the plugin.  What nobody watched is how the notice is drawn in
+  the UI of the orchestrator, and the command line of Paseo cannot show it: the
+  curator of the activity of Paseo has no branch for the type `notification' and
+  skips such an item in silence.  A reader who looks for the notice in
+  `paseo logs' must not conclude that the wire carried nothing.
+- Wave 66 gave the kernel the transport of MCP over HTTP.  No agent of Yeah
+  could run inside the orchestrator Paseo, and the reason was the transport and
+  not the model, not the tools and not the wire of ACP: the orchestrator names
+  its own MCP server over HTTP (`{type: http, url: http://127.0.0.1:6767/mcp/agents?…,
+  headers: [Authorization: Bearer …]}' -- `toAcpMcpServers',
+  `withRuntimePaseoMcpServer'), and the kernel spoke the stdio transport and
+  no other, so the session was refused by name ("Yeah speaks stdio only") and
+  the live run died on that line.  The transport is a property of the agent and
+  not of the plugin, so it was repaired in the kernel: `lib/yeah-mcp-http.el'
+  is a minimal asynchronous HTTP/1.1 client on `make-network-process'.  The
+  socket is read as binary, because the sizes of the chunks of HTTP are
+  measured in bytes; the bytes become text in one place only
+  (`lib/yeah-text.el'), so a byte that is not text cannot kill the process.
+  The answer of MCP over HTTP comes as the stream of the events of MCP over
+  HTTP, and the socket is closed after the message that carries an `id' -- the
+  server of the SDK of the orchestrator keeps no state and its stream does not
+  end by itself.  The headers `Mcp-Session-Id' and `MCP-Protocol-Version' are
+  sent, so a server that keeps a state works too.  The transport `sse' is
+  refused by name, and so is `https': there is no TLS in a socket of Emacs.
+  The kernel declares the transport in the handshake of ACP
+  (`mcpCapabilities: {http: true, sse: false}').  The check is
+  `tests/checks/check-the-mcp-servers-of-a-session-speak-http.el', the claim is
+  `the-mcp-servers-of-a-session-speak-http' (docs/PLAN.md §16.50).  The stdio
+  path did not move: `check-the-mcp-servers-of-a-session-reach-the-model.el' is
+  still green.
+- Wave 67 stopped the journal of a project from filling with sessions that
+  never happened.  The orchestrator reads the catalog of the models and the
+  modes through a real session: `discover()' calls `session/new' and never
+  closes the session it opened, and the kernel wrote the file of the session
+  when the session was opened -- a file with a single header and nothing else.
+  Every list of the models and every diagnostic left one more such file
+  behind, and the journal of a project filled with them: in the place where a
+  person looks for the truth about a run.  The file of a session appears now
+  when the session writes its first record, and a session that never did
+  anything leaves no file at all; the header is still the first line of the
+  file, the ids are still monotonic, and the log is still append-only.  A
+  person who wants to see a session in the list of the sessions of the project
+  before it did anything has a switch for that
+  (`yeah-session-journal-from-the-start', off by default), and that switch is
+  what the control of the claim turns.  The unit test that named the old
+  behaviour was amended and not deleted.  The wave does not remove the files of
+  the old behaviour: the journal is append-only and the kernel deletes
+  nothing.  The check is
+  `tests/checks/check-a-probe-of-the-catalog-leaves-no-empty-session.el', the
+  claim is `the-probe-of-the-catalog-leaves-no-empty-session' (docs/PLAN.md
+  §16.51).
+- Wave 69 made the answer of `session/prompt' carry the cost of the turn.  The
+  orchestrator counts the tokens of a run of opencode and never saw the tokens
+  of a run of Yeah: it takes them from the field `usage' of the answer of the
+  prompt (`packages/server/src/server/agent/providers/acp-agent.ts'), and the
+  answer of Yeah carried a stop reason and nothing else; the handler of the
+  notification `usage_update' of the orchestrator is empty (`void update;'), so
+  the notification is of no use to it either.  The kernel knew the tokens: the
+  provider reports them (`lib/yeah-gptel.el' puts them into the info of the
+  answer as `:yeah-usage'), the turn writes them into the journal as the event
+  `usage', and the journal of the session holds them -- but none of it went on
+  the wire.  The answer of `session/prompt' carries the usage of its turn now:
+  the tokens the provider reported, as `inputTokens', `outputTokens' and
+  `totalTokens'.  The usage is the usage of the turn and not the usage of the
+  session -- the records of the usage of a run share the run id of that run,
+  and a run is one prompt.  A provider that reported nothing has no field in
+  its answer: the kernel has no tokenizer of the provider and does not guess
+  the cost of a run (`yeah-context-usage' holds the estimate of the context,
+  and that is the budget of the kernel and not the bill of the provider).  The
+  field is the field of ACP -- the `Usage' of the schema of the protocol, marked
+  unstable by the protocol itself -- and the schema of the repository names it
+  now (`schemas/acp-v1.json').  The fix is in the kernel and not in the plugin:
+  the plugin translates what is not ACP (the outcome of a run), and the tokens
+  are ACP.  A client that knows nothing of the field ignores the key.  The
+  check is
+  `tests/checks/check-the-prompt-response-carries-the-usage-of-the-turn.el',
+  the claim is `the-prompt-response-carries-the-usage-of-the-turn' (docs/PLAN.md
+  §16.55).  Two controls of the claim bit in copies of the tree, each by the
+  assertion of the check and not by a crash: the usage taken out of the answer
+  (the check said "the answer to the prompt carried no usage") and the usage
+  summed over the whole session instead of over the run (the check said "the
+  second prompt of the session: it reported the tokens of the session and not
+  the tokens of its turn: ... 2500 is not 1300").  The live run of 19 November
+  answered through the orchestrator in about eleven seconds, and `LastUsage'
+  did not appear: the SDK connection of the plugin of the orchestrator
+  (`@getpaseo/plugin' 0.15.2, `runAcpProvider') drops the field `usage' from
+  the answer of `session/prompt', and there is no hook for that answer at the
+  `AcpTransformer'.  That route was repaired from this side in wave 71, and
+  a reader who sees no `LastUsage' in the orchestrator must still not read it
+  as a missing field in the answer of the kernel.
+- Wave 70 made the journal hold the cost of one request once.  The live run of
+  19 November wrote two records of the usage of one request with the same
+  numbers (13775 in and 528 out), and the first request of that run -- the
+  model that did not think -- held one.  The cause is in the transport of gptel
+  and in the kernel together: the callback of the request is called with
+  `(cons 'reasoning ...)' and then with the answer, and the same `info' goes
+  to both, and the kernel wrote the usage of the request for every shape that
+  carried it.  A model that thinks was paid twice in the journal, and the cost
+  of the run that the orchestrator shows was twice the cost of the run.  The
+  road to the answer -- the reasoning of the model, the result of a tool that
+  ran and the sentinel of a stream that is over -- is not a second request:
+  `yeah-answer-road-p' (`lib/yeah-answer.el') names those shapes, and the
+  record of the usage in `lib/yeah-turn.el' stands under the guard
+  `(not (yeah-answer-road-p answer))'.  The decision lives in the module that
+  already owns the decision of what counts as an answer (wave 49), and the turn
+  asks it.  The journal is append-only and the wave does not rewrite it: the
+  records that were written twice stay where they are.  The notification
+  `usage_update' is untouched -- it is the size of the context and not the
+  cost of the turn -- and a request that ends in an error and carries no
+  answer writes nothing, because the provider never reported those tokens.
+  The check is
+  `tests/checks/check-the-journal-holds-the-usage-of-a-request-once.el', the
+  claim is `the-journal-holds-the-usage-of-a-request-once' (docs/PLAN.md
+  §16.56).
+- Wave 71 made the orchestrator see the usage of the turn.  The answer of
+  `session/prompt' reaches the orchestrator through a connection that keeps one
+  stop reason and throws the rest away, so the field `usage' of the answer of
+  wave 69 never reached the counter of the agent, and the update of the context
+  (`usage_update') carries the size of the window and not the tokens of the
+  turn.  The tokens of a turn travel now by a path this repository owns: the
+  kernel sends them as the notification `yeah/usage' -- a method of Yeah and
+  not of ACP -- to the clients that asked for them in the `_meta' of their
+  capabilities (`yeah.usage'), the plugin of the orchestrator announces that
+  method in the request `initialize' and translates the notification into the
+  event of the provider `session.usage', and that event is the only one the
+  orchestrator carries into the counter of the agent.  The translation
+  completes one part of the usage with the other and replaces neither: the size
+  of the window comes from the update of the context, the tokens come from the
+  kernel, and the counter holds both whichever of the two the orchestrator
+  handles last -- the first live run after the repair showed zeros for exactly
+  that reason.  The vocabulary travels only where it was asked for: the client
+  that announced nothing receives nothing, and the kernel sends nothing when
+  the provider reported nothing.  The check is
+  `tests/checks/check-the-orchestrator-sees-the-usage-of-the-turn.el', the
+  claim is `the-orchestrator-sees-the-usage-of-the-turn' (docs/PLAN.md
+  §16.57).  Two controls bit in copies of the tree, each by the assertion of
+  the check and not by a crash: the call of the kernel that sends the usage
+  (the check said "the wire carried no usage of a turn") and the call of the
+  plugin that reports it (two tests of the plugin failed).  The live run of 19
+  November (`e1cdf9b6-9269-4bea-8602-2ddf1564f482') shows
+  `LastUsage  InputTokens: 12960, OutputTokens: 99', where the run before it
+  showed zeros.
+- Wave 72 gave the plugin of the orchestrator a live core to talk to.  The
+  plugin raised its own Emacs for every connection, and that has a hard
+  boundary: over a pipe the kernel reads the next request only after the turn
+  has settled, so a request that arrives during a turn waits for the end of
+  the turn.  The kernel already speaks ACP over a Unix socket
+  (`yeah-acp-serve-socket`), and that is the path on which a request during a
+  turn is read while the turn runs.  The placement is now a setting of the
+  plugin (`serviceMode`), and the default is the old behaviour: one Emacs per
+  connection, so a host that chose nothing changes nothing.  The service lives
+  once, and the life of the service is tied to the life of its host.  The
+  check is `tests/checks/check-the-plugin-talks-to-the-core-over-the-socket.sh',
+  the claim is `the-plugin-talks-to-the-core-over-a-socket' (docs/PLAN.md
+  §16.58).  The wave did not prove the real command of the service: it needs
+  gptel and the key of the provider, and the check raises the core with its
+  own command and a fake model.
+- Wave 73 made the plugin steer the running turn instead of replacing it.  The
+  orchestrator can send a message into a running turn without replacing it --
+  that is steering, and a provider declares it with the capability
+  `prompt.steer'.  The ACP adapter of the library of the orchestrator does
+  not know the capability, and a request with `delivery: "steer"' never reaches
+  the kernel: the adapter interrupts the turn and starts a new one.  The plugin
+  declares the capability -- in the connection and in the session it opens --
+  and translates such a request into `session/steer' of the kernel, which the
+  kernel already knows (`lib/yeah-acp.el'); the request never reaches the
+  adapter, so the turn is not interrupted, and the orchestrator is answered
+  with the identifier of the turn that runs, which is what it checks.  The
+  check is `tests/checks/check-the-plugin-steers-the-running-turn.sh', the
+  claim is `the-plugin-steers-the-turn-instead-of-replacing-it' (docs/PLAN.md
+  §16.59).  The live run of 19 November closed the gap the check left open:
+  the orchestrator sent a clarification into a running turn, the kernel took
+  it into the turn (`input-taken' with the kind `steering'), and the model
+  ended the turn at once with a short answer instead of going on with its plan
+  (docs/LIVE-EVIDENCE.md).  Steering is timely only in the service placement
+  of wave 72: over a pipe the request is read after the turn has settled and
+  becomes an ordinary ask.  The adapter of the library of the orchestrator
+  still replaces a turn when it is given a steering request -- that is a
+  decision of the owner, and the plugin works around it.
+- Wave 74 stopped the plugin from believing a dead socket.  The service of
+  wave 72 leaves its socket file on the disk when it dies, and the plugin
+  decided that such a service is alive by the presence of that file.  The live
+  run of 19 November found it: the kernel was killed by the OOM-killer of the
+  host, the socket stayed, and the next agent came to a socket with no kernel
+  behind it -- the orchestrator answered `ACP connection closed' until the
+  plugin was reloaded by hand.  The plugin asks the socket now whether anyone
+  listens on it, and a socket that nobody listens on is removed and the
+  service is raised again.  The check is
+  `tests/checks/check-the-plugin-does-not-trust-a-dead-socket.sh', the claim
+  is `a-dead-socket-does-not-pass-for-a-live-service' (docs/PLAN.md §16.60).
+  The wave does not make the service survive the death of the kernel, and it
+  does not remove the cause of that death: the context of the run had grown
+  past the window of the model.
+- The recalculation of 19 November (16:03–16:37) found that two registered
+  controls had never bitten: the control of
+  `the-prompt-response-carries-the-usage-of-the-turn` had no closing delimiter
+  of its `s' command at all (`sed` answered `unterminated 's' command', the
+  file did not change), and the control of
+  `a-tool-that-returns-bytes-does-not-kill-the-harness` matched a call that the
+  code no longer has, so the subject changed and the check still passed.  A
+  claim whose control does not bite is not established, so both claims stood
+  unestablished in the map until the controls were repaired and re-verified on
+  that day: both are `pass' with `negative control proven' now (docs/PLAN.md
+  §16.61).
+- The same recalculation refuted one claim outside the package:
+  `the-pilot-that-runs-out-of-time-leaves-no-server-behind` answered "the
+  server of the pilot stayed behind after the limit passed".  The check waits
+  fifteen seconds of wall time for that death, the host was swapping (4.7 GiB
+  of swap, zram full) while the run took twice as long as usual, and the check
+  passes outside the run -- eleven times before, and twice more after.  The
+  cause is not established, the map stands in `red' because of it, and the
+  repair (a check that does not depend on the speed of the host) is a wave of
+  its own whose order the owner decides (docs/PLAN.md §16.62).
 
 ## The commands
 

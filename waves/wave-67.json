@@ -1,0 +1,32 @@
+{
+  "id": "wave-67",
+  "title": "a probe of the catalog leaves no empty session",
+  "intent": "The journal of the project was full of sessions that never happened.  The orchestrator reads the catalog of the models and the modes through a real session: `discover()` in the route of the orchestrator calls `session/new' and never closes the session it opened (packages/plugin/src/server/acp-internal/connection.ts, `discover'), and the kernel wrote the file of the session at the moment it was opened -- a file with a single header and nothing else.  Every list of the models, every diagnostic and every run left one more such file behind, and the journal of a project filled with them: the place where a person looks for the truth about a run.  What changes: the file of a session appears when the session writes its first record, and not when the session is opened.  The header is still the first line of the file, the ids are still monotonic, and the log is still append-only -- a session that never did anything leaves no file at all.  The wave also answers the obvious objection: a person who wants to see a session in the list of the sessions of the project before it did anything has a switch for that (`yeah-session-journal-from-the-start'), and the switch is what the control of the claim turns.  The check starts a real ACP service on a socket, opens a session the way the orchestrator opens it (a probe: no prompt, no run), and proves three things: the probe leaves no file in the journal of the project; the session of this process loads without a file (`session/load` answers it and replays nothing) and a session the process knows nothing about is refused; the session that did work leaves a journal whose first line is its header.  The number of the wave is the next free one: the wave is outside the plan of the owner (the point P-C of the plan of the integration with the orchestrator, docs/PASEO-INTEGRATION-PLAN.md 3.10), and the owner may rename it.",
+  "touches": [
+    "lib/yeah-session.el",
+    "lib/yeah-acp.el",
+    "tests/unit/test-yeah-session.el",
+    "tests/unit/test-yeah-interaction.el",
+    "tests/checks/check-a-probe-of-the-catalog-leaves-no-empty-session.el",
+    "spec.json",
+    "waves/wave-67.json",
+    "docs/PLAN.md",
+    "docs/PASEO-INTEGRATION-PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-session-log-append-only.el",
+    "./scripts/dev check tests/checks/check-a-probe-of-the-catalog-leaves-no-empty-session.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-probe-of-the-catalog-leaves-no-empty-session"
+  ],
+  "commitment": [],
+  "objection": "The wave changes when the file of a session appears, and the unit test that named the old behaviour was amended, not deleted: `yeah-session-open-creates-empty-log' now says that opening a session writes no file and that the file appears with its header when the session writes its first record.  The amendment is a change of the contract of the kernel and it is named here.  The switch `yeah-session-journal-from-the-start' keeps the old behaviour available, so the choice is the person's and not the kernel's.  A session that never wrote anything is not in the list of the sessions of the project, but the process knows it, and `session/load' answers it: there is no file, so there is nothing to replay, and the answer says `replayed 0'.  The kernel refuses only a session it knows nothing about (`unknown ACP session').  The first wording of this wave said that a session that never happened cannot be resumed, and the live check of the wave found it to be false: a session of this process lives without a file, and `session/load' of it is a question the kernel answers.  The contract of `session/load' was amended, and the amendment is named here.  The wave does not clean the files that the earlier behaviour left behind: the journal is append-only and the wave does not delete records, so the old files stay until a person removes them.  The check proves the behaviour of the kernel and not the behaviour of the orchestrator: it opens the session the way the orchestrator opens it, and the live proof is a separate observation (docs/LIVE-EVIDENCE.md).  Two processes that write into the journal of one session at the same time are still a race the kernel does not arbitrate, and the wave does not claim that it does: one session belongs to one process.",
+  "refuted_by": "the probe of the catalog leaves a file in the journal of the project, or the journal of the session that did work does not begin with its header, or the session of this process is refused by `session/load', or a session the process knows nothing about is loaded, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The subject of the claim: the probe of the catalog left no file in the journal of the project (the journal held no session file at all), and the session that did work left a journal whose first line was its header (with the id 0) and whose lines follow it.  The control of the claim (`sed -i 's|(defcustom yeah-session-journal-from-the-start nil|(defcustom yeah-session-journal-from-the-start t|' lib/yeah-session.el') was applied to a copy of the tree and bit: the check ended with the code 1 and with its own words -- `the probe of the catalog left 1 session file(s) in the journal: (\"/tmp/yeah-probe7CqVR2/yeah/projects/6620e272.../sessions/session-1-e942fc.jsonl\")'.  The second control of the wave (the return of the old refusal of `session/load', the condition on the file alone) bit in a copy of the tree: the check ended with the code 1 and with its own words -- `the session of this process was not loaded: (:result nil :error (:code -32602 :message \"unknown ACP session: session-1-3993c0\"))'.  The check costs about a second.  The live proof of the defect: the data home of the user held more than a hundred files of one record each (16--19 November 2026), and a live run of 19 November left two of them -- one from the discovery of the models and one from the probe of the session (docs/LIVE-EVIDENCE.md)."
+}

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "yeah/acp-v1.json",
   "title": "ACP v1 — Yeah subset",
-  "description": "The subset of the Agent Client Protocol v1 that Yeah speaks on the agent side over newline-delimited JSON-RPC 2.0. Method names and field names follow the protocol; the transport is stdio. The notifications of the wire carry what ACP has: a client that checks them refuses an update it does not know. Yeah's own queue events (`input_queued', `input_taken', `input_recovered', `input_withdrawn') are an extension, not ACP: they travel only to a client that asked for them in the `_meta' of its capabilities at `initialize'.",
+  "description": "The subset of the Agent Client Protocol v1 that Yeah speaks on the agent side over newline-delimited JSON-RPC 2.0. Method names and field names follow the protocol; the transport is stdio and a local socket. The notifications of the wire carry what ACP has: a client that checks them refuses an update it does not know. Yeah's own queue events (`input_queued', `input_taken', `input_recovered', `input_withdrawn') are an extension, not ACP: they travel only to a client that asked for them in the `_meta' of its capabilities at `initialize'. The outcome of a run (`yeah/outcome') is an extension of the same kind: it says how the run ended, and it travels only to the clients that asked for it in the same `_meta'.",
   "definitions": {
     "RequestId": {
       "type": ["integer", "string"]
@@ -66,7 +66,18 @@
         "stopReason": {
           "type": "string",
           "enum": ["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"]
-        }
+        },
+        "usage": { "$ref": "#/definitions/Usage" }
+      }
+    },
+    "Usage": {
+      "type": "object",
+      "description": "The tokens of the run of the prompt. A run that reported no tokens has no usage.",
+      "required": ["totalTokens", "inputTokens", "outputTokens"],
+      "properties": {
+        "totalTokens": { "type": "integer" },
+        "inputTokens": { "type": "integer" },
+        "outputTokens": { "type": "integer" }
       }
     },
     "CancelNotification": {
@@ -178,20 +189,77 @@
                   "items": { "$ref": "#/definitions/ContentBlock" }
                 }
               }
+            },
+            {
+              "properties": {
+                "sessionUpdate": {
+                  "type": "string",
+                  "enum": ["current_mode_update"]
+                },
+                "currentModeId": { "type": "string" }
+              }
+            },
+            {
+              "properties": {
+                "sessionUpdate": {
+                  "type": "string",
+                  "enum": ["config_option_update"]
+                },
+                "configOptions": { "type": "array" }
+              }
+            },
+            {
+              "properties": {
+                "sessionUpdate": {
+                  "type": "string",
+                  "enum": ["usage_update"]
+                },
+                "used": {
+                  "type": "integer",
+                  "description": "The tokens the context of the session holds now.  The kernel estimates them; it does not know the window of the provider and does not guess it."
+                },
+                "size": {
+                  "type": "integer",
+                  "description": "The size of the context window of the session.  It is the budget of the kernel, and not the window of the provider."
+                }
+              }
             }
           ],
           "properties": {
             "sessionUpdate": {
               "type": "string",
-              "enum": ["user_message_chunk", "agent_message_chunk", "tool_call", "tool_call_update"]
+              "enum": [
+                "user_message_chunk", "agent_message_chunk",
+                "tool_call", "tool_call_update",
+                "current_mode_update", "config_option_update",
+                "usage_update"
+              ]
             },
             "toolCallId": { "type": "string" },
             "title": { "type": "string" },
             "status": { "type": "string" },
+            "kind": {
+              "type": "string",
+              "description": "The kind of the call: the fact of the tool, and not a guess by its name."
+            },
             "rawInput": { "description": "What the tool was called with, as the tool received it." },
             "rawOutput": { "description": "What the tool returned." }
           }
         }
+      }
+    },
+    "OutcomeNotification": {
+      "type": "object",
+      "required": ["sessionId", "outcome"],
+      "properties": {
+        "sessionId": { "type": "string" },
+        "outcome": {
+          "type": "string",
+          "enum": ["nudge", "unfinished", "error"],
+          "description": "How the run ended.  It is not a kind of ACP: the outcome of a run is the vocabulary of Yeah, and it travels only to the clients that asked for it in the `_meta' of their capabilities at `initialize'."
+        },
+        "payload": { "type": "string" },
+        "reason": { "type": "string" }
       }
     }
   },
@@ -215,6 +283,37 @@
     "session/cancel": {
       "params": { "$ref": "#/definitions/CancelNotification" }
     },
+    "session/close": {
+      "params": {
+        "type": "object",
+        "required": ["sessionId"],
+        "properties": { "sessionId": { "type": "string" } }
+      },
+      "result": { "type": "object" }
+    },
+    "session/set_mode": {
+      "params": {
+        "type": "object",
+        "required": ["sessionId", "modeId"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "modeId": { "type": "string" }
+        }
+      },
+      "result": { "type": "object" }
+    },
+    "session/set_config_option": {
+      "params": {
+        "type": "object",
+        "required": ["sessionId", "configId", "value"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "configId": { "type": "string" },
+          "value": {}
+        }
+      },
+      "result": { "type": "object" }
+    },
     "session/steer": {
       "params": { "$ref": "#/definitions/SteerRequest" },
       "result": { "$ref": "#/definitions/SteerResponse" }
@@ -226,6 +325,12 @@
     "session/recover": {
       "params": { "$ref": "#/definitions/RecoverRequest" },
       "result": { "$ref": "#/definitions/RecoverResponse" }
+    }
+  },
+  "notifications": {
+    "yeah/outcome": {
+      "params": { "$ref": "#/definitions/OutcomeNotification" },
+      "description": "How the run ended.  The method is not a method of ACP: the outcome of a run is the vocabulary of Yeah, it travels only to the clients that asked for it in the `_meta' of their capabilities at `initialize', and the client of the orchestrator learns it through the plugin that translates it."
     }
   }
 }

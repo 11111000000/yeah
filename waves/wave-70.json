@@ -1,0 +1,31 @@
+{
+  "id": "wave-70",
+  "title": "the journal holds the usage of a request once",
+  "intent": "The live run of 19 November 2026, the one that proved wave 69, showed a second defect that the offline checks had not seen: the journal held two records of the usage of one request with the same numbers.  The cause is in the transport and in the kernel together.  The transport of gptel hands the info of a request to every shape of it: the reasoning of the model and the answer that follows it carry the same tokens (gptel-request.el: the callback is called with `(cons 'reasoning ...)' and then with the response, and the same `info' goes to both), and the kernel wrote the usage of the request for every shape that carried it -- so a model that thinks was paid twice in the journal, and the cost of the run that the orchestrator shows was twice the cost of the run.  What changes: the usage of a request is written once.  The road to the answer -- the reasoning of the model, the result of a tool that ran and the sentinel of a stream that is over -- is not a second request, and it does not write the tokens of the request again.  The decision belongs to the module that owns it (`lib/yeah-answer.el', wave 49: the decision of what counts as an answer is made in one place and not in the stands that ask a real model), and the turn asks it.  The fix is in the kernel and not in the plugin: the journal of every session of every transport is affected, and the double count also inflated the reported tokens of the context, which is the budget of the kernel.  The check proves three things: the journal of the session holds one record of the usage of the request and not two; the record holds the tokens the provider reported; and the answer to the prompt carries those tokens once, because the orchestrator counts what the kernel reports and a doubled number is a wrong bill.  The number of the wave is the next free one: the wave is outside the plan of the owner (the plan of the integration with the orchestrator, docs/PASEO-INTEGRATION-PLAN.md), and the owner may rename it.",
+  "touches": [
+    "lib/yeah-answer.el",
+    "lib/yeah-turn.el",
+    "tests/support/yeah-session-usage-model.el",
+    "tests/checks/check-the-journal-holds-the-usage-of-a-request-once.el",
+    "spec.json",
+    "waves/wave-70.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/ARCHITECTURE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-the-journal-holds-the-usage-of-a-request-once.el",
+    "./scripts/dev check tests/checks/check-the-prompt-response-carries-the-usage-of-the-turn.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-journal-holds-the-usage-of-a-request-once"
+  ],
+  "commitment": [],
+  "objection": "The wave changes what the journal holds: a request whose model thought holds one record of the usage and not two, and the reported tokens of the context are lower than they were -- the budget of the kernel is measured against them, and a doubled number inflated it.  The wave does not rewrite the journal of the project: the records that were written twice are there, and the journal is append-only.  The wave does not lose the cost of a request: the answer of the request carries the same info as its reasoning, and the answer is what writes the usage.  A request that ends in an error and carries no answer writes nothing -- the tokens of such a request were never reported by the provider, and the kernel does not guess them.  The wave does not touch the notification `usage_update', which is the size of the context and not the cost of the turn.  The decision of what is the road to the answer was already made in `lib/yeah-answer.el' (wave 49); the wave names the road and asks the question there, so that the run loop, the compaction and the journal agree on one vocabulary.",
+  "refuted_by": "the journal holds two records of the usage of one request, or the answer to the prompt carries the tokens of the request twice, or the record of the usage holds other tokens than the ones the provider reported, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The control of the claim was applied to a copy of the tree and bit by the assertion of the check and not by a crash: the guard of the usage in `yeah-turn--answer' was removed (the use of `yeah-answer-road-p'), and the check ended with the code 1 and with its own words -- 'the journal holds 2 record(s) of the usage of one request: the tokens of the request were written twice', 'the answer carried the wrong input tokens: 2400 is not 1200' and 'the answer carried the wrong output tokens: 68 is not 34'.  The clean tree ended with the code 0.  The check costs about a second.  The live proof of the defect: the journal of the session of the live run of 19 November 2026 (`session-1-606d27.jsonl') holds two records of the usage of the second request of the run with the same numbers (13775 in and 528 out), and the first request of that run -- the model that did not think -- holds one (docs/LIVE-EVIDENCE.md)."
+}

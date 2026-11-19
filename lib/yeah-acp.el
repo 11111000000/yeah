@@ -41,6 +41,7 @@
 (require 'json)
 (require 'yeah-acp-vocabulary)
 (require 'yeah-control)
+(require 'yeah-context)
 (require 'yeah-events)
 (require 'yeah-life)
 (require 'yeah-model)
@@ -364,7 +365,7 @@ they are: `yeah-wire-print-line' knows how."
               :promptCapabilities (list :image :false
                                         :audio :false
                                         :embeddedContext :false)
-              :mcpCapabilities (list :http :false :sse :false)
+              :mcpCapabilities (list :http t :sse :false)
               ;; `session/close' is a part of ACP: the client asks the agent
               ;; to close the session, and the agent says it did.
               :sessionCapabilities (list :close (list)))))
@@ -377,16 +378,29 @@ events travel to the clients that asked for them and to nobody else."
            (plist-get handshake :clientCapabilities)
            yeah-acp--client-capabilities))
 
+(defun yeah-acp--meta-capability-p (state capability)
+  "Return non-nil when the client of STATE announced CAPABILITY in its `_meta'.
+What the client announced is what it understands of the wire: Yeah's own
+events travel to the clients that asked for them and to nobody else."
+  (let* ((capabilities (gethash (plist-get state :connection)
+                                yeah-acp--client-capabilities))
+         (meta (and (listp capabilities) (plist-get capabilities :_meta))))
+    (and (listp meta)
+         (eq t (plist-get meta capability)))))
+
 (defun yeah-acp--queue-events-p (state)
   "Return non-nil when the client of STATE asked for Yeah's queue events.
 The queue events are Yeah's own vocabulary, not the vocabulary of ACP: a
 client that does not know them refuses the whole update.  A client asks
 for them in the `_meta' of the capabilities it announced."
-  (let* ((capabilities (gethash (plist-get state :connection)
-                                yeah-acp--client-capabilities))
-         (meta (and (listp capabilities) (plist-get capabilities :_meta))))
-    (and (listp meta)
-         (eq t (plist-get meta yeah-acp-queue-events-capability)))))
+  (yeah-acp--meta-capability-p state yeah-acp-queue-events-capability))
+
+(defun yeah-acp--outcome-events-p (state)
+  "Return non-nil when the client of STATE asked for the outcome of a run.
+The outcome of a run is Yeah's own vocabulary, not the vocabulary of ACP: a
+client that does not know it refuses the whole update.  A client asks for it
+in the `_meta' of the capabilities it announced."
+  (yeah-acp--meta-capability-p state yeah-acp-outcome-capability))
 
 (defun yeah-acp--validate-session-request (request &optional load)
   "Validate a session/new or session/load REQUEST.  LOAD selects its shape."
@@ -566,6 +580,75 @@ editor learns the queue from the journal and keeps no state of its own."
                            (plist-get fields :model))))
     (_ nil)))
 
+(defconst yeah-acp--outcome-types '("nudge" "unfinished" "error")
+  "The events of the journal that tell how a run ended.
+The tokens a run spent are not here: they travel as `usage_update', which is
+a part of ACP, and the client of the orchestrator counts them itself.")
+
+(defun yeah-acp--send-outcome (state type fields)
+  "Send the outcome event TYPE with FIELDS to the client of STATE.
+The outcome of a run is Yeah's own vocabulary: it travels to the clients that
+asked for it and to nobody else.  The method of the notification is not a
+method of ACP, and the orchestrator learns the outcome through the plugin
+that translates it."
+  (when (and (member type yeah-acp--outcome-types)
+             (yeah-acp--outcome-events-p state))
+    (funcall (yeah-acp--output-for state)
+             (json-serialize
+              (list :jsonrpc "2.0"
+                    :method yeah-acp-outcome-method
+                    :params (append (list :sessionId (plist-get state :id)
+                                          :outcome type)
+                                    fields))))))
+
+(defun yeah-acp--send-usage (state session)
+  "Send the context usage of SESSION to the client of STATE.
+`usage_update' is a part of ACP, and the client of the orchestrator counts the
+tokens of the context itself.  The size of the context is the budget of the
+kernel and not the window of the provider: the kernel does not know the window
+of the provider and does not guess it.
+
+The update travels only to the clients that asked for the outcome of a run:
+the kind of the update is marked as unstable in ACP, and a client built on an
+older schema refuses the whole update it does not know."
+  (when (yeah-acp--outcome-events-p state)
+    (let* ((usage (yeah-context-usage (yeah-session-records session)))
+           (used (or (plist-get usage :total) 0)))
+      (yeah-acp--send-update
+       (plist-get state :id)
+       (list :sessionUpdate "usage_update"
+             :used used
+             :size yeah-context-default-budget)
+       (yeah-acp--output-for state)))))
+
+(defun yeah-acp--usage-events-p (state)
+  "Return non-nil when the client of STATE asked for the tokens of a turn.
+The tokens of a turn are Yeah's own vocabulary, not the vocabulary of ACP: a
+client that does not know them refuses the whole update.  A client asks for
+them in the `_meta' of the capabilities it announced."
+  (yeah-acp--meta-capability-p state yeah-acp-usage-capability))
+
+(defun yeah-acp--send-usage-of-turn (state fields)
+  "Send the tokens of the turn to the client of STATE.
+FIELDS are the fields of the journal record of the usage: the provider of the
+model reported the tokens it spent, and the kernel does not count them itself.
+
+The notification travels only to the clients that asked for the tokens of a
+turn: the method of the notification is not a method of ACP, and a client that
+does not know it refuses the whole message.  The client of the orchestrator
+translates it into the number of tokens the orchestrator shows."
+  (when (yeah-acp--usage-events-p state)
+    (let ((input (plist-get fields :input))
+          (output (plist-get fields :output)))
+      (when (or (numberp input) (numberp output))
+        (funcall (yeah-acp--output-for state)
+                 (json-serialize
+                  (list :jsonrpc "2.0"
+                        :method yeah-acp-usage-method
+                        :params (list :sessionId (plist-get state :id)
+                                      :inputTokens (if (numberp input) input 0)
+                                      :outputTokens (if (numberp output) output 0)))))))))
+
 (defun yeah-acp--observe-event (state session type fields id)
   "Send ACP updates for journal events belonging to STATE's SESSION."
   (when (eq session (plist-get state :session))
@@ -573,7 +656,15 @@ editor learns the queue from the journal and keeps no state of its own."
                                          (yeah-acp--queue-events-p state))))
       (when update
         (yeah-acp--send-update (plist-get state :id) update
-                               (yeah-acp--output-for state))))))
+                               (yeah-acp--output-for state))))
+    ;; The outcome of the run: the orchestrator must see how the run ended
+    ;; and not only that it ended.
+    (when (equal "usage" type)
+      (yeah-acp--send-usage state session)
+      ;; The tokens of the turn: the orchestrator counts them, and the update
+      ;; of the context above carries the size of the window and not them.
+      (yeah-acp--send-usage-of-turn state fields))
+    (yeah-acp--send-outcome state type fields)))
 
 (defun yeah-acp--replay (state session)
   "Send the journal of SESSION to the client as session/update notifications.
@@ -689,7 +780,13 @@ the mode it is in, and the model it names is the model it runs on."
   (let* ((cwd (file-truename (plist-get request :cwd)))
          (root (yeah-product-session-root cwd))
          (session-id (plist-get request :sessionId)))
-    (unless (file-exists-p (yeah-session--path-for session-id root))
+    ;; A session whose journal has no file yet is a session of this process:
+    ;; the journal of a session appears with its first record (wave 67), so a
+    ;; session that was created and never wrote has no file and is still
+    ;; known here.  Only a session that the process knows nothing about is
+    ;; refused.
+    (unless (or (file-exists-p (yeah-session--path-for session-id root))
+                (gethash session-id yeah-acp--sessions))
       (signal 'user-error
               (list (format "unknown ACP session: %s" session-id))))
     (let* ((clients (yeah-session-mcp-connect (plist-get request :mcpServers)))
@@ -745,12 +842,41 @@ A withdrawn input has no turn: it was cancelled before it ever ran."
         ('cancelled "cancelled")
         (_ "refusal")))))
 
+(defun yeah-acp--usage-of-turn (session turn)
+  "Return the ACP usage of the run of TURN in SESSION, or nil.
+The tokens of a run are what the provider reported and nothing else: the
+kernel does not guess the tokens of a provider that said nothing.  A run that
+reported no usage has no usage in its answer either.
+
+The run of a prompt is one run of the session, and its `usage' records share
+the run id of that run, so the sum of them is the cost of this prompt and not
+the cost of the whole session."
+  (when turn
+    (let ((run-id (yeah-turn-id turn))
+          (input 0)
+          (output 0)
+          (reported nil))
+      (dolist (record (yeah-session-records session))
+        (when (and (equal (plist-get record :type) "usage")
+                   (equal (plist-get record :run_id) run-id))
+          (setq reported t)
+          (setq input (+ input (or (plist-get record :input) 0)))
+          (setq output (+ output (or (plist-get record :output) 0)))))
+      (when reported
+        (list :totalTokens (+ input output)
+              :inputTokens input
+              :outputTokens output)))))
+
 (defun yeah-acp-session-prompt (request id)
   "Queue a prompt for REQUEST and send its response later under request ID.
 The prompt is an ordinary ask of the session's controller: it runs when the
 session is idle and waits in the queue of the session when a run is active.
 The response leaves when the run reaches a terminal state, and it carries the
-same stop reasons as before."
+same stop reasons as before.
+
+The response carries the tokens of the run in the `usage' field of ACP: a
+client that counts the tokens of a turn reads them there, and a client that
+does not know the field ignores it."
   (unless (listp request)
     (signal 'user-error (list "session/prompt params must be an object")))
   (let* ((session-id (plist-get request :sessionId))
@@ -765,8 +891,14 @@ same stop reasons as before."
         output
         (json-serialize
          (list :jsonrpc "2.0" :id id
-               :result (list :stopReason
-                             (yeah-acp--completion-stop-reason completion))))))))
+               :result
+               (append
+                (list :stopReason
+                      (yeah-acp--completion-stop-reason completion))
+                (let ((usage (yeah-acp--usage-of-turn
+                              (plist-get state :session)
+                              (plist-get completion :turn))))
+                  (when usage (list :usage usage))))))))))
   nil)
 
 (defvar yeah-acp--last-session-closed nil

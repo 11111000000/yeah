@@ -9,6 +9,7 @@
 ;;
 ;;   * yeah-session-open-creates-empty-log
 ;;   * yeah-session-append-adds-record
+;;   * yeah-session-a-list-in-a-record-is-written-as-an-array
 ;;   * yeah-session-records-returns-in-order
 ;;   * yeah-session-project-returns-full-log-when-no-compaction
 ;;   * yeah-session-record-compaction-makes-projection-shorter
@@ -46,7 +47,10 @@ Caller is responsible for `delete-directory' cleanup."
     path))
 
 (ert-deftest yeah-session-open-creates-empty-log ()
-  "Opening a new session creates the JSONL file with a header."
+  "Opening a new session writes no file; the file appears with its header
+when the session writes its first record.  A session that never did anything
+leaves no file behind -- the orchestrator opens a session to read the catalog
+of the models and never runs anything in it."
   (let* ((tmpdir (yeah-session-test--make-tmpdir))
          (path   nil))
     (unwind-protect
@@ -57,11 +61,26 @@ Caller is responsible for `delete-directory' cleanup."
             (should (string= (plist-get s :id) "alpha"))
             (should (stringp path))
             (should (string-suffix-p "alpha.jsonl" path))
-            (should (file-exists-p path))
+            (should-not (file-exists-p path))
             (let ((records (yeah-session-records s)))
               (should (= (length records) 1))
               (should (string= (plist-get (nth 0 records) :type) "header")))
-            (should (yeah-session-idle-p s))))
+            (should (yeah-session-idle-p s)))
+          ;; the first record creates the file, and the header is its first line
+          (let* ((s (yeah-session-open "alpha" tmpdir))
+                 (path (plist-get s :path))
+                 (id (yeah-session-append s (list :type "user" :payload "one"))))
+            (should (file-exists-p path))
+            (should (= id 1))
+            (let ((lines (split-string
+                          (with-temp-buffer
+                            (insert-file-contents path)
+                            (buffer-string))
+                          "\n" t)))
+              (should (= (length lines) 2))
+              (let ((header (json-parse-string (nth 0 lines) :object-type 'plist)))
+                (should (string= (plist-get header :type) "header"))
+                (should (= (plist-get header :id) 0))))))
       (yeah-session-test--cleanup tmpdir))))
 
 (ert-deftest yeah-session-append-adds-record ()
@@ -81,6 +100,34 @@ Caller is responsible for `delete-directory' cleanup."
             (should (integerp id2))
             (should (= id2 2)))
           (should (= (length (yeah-session-records s)) 3)))
+      (yeah-session-test--cleanup tmpdir))))
+
+(ert-deftest yeah-session-a-list-in-a-record-is-written-as-an-array ()
+  "A record that holds a list keeps the whole record: the list is written
+as an array, and the journal writes no stand-in."
+  (let* ((tmpdir (yeah-session-test--make-tmpdir))
+         (s (yeah-session-open "list" tmpdir)))
+    (unwind-protect
+        (progn
+          (yeah-session-append s (list :type "input-queued"
+                                        :input_id "input-1"
+                                        :frozen (list :mcp-servers (list "paseo"))))
+          (let* ((path (plist-get s :path))
+                 (lines (with-temp-buffer
+                          (insert-file-contents path)
+                          (split-string (buffer-string) "\n" t)))
+                 (line (cl-find-if
+                        (lambda (candidate)
+                          (equal "input-queued"
+                                 (plist-get (json-parse-string candidate
+                                                             :object-type 'plist)
+                                            :type)))
+                        lines)))
+            (should line)
+            (should-not (string-match-p "unserializable" line))
+            (let* ((record (json-parse-string line :object-type 'plist))
+                   (frozen (plist-get record :frozen)))
+              (should (equal (plist-get frozen :mcp-servers) ["paseo"])))))
       (yeah-session-test--cleanup tmpdir))))
 
 (ert-deftest yeah-session-records-returns-in-order ()

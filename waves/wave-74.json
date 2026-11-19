@@ -1,0 +1,24 @@
+{
+  "id": "wave-74",
+  "title": "a dead socket does not pass for a live service",
+  "intent": "The live run of the package of waves 72 and 73 found a defect that no offline check had seen.  The service placement of wave 72 keeps one Emacs for every agent of the orchestrator, and the sessions come to it over a Unix socket.  The plugin decided that such a service is alive by the presence of its socket FILE, and the file outlives the process: when the core was killed on the spot -- the OOM-killer of the host, SIGKILL, at 15:34:15 on 2026-11-19 -- the socket stayed on the disk, nobody listened on it, and the next agent came to a socket with no core behind it.  The orchestrator answered 'ACP connection closed', and the plugin had to be reloaded by hand before any agent could run again.  What changes: the plugin asks the socket whether anyone listens on it, and a socket that nobody listens on is removed and the service is raised again.  The check runs the plugin's own code against the real kernel: the plugin raises the core through `ensureService', talks to it, the core dies on the spot with SIGKILL -- the socket file stays -- and the plugin does not believe the dead socket: it raises the service again, and the next agent gets an answer from the new core.  The test of the plugin that said 'a live service is not raised a second time' used a socket FILE as a stand-in for a live service, and it therefore encoded the defect as if it were the contract; it now listens on the socket for real, and a new test says that a dead socket does not pass for a live one.",
+  "touches": [
+    "plugin/yeah-provider/server/service.ts",
+    "plugin/yeah-provider/test/service.test.ts",
+    "tests/checks/check-the-plugin-does-not-trust-a-dead-socket.sh",
+    "tests/support/yeah-dead-socket-driver.ts",
+    "spec.json",
+    "waves/wave-74.json"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-the-plugin-does-not-trust-a-dead-socket.sh",
+    "cd plugin/yeah-provider && npm run typecheck && npm test"
+  ],
+  "claims": [
+    "a-dead-socket-does-not-pass-for-a-live-service"
+  ],
+  "commitment": [],
+  "objection": "The wave does not make the service survive the death of the core: it makes the plugin notice that the service is gone and raise it again, and the agent that was talking to the dead core is lost with it -- the run of that agent is over, and the orchestrator says so.  The wave does not remove the cause of the death: the core of the live run was killed by the OOM-killer of the host after its context had grown past the window of the model, and that cause is a matter of its own.  The probe costs one connection to the socket and closes it at once, so the core sees a client that says nothing; the probe is not a handshake and it proves only that somebody listens.  The wave does not change the default placement: one Emacs per connection is still the default, and the service placement remains the choice of the owner.",
+  "refuted_by": "the plugin believes a socket file that nobody listens on, or the service is not raised again after the core dies, or the next agent gets no answer from the new core, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The defect was found by the live run of the package, not by a check: the core died with SIGKILL at 15:34:15, the socket of the service stayed on the disk, and the two following attempts to create an agent answered 'ACP connection closed' until the plugin was reloaded by hand.  The control of the claim was applied to a copy of the tree and bit by the assertion of the check and not by a crash: the plugin was told to believe the socket (`if (await serviceListens(socketPath))` became `if (true)`), and the check ended with the code 1 and with its own words -- 'the plugin trusted a dead socket', 'the plugin believed the socket of a dead service' and 'the next agent did not get an answer from the new core'.  The clean tree ends with the code 0.  The tests of the plugin pass (68 of them, 1 of them new), and the test that used to encode the defect now listens on the socket for real."
+}
