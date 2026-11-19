@@ -206,7 +206,10 @@ always or reject, and the decision is what the caller receives."
   (let ((root (make-temp-file "yeah-session-list" t)))
     (unwind-protect
         (progn
-          (yeah-session-open "alpha" root)
+          ;; a session that wrote something is a session of the project; a
+          ;; session that wrote nothing has no file and is not listed
+          (let ((session (yeah-session-open "alpha" root)))
+            (yeah-session-append session (list :type "user" :payload "hello")))
           (let ((opened (list nil)))
             (let ((buffer (yeah-session-list-open
                            root (lambda (id) (setf (car opened) id)))))

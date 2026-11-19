@@ -2024,6 +2024,430 @@ not the short way.  The finding is worth writing down because it shows the edge 
 the rule word for word: a path may not be shortened with dots in this
 documentation.
 
+## The live route through the orchestrator — waves 66 and 67 (2026-11-19, 05:10–05:31)
+
+The first live run of the agent through the UI of the orchestrator Paseo died before
+a single token was spent.  The command was the obvious one:
+
+```
+$ paseo run --provider yeah --cwd /home/az/Projects/yeah \
+    --title "Живой маршрут волны 66" "Ответь словом OK и вызови инструмент finish."
+Error: Failed to create agent: the MCP server paseo speaks http; Yeah speaks stdio only
+```
+
+**The defect was the transport of MCP.**  The orchestrator names its own MCP server
+over HTTP — `{type: http, url: http://127.0.0.1:6767/mcp/agents?callerAgentId=…,
+headers: [Authorization: Bearer …]}` — and the kernel spoke the stdio transport and
+no other (wave 43, part 5).  A session that named such a server was refused by name.
+This was not a gap of the list of §3 of the plan of the integration; it was the
+reason why no agent of Yeah could run inside Paseo at all, and no check had seen it,
+because every check of the kernel speaks the protocol to the kernel itself.
+
+The transport is a property of the agent and not of the plugin, so it was repaired
+in the kernel (wave 66, `lib/yeah-mcp-http.el`): a minimal asynchronous HTTP/1.1
+client on `make-network-process` that reads the answer of MCP over HTTP as the
+stream of the events of MCP over HTTP, that sends the headers `Mcp-Session-Id` and
+`MCP-Protocol-Version`, and that closes the socket after the message that carries
+an `id`.  The kernel declares it in the handshake: `mcpCapabilities: {http: true,
+sse: false}`.
+
+**The route after the repair (05:21:13 UTC).**  The same command, unchanged:
+
+```
+$ paseo run --provider yeah --cwd /home/az/Projects/yeah \
+    --title "Живой маршрут волны 66" "Ответь словом OK и вызови инструмент finish."
+AGENT ID                              STATUS      PROVIDER    CWD                             TITLE
+8b5be4a0-5755-4111-b9db-eda721afd716  completed   yeah        /home/az/Projects/yeah          Живой маршрут волны 66
+
+$ paseo logs 8b5be4a0-5755-4111-b9db-eda721afd716
+[Message received] Аудит интеграции агента yeah с Paseo
+Ответь словом OK и вызови инструмент finish.
+[Finish]
+OK
+```
+
+The journal of the run holds the truth of the route:
+
+| Record | What it says |
+|---|---|
+| `user-message` | the prompt of the orchestrator, in the shape it sends it |
+| `usage` (twice) | the tokens of the run |
+| `tool-request` | `finish` with the kind `other` and the named argument `{"summary": "OK"}` |
+| `permission-request` / `permission-decision` | the question of the kernel and the answer of the client |
+| `tool-end` | the answer of the tool |
+| `finish` | the summary `OK` |
+
+Nothing of the route is a stub: the model answered, the tool call carried its
+named arguments, the question about the permission went to the client and came
+back, and the words of the agent reached the timeline of the orchestrator.
+
+**The journal of the project was full of sessions that never happened.**  The
+orchestrator reads the catalog of the models and the modes through a real session:
+`discover()` calls `session/new` and never closes the session it opened
+(`packages/plugin/src/server/acp-internal/connection.ts`).  The kernel wrote the
+file of the session when the session was opened, so every list of the models and
+every diagnostic left a file with a single header behind.  The data home of this
+machine held 140 files of sessions, and 88 of them held one record each — nothing
+but their header.  A live run of 05:21 left two more: one from the discovery of
+the models (05:21:03) and one from the probe of the session (05:21:12).
+
+Wave 67 repaired it in the kernel: the file of a session appears when the session
+writes its first record, and a probe of the catalog leaves nothing behind.  The
+measurement after the repair, same machine, same commands (`paseo provider
+diagnostic yeah` and one `paseo run`):
+
+| | Files of sessions | Files with one record |
+|---|---|---|
+| before | 140 | 88 |
+| after the diagnostic and one live run | 141 | 88 |
+
+The one new file is the journal of the live run (14 records), and no file with a
+single record was added: the discovery of the models left nothing.  The 88 files of
+the earlier behaviour are still there — the journal is append-only and the kernel
+does not delete records; they are the business of the person.
+
+## The outcome of a run on the wire of the plugin (2026-11-19, 06:05)
+
+The live route of 05:30 left a `nudge` in the journal of the session
+(`session-1-16712a.jsonl`, record 6, 05:30:18) — the model answered "OK", the
+kernel told it that words are not a completion, and the model called `finish`.
+Wave 65 sends that nudge to the orchestrator as the notification `yeah/outcome`,
+and the plugin of the orchestrator turns it into a vendor update.  The route was
+measured with the same wire the plugin uses in Paseo (`acpStream`) and with the
+same interception of the request `initialize` (`yeahInitializeRequest`): the
+kernel was started in the stdio mode with the fake model of the checks, which
+only talks and never acts, so the run ends without an effect.
+
+The wire carried:
+
+```
+[initialize] {"protocolVersion":1,...,"mcpCapabilities":{"http":true,"sse":false},...}
+[session/new] "session-1-5902d1"
+[outcome] nudge -> {"type":"notice","notice":{"id":"yeah-nudge-session-1-5902d1","severity":"info","title":"Агент подтолкнут",...}}
+[outcome] nudge -> {...}
+[outcome] nudge -> {...}
+[outcome] unfinished -> {"type":"notice","notice":{"id":"yeah-unfinished-session-1-5902d1","severity":"warning","title":"Прогон закончился без результата","description":"the model described its next step 3 times and the run ended without an effect"}}
+```
+
+Three nudges and the run that ended without an effect — the announcement in the
+`_meta` of the capabilities of the client, the notification of the kernel and the
+translation of the plugin are one path, and it is measured live.
+
+What is not measured: how the notice is drawn in the UI of the orchestrator.
+The command line of the orchestrator (`paseo logs`, `get_agent_activity`) does
+not show notifications at all — the curator of the activity of Paseo
+(`packages/server/src/server/agent/activity-curator.ts`) has no branch for the
+type `notification` and skips such an item in silence.  That is a property of
+Paseo and not of Yeah; the item of the timeline is of the type `notification`
+and the UI draws it.
+
+## The record of the queue that the journal was losing — wave 68 (2026-11-19, 07:40)
+
+A live run through the orchestrator of 19 November 2026, 07:40 UTC
+(`b63e68cb-8564-4d1f-b3be-f1791f52ad88`, `completed`) named two MCP servers, and
+the journal of its session holds the record of the queued input in full:
+
+```
+{"type":"input-queued","id":1,...,"frozen":{"budget":60000,"max-nudges":3,
+ "submitted-at":1795072250.679943,"cwd":"/home/az/Projects/yeah",
+ "mcp-servers":["paseo","shared-browser"]}}
+```
+
+The list of the names of the servers is an array, and the record is not a
+stand-in.
+
+Before the repair the same record was lost.  The session of the run of 06:52
+(`session-1-530ba2.jsonl`) holds:
+
+```
+{"type":"input-queued","id":1,"unserializable":true,
+ "note":"the record holds a value that the journal cannot write: input-queued"}
+```
+
+Three such stand-ins sat in the journals of the project — one per live run that
+named an MCP server.  The cause was not the orchestrator: the frozen
+configuration of an ACP session holds the *names* of its servers, the names are
+a list, and `json-serialize` in Emacs 30 writes a list as an object or refuses
+it.  The record that names the cwd of the session and its servers could not be
+written, and the journal replaced it with a stand-in that says only that it
+could not be written.
+
+The repair is in the kernel (`lib/yeah-session.el`, `yeah-session--json-value`):
+a list is written as an array, the other fields of the record survive, and the
+stand-in keeps its scope — a value that JSON cannot hold at all (a symbol, a
+cons that is not a list of pairs) is still written as a stand-in, and the
+journal still takes the records that follow.
+
+What the repair does not do: it does not rewrite what the journal has already
+written.  The three stand-ins of the live runs of 19 November stay where they
+are, and the session `session-1-530ba2.jsonl` still holds its stand-in next to
+the records of the run that followed it.  The journal is append-only, and the
+wave says so in its objection.
+
+## The live runs of the usage of the turn — waves 69 and 70 (2026-11-19)
+
+Two live runs through the orchestrator Paseo were made on the code of the waves 69
+and 70.  The first one answered and came to an end:
+
+```
+$ paseo run --provider yeah --cwd /home/az/Projects/yeah \
+    --title "usage wave 69-70" "Ответь только словом OK и вызови finish. Больше ничего не делай."
+AGENT ID                              STATUS      PROVIDER    CWD                             TITLE
+22094ccb-8ca1-490a-b8a6-c7f02fb1255e  completed   yeah        /home/az/Projects/yeah          usage wave 69-70
+```
+
+The run answered in about eleven seconds and the agent came to `idle`.  The
+functional goal is reached: the prompt reaches Yeah through Paseo and the agent
+answers.
+
+**`LastUsage` did not appear.**  The usage of the turn now travels in the answer of
+`session/prompt` (wave 69), and the orchestrator did not show it.  The cause is
+named exactly: the SDK connection of the plugin of the orchestrator
+(`@getpaseo/plugin` 0.15.2, `runAcpProvider`) drops the field `usage` from the
+answer of `session/prompt`, and there is no hook for that answer at the
+`AcpTransformer`.  A separate loss: the translation of `usage_update` into
+`session.usage` in the SDK keeps only `contextWindowUsedTokens`,
+`contextWindowMaxTokens` and `totalCostUsd`, while `paseo inspect` reads
+`inputTokens`, `outputTokens` and `cachedInputTokens`.
+
+**The route was repaired here afterwards (wave 71).**  The repair did not need
+the SDK and did not need a change in the orchestrator: the SDK gives every
+notification of an unknown method to the transformers of the plugin, together
+with the session it belongs to.  So the kernel sends the tokens of the turn as
+the notification `yeah/usage` to the clients that asked for them in the `_meta`
+of their capabilities, the plugin of this repository announces that method in
+the request `initialize` and translates the notification into the event of the
+provider `session.usage` — the only event the orchestrator carries into the
+counter of the agent.  The live proof is below (docs/PLAN.md §16.57).
+
+The note of the wave (`waves/wave-69.json`) promises that the orchestrator shows
+the tokens of the run in `LastUsage`.  The run measured here did not show them.
+The contradiction was recorded here and was not resolved silently: the wave
+proves the kernel, and the route of the orchestrator is a property of the
+orchestrator.  Wave 71 closed it from this side — the tokens now travel by a
+path this repository owns — and the promise of wave 69 holds.
+
+**The second live run stuck.**  The run `736efdb` (the title "usage wave 69") went
+into a loop of MCP calls — the model called `paseo list agents/hosts` by itself —
+and stayed in the state `running`.
+
+**The journal of the live run found a second defect.**  The session of the run
+(`session-1-606d27.jsonl`) held two records of the usage of the second request of
+the run with the same numbers (13775 in and 528 out), and the first request of
+that run — the model that did not think — held one.  The cause is in the
+transport of gptel and in the kernel together: the callback is called with
+`(cons 'reasoning ...)` and then with the answer, and the same `info` goes to
+both.  The kernel wrote the usage of the request for every shape that carried
+it, so a model that thinks was paid twice in the journal and the cost of the run
+that the orchestrator shows was twice the cost of the run.
+
+Wave 70 writes the usage of a request once: the road to the answer — the
+reasoning of the model, the result of a tool that ran and the sentinel of a
+stream that is over — is not a second request (`yeah-answer-road-p`,
+`lib/yeah-answer.el`).  The check is
+`tests/checks/check-the-journal-holds-the-usage-of-a-request-once.el` and the
+claim is `the-journal-holds-the-usage-of-a-request-once` (docs/PLAN.md §16.56).
+
+## The live run that shows the usage of the turn — wave 71 (2026-11-19)
+
+The repair of wave 71 was measured by a live run through the orchestrator Paseo.
+The plugin was reloaded (`paseo plugin reload yeah-provider`), the run answered
+and came to an end as before:
+
+```
+$ paseo run --provider yeah --cwd /home/az/Projects/yeah \
+    --title "usage wave 71b" "Ответь только словом OK и вызови finish. Больше ничего не делай."
+AGENT ID                              STATUS      PROVIDER    CWD                             TITLE
+e1cdf9b6-9269-4bea-8602-2ddf1564f482  completed   yeah        /home/az/Projects/yeah          usage wave 71b
+```
+
+The counter of the agent is not empty now:
+
+```
+$ paseo inspect e1cdf9b6-9269-4bea-8602-2ddf1564f482
+Status              idle
+LastUsage           InputTokens: 12960, OutputTokens: 99, CachedTokens: 0, CostUsd: $0.00
+```
+
+The run before it showed `InputTokens: 0, OutputTokens: 0`.  The first live run
+after the repair (`ca3bafe0`, the title "usage wave 71") showed zeros as well,
+and the cause was in the order of the orchestrator: the update of the context
+(`usage_update`) goes through the lane of the notifications, and the notification
+of an unknown method is handled at once — so the size of the window arrived
+last and wiped the tokens.  The plugin now completes one part of the usage with
+the other instead of replacing it, and the second run shows both.
+
+The check is
+`tests/checks/check-the-orchestrator-sees-the-usage-of-the-turn.el`, the claim
+is `the-orchestrator-sees-the-usage-of-the-turn` (docs/PLAN.md §16.57).
+
+## The live run of the steering through the orchestrator — wave 73 (2026-11-19, 15:37–15:38)
+
+The live run of the package of waves 72 and 73 went through the real orchestrator
+Paseo, and the steering arrived.  The agent was
+`31f7a281-710b-4ca2-b24c-bec81a77b2c3`, the provider was
+`yeah/MiniMax-M3.1-Flash`, the mode was `plan`, and the placement was the service
+one (`serviceMode: service`): Emacs listened on
+`/tmp/yeah-1001/yeah-service-paseo.sock` through `yeah-acp-serve-socket`, and the
+session of the orchestrator `671e7f82-ca06-4068-bd1f-bdfa38eb4224` spoke to the
+session of the kernel `session-19-6b544`.
+
+| Time | What happened |
+|---|---|
+| 15:37:38 | the turn began (`input-taken`, `input_kind` "ask") |
+| 15:38:04 | the request of the orchestrator with `delivery: steer` was intercepted by the plugin and translated into `session/steer` of the kernel, with the session id of the kernel and the text of the clarification; the kernel answered, and the journal of the plugin holds no line of a refusal |
+| 15:38:07 | the kernel took the clarification into the running turn: the record `input-taken` with `input_kind` "steering" and the event "steering" with the text of the clarification |
+| 15:38:10 | after the clarification the model finished the turn at once with the tool `finish` and answered briefly: "Прочитал README.md, первые 300 строк docs/PLAN.md и AGENTS.md; подсчитал заголовки ### 16.N в docs/PLAN.md поиском по регулярке ^### 16\.[0-9]+: их 58 … Три последних: 16.57 …" |
+
+The turn was neither interrupted nor replaced: its identifier stayed
+`acp:eb285023-4851-487b-9692-b47619fa6076`.
+
+Where to look: the journal of the kernel
+`~/.local/share/yeah/yeah/projects/<hash>/sessions/session-19-6b544.jsonl` holds
+the records `input-queued` (`input_kind` "steering"), `input-taken`
+(`input_kind` "steering") and `steering` (the payload is the clarification).
+
+The check of the wave is
+`tests/checks/check-the-plugin-steers-the-running-turn.sh`, the claim is
+`the-plugin-steers-the-turn-instead-of-replacing-it` (docs/PLAN.md §16.59).
+
+**What the live run did not prove.**
+
+- The clarification reaches the model at the boundary of a batch of tools and not
+  between two tools: that is the rule of the kernel itself.
+- The queue of delivery of the orchestrator ("delivery after two quiet seconds")
+  asks for the clarification to be sent while the turn runs.  In the first run of
+  the day the turn lasted 74 s (15:26:22–15:27:36), the clarification was sent at
+  15:28:04 — after the end of the turn — and it came as an ordinary question
+  (`input_kind` "ask"), not as a steering.
+- The profile `plan` asks the person about `git_status`: in the second run of the
+  day the turn stood until the person answered the permission.  This is the known
+  gap of the profile without a person
+  (`docs/PASEO-INTEGRATION-PLAN.md` §3.11).
+- The second run of the day died: the OOM-killer of the host killed the kernel
+  (SIGKILL) at 15:34:15, after the context of the run had grown past the window
+  of the model (103385 tokens with a window of 60000).  The socket of the service
+  stayed on the disk, the following attempts to create an agent answered
+  "ACP connection closed", and the plugin had to be reloaded by hand before an
+  agent could run again.  That is the defect of wave 74
+  (`docs/PLAN.md` §16.60); the live run found it and no offline check had seen it.
+
+## The two controls that never bit, and the claim that a loaded host refuted (2026-11-19, 16:03–16:37)
+
+The recalculation of the package of waves 65–74 was run twice on this day, and the
+two runs tell two different stories about the registry of the method itself.
+
+**The first run (16:03–16:15) ended with the verdict `unknown`.**  The map could
+not compute a verdict because two claims stayed `inconclusive`, and neither of
+them was code of the package — both had been registered with a control that
+could not bite at all.
+
+- `the-prompt-response-carries-the-usage-of-the-turn` (wave 69) had the control
+  `sed -i 's|(when usage (list :usage usage))))))))))|(when usage nil)))))))))' lib/yeah-acp.el`.
+  The expression of the `s` command had no closing delimiter: there were two
+  pipes and there must be three.  `sed` answered `sed: -e expression #1, char
+  67: unterminated 's' command`, the file did not change at all, and the
+  evidence held `control_reach: "nothing"`.  The claim was never established:
+  its code and its check were right, its registration was not.
+- `a-tool-that-returns-bytes-does-not-kill-the-harness` (wave 45) had the
+  control `sed -i -e '/yeah-text-valid content/d' -e 's|(json-serialize (yeah-text-value-valid copy))|(json-serialize copy)|' lib/yeah-result.el lib/yeah-session.el`.
+  The second part of it did not match the code: the call had been wrapped in
+  `yeah-session--json-value`, so the call reads
+  `(json-serialize (yeah-session--json-value (yeah-text-value-valid copy)))`.
+  The first part did match, so the subject changed (`control_reach: "subject"`)
+  and the check still passed: the second reading of the broken bytes was still
+  there.  A control that changes the subject and leaves the verifier green is
+  not a control.
+
+**The repair.**  Both controls were rewritten to mean what their wave notes say
+they mean, and to run at all:
+
+- usage: `sed -i 's|(when usage (list :usage usage))))))))))|(when usage nil)))))))))|' lib/yeah-acp.el`
+  — the closing pipe is added.  The parentheses stay balanced (two open and ten
+  close in the original, one open and nine close in the replacement), so the
+  file still compiles under the control.
+- bytes: `sed -i -e '/yeah-text-valid content/d' -e 's|(yeah-text-value-valid copy)|copy|' lib/yeah-result.el lib/yeah-session.el`
+  — both readings of the broken bytes are removed.
+
+Both controls were run against a copy of the tree and both bit by the assertion
+of their own check: the usage check answered "the answer to the prompt carried
+no usage: the client that counts the tokens of a turn had nothing to count" and
+"the first prompt of the session: the usage carried the wrong input tokens:
+nil is not 1200"; the bytes check answered "the broken byte did not become the
+replacement character" and "the journal holds no record of the tool".  The clean
+tree ends with the code 0 for both checks.
+
+**The second run (16:23–16:37) ended with the verdict `red`.**  The two claims
+above came out `pass` with `negative control proven`, and the map holds 152
+claims `holds (current)` and no `inconclusive` claim at all.  But one claim
+outside the package was refuted: `the-pilot-that-runs-out-of-time-leaves-no-server-behind`
+answered with its own words — "limit: the server of the pilot stayed behind
+after the limit passed (pid 7457)" — and the map named its next action: "the
+claim the-pilot-that-runs-out-of-time-leaves-no-server-behind is refuted".
+
+**What is known about that refutation.**  The claim had passed 11 times out of 11
+before (the evidence of the day runs from 02:42 to 16:14).  The check waits for
+the death of the server of the pilot for fifteen seconds — a deadline in wall
+time, not a property of the process.  In the run the check took 28.4 seconds
+against 13.4 seconds in the ordinary case, and the host was swapping at that
+moment: 4.7 GiB of swap in use, zram filled to 3.4 of 3.9 GiB at priority 100.
+Outside the run the check passes: two runs in a row (13.4 s) and two runs under
+a load of four busy cores (13.8 s), all with the code 0.
+
+**What that does not prove.**  Neither that the property holds nor that it is
+broken: the cause is not established.  It may be a teardown that is too slow
+under pressure, and it may be a deadline that is too tight for a host that
+swaps.  The method does not tell these two apart — it wrote `refuted`.  The
+repair of it is a wave of its own (the check must not depend on the speed of
+the host), and the order of the waves is a decision of the owner
+(docs/PLAN.md §16.62).
+
+## The server of the pilot dies at once, and only its corpse waits — wave 75 (2026-11-19, 18:10–18:25)
+
+The claim that a loaded host refuted was measured before it was repaired, and the
+measurement says something the refutation did not.
+
+**What the refutation saw.**  The check waits for the server of the pilot to leave
+`/proc` within fifteen seconds of the limit, and under a swapping host it did not
+manage: "limit: the server of the pilot stayed behind after the limit passed (pid
+7457)".  The claim was written `refuted` and the map went `red`.
+
+**What the process did.**  The server of the pilot was watched in `/proc` from
+the moment the pilot reported it (`pilot=4933 server=4946`, a real pilot
+through `scripts/live-pilot` with a limit of ten seconds):
+
+```
+probe: t=0.0s server state="S" alive=t      <- the server lives with the pilot
+probe: t=8.9s server state="S" alive=t
+probe: t=9.4s server state="Z" alive=t      <- the limit passed: the process died
+probe: t=9.4s server state=nil alive=nil    <- and left /proc at once
+```
+
+The death is immediate: the state changes from `S` to `Z` and the entry is gone
+within a tenth of a second.  What lingers is not the server but its corpse: a
+zombie waits to be reaped by the init of the host, and the init of the host is
+not the subject of the claim.  The check counted the corpse as a living server
+and waited for the reaping in seconds of wall time.
+
+**What the repair measures.**  The check reads the state of the process and
+counts a zombie as dead — it burns no CPU, answers nobody and holds no client.
+The fifteen seconds stay the bound of the wait and are no longer the measure of
+the death.  The wording of the claim follows the measure.
+
+**The evidence of the repair.**  The check passes on the clean tree (13.3 s) and
+under four busy cores (13.7 s), both with the code 0.  The control of the claim
+was applied to a copy of the tree and bit by the assertion of the check and not
+by a crash: the runner was told not to stop the tree of the pilot, and the check
+ended with the code 1 and with its own words — "the server of the pilot was still
+alive fifteen seconds after the limit passed (pid 6531, state "S")", "the runner
+of the pilot did not stop when the limit passed", "the runner of the pilot
+answered 0 when the limit passed, the third answer is 3".
+
+**What this does not prove.**  The host that refuted the claim was swapping with
+a full zram, and that host was not reproduced.  The repair does not make the
+corpse disappear faster; it stops the measure of the claim from depending on the
+reaping, which was never the subject of the claim.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The

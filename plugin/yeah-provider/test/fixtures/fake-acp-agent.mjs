@@ -3,7 +3,9 @@
  *
  * Говорит по проводу JSON-RPC по строкам: отвечает на `initialize` и
  * возвращает в ответе значение переменной окружения `PROBE_MARKER`, чтобы
- * проверка видела, что окружение доехало до процесса.
+ * проверка видела, что окружение доехало до процесса. На `initialize` ответ
+ * ещё и повторяет полученные возможности клиента: так проверка видит, что
+ * плагин дополняет запрос на пути к процессу.
  */
 import { createInterface } from "node:readline";
 
@@ -25,6 +27,7 @@ reader.on("line", (line) => {
           agentInfo: { name: "fake", version: "0.0.0" },
           agentCapabilities: {},
           marker: process.env.PROBE_MARKER ?? "",
+          clientCapabilities: message.params?.clientCapabilities ?? null,
         }
       : { marker: process.env.PROBE_MARKER ?? "" };
   process.stdout.write(`${JSON.stringify({ jsonrpc: "2.0", id: message.id, result })}\n`);

@@ -18,6 +18,7 @@
 
 (require 'cl-lib)
 (require 'json)
+(require 'yeah-mcp-http)
 (require 'yeah-tools)
 
 (defgroup yeah-mcp-client nil
@@ -30,7 +31,10 @@ PROCESS is the server process.  PENDING maps request ids to callbacks.
 INPUT holds the incomplete line being read.  TOOLS caches the tool
 descriptions the server published.  INITIALIZED and LISTED say how far
 the handshake with the server went: a server that answers the handshake
-late is still a server that answered."
+late is still a server that answered.  TRANSPORT says how the server is
+reached: over stdio or over HTTP.  HTTP is the client of the socket when
+the transport is HTTP.  SESSION-ID is the session the server gave, and
+PROTOCOL-VERSION is the version of the protocol both sides agreed on."
   name
   process
   pending
@@ -38,7 +42,11 @@ late is still a server that answered."
   input
   tools
   initialized
-  listed)
+  listed
+  transport
+  http
+  session-id
+  protocol-version)
 
 (defun yeah-mcp-client--dispatch (client object)
   "Deliver parsed OBJECT to the pending callback of CLIENT."
@@ -88,6 +96,7 @@ top of the ones it inherits."
     (signal 'user-error (list "yeah-mcp-client-connect: command must be a program")))
   (let* ((client (yeah-mcp-client--make
                    :name name
+                   :transport :stdio
                    :pending (make-hash-table :test 'equal)
                    :counter 0
                    :tools nil))
@@ -104,29 +113,89 @@ top of the ones it inherits."
     (setf (yeah-mcp-client-process client) process)
     client))
 
+(defun yeah-mcp-client-connect-http (name address headers)
+  "Connect to the MCP server at ADDRESS and return the client.
+NAME identifies the server in imported tool names.  HEADERS is an alist of
+the headers the client named: they are sent with every request, and a
+server of a session often needs one of them to answer at all."
+  (let ((client (yeah-mcp-client--make
+                 :name name
+                 :transport :http
+                 :pending (make-hash-table :test 'equal)
+                 :counter 0
+                 :tools nil)))
+    (setf (yeah-mcp-client-http client)
+          (yeah-mcp-http-connect address headers))
+    client))
+
 (defun yeah-mcp-client-close (client)
   "Close CLIENT's server process."
   (when-let ((process (yeah-mcp-client-process client)))
     (when (process-live-p process)
       (delete-process process)))
+  (when-let ((http (yeah-mcp-client-http client)))
+    (yeah-mcp-http-close http))
   client)
+
+(defun yeah-mcp-client--headers (client)
+  "Return the headers every request to CLIENT carries.
+The headers the client named come first, and the session and the version of
+the protocol come after them: a server that keeps a state asks for the
+session, and a server that knows the version wants to hear it."
+  (let ((headers (copy-sequence (yeah-mcp-http-headers
+                                 (yeah-mcp-client-http client)))))
+    (when-let ((session (yeah-mcp-client-session-id client)))
+      (push (cons "Mcp-Session-Id" session) headers))
+    (when-let ((version (yeah-mcp-client-protocol-version client)))
+      (push (cons "MCP-Protocol-Version" version) headers))
+    headers))
+
+(defun yeah-mcp-client--http-request (client method params callback)
+  "Send METHOD with PARAMS to the server of CLIENT over HTTP.
+The answer comes back through the socket, and the callback receives the
+message of JSON-RPC that the server carried."
+  (let* ((id (format "req-%d" (1+ (yeah-mcp-client-counter client))))
+         (text (concat
+                (json-serialize
+                 (list :jsonrpc "2.0" :id id :method method :params params))
+                "")))
+    (setf (yeah-mcp-client-counter client) (1+ (yeah-mcp-client-counter client)))
+    (puthash id callback (yeah-mcp-client-pending client))
+    (yeah-mcp-http-post
+     (yeah-mcp-client-http client)
+     text
+     (yeah-mcp-client--headers client)
+     (lambda (object)
+       ;; The session of the server and the version of the protocol are facts
+       ;; of the connection, and they are read from the answer of the server.
+       (let* ((http (yeah-mcp-client-http client))
+              (session (yeah-mcp-http--header
+                        (yeah-mcp-http-response-headers http) "mcp-session-id")))
+         (when (and session (not (string-empty-p session)))
+           (setf (yeah-mcp-client-session-id client) session))
+         (let ((version (plist-get (plist-get object :result) :protocolVersion)))
+           (when (stringp version)
+             (setf (yeah-mcp-client-protocol-version client) version))))
+       (yeah-mcp-client--dispatch client object)))))
 
 (defun yeah-mcp-client-request (client method params callback)
   "Send METHOD with PARAMS to CLIENT and deliver the answer to CALLBACK.
 CALLBACK receives the parsed response object."
   (unless (functionp callback)
     (signal 'user-error (list "yeah-mcp-client-request: invalid callback")))
-  (let* ((id (format "req-%d" (1+ (yeah-mcp-client-counter client))))
-         (text (concat
-                (json-serialize
-                 (list :jsonrpc "2.0" :id id :method method :params params))
-                "\n")))
-    (setf (yeah-mcp-client-counter client) (1+ (yeah-mcp-client-counter client)))
-    (puthash id callback (yeah-mcp-client-pending client))
-    (process-send-string
-     (yeah-mcp-client-process client)
-     text)
-    id))
+  (if (eq (yeah-mcp-client-transport client) :http)
+      (yeah-mcp-client--http-request client method params callback)
+    (let* ((id (format "req-%d" (1+ (yeah-mcp-client-counter client))))
+           (text (concat
+                  (json-serialize
+                   (list :jsonrpc "2.0" :id id :method method :params params))
+                  "\n")))
+      (setf (yeah-mcp-client-counter client) (1+ (yeah-mcp-client-counter client)))
+      (puthash id callback (yeah-mcp-client-pending client))
+      (process-send-string
+       (yeah-mcp-client-process client)
+       text)
+      id)))
 
 (defun yeah-mcp-client-initialize (client &optional callback)
   "Send the MCP initialize handshake to CLIENT.

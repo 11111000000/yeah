@@ -2414,7 +2414,7 @@
     },
     {
       "id": "the-owner-decided-the-order-of-the-next-waves",
-      "text": "the owner named the order of the next waves on 2026-11-16, and the plan of the project follows that order",
+      "text": "the owner named the order of the next waves on 2026-11-16 and on 2026-11-19, and the plan of the project follows those orders",
       "scope": [ "docs/PLAN.md" ],
       "source": null,
       "kind": "acceptance",
@@ -2428,7 +2428,7 @@
           "minimum_independence": "external"
         }
       ],
-      "falsifier": "the order of the waves in docs/PLAN.md is not the order the owner named on 2026-11-16",
+      "falsifier": "the order of the waves in docs/PLAN.md is not the order the owner named on 2026-11-16 and on 2026-11-19",
       "register": "judgment",
       "control": "sed -i 's/wave 41, wave 42, wave 43, wave 44/wave 44, wave 43, wave 42, wave 41/' docs/PLAN.md",
       "waiver": null
@@ -2504,7 +2504,7 @@
       ],
       "falsifier": "the process of the harness died with the bytes of the tool, or the journal holds no record of the tool",
       "register": "fact",
-      "control": "sed -i -e '/yeah-text-valid content/d' -e 's|(json-serialize (yeah-text-value-valid copy))|(json-serialize copy)|' lib/yeah-result.el lib/yeah-session.el",
+      "control": "sed -i -e '/yeah-text-valid content/d' -e 's|(yeah-text-value-valid copy)|copy|' lib/yeah-result.el lib/yeah-session.el",
       "waiver": null
     },
     {
@@ -2961,6 +2961,57 @@
       "waiver": null
     },
     {
+      "id": "the-mcp-servers-of-a-session-speak-http",
+      "text": "The MCP servers of a session speak HTTP: a server a client names over HTTP is connected, its tools become the tools of the runs of that session, the model finds one of them and calls it, and the call of the model reaches the server with the headers the client named.",
+      "scope": [
+        "lib/yeah-mcp-http.el",
+        "lib/yeah-mcp-client.el",
+        "lib/yeah-session-mcp.el",
+        "lib/yeah-acp.el",
+        "tests/support/yeah-mcp-http-server.el",
+        "tests/checks/check-the-mcp-servers-of-a-session-speak-http.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-mcp-servers-of-a-session-speak-http.el"
+        }
+      ],
+      "falsifier": "the session with an MCP server over HTTP is refused, or the handshake of the server never comes, or the model of the session finds no tool of the server, or the call of the model does not reach the server, or the headers of the client do not reach the server",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-mcp-http--events client)|nil|' lib/yeah-mcp-http.el",
+      "waiver": null
+    },
+    {
+      "id": "the-probe-of-the-catalog-leaves-no-empty-session",
+      "text": "A probe of the catalog leaves no empty session in the journal: the orchestrator opens a session to read the models and the modes, never runs anything in it and never closes it; such a session leaves no file in the journal of the project, and the session that did work leaves a journal whose first line is its header.",
+      "scope": [
+        "lib/yeah-session.el",
+        "lib/yeah-acp.el",
+        "tests/checks/check-a-probe-of-the-catalog-leaves-no-empty-session.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-probe-of-the-catalog-leaves-no-empty-session.el"
+        }
+      ],
+      "falsifier": "the probe of the catalog leaves a file in the journal of the project, or the journal of the session that did work does not begin with its header",
+      "register": "fact",
+      "control": "sed -i 's|(defcustom yeah-session-journal-from-the-start nil|(defcustom yeah-session-journal-from-the-start t|' lib/yeah-session.el",
+      "waiver": null
+    },
+    {
       "id": "the-server-does-not-spin-when-the-provider-is-silent",
       "text": "A server whose provider went silent costs less than one per cent of a core over ten seconds: waiting for an answer that never comes is not working.",
       "scope": [
@@ -3090,7 +3141,7 @@
     },
     {
       "id": "the-pilot-that-runs-out-of-time-leaves-no-server-behind",
-      "text": "A pilot that ran out of time leaves no server behind: the runner of the pilot stops the pilot when the limit passes, the server of the pilot is gone within fifteen seconds of the limit, and the runner answers the third answer (unknown) and not a refutation.",
+      "text": "A pilot that ran out of time leaves no server behind: the runner of the pilot stops the pilot when the limit passes, the server of the pilot is dead within fifteen seconds of the limit -- a zombie is dead, and the speed of the host is not the measure of it -- and the runner answers the third answer (unknown) and not a refutation.",
       "scope": [
         "scripts/live-pilot",
         "scripts/lib/tree.sh",
@@ -3108,7 +3159,7 @@
           "spec": "./scripts/dev check tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el"
         }
       ],
-      "falsifier": "the server of the pilot is still alive fifteen seconds after the limit of the pilot passed, or the runner of the pilot did not stop when the limit passed, or the runner of the pilot answered a code other than three",
+      "falsifier": "the server of the pilot is still running fifteen seconds after the limit of the pilot passed, or the runner of the pilot did not stop when the limit passed, or the runner of the pilot answered a code other than three",
       "register": "fact",
       "control": "sed -i 's|^  stop_tree_of_pilot$|  : control|' scripts/live-pilot",
       "waiver": null
@@ -3282,6 +3333,219 @@
       "falsifier": "a document names a file of the repository that is not on disk, or names a section that the file does not have, or the check follows no name at all and cannot tell a good name from a bad one",
       "register": "fact",
       "control": "sed -i '$a The name of a file that is not there: `docs/there-is-no-such-file.md`.' docs/PLAN.md",
+      "waiver": null
+    }
+,
+    {
+      "id": "the-wire-tells-how-the-run-ended",
+      "text": "The wire tells the orchestrator how the run ended: a client that asked for the outcome of a run in the `_meta' of its capabilities receives the nudge that pushed the run and the run that ended without an effect, and a client that asked for nothing receives nothing.",
+      "scope": [
+        "lib/yeah-acp.el",
+        "lib/yeah-acp-vocabulary.el",
+        "tests/checks/check-the-wire-tells-the-orchestrator-how-the-run-ended.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-wire-tells-the-orchestrator-how-the-run-ended.el"
+        }
+      ],
+      "falsifier": "the client that asked for the outcome of a run receives none of it, or the outcome does not name its session, or the client that asked for nothing receives the outcome of a run, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-acp--send-outcome state type fields)|nil|' lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "the-journal-writes-a-list-as-an-array",
+      "text": "The journal keeps a record that holds a list: a list in a record is written as an array, every other field of the record survives, and the record is not a stand-in; only a value that JSON cannot hold at all is written as a stand-in.",
+      "scope": [
+        "lib/yeah-session.el",
+        "tests/unit/test-yeah-session.el",
+        "tests/checks/check-a-list-in-a-record-is-written-as-an-array.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-list-in-a-record-is-written-as-an-array.el"
+        }
+      ],
+      "falsifier": "a record that holds a list is written as a stand-in, or the list is not written as an array, or a field of the record is lost, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|((and (consp value) (proper-list-p value))|((and nil (consp value) (proper-list-p value))|' lib/yeah-session.el",
+      "waiver": null
+    },
+    {
+      "id": "the-prompt-response-carries-the-usage-of-the-turn",
+      "text": "The answer to `session/prompt' carries the usage of the run it answered: the tokens the provider reported for that run, as `inputTokens', `outputTokens' and `totalTokens'. The usage of an answer is the usage of its turn and not the usage of the session, and a run whose provider reported nothing carries no usage at all: the kernel does not guess the tokens of a provider that said nothing.",
+      "scope": [
+        "lib/yeah-acp.el",
+        "schemas/acp-v1.json",
+        "tests/support/yeah-session-usage-model.el",
+        "tests/checks/check-the-prompt-response-carries-the-usage-of-the-turn.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-prompt-response-carries-the-usage-of-the-turn.el"
+        }
+      ],
+      "falsifier": "the answer to `session/prompt' carries no usage, or carries the usage of the session instead of the usage of the turn, or carries the usage of a provider that reported nothing, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(when usage (list :usage usage))))))))))|(when usage nil)))))))))|' lib/yeah-acp.el",
+      "waiver": null
+    }
+,
+    {
+      "id": "the-journal-holds-the-usage-of-a-request-once",
+      "text": "The journal holds the usage of a request once: the road to the answer -- the reasoning of the model, the result of a tool that ran, the sentinel of a stream that is over -- carries the same tokens as the answer and does not write them again.",
+      "scope": [
+        "lib/yeah-answer.el",
+        "lib/yeah-turn.el",
+        "tests/support/yeah-session-usage-model.el",
+        "tests/checks/check-the-journal-holds-the-usage-of-a-request-once.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-journal-holds-the-usage-of-a-request-once.el"
+        }
+      ],
+      "falsifier": "the journal holds two records of the usage of one request, or the answer to the prompt carries the tokens of the request twice, or the record of the usage holds other tokens than the ones the provider reported, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(not (yeah-answer-road-p answer))|t|' lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "the-orchestrator-sees-the-usage-of-the-turn",
+      "text": "The orchestrator sees the usage of the turn: the tokens of a turn travel from the kernel to the counter of the agent, and the client that asked for nothing sees nothing.",
+      "scope": [
+        "lib/yeah-acp.el",
+        "lib/yeah-acp-vocabulary.el",
+        "plugin/yeah-provider/server/usage.ts",
+        "plugin/yeah-provider/server/yeah.ts",
+        "plugin/yeah-provider/index.server.ts",
+        "plugin/yeah-provider/test/usage.test.ts",
+        "tests/checks/check-the-orchestrator-sees-the-usage-of-the-turn.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-orchestrator-sees-the-usage-of-the-turn.el"
+        }
+      ],
+      "falsifier": "the wire carries no usage of a turn to the client that asked for it, or the usage carries other tokens than the ones the provider reported, or the client that asked for nothing receives the usage, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-acp--send-usage-of-turn state fields)|nil|' lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "the-plugin-talks-to-the-core-over-a-socket",
+      "text": "The plugin of the orchestrator talks to the core of Yeah over a Unix socket: it raises the core, the core answers the handshake, opens a session and ends a turn, and the next agent comes to the same core instead of a second one. The socket of the plugin is the socket of the kernel, and the placement is a choice whose default is still one Emacs per connection.",
+      "scope": [
+        "plugin/yeah-provider/server/service.ts",
+        "plugin/yeah-provider/server/transport.ts",
+        "plugin/yeah-provider/server/ndjson.ts",
+        "plugin/yeah-provider/server/launch.ts",
+        "plugin/yeah-provider/server/yeah.ts",
+        "plugin/yeah-provider/shared/vocabulary.ts",
+        "plugin/yeah-provider/shared/settings.ts",
+        "plugin/yeah-provider/index.server.ts",
+        "plugin/yeah-provider/test/service.test.ts",
+        "tests/checks/check-the-plugin-talks-to-the-core-over-the-socket.sh",
+        "tests/support/yeah-service-driver.ts",
+        "tests/support/yeah-ts-resolve.mjs",
+        "tests/support/yeah-ts-hooks.mjs"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-plugin-talks-to-the-core-over-the-socket.sh"
+        }
+      ],
+      "falsifier": "the plugin does not talk to the core over the socket, or the core does not answer the agent that came to the socket, or the second agent does not come to the same core, or the socket of the plugin is not the socket of the kernel, or the default placement is no longer one Emacs per connection, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|acpServiceStream(service.socketPath)|acpServiceStream(\"/nonexistent/yeah-core.sock\")|' plugin/yeah-provider/server/transport.ts",
+      "waiver": null
+    },
+    {
+      "id": "the-plugin-steers-the-turn-instead-of-replacing-it",
+      "text": "The plugin of the orchestrator steers the running turn instead of replacing it: it declares the steering capability, translates a request with `delivery: \"steer\"' into `session/steer' of the core, and answers the orchestrator with the identifier of the turn that is running.  The running turn is not interrupted, and the request never reaches the adapter that replaces the turn.",
+      "scope": [
+        "plugin/yeah-provider/server/steer.ts",
+        "plugin/yeah-provider/index.server.ts",
+        "plugin/yeah-provider/test/steer.test.ts",
+        "tests/checks/check-the-plugin-steers-the-running-turn.sh",
+        "tests/support/yeah-steer-driver.ts"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-plugin-steers-the-running-turn.sh"
+        }
+      ],
+      "falsifier": "the plugin does not declare the steering capability, or the request with `delivery: \"steer\"' does not reach the core as `session/steer', or the running turn is interrupted, or the steering request reaches the adapter that replaces the turn, or the orchestrator is answered with another turn, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|prompt.delivery === \"steer\"|prompt.delivery === \"never\"|' plugin/yeah-provider/server/steer.ts",
+      "waiver": null
+    },
+    {
+      "id": "a-dead-socket-does-not-pass-for-a-live-service",
+      "text": "A socket file of the service of the plugin does not pass for a live service: the plugin asks the socket whether anyone listens on it, and a socket that nobody listens on is removed and the service is raised again.  The next agent comes to a live kernel instead of to a socket with no kernel behind it.",
+      "scope": [
+        "plugin/yeah-provider/server/service.ts",
+        "plugin/yeah-provider/test/service.test.ts",
+        "tests/checks/check-the-plugin-does-not-trust-a-dead-socket.sh",
+        "tests/support/yeah-dead-socket-driver.ts"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-plugin-does-not-trust-a-dead-socket.sh"
+        }
+      ],
+      "falsifier": "the plugin believes a socket file that nobody listens on, or the service is not raised again after the core dies, or the next agent gets no answer from the new core, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|if (await serviceListens(socketPath)) {|if (true) {|' plugin/yeah-provider/server/service.ts",
       "waiver": null
     }
   ]

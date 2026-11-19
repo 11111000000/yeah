@@ -1,0 +1,32 @@
+{
+  "id": "wave-69",
+  "title": "the answer of the prompt carries the usage of the turn",
+  "intent": "The comparison of the orchestrator's own view of two providers found one gap that nobody had named: the orchestrator counts the tokens of a run of opencode and the tokens of a run of Yeah it never saw.  The reason is in the orchestrator's route and not in the kernel: `packages/server/src/server/agent/providers/acp-agent.ts` takes the tokens of a turn from the `usage` field of the answer to `session/prompt` (the handler of the notification `usage_update` is empty -- `void update;` -- so the notification is of no use to it), and the answer of Yeah carried a stop reason and nothing else.  The kernel knew the tokens: the provider reports them (`lib/yeah-gptel.el` puts them into the info of the answer as `:yeah-usage`), the turn writes them into the journal as the event `usage` with the input and the output of the request (`lib/yeah-turn.el`), and the journal of the session holds them.  What changes: the answer to `session/prompt` carries the `usage` of the run it answered -- the tokens the provider reported, as `inputTokens`, `outputTokens` and `totalTokens`.  The usage is the usage of the turn and not the usage of the session: the `usage` records of a run share the run id of that run, and a run is one prompt.  A provider that reported nothing has no usage in its answer: the kernel does not guess the tokens of a provider that said nothing, and an answer without the field is an answer a client that does not know the field ignores.  The field is the field of ACP (the `Usage` of the schema of the protocol, marked unstable by the protocol itself), and the schema of the repository now names it (`schemas/acp-v1.json`).  The fix is in the kernel and not in the plugin: the plugin translates what is not ACP (the outcome of a run), and the tokens are ACP.  The check proves three things on the wire: the answer carries the tokens the provider reported; the second prompt of one session reports its own tokens and not the sum of the two runs; and a provider that said nothing has no usage in its answer.  The number of the wave is the next free one: the wave is outside the plan of the owner (the plan of the integration with the orchestrator, docs/PASEO-INTEGRATION-PLAN.md), and the owner may rename it.",
+  "touches": [
+    "lib/yeah-acp.el",
+    "schemas/acp-v1.json",
+    "tests/support/yeah-session-usage-model.el",
+    "tests/checks/check-the-prompt-response-carries-the-usage-of-the-turn.el",
+    "spec.json",
+    "waves/wave-69.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/ARCHITECTURE.md",
+    "AGENTS.md",
+    "docs/PASEO-INTEGRATION-PLAN.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-the-prompt-response-carries-the-usage-of-the-turn.el",
+    "./scripts/dev check tests/checks/check-wire-speaks-acp.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-prompt-response-carries-the-usage-of-the-turn"
+  ],
+  "commitment": [],
+  "objection": "The wave adds a field to the answer of `session/prompt', and the field is marked unstable by the protocol itself: a client that validates the wire against a schema of its own may refuse an answer it does not know.  The schema of the protocol accepts the field (`usage` is optional in the schema of the SDK of the orchestrator) and the schema of the repository names it now.  The wave does not change the notification `usage_update`, which is the size of the context and not the cost of the turn, and which the orchestrator does not read.  The wave does not report the tokens of a provider that said nothing: the kernel has no tokenizer of the provider and it does not estimate the cost of a run (the estimation of the context exists and is a different number -- `yeah-context-usage` holds it, and it is the budget of the kernel and not the bill of the provider).  The wave does not change the journal: the records of the usage were there before it, and it only reads them.  A run that was interrupted before the provider answered has no usage, and so has no field: the answer of such a run is the answer of a run that spent nothing it reported.  The sum of the usage of the turns of a session is not the usage of the session: the field of the answer of a prompt is the cost of that prompt, and the orchestrator adds the turns of the session itself if it wants the session.",
+  "refuted_by": "the answer to `session/prompt' carries no usage, or carries the usage of the session instead of the usage of the turn, or carries the usage of a provider that reported nothing, or the control of the claim does not make the check fail by its own assertion",
+  "note": "Two controls of the claim were applied to copies of the tree and both bit by the assertion of the check and not by a crash.  The first control removed the usage from the answer (`sed -i 's|(when usage (list :usage usage))))))))))|(when usage nil)))))))))|' lib/yeah-acp.el`): the check ended with the code 1 and with its own words -- 'the answer to the prompt carried no usage: the client that counts the tokens of a turn had nothing to count' and two more of its own assertions; the clean tree ended with the code 0.  The second control made the kernel sum the usage of the whole session instead of the usage of the run (`(equal (plist-get record :run_id) run-id)` removed from `yeah-acp--usage-of-turn`): the check ended with the code 1 and with its own words -- 'the second prompt of the session: it reported the tokens of the session and not the tokens of its turn: the usage carried the wrong input tokens: 2500 is not 1300'.  The check costs about a second and a half.  The live proof: the run through the orchestrator of the wave carries the tokens of the run in the answer, and the orchestrator shows them in `LastUsage' where it showed nothing for the runs before the wave (docs/LIVE-EVIDENCE.md).  The control as it was registered in `spec.json' could not run at all: the expression of the `s' command had no closing delimiter, and `sed' answered `unterminated 's' command'.  It was repaired on 2026-11-19, and the claim was re-verified that day: `pass' and `negative control proven' (docs/PLAN.md §16.61)."
+}

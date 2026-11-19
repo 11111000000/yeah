@@ -11,135 +11,35 @@
  * плагина (`connector`) отдаёт демону поток провода и отвечает за процесс.
  */
 import { spawnProcess } from "@getpaseo/plugin/server";
-import type { AcpStream, AcpToolCallSnapshot } from "@getpaseo/plugin/server/acp";
+import type {
+  AcpStream,
+  AcpToolCallSnapshot,
+  AcpVendorUpdate,
+} from "@getpaseo/plugin/server/acp";
+import type { ProviderNotice } from "@getpaseo/plugin/server/provider";
 import { ndJsonStream } from "@agentclientprotocol/sdk";
 import { Readable, Writable } from "node:stream";
 import path from "node:path";
+import {
+  OUTCOME_METHOD,
+  RUN_OUTCOME_KEY,
+  USAGE_KEY,
+  asRecord,
+  yeahInitializeRequest,
+} from "../shared/vocabulary";
 
-/** Пути и параметры, из которых собирается запуск ACP-сервера Yeah. */
-export interface YeahLaunch {
-  /** Абсолютный путь к Emacs. */
-  emacs: string;
-  /** Каталог `lib` ядра Yeah. */
-  lib: string;
-  /** Каталог сборки gptel; пусто, если gptel на хосте нет. */
-  gptel: string;
-  /** Имя модели, на которой сервер стартует. */
-  model: string;
-  /** Имена всех моделей, на которых сервер может вести сессию. */
-  models: readonly string[];
-  /** Хост провайдера. */
-  host: string;
-  /** Профиль разрешений: `plan` запрещает, `build` спрашивает человека. */
-  profile: "plan" | "build";
-  /** Каталог данных Yeah; пусто — умолчание ядра. */
-  dataHome: string;
-}
-
-/** Имена переменных окружения, через которые ACP-сервер получает настройки. */
-export const ENV = {
-  lib: "YEAH_ACP_LIB",
-  gptel: "YEAH_ACP_GPTEL",
-  model: "YEAH_ACP_MODEL",
-  models: "YEAH_ACP_MODELS",
-  host: "YEAH_ACP_HOST",
-  key: "YEAH_ACP_KEY",
-  profile: "YEAH_ACP_PROFILE",
-  dataHome: "YEAH_ACP_DATA_HOME",
-} as const;
-
-/**
- * Форма запуска Emacs.
- *
- * Порядок важен: сначала путь поиска модулей, потом gptel и бэкенд модели,
- * потом ядро Yeah и профиль разрешений, и только потом сервер ACP.
- *
- * Пустая переменная окружения — это отсутствие значения, а не значение:
- * пустой каталог в `load-path` и пустой каталог данных ломают ядро.
- *
- * Бэкенд модели знает все модели, на которых сервер может вести сессию:
- * модель сессии меняется по проводу, и gptel берёт только ту модель, которую
- * знает его бэкенд.  Поэтому список моделей — это то, что бэкенд принял, а
- * не одна модель запуска.
- */
-export const LAUNCH_FORM = `(progn
-  (dolist (dir (list (getenv "${ENV.lib}") (getenv "${ENV.gptel}")))
-    (when (and dir (not (string-empty-p dir)))
-      (add-to-list 'load-path dir)))
-  (let ((home (getenv "${ENV.dataHome}")))
-    (when (and home (not (string-empty-p home)))
-      (setq yeah-data-home home)))
-  (require 'gptel)
-  (require 'gptel-openai)
-  (let ((model (getenv "${ENV.model}"))
-        (host (getenv "${ENV.host}"))
-        (profile (getenv "${ENV.profile}"))
-        (key (getenv "${ENV.key}"))
-        (names (let ((raw (getenv "${ENV.models}")))
-                 (let ((split (if (and raw (not (string-empty-p raw)))
-                                  (split-string raw "," t "[ \\t]+")
-                                nil)))
-                   (if split
-                       split
-                     (list "MiniMax-M3.1-Flash"))))))
-    (setq gptel-backend
-          (gptel-make-openai "paseo"
-            :host (if (and host (not (string-empty-p host))) host "api.minimax.io")
-            :endpoint "/v1/chat/completions"
-            :key key
-            :models (mapcar #'intern names)))
-    (setq gptel-model
-          (intern (if (and model (not (string-empty-p model)))
-                     model
-                   (car names))))
-    (require 'yeah-perm)
-    (require 'yeah-acp)
-    (dolist (rule (yeah-perm-profile (if (and profile (not (string-empty-p profile)))
-                                         profile "build")))
-      (yeah-perm-rules-add rule)))
-  (yeah-acp-serve))`;
-
-/** Команда запуска ACP-сервера: Emacs в пакетном режиме и форма выше. */
-export function acpCommand(launch: YeahLaunch): readonly [string, ...string[]] {
-  return [launch.emacs, "-Q", "--batch", "--eval", LAUNCH_FORM];
-}
-
-/**
- * Окружение процесса ACP.
- *
- * За основу берётся окружение плагина, а поверх него — переменные запуска
- * ядра. Ключ провайдера попадает сюда из файла вне дерева репозитория и в
- * настройки плагина не попадает: значение не печатается и не сохраняется.
- *
- * В `PATH` добавляется каталог Emacs: окружение демона не содержит профиля
- * Nix, а ядру нужен `bash` и `git` рядом с Emacs.
- */
-export function launchEnv(
-  launch: YeahLaunch,
-  key: string,
-  base: NodeJS.ProcessEnv = process.env,
-): Record<string, string> {
-  const env: Record<string, string> = {};
-  for (const [name, value] of Object.entries(base)) {
-    if (typeof value === "string") env[name] = value;
-  }
-  env[ENV.lib] = launch.lib;
-  env[ENV.gptel] = launch.gptel;
-  env[ENV.model] = launch.model;
-  env[ENV.models] = launch.models.join(",");
-  env[ENV.host] = launch.host;
-  env[ENV.key] = key;
-  env[ENV.profile] = launch.profile;
-  env[ENV.dataHome] = launch.dataHome;
-  const emacsDir = path.dirname(launch.emacs);
-  const currentPath = env.PATH ?? "";
-  env.PATH = currentPath
-    .split(path.delimiter)
-    .filter((entry) => entry && entry !== emacsDir)
-    .join(path.delimiter);
-  env.PATH = [emacsDir, env.PATH].filter(Boolean).join(path.delimiter);
-  return env;
-}
+// Запуск живёт в своём модуле: его читает и процессный путь плагина, и
+// сервисный.  Здесь оно только переэкспортируется — те, кто знает плагин по
+// прежним именам, продолжают знать его по прежним именам.
+export {
+  ENV,
+  LAUNCH_FORM,
+  SERVICE_FORM,
+  acpCommand,
+  serviceCommand,
+  launchEnv,
+} from "./launch";
+export type { YeahLaunch } from "./launch";
 
 /**
  * Поднять процесс ACP-сервера и вернуть поток провода.
@@ -177,7 +77,9 @@ export function acpStream(
   const stream: AcpStream = {
     writable: new WritableStream({
       async write(message) {
-        await writer.write(message as never);
+        // Запрос `initialize` идёт от демона оркестратора, и в нём нет
+        // ничего о словаре Yeah: плагин дополняет его на пути к ядру.
+        await writer.write(yeahInitializeRequest(message) as never);
       },
       async close() {
         await writer.close().catch(() => undefined);
@@ -298,3 +200,72 @@ export function yeahToolCallTransformer(
   const input = yeahEditArguments(withKind);
   return input === withKind.input ? withKind : { ...withKind, input };
 }
+
+/**
+ * Метод уведомления ядра, которое несёт исход прогона.
+ *
+ * Исход прогона — словарь самого Yeah: подталкивание, вытолкнувшее модель,
+ * прогон, закончившийся без эффекта, и ошибка, которая его остановила. В ACP
+ * такого метода нет, а клиент, который его не знает, отверг бы обновление
+ * целиком. Поэтому исход едет к оркестратору только через плагин, который
+ * переводит его в то, что оркестратор показывает.
+ */
+// Словарь Yeah живёт в своём модуле: его читает и процессный путь, и
+// сервисный.  Здесь оно только переэкспортируется — те, кто знает плагин по
+// прежним именам, продолжают знать его по прежним именам.
+export { OUTCOME_METHOD, RUN_OUTCOME_KEY, yeahInitializeRequest };
+
+/** Как исход прогона выглядит в интерфейсе оркестратора. */
+interface OutcomeNotice {
+  severity: "info" | "warning" | "error";
+  title: string;
+}
+
+/**
+ * Исходы прогона и то, как оркестратор их показывает.
+ *
+ * Серьёзность отвечает на вопрос человека «надо ли мне вмешиваться»: ошибка
+ * прогона — надо, прогон без результата — стоит знать, а подталкивание — это
+ * фон, о котором человек знать не обязан.
+ */
+const OUTCOME_NOTICES: Record<string, OutcomeNotice | undefined> = {
+  nudge: { severity: "info", title: "Агент подтолкнут" },
+  unfinished: { severity: "warning", title: "Прогон закончился без результата" },
+  error: { severity: "error", title: "Прогон упал" },
+};
+
+
+/** Текст поля, если оно есть и не пустое. */
+function textOf(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+/**
+ * Перевести уведомление ядра об исходе прогона в уведомление оркестратора.
+ *
+ * Уведомление с чужим методом — не наше: возвращается `null`, и оркестратор
+ * не получает ничего. Исход, которого ядро ещё не знает, показывается как
+ * событие прогона: лучше тихое уведомление, чем уведомление с чужой
+ * серьёзностью.
+ */
+export function yeahOutcomeNotification(notification: {
+  method: string;
+  params: unknown;
+}): AcpVendorUpdate | null {
+  if (notification.method !== OUTCOME_METHOD) return null;
+  const params = asRecord(notification.params);
+  const outcome = typeof params.outcome === "string" ? params.outcome : "";
+  const sessionId = typeof params.sessionId === "string" ? params.sessionId : "";
+  const kind = OUTCOME_NOTICES[outcome] ?? { severity: "info", title: "Событие прогона" };
+  const description = textOf(params.payload) ?? textOf(params.reason);
+  const notice: ProviderNotice = {
+    id: `yeah-${outcome}-${sessionId}`,
+    severity: kind.severity,
+    title: kind.title,
+  };
+  // Описание есть только когда есть о чем сказать: пустое поле оркестратор
+  // показал бы как пустое уведомление, а не как уведомление без описания.
+  if (description !== undefined) notice.description = description;
+  return { type: "notice", notice };
+}
+

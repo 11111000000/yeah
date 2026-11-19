@@ -39,6 +39,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-answer)
 (require 'yeah-state)
 (require 'yeah-loop)
 (require 'yeah-tools)
@@ -1029,7 +1030,13 @@ ended by the noise of the provider."
 (defun yeah-turn--answer (turn answer answerer &optional transport info)
   "Handle the model's ANSWER in TURN. The ANSWERER answers requests."
   (unless (yeah-turn-done turn)
-    (when (and (listp info) (plist-get info :yeah-usage))
+    ;; The usage of the request is written once.  The transport hands the info
+    ;; of the request to every shape of it -- the reasoning of the model and
+    ;; the answer that follows it carry the same tokens -- and the road to the
+    ;; answer is not a second request.
+    (when (and (listp info)
+               (plist-get info :yeah-usage)
+               (not (yeah-answer-road-p answer)))
       (let* ((reported (plist-get info :yeah-usage))
              (input (plist-get reported :input))
              (output (plist-get reported :output)))

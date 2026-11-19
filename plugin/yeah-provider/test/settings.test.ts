@@ -10,6 +10,8 @@ const base: YeahSettingsValues = {
   models: "",
   host: "api.minimax.io",
   profile: "build",
+  serviceMode: "spawn",
+  serviceName: "paseo",
   keyFile: "~/.config/yeah/live.env",
   dataHome: "",
 };

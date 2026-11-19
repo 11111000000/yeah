@@ -1,0 +1,34 @@
+{
+  "id": "wave-65",
+  "title": "the wire tells how the run ended",
+  "intent": "The orchestrator saw that a run ended and not how it ended.  The kernel writes into its journal everything a person needs to know about a run -- the tokens it spent, the nudge that pushed it, the run that ended without an effect and the error that stopped it -- and the wire carried none of it: the client of the orchestrator saw `stopReason' and the words of the agent, and a run that ended without an effect looked like a run that had ended.  This is the point P-B of the plan of the integration with the orchestrator (docs/PASEO-INTEGRATION-PLAN.md 3.8 and 4.2).  What changes: the core projects the outcome of the run to the clients that asked for it.  A client asks in the `_meta' of its capabilities at `initialize', the same way it asks for the queue events (`yeah.queueEvents', now `yeah.runOutcome').  The tokens travel as `usage_update', which is a part of ACP and which the orchestrator counts itself; the nudge, the unfinished run and the error travel as a notification of the method of Yeah (`yeah/outcome'), which is not a method of ACP and which the plugin of the orchestrator translates.  The check starts a real ACP service on a socket, drives a run of a fake model that never finishes, and proves three things on the wire: the client that asked receives the nudge that pushed the run and the run that ended without an effect; the outcome names the session it belongs to; the client that asked for nothing receives nothing.  The wave also repairs a contradiction that it found on its way: the schema of the wire (schemas/acp-v1.json) was behind the implementation -- waves 42 and 43 added `session/close', `session/set_mode', `session/set_config_option', `current_mode_update' and `config_option_update' without touching the schema -- and the schema is the measure of the wire.  The wave brings the schema in line and declares in it what this wave adds.  The number of the wave is the next free one: the wave is outside the plan of the owner (P-B), and the owner may renumber it.",
+  "touches": [
+    "lib/yeah-acp.el",
+    "lib/yeah-acp-vocabulary.el",
+    "tests/support/yeah-session-outcome-model.el",
+    "tests/checks/check-the-wire-tells-the-orchestrator-how-the-run-ended.el",
+    "schemas/acp-v1.json",
+    "spec.json",
+    "waves/wave-65.json",
+    "plugin/yeah-provider/server/yeah.ts",
+    "plugin/yeah-provider/index.server.ts",
+    "plugin/yeah-provider/test/outcome.test.ts",
+    "docs/PLAN.md",
+    "docs/PASEO-INTEGRATION-PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-the-wire-tells-the-orchestrator-how-the-run-ended.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-wire-tells-how-the-run-ended"
+  ],
+  "commitment": [],
+  "objection": "The check proves the side of the core and not the side of the orchestrator: the plugin translates the notification into a vendor update, and that translation is proved by the tests of the plugin (`npm test' in plugin/yeah-provider), which live outside the map of the kernel.  Nobody watched the vendor update appear in the timeline of Paseo: the live route through the UI was not exercised, and the wave says so instead of claiming that the orchestrator shows the outcome.  The size of the context in `usage_update' is the budget of the kernel and not the window of the provider: the kernel does not know the window of the provider and does not guess it, and a client that reads the size as the window of the provider reads more than the kernel knows.  The outcome travels only to the clients that asked for it: a client that knows nothing of Yeah's vocabulary is served plain ACP, as it was before, and the check proves that too.  The schema repair covers the methods and the kinds that waves 42 and 43 added and that this wave added; it does not cover the whole protocol, and the schema remains a subset of ACP rather than the whole of it.",
+  "refuted_by": "the client that asked for the outcome of a run receives none of it, or the outcome does not name its session, or the client that asked for nothing receives the outcome of a run, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The subject of the claim: the client that announced `yeah.runOutcome' in the `_meta' of its capabilities received the notification `yeah/outcome' with the outcome `nudge' and the outcome `unfinished', and the outcome named the session it belonged to; the client that announced nothing received neither.  The control of the claim (`sed -i 's|(yeah-acp--send-outcome state type fields)|nil|' lib/yeah-acp.el') was applied to a copy of the tree and bit: the check ended with the code 1 and with its own words -- `the wire carried no nudge: the client that asked for the outcome was not told: nil', `the wire carried no unfinished: the run that ended without an effect was not named: nil' and `the outcome did not name its session: nil does not hold session-1-af70c7'.  The check costs about a second.  The live evidence of the wire around it: the probe of the plugin against a real provider on 2026-11-19 answered `initialize' with `sessionCapabilities.close', answered `session/new' with the modes and the model of the session, and carried the call of the tool with its kind and its named arguments (docs/LIVE-EVIDENCE.md). The live route was measured on 19 November 2026 (06:05): the wire of the plugin (`acpStream`) against the real kernel in the stdio mode with the fake model of the checks carried `nudge` three times and `unfinished` once, and the plugin turned them into the notices of the orchestrator (`Агент подтолкнут`, `Прогон закончился без результата`).  What was not measured is how the notice is drawn in the UI of the orchestrator: the command line of Paseo shows no notifications at all, because the curator of its activity has no branch for the type `notification` (docs/LIVE-EVIDENCE.md, `the outcome of a run on the wire of the plugin`)."
+}

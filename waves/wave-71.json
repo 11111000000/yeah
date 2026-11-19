@@ -1,0 +1,34 @@
+{
+  "id": "wave-71",
+  "title": "the orchestrator sees the usage of the turn",
+  "intent": "The live run of 19 November 2026 proved that the goal of the integration was met -- a prompt sent through the orchestrator reaches the kernel of Yeah and the agent answers -- and it showed one gap that the offline checks could not see: the counter of the agent of the orchestrator stayed empty while the counter of an agent of opencode does not.  The cause was found in the route of the orchestrator, and it is not in the kernel: the connection of the orchestrator takes from the answer to `session/prompt' one stop reason and throws the rest away, so the `usage' of the answer of wave 69 never reached the place where the orchestrator counts the tokens; and the update of the context (`usage_update') carries the size of the window and not the tokens of the turn, while the orchestrator counts `inputTokens' and `outputTokens'.  What changes: the tokens of a turn travel by a path the plugin of this repository owns.  The kernel sends them as the notification `yeah/usage' -- a method of Yeah and not of ACP -- to the clients that asked for them in the `_meta' of their capabilities, the way the outcome of a run travels (wave 65).  The plugin of the orchestrator announces that method in the request `initialize' and translates the notification into the event of the provider `session.usage' -- the only event the orchestrator carries into the counter of the agent.  The plugin adds the tokens to the size of the window instead of replacing it, because the orchestrator processes the two parts in an order of its own: whoever comes last, the counter holds both.  The check proves three things on the wire: the client that asked for the tokens of a turn receives them; the notification names the session it belongs to; and the client that asked for nothing receives nothing.  The live proof is the run of 19 November 2026 (`e1cdf9b6-9269-4bea-8602-2ddf1564f482'): `paseo inspect' shows `InputTokens: 12960, OutputTokens: 99'.  The number of the wave is the next free one: the wave is outside the plan of the owner (the plan of the integration with the orchestrator, docs/PASEO-INTEGRATION-PLAN.md), and the owner may rename it.",
+  "touches": [
+    "lib/yeah-acp-vocabulary.el",
+    "lib/yeah-acp.el",
+    "plugin/yeah-provider/server/usage.ts",
+    "plugin/yeah-provider/server/yeah.ts",
+    "plugin/yeah-provider/index.server.ts",
+    "plugin/yeah-provider/test/usage.test.ts",
+    "tests/checks/check-the-orchestrator-sees-the-usage-of-the-turn.el",
+    "spec.json",
+    "waves/wave-71.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/ARCHITECTURE.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-the-orchestrator-sees-the-usage-of-the-turn.el",
+    "./scripts/dev check tests/checks/*",
+    "cd plugin/yeah-provider && npm run typecheck && npm test"
+  ],
+  "claims": [
+    "the-orchestrator-sees-the-usage-of-the-turn"
+  ],
+  "commitment": [],
+  "objection": "The wave adds a method to the vocabulary of Yeah and a way for the plugin to own an event of the provider that it did not own before: the plugin now reads the notifications of the kernel and emits the events of the provider itself.  The objection is answered by the check of the plugin (`test/usage.test.ts'): the events of the connection go further as they are, the plugin adds the usage and changes nothing else, and a session that is closed stops receiving the usage.  The wave does not make the kernel guess the tokens of a provider that said nothing: the notification is sent only when the provider reported them.  The wave does not touch the update of the context of ACP: it carries the size of the window, and it keeps carrying it.  The wave does not repair the route of the orchestrator itself: the answer to `session/prompt' still loses its `usage' there, and the answer of wave 69 keeps being the way for a client that speaks ACP directly.  The wave does not promise a cost: the price of the tokens is the business of the provider, and the kernel does not price a run.",
+  "refuted_by": "the wire carries no usage of a turn to the client that asked for it, or the usage carries other tokens than the ones the provider reported, or the client that asked for nothing receives the usage, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The control of the claim was applied to a copy of the tree and bit by the assertion of the check and not by a crash: the call of `yeah-acp--send-usage-of-turn' was removed from `yeah-acp--observe-event', and the check ended with the code 1 and with its own words -- 'the wire carried no usage of a turn: the client that counts the tokens of a turn had nothing to count' and 'the usage did not name its session'.  The clean tree ended with the code 0.  The control of the plugin side was applied the same way: the call of `registry.report' was removed from the translation of the notification, and two tests of the plugin failed by their own assertions ('перевод уведомления кладёт расход в свою сессию' and 'расход хода доезжает до оркестратора после открытия сессии').  The live proof: the agent `e1cdf9b6-9269-4bea-8602-2ddf1564f482' of the run 'usage wave 71b' (19 November 2026) -- `paseo inspect' shows `LastUsage  InputTokens: 12960, OutputTokens: 99, CachedTokens: 0, CostUsd: $0.00', where the run before it showed `InputTokens: 0, OutputTokens: 0' (docs/LIVE-EVIDENCE.md)."
+}

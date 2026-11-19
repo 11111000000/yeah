@@ -1,0 +1,34 @@
+{
+  "id": "wave-72",
+  "title": "the plugin talks to the core over a socket",
+  "intent": "The plugin of the orchestrator raised its own Emacs for every connection: an agent came -- Emacs started, the agent left -- Emacs left.  That is simple, but it is expensive (the backend of the model is configured every time) and it has a hard limit: over stdio the kernel reads the next request only after the turn has settled, so a request that arrives during a turn waits for the end of the turn.  The kernel already serves ACP over a Unix socket (`yeah-acp-serve-socket'), and that is the way a request during a turn is handled while the turn is still running.  What changes: the plugin can speak to a live core over that socket instead of raising a process per connection.  The placement is a setting of the plugin (`serviceMode'), and its default is still `spawn' -- one Emacs per connection -- so the behaviour of a host that chose nothing does not change.  The core lives as long as its host: the life of the service is tied to the life socket of the host, and the plugin closes the service when it goes.  The check runs the plugin's own code against the real kernel: the plugin raises the core through `ensureService', talks to it through `yeahTransport', the kernel answers the handshake, opens a session and ends a turn, the second agent comes to the same core and does not raise a second one, and the socket the plugin computes is the socket the kernel names (`yeah-service-socket-path').  The model is a FAKE: the turn ends with the `finish' tool, so no network and no key are needed.  The live proof is deferred to the live run of the package: the real service command needs gptel and the key of the provider, and the owner has not chosen the placement yet.",
+  "touches": [
+    "plugin/yeah-provider/server/service.ts",
+    "plugin/yeah-provider/server/transport.ts",
+    "plugin/yeah-provider/server/ndjson.ts",
+    "plugin/yeah-provider/server/launch.ts",
+    "plugin/yeah-provider/server/yeah.ts",
+    "plugin/yeah-provider/shared/vocabulary.ts",
+    "plugin/yeah-provider/shared/settings.ts",
+    "plugin/yeah-provider/index.server.ts",
+    "plugin/yeah-provider/test/service.test.ts",
+    "plugin/yeah-provider/test/settings.test.ts",
+    "tests/checks/check-the-plugin-talks-to-the-core-over-the-socket.sh",
+    "tests/support/yeah-service-driver.ts",
+    "tests/support/yeah-ts-resolve.mjs",
+    "tests/support/yeah-ts-hooks.mjs",
+    "spec.json",
+    "waves/wave-72.json"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-the-plugin-talks-to-the-core-over-the-socket.sh",
+    "cd plugin/yeah-provider && npm run typecheck && npm test"
+  ],
+  "claims": [
+    "the-plugin-talks-to-the-core-over-a-socket"
+  ],
+  "commitment": [],
+  "objection": "The wave gives the plugin a second implementation of the wire: the process path frames the messages with the SDK of the protocol, and the socket path frames them itself (`server/ndjson.ts').  The objection is answered by the check: the socket path is proved against the real kernel, and the process path is proved by the tests of the plugin that were there before.  The wave does not prove the real service command (`SERVICE_FORM'): it needs gptel and the key of the provider, and the check raises the kernel with its own command and a fake model.  The wave does not change the behaviour of a host that chose nothing: the default of the setting is `spawn', and the check asserts it.  The wave does not make the service placement an operational decision: that decision (a plugin as a service, a service shared by the agents of a host) belongs to the owner, and the setting is the switch.  The wave does not touch the request that arrives during a turn: the kernel already handles it over a socket, and the check of this wave proves that the plugin can reach that kernel, not that the turn is steered.",
+  "refuted_by": "the plugin does not talk to the core over the socket, or the core does not answer the agent that came to the socket, or the second agent does not come to the same core, or the socket of the plugin is not the socket of the kernel, or the default placement is no longer one Emacs per connection, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The control of the claim was applied to a copy of the tree and bit by the assertion of the check and not by a crash: the call of `acpServiceStream' was pointed at a socket that does not exist, and the check ended with the code 1 and with its own words -- 'the plugin did not talk to the core over the socket', 'the plugin did not report the socket of the core' and 'the second agent did not come to the same core'.  The clean tree ended with the code 0, and it ended with the code 0 in a copy without `node_modules' as well: the check runs the plugin's TypeScript through the type stripping of node and through the resolver of the check (`tests/support/yeah-ts-hooks.mjs'), so the check needs neither the dependencies of the plugin nor the network.  The tests of the plugin pass (60 of them).  Two defects were found and repaired while the check was written: the closing of the life socket waited for the connections of the kernel, and the kernel waited for the socket -- a deadlock, now repaired by breaking the connections first; and the driver of the check left the connections of the agents open, so the process did not end."
+}
