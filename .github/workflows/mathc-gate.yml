@@ -20,7 +20,7 @@ jobs:
         # поверхность не должна ронять сборку.
         run: |
           set -euo pipefail
-          version="v5.0.7"
+          version="v5.0.8"
           base="https://github.com/11111000000/math-coding/releases/download/${version}"
           mkdir -p /tmp/mathc-bin
           curl -fsSL "$base/SHA256SUMS" -o /tmp/mathc-bin/SHA256SUMS
