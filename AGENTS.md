@@ -992,12 +992,13 @@ work item. Never resolve it by silently making documentation more optimistic.
   (docs/PLAN.md §16.63, waves/wave-75.json).
 - The gate of 19 November 2026 (18:29–18:44 UTC, after wave 75) holds 152
   claims of 153 as `holds (current)`: no `inconclusive`, no `refuted`,
-  `uncovered: 0`.  The one claim that is not current is the order of the
+  `uncovered: 0`.  The one claim that was not current was the order of the
   waves, which the owner named: its scope is `docs/PLAN.md`, the document
-  moved with the waves, and its evidence is stale -- a human settles it with
-  `mathc record the-owner-decided-the-order-of-the-next-waves owner --by WHO
-  --outcome OUTCOME` (docs/PLAN.md §16.64).  The verdict of the map is
-  `unknown` because of that one claim and not because of the code.
+  moved with the waves, and its evidence was stale -- a human settles it, and
+  the owner settled it on 2026-11-19
+  (`mathc record the-owner-decided-the-order-of-the-next-waves owner --by az
+  --outcome pass`).  The map after that record is `green`: 153 claims of 153
+  hold, `uncovered: 0`, and the exit code is 0 (docs/PLAN.md §16.64).
 
 ## The commands
 
