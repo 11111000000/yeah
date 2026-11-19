@@ -1950,6 +1950,80 @@ in the check, not in the method.  The question of the owner — whether a claim
 whose control bit for another reason may stay green — is still open and is
 written down in the list below.
 
+## The journals that the documentation names — wave 64 (2026-11-19, 02:29–02:43)
+
+The sixth gate of this repository ran on 2026-11-19 at 02:29:33 UTC, in a session
+of its own, and it came out red.  It was the first full gate after `origin/main`
+was merged into `main` (commit `b530d3b`, 2026-11-19), and the one claim it
+refused to call green was `the-documentation-points-at-files-that-exist`.  The map
+said `verdict: red`, 142 claims held, one `refuted`, `uncovered: 0`, `next: the
+claim the-documentation-points-at-files-that-exist is refuted`, and the run ended
+with `GATE_EXIT=1` after 13m44s.
+
+The check itself took 378 ms and said why:
+
+```
+docs: LIVE-EVIDENCE.md: line 930: it names sessions/calc.jsonl, and there is no such file
+docs: LIVE-EVIDENCE.md: line 1250: it names sessions/wave41g.jsonl, and there is no such file
+docs: LIVE-EVIDENCE.md: line 1251: it names sessions/wave41h.jsonl, and there is no such file
+docs: LIVE-EVIDENCE.md: line 1356: it names sessions/wave42-1.jsonl, and there is no such file
+docs: PLAN.md: line 3468: it names sessions/wave41g.jsonl, and there is no such file
+docs: PLAN.md: line 3468: it names sessions/wave41h.jsonl, and there is no such file
+```
+
+Six names on five lines, and every one of them is a journal of a live run.  The
+documentation has been naming them since the first live run of this repository,
+and for four years the names pointed at nothing.
+
+**Why the check was silent until the merge.**  The rule of the check (wave 63) is
+that a name is a path of this repository when its first part is a thing of the top
+level of the repository, and the things of the top level are the ones git knows.
+Before the merge the directory `sessions/` did not exist in this repository at
+all — `origin/main` brought it with commit `60f8daf` — so `sessions/calc.jsonl`
+was not a name of this repository, and the rule had no reason to look for it.  The
+name pointed into the empty.  The merge brought five journals of the same kind
+(`sessions/wave41.jsonl`, `sessions/wave41b.jsonl`, `sessions/wave41c.jsonl`,
+`sessions/wave41d.jsonl`, `sessions/wave41e.jsonl` — 5 295 312 bytes), `sessions/`
+became a directory of the repository, and from that moment the rule asked what the
+documentation had been promising all along: a journal that is named must be in the
+repository.
+
+The silence was not the weakness of the check.  The silence was the hiding of the
+documentation.
+
+**The journals.**  All four were on the disk of this machine, in the copies on
+which the runs had happened, and in no branch of this repository:
+
+| Journal | Bytes | Records | Where it was |
+|---|---|---|---|
+| `sessions/calc.jsonl` | 91 348 | 118 | `/home/az/Projects/yeah-live-2/sessions/calc.jsonl` |
+| `sessions/wave41g.jsonl` | 641 365 | 501 | `/home/az/Projects/yeah-selfdev-1/sessions/wave41g.jsonl` |
+| `sessions/wave41h.jsonl` | 665 833 | 578 | `/home/az/Projects/yeah-selfdev-1/sessions/wave41h.jsonl` |
+| `sessions/wave42-1.jsonl` | 2 981 451 | 2464 | `/home/az/Projects/yeah-selfdev-2/sessions/wave42-1.jsonl` |
+
+The counts are the ones the documentation gives: line 930 of this file says
+«118 records, 91 348 bytes» and line 1356 says «2464 records».  They were compared
+before the files were copied, not after, so the journals are the ones that are
+described.  A search for the usual shapes of a key (`sk-…`, `api_key=`, `Bearer …`,
+`eyJ…`, `AKIA…`) in the four files found nothing.
+
+**What wave 64 did.**  It put the journals where the documentation already put them
+and where `origin/main` had put five others: into `sessions/`.  It rewrote no
+documentation, because the names of the documentation were right — it was the
+documentation that was untrue.  The wave adds no property; it repairs one, the way
+wave 63 repaired one.  The file of the wave is `waves/wave-64.json`, and the
+section of the plan is `docs/PLAN.md` §16.48.
+
+**The rule is stricter than it looks.**  The first draft of that section named a
+journal the short way, with three dots at the end of the path, and the check
+answered that it names a path that does not exist.  That was its own reason and not
+a defect: three dots are inside the class of characters a name may have, so the
+short way is read as a literal path — unlike the star and the question mark, which
+the check drops as patterns.  The documentation names the directory `sessions/` and
+not the short way.  The finding is worth writing down because it shows the edge of
+the rule word for word: a path may not be shortened with dots in this
+documentation.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
