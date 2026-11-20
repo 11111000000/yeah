@@ -7,10 +7,15 @@
 #   1. the pipeline finds PlantUML by itself: every step of the chain of the
 #      search works alone — the variable of the environment, the command on
 #      PATH, the binary of ~/.nix-profile/bin, the glob of the store of nix —
-#      and not only the step that this machine happens to carry;
+#      and not only the step that this machine happens to carry; and the chain
+#      of the search lives in one place: the pipeline reads it there, and no
+#      other script of the tree carries a copy of its body;
 #   2. the pipeline answers 3 when the instrument is not there at all;
 #   3. every diagram of the tree is drawn in both themes: two pictures for
-#      every diagram, and every picture comes from its own source;
+#      every diagram, and every picture comes from the whole of its own
+#      source — every state of the source and every arrow of it is in the
+#      picture, and a picture drawn from a part of a source is not a picture
+#      of that source;
 #   4. the pictures come from the skins of the site, and the colours of the
 #      pictures are the tokens of the site — read from site/styles.css, and
 #      not written here;
@@ -191,13 +196,84 @@ chain_file="scripts/lib/tools.sh"
 if ! grep -q '^find_tool()' "$chain_file"; then
   fail "$chain_file does not define find_tool: the search of the pipeline has no one place to live"
 fi
-if ! grep -q 'lib/tools\.sh' scripts/dev; then
+
+# The pipeline reads the chain from the place where it lives.  The line that
+# reads it is a line of code: a comment that names the file is a mention of
+# the file and not a reading of it.  A check that takes a mention for a
+# reading takes a pipeline with no chain at all for a pipeline with one.
+if ! grep -qE '^[[:space:]]*(\.|source)[[:space:]]+.*lib/tools\.sh' scripts/dev; then
   fail "scripts/dev does not read $chain_file: the pipeline does not use the chain of the search"
 fi
+
+# The pipeline calls the function of the chain: the search of the pipeline is
+# the search of the chain and not a search of its own.
+if ! grep -qE '^[[:space:]]*find_tool[[:space:]]' scripts/dev; then
+  fail "scripts/dev does not call find_tool: the pipeline does not use the chain of the search"
+fi
+
+# The chain is defined in one place and under one name: no other file of the
+# scripts defines find_tool.
 chain_copies="$(grep -rl '^find_tool()' scripts/ 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')"
 if [ "$chain_copies" != "$chain_file " ]; then
   fail "the chain of the search is defined in [$chain_copies] and not in one place: $chain_file"
 fi
+
+# The body of the chain of the search: the lines of the function without its
+# head and without its tail, and without the whitespace that is not a
+# meaning.  The name of the function is not a part of the body: a copy of the
+# body under another name is a copy of the body, and the name of the copy
+# does not tell it apart from the chain.
+chain_body="$tmp/chain-body"
+sed -n '/^[[:space:]]*find_tool[[:space:]]*()[[:space:]]*{/,/^[[:space:]]*}/p' "$chain_file" \
+  | sed '1d;$d' \
+  | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+  | grep -v '^$' >"$chain_body"
+if [ ! -s "$chain_body" ]; then
+  fail "the body of the chain of the search cannot be read in $chain_file: a copy of the chain cannot be looked for"
+fi
+
+# Every file of the scripts, in the order of the names.
+script_files="$tmp/script-files"
+grep -rl '' scripts/ 2>/dev/null | LC_ALL=C sort >"$script_files"
+
+while read -r file; do
+  [ -n "$file" ] || continue
+  [ "$file" = "$chain_file" ] && continue
+
+  # The lines of the file as the body of the chain is read: without the
+  # whitespace that is not a meaning, and without the comments, which are
+  # words about the code and not the code.
+  normalized="$tmp/normalized-file"
+  sed 's/^[[:space:]]*//; s/[[:space:]]*$//' "$file" | grep -v '^$' | grep -v '^#' >"$normalized"
+
+  # The body of the chain is in this file: the copy of the body is a copy of
+  # the search, and the copy of the search is the copy that drifts apart.
+  if awk '
+        FNR == NR { body[++nb] = $0; next }
+        { line[++nf] = $0 }
+        END {
+          for (s = 1; s + nb - 1 <= nf; s++) {
+            same = 1
+            for (i = 1; i <= nb; i++) {
+              if (line[s + i - 1] != body[i]) { same = 0; break }
+            }
+            if (same) { found = 1; break }
+          }
+          exit (found ? 0 : 1)
+        }
+      ' "$chain_body" "$normalized"; then
+    fail "the body of the chain of the search is copied in $file: the chain lives in one place ($chain_file) and not in two"
+    continue
+  fi
+
+  # The steps of the search are in this file: the probe of the command on the
+  # PATH and the probe of the binary of the user in the profile are the steps
+  # of the search of a tool, and a file that carries them searches for a tool
+  # by itself.
+  if grep -q 'command -v' "$normalized" && grep -qE '\-x[^#]*\.nix-profile/bin/' "$normalized"; then
+    fail "the steps of the chain of the search are in $file: the chain lives in one place ($chain_file) and not in two"
+  fi
+done <"$script_files"
 
 # --- 2. the skins of the repository are bound to the tokens of the site --------
 
@@ -611,6 +687,29 @@ diagram_label() {
   sed -n 's/^[[:space:]]*state[[:space:]]*"\([^"]*\)".*/\1/p; s/^[[:space:]]*state[[:space:]]*\([A-Za-z][A-Za-z0-9_]*\)[ \t]*$/\1/p' "$1" | head -n 1
 }
 
+# The labels of a source: the text of every state of it and the text of every
+# arrow of it.  A picture that is drawn from its own source carries all of
+# them: a picture that is drawn from a part of its source carries the part
+# and not the whole, and such a picture is the picture of another diagram.
+source_labels() {
+  sed -n \
+    -e 's/^[[:space:]]*state[[:space:]]*"\([^"]*\)".*/\1/p' \
+    -e 's/^[[:space:]]*state[[:space:]]*\([A-Za-z][A-Za-z0-9_]*\)[ \t]*$/\1/p' \
+    -e 's/^[^:]*-->[^:]*:[[:space:]]*\(.*\)$/\1/p' \
+    "$1"
+}
+
+# The texts of a picture: the words that PlantUML wrote in it, one word per
+# line.  A label of a source that is not among them is a label the picture
+# does not carry, and the picture was not drawn from that source.
+picture_texts() {
+  tr '\n' ' ' <"$1" \
+    | sed 's/<text[^>]*>/\n/g; s|</text>|\n|g' \
+    | sed 's/<[^>]*>//g' \
+    | sed 's/&lt;/</g; s/&gt;/>/g; s/&quot;/"/g; s/&#39;/'"'"'/g; s/&amp;/\&/g' \
+    | grep -v '^[[:space:]]*$'
+}
+
 sources_before="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
 
 run_pipeline "$main_dir" "$tmp/main.log" \
@@ -639,8 +738,10 @@ fi
 # the diagram of the state machine is in it, for the pipeline wrote it out
 # of the code.
 labels_file="$tmp/labels"
+all_labels_file="$tmp/all-labels"
 expected_file="$tmp/expected-pictures"
 : >"$labels_file"
+: >"$all_labels_file"
 : >"$expected_file"
 for src in "$main_dir"/site/diagrams/*.puml; do
   [ -f "$src" ] || continue
@@ -654,6 +755,13 @@ for src in "$main_dir"/site/diagrams/*.puml; do
     continue
   fi
   printf '%s %s\n' "$name" "$label" >>"$labels_file"
+  printf '%s %s\n' "$name" "$label" >>"$all_labels_file"
+  # Every label of the source, and not only the first one: the picture of the
+  # diagram is drawn from the whole of its source.
+  source_labels "$src" | while read -r one_label; do
+    [ -n "$one_label" ] || continue
+    printf '%s %s\n' "$name" "$one_label" >>"$all_labels_file"
+  done
   printf '%s-dark.svg\n%s-light.svg\n' "$name" "$name" >>"$expected_file"
 done
 expected_pictures="$(LC_ALL=C sort "$expected_file" | tr '\n' ' ')"
@@ -686,6 +794,17 @@ while read -r name label; do
     if ! grep -qF -- "$label" "$picture"; then
       fail "the picture of $name ($theme) does not carry the label $label of its own source"
     fi
+    # The picture comes from the whole of its own source: every state of the
+    # source and every arrow of it is a text of the picture.  A picture that
+    # is drawn from a part of its source is the picture of another diagram,
+    # and the marker of its own label does not tell the two apart.
+    texts="$(picture_texts "$picture")"
+    while read -r src_name src_label; do
+      [ "$src_name" = "$name" ] || continue
+      if ! printf '%s\n' "$texts" | grep -qxF -- "$src_label"; then
+        fail "the picture of $name ($theme) does not carry the label $src_label of its own source: the picture was drawn from a part of its source"
+      fi
+    done <"$all_labels_file"
     # ... and from no other source.
     while read -r other_name other_label; do
       [ "$other_name" != "$name" ] || continue
