@@ -1117,7 +1117,11 @@ work item. Never resolve it by silently making documentation more optimistic.
   verdict and not the death of the process.  Sixteen of the thirty-one cells
   rest on a guard that says nothing about the state — the check counts those
   cells and names them, and only the runtime can make them strong.  The claim
-  is amended and not renamed (docs/PLAN.md §16.74).
+  is amended and not renamed (docs/PLAN.md §16.74).  **A control must reach the
+  subject of every requirement of its claim:** the gate of the package caught a
+  control of this claim that broke the runtime and not the table, so the unit
+  test of the table stayed green and the method said `inconclusive` instead of
+  `pass` — the claim was not green until the control broke both.
 - Wave 83 repaired the proof of the pipeline of the diagrams.  The pipeline
   works, but the check of wave 81 promised more than it proved: no step of the
   chain of the search was measured, one diagram is not every diagram, the code 1
