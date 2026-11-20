@@ -1,0 +1,27 @@
+{
+  "id": "wave-79",
+  "title": "the kind of a tool is in the vocabulary, or the tool is refused by name",
+  "intent": "The wave B4 of `docs/ARCHITECTURE-CATCHUP-PLAN.md': the vocabulary of the kinds of a call (`lib/yeah-tools.el') is the agreement between the kernel and a client that renders the call, and nothing said that a kind outside it is refused -- it passed silently and the call went on the wire as `other'.  The plan named the place of the defect wrongly: `lib/yeah-emacs.el:88' does not declare a kind of a tool, it carries the kind of a result in the metadata of the tool `introspect' (`lib/yeah-result.el:86'), and no tool of `lib/' declares a kind outside the vocabulary at all.  The defect is therefore not a wrong kind but the silence itself: `yeah-tools-register' accepted any kind and `yeah-tools-kind' quietly replaced an unknown one.  What changes: the registration of a tool that declares a kind outside the vocabulary is refused by name -- the message names the tool and the kind -- the docstring of the registration names all ten kinds of the vocabulary (it named five), and a new check says all of that out loud: every kind a built-in tool declares is in the vocabulary, a tool that declares a kind outside it is refused by name, a tool that declares no kind is still accepted and still travels as `other', and the docstring names every kind of the vocabulary.  The wave also corrects the premise of B4 in the plan itself, because a plan that names a defect that does not exist sends the next wave to the wrong place.",
+  "touches": [
+    "lib/yeah-tools.el",
+    "tests/checks/check-a-tool-kind-is-in-the-vocabulary.el",
+    "spec.json",
+    "waves/wave-79.json",
+    "docs/PLAN.md",
+    "docs/ARCHITECTURE-CATCHUP-PLAN.md",
+    "docs/SITE-DIAGRAMS-PLAN.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-tool-kind-is-in-the-vocabulary.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "a-tool-kind-is-in-the-vocabulary"
+  ],
+  "commitment": [],
+  "objection": "The vocabulary of the kinds is a convention of the kernel and not an enumeration of the protocol: `schemas/acp-v1.json' declares the kind of a call as a plain string and names no values, so the claim says that a kind is in the vocabulary of the kernel and not that the protocol forbids anything.  The wave does not add kinds to the vocabulary: the decision whether `source' (the kind of the result of the tool `introspect') becomes a kind of a call is the owner's.  The wave does not touch the kind of the call of a tool that declares no kind: such a tool travels as `other' and that stays.  The check asserts that the docstring names every kind of the vocabulary, and an assertion about a comment is an assertion like any other: it fails when the comment goes stale, and the control of the claim does not depend on it.  The wave repairs the premise of B4 in the plan and in `docs/SITE-DIAGRAMS-PLAN.md` — the premise named a place of the defect that does not exist, and a plan that sends the next wave to the wrong place is itself a defect; the other stale numbers of that document (12 states and 20 cells, the search chain of the instrument) belong to the wave D0 and are named in `docs/ARCHITECTURE-CATCHUP-PLAN.md' 6.",
+  "refuted_by": "a tool declares a kind outside the vocabulary of the protocol and the declaration is accepted, or the kind of such a tool travels on the wire as `other' without a word, or the docstring of the registration names a kind that the vocabulary does not have, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The control of the claim takes the guard away -- `(not (yeah-tools-kind-known-p kind))' becomes `nil' -- and the check ends with the code 1 and with its own words: the tool that declared the kind outside the vocabulary was accepted.  The control breaks the new check and nothing else: the existing check `check-a-tool-call-carries-its-kind.el' and the unit test `tests/unit/test-yeah-tools.el' stay green under it, because the control touches the guard of the vocabulary and not the declaration of a built-in tool.  The measurement of the wave: the vocabulary has ten kinds, every built-in tool of `lib/' declares a kind that is in the vocabulary, the tools that declare no kind are six, and the registration of a tool that declares a kind outside the vocabulary is refused by name."
+}

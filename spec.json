@@ -3652,6 +3652,29 @@
       "register": "fact",
       "control": "sed -i \"s|(yeah-turn--tick turn 'tool-end)|nil|g\" lib/yeah-turn.el",
       "waiver": null
+    },
+    {
+      "id": "a-tool-kind-is-in-the-vocabulary",
+      "text": "Every kind a tool declares is in the vocabulary of the protocol, and a kind outside it never passes silently: the tool that declares it is refused by name, and the kind of a call that carries it is never quietly replaced by `other'.",
+      "scope": [
+        "lib/yeah-tools.el",
+        "tests/checks/check-a-tool-kind-is-in-the-vocabulary.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-tool-kind-is-in-the-vocabulary.el"
+        }
+      ],
+      "falsifier": "a tool declares a kind outside the vocabulary of the protocol and the declaration passes silently, or the check does not fail by its own assertion when the guard of the vocabulary is broken",
+      "register": "fact",
+      "control": "sed -i \"s|(not (yeah-tools-kind-known-p kind))|nil|g\" lib/yeah-tools.el",
+      "waiver": null
     }
   ]
 }

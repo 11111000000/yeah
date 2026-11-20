@@ -92,6 +92,20 @@ the table or the order, so the run registers and removes its own tools."
       ('boolean   (booleanp value))
       (_          nil)))
 
+(defconst yeah-tools--kinds
+  '("read" "edit" "delete" "move" "search" "execute" "think" "fetch"
+    "switch_mode" "other")
+  "The kinds a call of a tool may carry on the wire of ACP.
+The list is the vocabulary of the protocol; a tool that declares a kind
+outside it is refused by name.")
+
+(defun yeah-tools-kind-known-p (kind)
+  "Return non-nil when KIND is a kind of the vocabulary of the protocol.
+KIND is a string; a kind that is not a string is not known, and neither
+is a kind outside `yeah-tools--kinds'."
+  (and (stringp kind)
+       (cl-member kind yeah-tools--kinds :test #'equal) t))
+
 (defun yeah-tools--spec-p (spec)
   "Non-nil if SPEC looks like a valid tool spec plist."
   (and (consp spec)
@@ -118,10 +132,12 @@ function. Required parameters come first; optional ones come last.
 Three more fields are optional and say what the tool is and how it runs:
 
   :kind        the kind of the call of this tool on the wire of ACP:
-               `read', `edit', `search', `execute' or `other'.  A client
+               `read', `edit', `delete', `move', `search', `execute',
+               `think', `fetch', `switch_mode' or `other'.  A client
                renders a call by its kind, and the kind of a tool is a
                fact of the tool and not a guess of its name.  A tool that
-               declares no kind has the kind `other'.
+               declares no kind has the kind `other'; a tool that declares
+               a kind outside this vocabulary is refused by name.
 
   :concurrency  `shared' (the default) or `exclusive'. A shared tool
                 may run alongside the other shared tools of the same
@@ -132,12 +148,18 @@ Three more fields are optional and say what the tool is and how it runs:
                 result. A tool that waits — on a process, on a timer —
                 says so, and the scheduler does not block on it.
 
-Signals `user-error' if SPEC is malformed or if a tool with the
-same `:name' is already registered."
+Signals `user-error' if SPEC is malformed, if SPEC declares a kind
+outside the vocabulary of the protocol, or if a tool with the same
+`:name' is already registered."
   (unless (yeah-tools--spec-p spec)
     (signal 'user-error
             (list (format "yeah-tools-register: malformed spec %S" spec))))
-  (let ((name (plist-get spec :name)))
+  (let ((name (plist-get spec :name))
+        (kind (plist-get spec :kind)))
+    (when (and kind (not (yeah-tools-kind-known-p kind)))
+      (signal 'user-error
+              (list (format "yeah-tools-register: the tool %S declares the kind %S, which is not in the vocabulary of the protocol"
+                             name kind))))
     (when (gethash name (yeah-tools--active-registry))
       (signal 'user-error
               (list (format "yeah-tools-register: %S already registered" name))))
@@ -177,13 +199,6 @@ touch at the same time declares itself `exclusive'."
   (yeah-tools--ensure-built-ins)
   (yeah-tools--active-order))
 
-(defconst yeah-tools--kinds
-  '("read" "edit" "delete" "move" "search" "execute" "think" "fetch"
-    "switch_mode" "other")
-  "The kinds a call of a tool may carry on the wire of ACP.
-The list is the vocabulary of the protocol; a tool that declares a kind
-outside it has the kind `other'.")
-
 (defun yeah-tools-kind (name)
   "Return the kind of the tool NAME for the wire.
 The kind is what a client needs to render the call: a read, an edit, a
@@ -191,8 +206,7 @@ shell.  It is a fact of the tool and not a guess of its name, so a tool
 that declares no kind has the kind `other', and so has a name that the
 registry does not know."
   (let ((kind (plist-get (yeah-tools-get name) :kind)))
-    (if (and (stringp kind)
-             (cl-member kind yeah-tools--kinds :test #'equal))
+    (if (yeah-tools-kind-known-p kind)
         kind
       "other")))
 
