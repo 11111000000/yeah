@@ -2506,6 +2506,34 @@ boundary of the agent is the account it runs as and the trash that keeps
 what it throws away; the map of what is and is not protected is
 `docs/AGENT-SAFETY.md`.
 
+## The package of waves 76 to 79, and one call to a real model (2026-11-20, 13:45–13:52 UTC)
+**What was run.**  The four checks of the waves of the package on the tree of
+the package, and one call to a real model through the transport of Yeah:
+```
+check:   2243 ms  tests/checks/check-a-session-may-work-without-a-person.el
+check:    922 ms  tests/checks/check-a-run-waits-in-a-state.el
+check:    528 ms  tests/checks/check-every-transition-of-the-table-is-taken.el
+check:    693 ms  tests/checks/check-a-tool-kind-is-in-the-vocabulary.el
+live: status="HTTP/2 200" shape=tool-call calls=3 answer=nil reason=nil
+```
+The live call is `tests/live/live-model-call.el` with the key of the provider
+from the environment file outside the repository; the exit code is 0.
+**What this proves.**  The harness of the package still reaches a real model
+and the answer of the model comes back: the transport answered with HTTP 200,
+and the answer came as a tool call.  That is all: it is one call of one model,
+not a run of the agent over a task.
+**What it does not prove.**
+* The recalculation of the package has not run.  The gate of 20 November 2026
+  (09:13–10:04 UTC, `docs/PLAN.md` §16.68) covers the code of wave 77; the
+  waves 78 and 79 landed after it, and the map of the package does not exist
+  yet.
+* The live run through the orchestrator of the package has not happened.  The
+  rule is one live run per package (`docs/PLAN.md` §19.1, rule 5), and the
+  last live run through the orchestrator was on 19 November 2026 (waves 72
+  and 73, above).
+* The criteria of readiness of §4.3 of `docs/PASEO-INTEGRATION-PLAN.md` were
+  not observed in the interface of Paseo: that needs a live run and a watching
+  person.
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The

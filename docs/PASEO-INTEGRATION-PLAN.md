@@ -322,7 +322,7 @@ newString: typeof input.newString === "string" ? input.newString : undefined
 `TOOL_KINDS` в плагине осталась запасным путём для ядра, которое род ещё не шлёт.
 Claim'ы: `a-tool-call-carries-its-kind`, `a-tool-call-carries-named-arguments`.
 
-### 3.4 Режимы (Plan/Build) публикуются и меняются — P1, ядро сделано, плагин ждёт (§18.3, п.2)
+### 3.4 Режимы (Plan/Build/Auto) публикуются и меняются — P1, закрыто: ядро сделано (волны 43 часть 3 и 76), плагину осталось ничего (§18.3, п.2)
 
 Paseo берёт режимы из ответа `session/new`
 (`packages/plugin/src/server/acp-internal/connection.ts:473-495`, каталог:
