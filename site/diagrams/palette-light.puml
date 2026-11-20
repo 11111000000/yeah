@@ -1,0 +1,27 @@
+' Palette of the light theme — the faces of Emacs 30.2, the default frame.
+' The colours carry the site tokens: --face-default-bg, --face-default-fg,
+' --face-fringe-bg, --face-divider and --face-prose.
+' The values are taken from site/styles.css, the :root block (lines 20-87).
+skinparam nodeStyle rectangle
+skinparam stateStyle rectangle
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans Mono"
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontColor #000000
+skinparam ArrowColor #333333
+skinparam ArrowFontColor #333333
+skinparam StateBackgroundColor #FFFFFF
+skinparam StateBorderColor #999999
+skinparam StateFontColor #000000
+skinparam packageBackgroundColor #F2F2F2
+skinparam packageBorderColor #999999
+skinparam packageFontColor #000000
+skinparam componentBackgroundColor #FFFFFF
+skinparam componentBorderColor #999999
+skinparam componentFontColor #000000
+skinparam activityBackgroundColor #FFFFFF
+skinparam activityBorderColor #999999
+skinparam activityFontColor #000000
+skinparam noteBackgroundColor #F2F2F2
+skinparam noteBorderColor #999999

@@ -1080,6 +1080,24 @@ work item. Never resolve it by silently making documentation more optimistic.
   `lib/`, and the walk goes on by the calls.  The label is read from the
   position of the label and from nowhere else.  The claim of wave 78 is amended
   and not renamed (docs/PLAN.md §16.72).
+- Wave 81 gave the site a pipeline for its diagrams.  The diagrams of the
+  architecture were a drawing that nobody could redraw: `scripts/dev diagrams`
+  now renders every diagram of `site/diagrams/` into `site/assets/diagrams/`,
+  two pictures per diagram, the light one and the dark one.  PlantUML is found
+  by the script itself — the chain of the search lives in one place,
+  `scripts/lib/tools.sh`, the function `find_tool`, and it is the same chain
+  for every tool: the variable of the environment, the command on PATH, the
+  binary of the user in `~/.nix-profile/bin`, and the store of nix when the
+  caller names the glob (the step in the store is given to PlantUML only: the
+  store holds many versions of Emacs, and the version of Emacs must not be a
+  random choice).  The script answers with the code 3 when the instrument is
+  not there, so a missing instrument is never read as a fine diagram.  The skin
+  of a theme is a file of its own (`site/diagrams/palette-light.puml`,
+  `palette-dark.puml`) and its colours are the tokens of the site
+  (`--face-default-bg`, `--face-default-fg`, `--face-fringe-bg`,
+  `--face-divider`, `--face-prose` of `site/styles.css`).  The wave draws no
+  diagram: the first one — the machine of the states, born out of the code — is
+  the wave D1 (docs/PLAN.md §16.73).
 
 ## The commands
 
