@@ -23,7 +23,9 @@
 #      and are not written here;
 #   6. a tree without a kernel cannot generate the diagram, and the answer
 #      of that is 3 and not 0;
-#   7. the tree of the repository is never written: every run happens in a
+#   7. the pipeline of the diagrams in a tree without a kernel ends with the
+#      answer of the generation that failed and draws nothing;
+#   8. the tree of the repository is never written: every run happens in a
 #      temporary tree, and the trap of this script removes it.
 #
 # The search for the tools of this script is a search of its own: the check
@@ -550,6 +552,37 @@ bare_rc=$?
 if [ "$bare_rc" -ne 3 ]; then
   fail "the generation answered $bare_rc in a tree without a kernel and the answer must be 3"
   sed -n '1,4p' "$tmp/bare.log" >&2
+fi
+
+# --- 7b. the pipeline of the diagrams in a tree without a kernel ---------------
+
+# The pipeline of the diagrams ends with the answer of the generation that
+# failed, and it draws nothing when the generation failed: the sources of an
+# earlier run are in the tree here, and they are the sources of yesterday
+# without a kernel to write the sources of today.
+bare_pipe_dir="$tmp/bare-pipeline"
+mkdir -p "$bare_pipe_dir/lib" "$bare_pipe_dir/scripts" "$bare_pipe_dir/site/diagrams" || blocked "cannot make the tree of the check"
+cp -R "$REPO/scripts/." "$bare_pipe_dir/scripts/" || blocked "cannot make the tree of the check"
+cp "$REPO"/site/diagrams/*.puml "$bare_pipe_dir/site/diagrams/" || blocked "cannot make the tree of the check"
+(
+  cd "$bare_pipe_dir" || blocked "cannot enter the tree of the run"
+  EMACS="$emacs_bin" PLANTUML="$plantuml_bin" bash scripts/dev diagrams
+) >"$tmp/bare-pipeline.log" 2>&1
+bare_pipe_rc=$?
+# The pictures that the pipeline drew, wherever in the tree they are: the
+# promise is that nothing is drawn, and not that nothing is drawn in one
+# directory.
+bare_pipe_pictures="$(find "$bare_pipe_dir" -type f -name '*.svg' 2>/dev/null | wc -l | tr -d ' ')"
+if [ "$bare_pipe_rc" -ne 3 ]; then
+  fail "the pipeline of the diagrams answered $bare_pipe_rc in a tree without a kernel and the answer must be 3: the answer of the generation that failed is the answer of the pipeline"
+  sed -n '1,4p' "$tmp/bare-pipeline.log" >&2
+fi
+if [ "$bare_pipe_pictures" -ne 0 ]; then
+  if [ "$bare_pipe_rc" -eq 3 ]; then
+    fail "the pipeline of the diagrams answered 3 and drew $bare_pipe_pictures picture(s) in a tree without a kernel: nothing must be drawn when the generation failed"
+  else
+    fail "the pipeline of the diagrams drew $bare_pipe_pictures picture(s) in a tree without a kernel although the generation failed (the answer was $bare_pipe_rc): nothing must be drawn when the generation failed"
+  fi
 fi
 
 # --- 8. the tree of the repository is not written ----------------------------
