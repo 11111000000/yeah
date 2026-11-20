@@ -1103,6 +1103,34 @@ work item. Never resolve it by silently making documentation more optimistic.
   measured, and the colours of the picture are checked against numbers instead
   of against the tokens of the site.  The code of the wave is honest; the proof
   is repaired in wave 83 (docs/PLAN.md §16.73).
+- Wave 82 repaired the proof of the table of the machine.  The check promised a
+  cell and proved a label, and the reason was in two dead branches: the
+  arguments of a form are `(cdr form)`, and the code took `(cdr (cdr form))`,
+  so the state of a place was never read and any place of a label witnessed any
+  cell of that label.  The check now reads the state of a place from its guard,
+  binds every cell to its `FROM` (a place that takes the move of the cell from
+  another state is named), compares a fan of a label with the runtime and not
+  with the table (a runtime that narrows a fan breaks the check), and separates
+  "live for the runtime" from "live for the tests": a root of the runtime is an
+  autoload cookie or a reference of a top-level form of `lib/`, and a definition
+  that only the tests call is dead for the runtime.  An error of the check is a
+  verdict and not the death of the process.  Sixteen of the thirty-one cells
+  rest on a guard that says nothing about the state — the check counts those
+  cells and names them, and only the runtime can make them strong.  The claim
+  is amended and not renamed (docs/PLAN.md §16.74).
+- Wave 83 repaired the proof of the pipeline of the diagrams.  The pipeline
+  works, but the check of wave 81 promised more than it proved: no step of the
+  chain of the search was measured, one diagram is not every diagram, the code 1
+  of a failed PlantUML was not measured, the colours of the picture were bound
+  to numbers instead of to the tokens of the site, and the check leaned on the
+  wording of the report.  The check now runs the chain four times — one step
+  available each time (the environment, PATH, `~/.nix-profile/bin`, the store of
+  nix) — draws two diagrams, derives the list of the expected pictures from the
+  tree, measures the three ways PlantUML fails, reads the expected colours out
+  of `site/styles.css` by the names of the tokens, and catches a skin that is
+  baked into the code with a marker of the fixture.  No grep of the wording of
+  the report is left.  The code of the pipeline, the skins and the site are
+  untouched (docs/PLAN.md §16.75).
 
 ## The commands
 
