@@ -9,6 +9,7 @@
 #   bench [--run]         — validate the benchmark task set, or run the benchmark
 #   pixel                 — photograph the real interface and compare two pictures
 #   diagrams              — render every diagram of site/diagrams in both themes
+#   state-diagram         — write site/diagrams/state-machine.puml out of the code
 #   map                   — the standing specification: claims, states, uncovered
 #   run                   — execute the checks, bind the evidence, write the trail
 #   gate                  — the gate of the project (scripts/gate); the exit code is the verdict
@@ -90,6 +91,65 @@ now_ms() {
   printf '%s' "$(( $(date +%s%N) / 1000000 ))"
 }
 
+# The diagram of the state machine is written out of the code: a live Emacs
+# reads the list of the states and the table of the transitions, and the file
+# of the diagram is the result of that read.  The function is one, and the
+# subcommand `state-diagram' and the pipeline of the diagrams call it: two
+# copies of the generation are two diagrams that drift apart.
+#
+# The answers of the function are the answers of the wrapper: 3 when the
+# tree has no kernel or the machine has no Emacs, 2 when the tree has no
+# place for the diagram, and 1 when the generation itself failed.
+generate_state_diagram() {
+  if [ ! -f lib/yeah-state-diagram.el ]; then
+    echo "scripts/dev state-diagram: the tree has no kernel (lib/yeah-state-diagram.el): the diagram of the state machine cannot be generated" >&2
+    exit 3
+  fi
+  if [ ! -d site/diagrams ]; then
+    echo "scripts/dev state-diagram: site/diagrams does not exist" >&2
+    exit 2
+  fi
+  emacs_bin="$(find_emacs)" || {
+    echo "scripts/dev state-diagram: emacs is not on PATH and EMACS is not set" >&2
+    exit 3
+  }
+  # A stale .elc shadows a newer source (ELISP_BEST_PRACTICES §11.2), and
+  # the diagram would be the diagram of yesterday.
+  clean_bytecode
+  out="site/diagrams/state-machine.puml"
+  # The file is written next to its place and not in the temporary
+  # directory of the machine: the move of it is then a rename, and a reader
+  # of the diagram never sees a half-written file.
+  tmp_puml="site/diagrams/.state-machine.$$"
+  if ! : >"$tmp_puml"; then
+    echo "scripts/dev state-diagram: cannot make a temporary file" >&2
+    exit 3
+  fi
+  tmp_log="$tmp_puml.log"
+  "$emacs_bin" -Q --batch -L lib -l yeah-state-diagram \
+    --eval '(yeah-state-diagram-print)' >"$tmp_puml" 2>"$tmp_log"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "scripts/dev state-diagram: the generation of the diagram of the state machine failed" >&2
+    cat "$tmp_log" >&2
+    rm -f "$tmp_puml" "$tmp_log"
+    exit 1
+  fi
+  if [ ! -s "$tmp_puml" ]; then
+    echo "scripts/dev state-diagram: the generation of the diagram of the state machine wrote nothing" >&2
+    cat "$tmp_log" >&2
+    rm -f "$tmp_puml" "$tmp_log"
+    exit 1
+  fi
+  rm -f "$tmp_log"
+  if ! mv "$tmp_puml" "$out"; then
+    echo "scripts/dev state-diagram: cannot write $out" >&2
+    rm -f "$tmp_puml"
+    exit 1
+  fi
+  echo "state-diagram: wrote $out"
+}
+
 case "$cmd" in
   help|--help|-h)
     cat <<'EOF'
@@ -103,6 +163,7 @@ Subcommands:
   bench [--run]         — validate the benchmark task set, or run the benchmark
   pixel                 — photograph the real interface and compare two pictures
   diagrams              — render every diagram of site/diagrams in both themes
+  state-diagram         — write site/diagrams/state-machine.puml out of the code
   map                   — the standing specification: claims, states, uncovered
   run                   — execute the checks, bind the evidence, write the trail
   gate                  — the gate of the project (scripts/gate); the exit code is the verdict
@@ -329,6 +390,12 @@ EOF
       echo "scripts/dev diagrams: site/diagrams does not exist" >&2
       exit 2
     fi
+    # The diagram of the state machine is written out of the code before
+    # anything is drawn: the pictures of the site come from sources that the
+    # code wrote, and a picture of a stale source is a stale picture.  A
+    # generation that failed ends the pipeline with its own answer, and
+    # nothing is drawn.
+    generate_state_diagram
     plantuml_bin="$(find_plantuml)" || {
       echo "scripts/dev diagrams: plantuml is not on PATH, PLANTUML is not set, and it is not in the store of nix" >&2
       exit 3
@@ -378,6 +445,20 @@ EOF
         fi
         picture="$tmp/out/$name-$theme.svg"
         if [ ! -s "$picture" ]; then
+          # A diagram that names itself (`@startuml name') makes PlantUML
+          # write the picture under the name of the diagram and not under
+          # the name of the file.  The picture that was written is the
+          # picture of the theme, and it is given the name of the theme.
+          written=()
+          for candidate in "$tmp/out"/*.svg; do
+            [ -f "$candidate" ] || continue
+            written+=("$candidate")
+          done
+          if [ "${#written[@]}" -eq 1 ]; then
+            picture="${written[0]}"
+          fi
+        fi
+        if [ ! -s "$picture" ]; then
           echo "scripts/dev diagrams: plantuml wrote no picture for $name ($theme)" >&2
           cat "$tmp/log" >&2
           exit 1
@@ -392,6 +473,19 @@ EOF
       diagrams=$((diagrams + 1))
     done
     echo "diagrams: rendered $pictures picture(s) of $diagrams diagram(s) into $out_dir"
+    ;;
+
+  state-diagram)
+    # The source of the diagram of the state machine, written out of the
+    # code of the tree of the caller.  The file is written and not drawn:
+    # the pictures of the site are the work of the pipeline of the
+    # diagrams.
+    if [ $# -gt 0 ]; then
+      echo "scripts/dev state-diagram: takes no arguments" >&2
+      exit 2
+    fi
+    generate_state_diagram
+    exit 0
     ;;
 
   map)

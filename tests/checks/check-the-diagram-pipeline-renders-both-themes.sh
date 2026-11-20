@@ -20,6 +20,12 @@
 # The tree of the repository is never written: every run of the pipeline
 # happens in a temporary tree, and the trap of this script removes it.
 #
+# The fixture carries the kernel: the pipeline writes the diagram of the
+# state machine out of the code before it draws anything, and a tree
+# without a kernel cannot be drawn at all.  Emacs is named with an
+# absolute path, because the PATH of a hermetic run holds the shim of this
+# check and nothing else.
+#
 # The search for PlantUML of this script is a chain of its own: the check
 # must not lean on the code that it checks.
 #
@@ -53,6 +59,18 @@ cd "$(dirname "$0")/../.." || blocked "the tree of the repository is not where w
 [ -f site/styles.css ] || blocked "site/styles.css is not there: the tree of the repository is not where we think"
 
 REPO="$(pwd)"
+
+# The kernel of the fixture: the pipeline writes the diagram of the state
+# machine out of the code before it draws anything, and a tree without a
+# kernel cannot be drawn at all.  The three modules of the machine are the
+# ones the diagram is written out of.
+fixture_kernel() {
+  local dir="$1" module
+  mkdir -p "$dir/lib" || blocked "cannot make the tree of the check"
+  for module in yeah-state.el yeah-loop.el yeah-state-diagram.el; do
+    cp "$REPO/lib/$module" "$dir/lib/" || blocked "cannot make the tree of the check"
+  done
+}
 
 # --- 0. the tools of the hermetic runs -----------------------------------------
 
@@ -120,6 +138,28 @@ for candidate in "$store_root"/*plantuml*/bin/plantuml; do
     plantuml_dirs+=("$(dirname "$candidate")")
   fi
 done
+
+# Emacs is the instrument of the generation of the diagram of the state
+# machine, and the pipeline draws that diagram with it.  The search of
+# Emacs is a chain of its own, like the search of PlantUML: the check must
+# not lean on the code that it checks.  The answer of a run is the path of
+# Emacs and not the name of it, because the PATH of a hermetic run holds
+# the shim of this check and nothing else.
+emacs_bin=""
+if [ -n "${EMACS:-}" ] && [ -x "${EMACS}" ]; then
+  emacs_bin="$EMACS"
+elif command -v emacs >/dev/null 2>&1; then
+  emacs_bin="$(command -v emacs)"
+elif [ -x "${HOME:-}/.nix-profile/bin/emacs" ]; then
+  emacs_bin="${HOME}/.nix-profile/bin/emacs"
+else
+  for candidate in "$store_root"/*emacs*/bin/emacs; do
+    if [ -x "$candidate" ]; then
+      emacs_bin="$candidate"
+      break
+    fi
+  done
+fi
 
 stripped_path=""
 for dir in "${path_dirs[@]+"${path_dirs[@]}"}"; do
@@ -314,6 +354,17 @@ done
 
 # --- 3. the instrument of this machine -----------------------------------------
 
+# Emacs draws the source of the diagram of the state machine out of the
+# code, and the pipeline draws that source.  A machine without Emacs cannot
+# run the pipeline at all, and the answer of the check is then 3.
+if [ -z "$emacs_bin" ]; then
+  echo "diagrams: Emacs is not on this machine (the environment, the PATH, ~/.nix-profile, the store of nix): the pipeline was not measured" >&2
+  if [ "$failures" -ne 0 ]; then
+    exit 1
+  fi
+  exit 3
+fi
+
 # The chain of this script is a chain of its own: the pipeline must not be
 # leaned on to find the instrument that draws the pictures.
 plantuml_bin=""
@@ -345,12 +396,16 @@ fi
 # A run of the pipeline of the diagrams in a tree of our own.  The report is
 # written to a log and is not read: the exit code and the tree are the
 # promise, and a wording is not a promise.
+#
+# Emacs is named with its path: the pipeline writes the diagram of the state
+# machine out of the code before it draws anything, and the PATH of a
+# hermetic run holds the shim of this check and nothing else.
 run_pipeline() {
   local dir="$1" log="$2"
   shift 2
   (
     cd "$dir" || blocked "cannot enter the tree of the run"
-    env "$@" bash "$REPO/scripts/dev" diagrams
+    env "$@" "EMACS=$emacs_bin" bash "$REPO/scripts/dev" diagrams
   ) >"$log" 2>&1
 }
 
@@ -364,6 +419,7 @@ chain_fixture() {
   local dir="$1"
   mkdir -p "$dir/site/diagrams" || blocked "cannot make the tree of the check"
   cp "$light_palette" "$dark_palette" "$dir/site/diagrams/" || blocked "cannot make the tree of the check"
+  fixture_kernel "$dir"
   cat >"$dir/site/diagrams/probe.puml" <<'PUML'
 @startuml
 state "probe-of-the-chain" as probe
@@ -372,18 +428,37 @@ probe --> probe : tick
 PUML
 }
 
-# The pictures of a run of the chain: two for the one diagram of the tree,
-# and nothing else.
+# The pictures a tree of diagrams must hold: two for every diagram of the
+# tree of the sources, and nothing else.  The list is read from the tree of
+# the sources, so it says two times the number of the diagrams without
+# saying the number.  The diagram of the state machine is in that tree
+# after the run: the pipeline writes it out of the code before it draws
+# anything.
+expected_pictures_of() {
+  local dir="$1" src name
+  for src in "$dir"/site/diagrams/*.puml; do
+    [ -f "$src" ] || continue
+    name="$(basename "$src" .puml)"
+    case "$name" in
+      palette-*) continue ;;
+    esac
+    printf '%s-dark.svg\n%s-light.svg\n' "$name" "$name"
+  done | LC_ALL=C sort | tr '\n' ' '
+}
+
+# The pictures of a run of the chain: two for every diagram of the tree of
+# the fixture, and nothing else.
 assert_chain_pictures() {
   local dir="$1" step="$2"
-  local pictures
+  local pictures expected
   if [ ! -d "$dir/site/assets/diagrams" ]; then
     fail "the step $step of the chain of the search drew no picture at all"
     return
   fi
+  expected="$(expected_pictures_of "$dir")"
   pictures="$(cd "$dir/site/assets/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
-  if [ "$pictures" != "probe-dark.svg probe-light.svg " ]; then
-    fail "the step $step of the chain of the search drew [$pictures] and not the two pictures of the probe"
+  if [ "$pictures" != "$expected" ]; then
+    fail "the step $step of the chain of the search drew [$pictures] and not the two pictures of every diagram of the tree: $expected"
   fi
 }
 
@@ -501,6 +576,7 @@ main_dir="$tmp/main"
 mkdir -p "$main_dir/site/diagrams" || blocked "cannot make the tree of the check"
 cp "$light_palette" "$main_dir/site/diagrams/palette-light.puml" || blocked "cannot make the tree of the check"
 cp "$dark_palette" "$main_dir/site/diagrams/palette-dark.puml" || blocked "cannot make the tree of the check"
+fixture_kernel "$main_dir"
 
 # The marker of the skin: a font name that is in the copy of the skin of the
 # fixture and in no code of the pipeline.  A picture carries the font of the
@@ -528,15 +604,40 @@ beta --> beta2 : tick
 @enduml
 PUML
 
-# The label of a diagram: the text of the first state of the diagram.
+# The label of a diagram: the text of the first state of the diagram.  A
+# state of the diagram of the state machine carries its name as it is
+# (`state idle'), and not in quotes.
 diagram_label() {
-  sed -n 's/^[[:space:]]*state[[:space:]]*"\([^"]*\)".*/\1/p' "$1" | head -n 1
+  sed -n 's/^[[:space:]]*state[[:space:]]*"\([^"]*\)".*/\1/p; s/^[[:space:]]*state[[:space:]]*\([A-Za-z][A-Za-z0-9_]*\)[ \t]*$/\1/p' "$1" | head -n 1
 }
+
+sources_before="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+
+run_pipeline "$main_dir" "$tmp/main.log" \
+  "PLANTUML=$plantuml_bin" \
+  "${base_env[@]}" \
+  "PATH=$shim:$stripped_path"
+main_rc=$?
+if [ "$main_rc" -ne 0 ]; then
+  fail "the pipeline answered $main_rc where both themes of every diagram must be drawn and the answer must be 0"
+  sed -n '1,8p' "$tmp/main.log" >&2
+fi
+
+# The tree of the sources keeps the sources of the fixture and the diagram
+# that the pipeline wrote out of the code, and nothing else: the pipeline
+# must not leave a file of its own next to them.
+sources_after="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+expected_sources="$(printf '%s\n' $sources_before state-machine.puml | LC_ALL=C sort | tr '\n' ' ')"
+if [ "$sources_after" != "$expected_sources" ]; then
+  fail "the tree of the sources holds [$sources_after] and not [$expected_sources]"
+fi
 
 # The diagrams of the tree, with their labels, and the pictures the tree must
 # hold: two for every diagram, and nothing else.  The list is read from the
 # tree of the sources, so it says two times the number of the diagrams
-# without saying the number.
+# without saying the number.  The tree of the sources is read after the run:
+# the diagram of the state machine is in it, for the pipeline wrote it out
+# of the code.
 labels_file="$tmp/labels"
 expected_file="$tmp/expected-pictures"
 : >"$labels_file"
@@ -557,18 +658,6 @@ for src in "$main_dir"/site/diagrams/*.puml; do
 done
 expected_pictures="$(LC_ALL=C sort "$expected_file" | tr '\n' ' ')"
 
-sources_before="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
-
-run_pipeline "$main_dir" "$tmp/main.log" \
-  "PLANTUML=$plantuml_bin" \
-  "${base_env[@]}" \
-  "PATH=$shim:$stripped_path"
-main_rc=$?
-if [ "$main_rc" -ne 0 ]; then
-  fail "the pipeline answered $main_rc where both themes of every diagram must be drawn and the answer must be 0"
-  sed -n '1,8p' "$tmp/main.log" >&2
-fi
-
 if [ ! -d "$main_dir/site/assets/diagrams" ]; then
   fail "the pipeline wrote no tree of pictures: site/assets/diagrams does not exist"
 else
@@ -576,13 +665,6 @@ else
   if [ "$pictures" != "$expected_pictures" ]; then
     fail "the pipeline drew [$pictures] and not two pictures for every diagram: $expected_pictures"
   fi
-fi
-
-# The tree of the sources keeps the sources and nothing else: the pipeline
-# must not leave a file of its own next to them.
-sources_after="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
-if [ "$sources_after" != "$sources_before" ]; then
-  fail "the pipeline wrote next to the sources: [$sources_after] and not [$sources_before]"
 fi
 
 # The colours of the pictures are the tokens of the site.  The tokens are
@@ -650,6 +732,7 @@ done <"$labels_file"
 # A diagram that PlantUML cannot read: the pipeline must answer 1.
 broken_dir="$tmp/broken"
 mkdir -p "$broken_dir/site/diagrams" || blocked "cannot make the tree of the check"
+fixture_kernel "$broken_dir"
 cp "$light_palette" "$dark_palette" "$broken_dir/site/diagrams/" || blocked "cannot make the tree of the check"
 cat >"$broken_dir/site/diagrams/broken.puml" <<'PUML'
 @startuml
@@ -673,6 +756,7 @@ printf '#!/bin/sh\nexit 0\n' >"$fake_plantuml" || blocked "cannot make the tree 
 chmod +x "$fake_plantuml" || blocked "cannot make the tree of the check"
 quiet_dir="$tmp/quiet"
 mkdir -p "$quiet_dir/site/diagrams" || blocked "cannot make the tree of the check"
+fixture_kernel "$quiet_dir"
 cp "$light_palette" "$dark_palette" "$quiet_dir/site/diagrams/" || blocked "cannot make the tree of the check"
 cat >"$quiet_dir/site/diagrams/quiet.puml" <<'PUML'
 @startuml
@@ -713,6 +797,7 @@ FAKE
 chmod +x "$error_plantuml" || blocked "cannot make the tree of the check"
 error_dir="$tmp/error"
 mkdir -p "$error_dir/site/diagrams" || blocked "cannot make the tree of the check"
+fixture_kernel "$error_dir"
 cp "$light_palette" "$dark_palette" "$error_dir/site/diagrams/" || blocked "cannot make the tree of the check"
 cat >"$error_dir/site/diagrams/error.puml" <<'PUML'
 @startuml
