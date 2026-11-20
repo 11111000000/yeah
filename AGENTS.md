@@ -1190,6 +1190,65 @@ work item. Never resolve it by silently making documentation more optimistic.
   copy of the body and on a cut source; the new one answers with the code 1.
   The code of the pipeline, the skins and the site are untouched (docs/PLAN.md
   §16.77).
+- Wave 87 repaired the proof of the diagram of the machine of the states.  The
+  kernel and the pipeline are honest; the proof was not.  Two promises were not
+  measured.  **The pipeline swallowed a failed generation**: the check ran the
+  subcommand `state-diagram' in a tree without the kernel and waited for the code 3,
+  but nobody ran the **pipeline** `scripts/dev diagrams' there — and a mutation that
+  made the call of the generator conditional in the pipeline answered 0 and drew the
+  pictures of yesterday, while both checks (84 and 86) stayed green.  The pipeline
+  itself is run in a tree without the kernel now, and the check demands the code 3
+  **and no picture at all**; the three answers are named apart: the pipeline answered
+  and it is not 3, the pipeline answered 3 and drew pictures, the pipeline drew
+  pictures although the generation failed.  And **the check fell with the wrong
+  subject**: the comparison of the cells with the arrows was a comparison of numbers,
+  so a generator that reads the table and leads every cell elsewhere passed, while
+  the message said "the generator does not read the table" — false in both halves,
+  the arrow was there with ends of its own.  Now **every** cell of the table is
+  compared with its arrow by its ends (`from --> to : label'), the identifier of a
+  state is computed by the check itself (PlantUML does not read a dash in an
+  identifier: `post-decide' becomes `post_decide'), and the three cases are named
+  apart: the cell is not in the diagram, the cell is drawn elsewhere, the label of
+  the arrow is not the label of the cell.  A guard says that a comparison which did
+  not finish is a failure and not a silence.  The kernel and the pipeline are
+  untouched (docs/PLAN.md §16.79).
+- Wave 88 repaired the proof of the table of the machine, the third time.  The kernel
+  is honest; the proof was not, in two places.  **A place without a definition was
+  counted as live**: the walk over the top-level forms of `lib/` gives such a place
+  the name `nil', and the rule of liveness read the name `nil' as "a place the
+  runtime runs" — a tick inside a `defconst' lambda that nobody calls was a witness
+  of the cell `(post-decide nudge . deciding)', and the runtime takes that move not
+  at all.  Such a place is dead for the runtime now, and the report names those
+  places as a class of their own.  And **a place whose label cannot be read fell out
+  of every verdict**: it witnessed no cell, was compared with no state and broke the
+  chain of the moves of its neighbours — the fan `error' lost its whole coverage and
+  stopped being judged, the runtime took the move `no-such-move' that the machine does
+  not have, and the check answered with the code 0.  Such a place is a defect in
+  itself now: the check names it by file and line and answers with the code 1.  The
+  report is compared with the numbers measured before: a measurement that became
+  smaller does not pass as the same one, because a proof that rests on less is
+  weaker, and the check says so instead of being silent.  The price is named: the
+  numbers of the report are nailed to the kernel of 2026-11-20, so a wave that
+  changes `lib/' has to change the constant of the check too.  The kernel is
+  untouched (docs/PLAN.md §16.80).
+- Wave 89 repaired the proof of the pipeline of the diagrams, the third time.  The
+  class of escape was named in the objection of wave 86 already, but the **text of
+  the claim and its falsifier were stronger than the proof**: "the chain of the
+  search lives in one place" was satisfied by textual probes, and a copy of the chain
+  **rewritten in other words** (its own `type -P', its own `-f' for the profile)
+  passed.  The check now looks at the **code of the pipeline**: the comments, the
+  body of the heredoc and the calls of `find_tool' are taken out of `scripts/dev',
+  and the words of the steps of the search are forbidden in the rest — a step built
+  on the fly is not seen, and that is named.  The promise is brought to what is
+  measured: the chain lives in one place **in `scripts/'**, `scripts/dev' reads it,
+  calls it and does not write a step of the search itself, another script of
+  `scripts/' does not define the chain and does not carry a copy of its body, a copy
+  rewritten in other words is not seen, and the **search in the checks themselves is
+  its own, by design** — the tree carries its own search in
+  `tests/checks/check-the-state-diagram-comes-from-the-code.sh', and the promise says
+  so outright.  The old check of wave 86 answers with the code 0 on the same
+  mutation; the new one answers with the code 1.  The code of the pipeline is
+  untouched (docs/PLAN.md §16.81).
 
 ## The commands
 
