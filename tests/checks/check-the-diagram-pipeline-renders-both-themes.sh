@@ -2,21 +2,35 @@
 # check-the-diagram-pipeline-renders-both-themes.sh — canary for the claim
 # `the-diagram-pipeline-renders-both-themes`.
 #
-# The pipeline of the diagrams must find PlantUML by itself, answer 3 when
-# the instrument is not there, and draw every diagram in both themes.
-# The fixture is a temporary tree: the tree of the repository is never written.
-# The search for PlantUML here is independent: not scripts/lib/tools.sh.
+# The claim promises five things, and every one of them is measured here:
 #
-# Exit codes: 0 — both themes were drawn; 1 — the pipeline broke its promise;
+#   1. the pipeline finds PlantUML by itself: every step of the chain of the
+#      search works alone — the variable of the environment, the command on
+#      PATH, the binary of ~/.nix-profile/bin, the glob of the store of nix —
+#      and not only the step that this machine happens to carry;
+#   2. the pipeline answers 3 when the instrument is not there at all;
+#   3. every diagram of the tree is drawn in both themes: two pictures for
+#      every diagram, and every picture comes from its own source;
+#   4. the pictures come from the skins of the site, and the colours of the
+#      pictures are the tokens of the site — read from site/styles.css, and
+#      not written here;
+#   5. the pipeline answers 1 when PlantUML fails, and answers 1 too when
+#      PlantUML writes no picture at all.
+#
+# The tree of the repository is never written: every run of the pipeline
+# happens in a temporary tree, and the trap of this script removes it.
+#
+# The search for PlantUML of this script is a chain of its own: the check
+# must not lean on the code that it checks.
+#
+# The words of the report of the pipeline are not measured: the number of the
+# pictures and the number of the diagrams are read from the tree, and a
+# wording is not a promise.
+#
+# Exit codes: 0 — the promise holds; 1 — the pipeline broke its promise;
 # 2 — the tree is not where we think; 3 — PlantUML is not on this machine.
 
 set -u
-
-cd "$(dirname "$0")/../.." || exit 2
-[ -d lib ] || exit 2
-[ -f scripts/dev ] || exit 2
-
-REPO="$(pwd)"
 
 failures=0
 fail() {
@@ -24,7 +38,128 @@ fail() {
   failures=1
 }
 
-# --- 1. the palettes carry the colours of the site -----------------------------
+# The check cannot answer: the tree is not where we think, or the tree of the
+# check cannot be made.  The answer of a check that cannot answer is 2, and
+# it says why.
+blocked() {
+  echo "diagrams: $1" >&2
+  exit 2
+}
+
+cd "$(dirname "$0")/../.." || blocked "the tree of the repository is not where we think"
+[ -d lib ] || blocked "lib/ is not there: the tree of the repository is not where we think"
+[ -f scripts/dev ] || blocked "scripts/dev is not there: the tree of the repository is not where we think"
+[ -f scripts/lib/tools.sh ] || blocked "scripts/lib/tools.sh is not there: the tree of the repository is not where we think"
+[ -f site/styles.css ] || blocked "site/styles.css is not there: the tree of the repository is not where we think"
+
+REPO="$(pwd)"
+
+# --- 0. the tools of the hermetic runs -----------------------------------------
+
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/yeah-diagram-pipeline.XXXXXX")" || blocked "cannot make the temporary tree of the check"
+shim="$tmp/hermetic-bin"
+
+# The rm of the agent moves a directory to the trash: the tree of this check
+# must be gone, and not in the trash.  The shim of the tree holds the rm of
+# the system, and it is the rm of the system that removes the tree.
+cleanup() {
+  if [ -x "$shim/rm" ]; then
+    "$shim/rm" -rf "$tmp" 2>/dev/null || true
+  else
+    rm -rf "$tmp" 2>/dev/null || true
+  fi
+}
+trap cleanup EXIT
+
+# The tools of the hermetic run are the tools of the system: the wrappers of
+# the agent are not used (a wrapper of rm moves a directory to the trash, and
+# the trap of the pipeline must delete and not archive).
+system_tool() {
+  local tool="$1" found dir
+  found="$(command -v "$tool" 2>/dev/null || true)"
+  case "$found" in
+    */shims/*)
+      for dir in /usr/bin /bin /run/current-system/sw/bin; do
+        if [ -x "$dir/$tool" ]; then
+          printf '%s' "$dir/$tool"
+          return 0
+        fi
+      done
+      ;;
+  esac
+  [ -n "$found" ] || return 1
+  printf '%s' "$found"
+}
+
+mkdir -p "$shim" || blocked "cannot make the tree of the check"
+for tool in bash dirname basename mktemp mkdir sed grep cat mv rm; do
+  tool_path="$(system_tool "$tool" || true)"
+  if [ -n "$tool_path" ]; then
+    ln -sf "$tool_path" "$shim/$tool" || blocked "cannot make the tree of the check"
+  fi
+done
+
+# The tool of the hermetic run is a path that cannot be run.  The directories
+# that hold an executable plantuml leave the PATH, or the pipeline finds the
+# instrument anyway.
+plantuml_dirs=()
+path_dirs=()
+IFS=':' read -r -a path_dirs <<<"${PATH:-}"
+for dir in "${path_dirs[@]+"${path_dirs[@]}"}"; do
+  [ -n "$dir" ] || continue
+  if [ -x "$dir/plantuml" ]; then
+    plantuml_dirs+=("$dir")
+  fi
+done
+if [ -x "${HOME:-}/.nix-profile/bin/plantuml" ]; then
+  plantuml_dirs+=("${HOME:-}/.nix-profile/bin")
+fi
+store_root="${NIX_STORE_DIR:-/nix/store}"
+for candidate in "$store_root"/*plantuml*/bin/plantuml; do
+  if [ -x "$candidate" ]; then
+    plantuml_dirs+=("$(dirname "$candidate")")
+  fi
+done
+
+stripped_path=""
+for dir in "${path_dirs[@]+"${path_dirs[@]}"}"; do
+  [ -n "$dir" ] || continue
+  skip=0
+  for bad in "${plantuml_dirs[@]+"${plantuml_dirs[@]}"}"; do
+    if [ "$bad" = "$dir" ]; then
+      skip=1
+      break
+    fi
+  done
+  if [ "$skip" -eq 0 ]; then
+    stripped_path="${stripped_path:+$stripped_path:}$dir"
+  fi
+done
+if [ -z "$stripped_path" ]; then
+  stripped_path="/usr/bin:/bin"
+fi
+
+mkdir -p "$tmp/home-empty" "$tmp/store-empty" || blocked "cannot make the tree of the check"
+
+# --- 1. the chain of the search lives in one place -----------------------------
+
+# The text says where the chain lives; the runs of the section 5 say that the
+# pipeline uses that chain.  A copy of the chain in two scripts is a copy
+# that drifts apart, and the copy that drifts is the one that answers "the
+# tool is not here" when the tool is.
+chain_file="scripts/lib/tools.sh"
+if ! grep -q '^find_tool()' "$chain_file"; then
+  fail "$chain_file does not define find_tool: the search of the pipeline has no one place to live"
+fi
+if ! grep -q 'lib/tools\.sh' scripts/dev; then
+  fail "scripts/dev does not read $chain_file: the pipeline does not use the chain of the search"
+fi
+chain_copies="$(grep -rl '^find_tool()' scripts/ 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')"
+if [ "$chain_copies" != "$chain_file " ]; then
+  fail "the chain of the search is defined in [$chain_copies] and not in one place: $chain_file"
+fi
+
+# --- 2. the skins of the repository are bound to the tokens of the site --------
 
 light_palette="site/diagrams/palette-light.puml"
 dark_palette="site/diagrams/palette-dark.puml"
@@ -41,11 +176,6 @@ fi
 # machine that cannot answer: the verdict of the check is 1 and not 2.
 if [ ! -f "$light_palette" ] || [ ! -f "$dark_palette" ]; then
   exit 1
-fi
-
-if [ ! -f "$site_css" ]; then
-  echo "diagrams: $site_css is not there: the colours of the palettes cannot be bound to the site" >&2
-  exit 2
 fi
 
 # The value of a token of a block of the CSS of the site.  The block is named
@@ -111,9 +241,6 @@ skinparam_offenders() {
 }
 
 for palette in "$light_palette" "$dark_palette"; do
-  if [ ! -f "$palette" ]; then
-    continue
-  fi
   offenders="$(skinparam_offenders "$palette")"
   if [ -n "$offenders" ]; then
     fail "the palette $palette has a skinparam line that PlantUML cannot read: $offenders"
@@ -158,7 +285,8 @@ bind_palette "$light_palette" ':root {' light
 bind_palette "$dark_palette" '[data-theme="dark"] {' dark
 
 # Every colour of a palette is a colour of the site: a palette does not
-# invent a colour of its own.
+# invent a colour of its own.  This is about the palettes of the repository:
+# the copies of the skins inside the fixture carry a marker of their own.
 for palette in "$light_palette" "$dark_palette"; do
   for hex in $(grep -oiE '#[0-9a-f]{6}' "$palette" | tr 'A-F' 'a-f' | LC_ALL=C sort -u); do
     if ! grep -qiF -- "$hex" "$site_css"; then
@@ -184,148 +312,19 @@ for theme in light dark; do
   done
 done
 
-# --- 2. the fixture: a temporary tree with the palettes and one probe ----------
+# --- 3. the instrument of this machine -----------------------------------------
 
-tmp="$(mktemp -d "${TMPDIR:-/tmp}/yeah-diagram-pipeline.XXXXXX")" || exit 2
-cleanup() {
-  rm -rf "$tmp"
-}
-trap cleanup EXIT
-
-fixture="$tmp/fixture"
-mkdir -p "$fixture/site/diagrams" || exit 2
-cp "$light_palette" "$dark_palette" "$fixture/site/diagrams/" || exit 2
-cat >"$fixture/site/diagrams/probe.puml" <<'PUML'
-@startuml
-state "deciding" as deciding
-state "post-decide" as post
-deciding --> post : tick
-@enduml
-PUML
-
-# --- 3. the instrument is not there: the answer is 3, not 0 --------------------
-
-# The tool of the hermetic run is a path that cannot be run.
-# The directories that hold an executable plantuml leave the PATH, or the
-# pipeline finds the instrument anyway.
-plantuml_dirs=()
-path_dirs=()
-IFS=':' read -r -a path_dirs <<<"${PATH:-}"
-for dir in "${path_dirs[@]+"${path_dirs[@]}"}"; do
-  [ -n "$dir" ] || continue
-  if [ -x "$dir/plantuml" ]; then
-    plantuml_dirs+=("$dir")
-  fi
-done
-if [ -x "$HOME/.nix-profile/bin/plantuml" ]; then
-  plantuml_dirs+=("$HOME/.nix-profile/bin")
-fi
-store_dir="${NIX_STORE_DIR:-/nix/store}"
-for candidate in "$store_dir"/*plantuml*/bin/plantuml; do
-  if [ -x "$candidate" ]; then
-    plantuml_dirs+=("$(dirname "$candidate")")
-  fi
-done
-
-stripped_path=""
-for dir in "${path_dirs[@]+"${path_dirs[@]}"}"; do
-  [ -n "$dir" ] || continue
-  skip=0
-  for bad in "${plantuml_dirs[@]+"${plantuml_dirs[@]}"}"; do
-    if [ "$bad" = "$dir" ]; then
-      skip=1
-      break
-    fi
-  done
-  if [ "$skip" -eq 0 ]; then
-    stripped_path="${stripped_path:+$stripped_path:}$dir"
-  fi
-done
-if [ -z "$stripped_path" ]; then
-  stripped_path="/usr/bin:/bin"
-fi
-
-# The tools the pipeline runs are here, so that the PATH of the hermetic run
-# can lose the directory of plantuml even when plantuml sits next to dirname
-# (the wrappers of the agent are not used: a wrapper of rm moves a directory
-# to the trash, and the trap of the pipeline must delete and not archive).
-system_tool() {
-  local tool="$1" found dir
-  found="$(command -v "$tool" 2>/dev/null || true)"
-  case "$found" in
-    */shims/*)
-      for dir in /usr/bin /bin /run/current-system/sw/bin; do
-        if [ -x "$dir/$tool" ]; then
-          printf '%s' "$dir/$tool"
-          return 0
-        fi
-      done
-      ;;
-  esac
-  [ -n "$found" ] || return 1
-  printf '%s' "$found"
-}
-
-shim="$tmp/hermetic-bin"
-mkdir -p "$shim" || exit 2
-for tool in bash dirname mktemp mkdir sed grep cat mv rm; do
-  tool_path="$(system_tool "$tool" || true)"
-  if [ -n "$tool_path" ]; then
-    ln -sf "$tool_path" "$shim/$tool" || exit 2
-  fi
-done
-
-mkdir -p "$tmp/home-empty" "$tmp/store-empty" || exit 2
-hermetic_log="$tmp/hermetic.log"
-(
-  cd "$fixture" || exit 2
-  env PLANTUML="$tmp/no-such-plantuml" \
-    HOME="$tmp/home-empty" \
-    NIX_STORE_DIR="$tmp/store-empty" \
-    PATH="$shim:$stripped_path" \
-    bash "$REPO/scripts/dev" diagrams
-) >"$hermetic_log" 2>&1
-hermetic_rc=$?
-
-if [ "$hermetic_rc" -ne 3 ]; then
-  fail "the pipeline answered $hermetic_rc where PlantUML is not there and the answer must be 3"
-  sed -n '1,8p' "$hermetic_log" >&2
-elif ! grep -qi 'plantuml' "$hermetic_log"; then
-  fail "the pipeline answered 3 but said nothing about plantuml on its stderr"
-fi
-
-# --- 4. the contract of the wrapper --------------------------------------------
-
-unknown_log="$tmp/unknown.log"
-bash "$REPO/scripts/dev" no-such-subcommand >"$unknown_log" 2>&1
-unknown_rc=$?
-if [ "$unknown_rc" -ne 2 ]; then
-  fail "the wrapper answered $unknown_rc to an unknown subcommand and the answer must be 2"
-fi
-
-args_log="$tmp/args.log"
-(
-  cd "$fixture" || exit 2
-  bash "$REPO/scripts/dev" diagrams probe.puml
-) >"$args_log" 2>&1
-args_rc=$?
-if [ "$args_rc" -ne 2 ]; then
-  fail "the pipeline answered $args_rc to an argument and the answer must be 2"
-fi
-
-# --- 5. both themes are drawn --------------------------------------------------
-
-# The search for PlantUML here is a chain of its own: the check must not lean
-# on the code that it checks.
+# The chain of this script is a chain of its own: the pipeline must not be
+# leaned on to find the instrument that draws the pictures.
 plantuml_bin=""
 if [ -n "${PLANTUML:-}" ] && [ -x "$PLANTUML" ]; then
   plantuml_bin="$PLANTUML"
 elif command -v plantuml >/dev/null 2>&1; then
   plantuml_bin="$(command -v plantuml)"
-elif [ -x "$HOME/.nix-profile/bin/plantuml" ]; then
-  plantuml_bin="$HOME/.nix-profile/bin/plantuml"
+elif [ -x "${HOME:-}/.nix-profile/bin/plantuml" ]; then
+  plantuml_bin="${HOME:-}/.nix-profile/bin/plantuml"
 else
-  for candidate in "$store_dir"/*plantuml*/bin/plantuml; do
+  for candidate in "$store_root"/*plantuml*/bin/plantuml; do
     if [ -x "$candidate" ]; then
       plantuml_bin="$candidate"
       break
@@ -341,66 +340,393 @@ if [ -z "$plantuml_bin" ]; then
   exit 3
 fi
 
-render_log="$tmp/render.log"
+# --- 4. the runs of the pipeline ------------------------------------------------
+
+# A run of the pipeline of the diagrams in a tree of our own.  The report is
+# written to a log and is not read: the exit code and the tree are the
+# promise, and a wording is not a promise.
+run_pipeline() {
+  local dir="$1" log="$2"
+  shift 2
+  (
+    cd "$dir" || blocked "cannot enter the tree of the run"
+    env "$@" bash "$REPO/scripts/dev" diagrams
+  ) >"$log" 2>&1
+}
+
+# The environment of a hermetic run: no home, no store of nix, and the tools
+# of the shim.  Only the step of the chain that the run names can find the
+# instrument.
+base_env=( "HOME=$tmp/home-empty" "NIX_STORE_DIR=$tmp/store-empty" )
+
+# A tree of one diagram, for a run of the chain of the search.
+chain_fixture() {
+  local dir="$1"
+  mkdir -p "$dir/site/diagrams" || blocked "cannot make the tree of the check"
+  cp "$light_palette" "$dark_palette" "$dir/site/diagrams/" || blocked "cannot make the tree of the check"
+  cat >"$dir/site/diagrams/probe.puml" <<'PUML'
+@startuml
+state "probe-of-the-chain" as probe
+probe --> probe : tick
+@enduml
+PUML
+}
+
+# The pictures of a run of the chain: two for the one diagram of the tree,
+# and nothing else.
+assert_chain_pictures() {
+  local dir="$1" step="$2"
+  local pictures
+  if [ ! -d "$dir/site/assets/diagrams" ]; then
+    fail "the step $step of the chain of the search drew no picture at all"
+    return
+  fi
+  pictures="$(cd "$dir/site/assets/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+  if [ "$pictures" != "probe-dark.svg probe-light.svg " ]; then
+    fail "the step $step of the chain of the search drew [$pictures] and not the two pictures of the probe"
+  fi
+}
+
+# --- 5. every step of the chain of the search works alone ----------------------
+
+# (a) the step of the environment: PLANTUML names the instrument, and
+# nowhere else can be found.
+env_dir="$tmp/chain-env"
+chain_fixture "$env_dir"
+run_pipeline "$env_dir" "$tmp/chain-env.log" \
+  "PLANTUML=$plantuml_bin" \
+  "${base_env[@]}" \
+  "PATH=$shim:$stripped_path"
+chain_rc=$?
+if [ "$chain_rc" -ne 0 ]; then
+  fail "the step of the environment of the chain of the search answered $chain_rc and not 0"
+  sed -n '1,8p' "$tmp/chain-env.log" >&2
+else
+  assert_chain_pictures "$env_dir" "of the environment"
+fi
+
+# (b) the step of the PATH: the command is on the PATH, and the environment
+# does not name it.
+path_dir="$tmp/chain-path"
+mkdir -p "$tmp/path-bin" || blocked "cannot make the tree of the check"
+ln -sf "$plantuml_bin" "$tmp/path-bin/plantuml" || blocked "cannot make the tree of the check"
+chain_fixture "$path_dir"
+run_pipeline "$path_dir" "$tmp/chain-path.log" \
+  -u PLANTUML \
+  "${base_env[@]}" \
+  "PATH=$shim:$tmp/path-bin:$stripped_path"
+chain_rc=$?
+if [ "$chain_rc" -ne 0 ]; then
+  fail "the step of the PATH of the chain of the search answered $chain_rc and not 0"
+  sed -n '1,8p' "$tmp/chain-path.log" >&2
+else
+  assert_chain_pictures "$path_dir" "of the PATH"
+fi
+
+# (c) the step of the profile: the binary of the user in ~/.nix-profile/bin.
+profile_dir="$tmp/chain-profile"
+mkdir -p "$tmp/home-profile/.nix-profile/bin" || blocked "cannot make the tree of the check"
+ln -sf "$plantuml_bin" "$tmp/home-profile/.nix-profile/bin/plantuml" || blocked "cannot make the tree of the check"
+chain_fixture "$profile_dir"
+run_pipeline "$profile_dir" "$tmp/chain-profile.log" \
+  -u PLANTUML \
+  "HOME=$tmp/home-profile" \
+  "NIX_STORE_DIR=$tmp/store-empty" \
+  "PATH=$shim:$stripped_path"
+chain_rc=$?
+if [ "$chain_rc" -ne 0 ]; then
+  fail "the step of the profile of the chain of the search answered $chain_rc and not 0"
+  sed -n '1,8p' "$tmp/chain-profile.log" >&2
+else
+  assert_chain_pictures "$profile_dir" "of the profile"
+fi
+
+# (d) the step of the store: the glob of the store of nix, which the caller
+# names.
+store_dir="$tmp/chain-store"
+mkdir -p "$tmp/store/plantuml-1.2025.10/bin" || blocked "cannot make the tree of the check"
+ln -sf "$plantuml_bin" "$tmp/store/plantuml-1.2025.10/bin/plantuml" || blocked "cannot make the tree of the check"
+chain_fixture "$store_dir"
+run_pipeline "$store_dir" "$tmp/chain-store.log" \
+  -u PLANTUML \
+  "HOME=$tmp/home-empty" \
+  "NIX_STORE_DIR=$tmp/store" \
+  "PATH=$shim:$stripped_path"
+chain_rc=$?
+if [ "$chain_rc" -ne 0 ]; then
+  fail "the step of the store of the chain of the search answered $chain_rc and not 0"
+  sed -n '1,8p' "$tmp/chain-store.log" >&2
+else
+  assert_chain_pictures "$store_dir" "of the store"
+fi
+
+# --- 6. the instrument is not there: the answer is 3, not 0 --------------------
+
+missing_dir="$tmp/chain-missing"
+chain_fixture "$missing_dir"
+run_pipeline "$missing_dir" "$tmp/chain-missing.log" \
+  "PLANTUML=$tmp/no-such-plantuml" \
+  "${base_env[@]}" \
+  "PATH=$shim:$stripped_path"
+missing_rc=$?
+if [ "$missing_rc" -ne 3 ]; then
+  fail "the pipeline answered $missing_rc where PlantUML is not there and the answer must be 3"
+  sed -n '1,8p' "$tmp/chain-missing.log" >&2
+elif ! grep -qi 'plantuml' "$tmp/chain-missing.log"; then
+  fail "the pipeline answered 3 but said nothing about plantuml on its stderr"
+fi
+
+# --- 7. the contract of the wrapper --------------------------------------------
+
+unknown_log="$tmp/unknown.log"
+bash "$REPO/scripts/dev" no-such-subcommand >"$unknown_log" 2>&1
+unknown_rc=$?
+if [ "$unknown_rc" -ne 2 ]; then
+  fail "the wrapper answered $unknown_rc to an unknown subcommand and the answer must be 2"
+fi
+
+args_log="$tmp/args.log"
 (
-  cd "$fixture" || exit 2
-  bash "$REPO/scripts/dev" diagrams
-) >"$render_log" 2>&1
-render_rc=$?
-if [ "$render_rc" -ne 0 ]; then
-  fail "the pipeline answered $render_rc where the probe of both themes must be drawn and the answer must be 0"
-  sed -n '1,8p' "$render_log" >&2
-fi
-# The wording of the report is not the promise; the count of the pictures is.
-if ! grep -qiE '(rendered|drew|written|wrote)[^0-9]*(2|two)[^0-9]*(picture|image|svg)' "$render_log"; then
-  fail "the pipeline did not report that it drew two pictures of the probe: $(sed -n '1,3p' "$render_log")"
-fi
-if ! grep -qiE '(of|for)[^0-9]*(1|one)[^0-9]*diagram' "$render_log"; then
-  fail "the pipeline did not report that it drew one diagram: $(sed -n '1,3p' "$render_log")"
+  cd "$tmp" || blocked "cannot enter the tree of the check"
+  bash "$REPO/scripts/dev" diagrams probe.puml
+) >"$args_log" 2>&1
+args_rc=$?
+if [ "$args_rc" -ne 2 ]; then
+  fail "the pipeline answered $args_rc to an argument and the answer must be 2"
 fi
 
-light_picture="$fixture/site/assets/diagrams/probe-light.svg"
-dark_picture="$fixture/site/assets/diagrams/probe-dark.svg"
+# --- 8. every diagram, in both themes ------------------------------------------
 
-if [ ! -s "$light_picture" ]; then
-  fail "the light picture of the probe is missing or empty"
-fi
-if [ ! -s "$dark_picture" ]; then
-  fail "the dark picture of the probe is missing or empty"
+main_dir="$tmp/main"
+mkdir -p "$main_dir/site/diagrams" || blocked "cannot make the tree of the check"
+cp "$light_palette" "$main_dir/site/diagrams/palette-light.puml" || blocked "cannot make the tree of the check"
+cp "$dark_palette" "$main_dir/site/diagrams/palette-dark.puml" || blocked "cannot make the tree of the check"
+
+# The marker of the skin: a font name that is in the copy of the skin of the
+# fixture and in no code of the pipeline.  A picture carries the font of the
+# skin it was drawn with, so a pipeline that draws with a skin of its own
+# leaves no marker in the picture.
+skin_marker="YeahWave83MarkerFont"
+printf 'skinparam defaultFontName "%s"\n' "$skin_marker" >>"$main_dir/site/diagrams/palette-light.puml"
+printf 'skinparam defaultFontName "%s"\n' "$skin_marker" >>"$main_dir/site/diagrams/palette-dark.puml"
+
+# Two diagrams with names of their own.  Every diagram carries a label that
+# is in no other diagram: the label tells the picture of a diagram from the
+# picture of the other diagram.
+cat >"$main_dir/site/diagrams/alpha.puml" <<'PUML'
+@startuml
+state "label-of-alpha-only" as alpha
+state "second-of-alpha" as alpha2
+alpha --> alpha2 : tick
+@enduml
+PUML
+cat >"$main_dir/site/diagrams/beta.puml" <<'PUML'
+@startuml
+state "label-of-beta-only" as beta
+state "second-of-beta" as beta2
+beta --> beta2 : tick
+@enduml
+PUML
+
+# The label of a diagram: the text of the first state of the diagram.
+diagram_label() {
+  sed -n 's/^[[:space:]]*state[[:space:]]*"\([^"]*\)".*/\1/p' "$1" | head -n 1
+}
+
+# The diagrams of the tree, with their labels, and the pictures the tree must
+# hold: two for every diagram, and nothing else.  The list is read from the
+# tree of the sources, so it says two times the number of the diagrams
+# without saying the number.
+labels_file="$tmp/labels"
+expected_file="$tmp/expected-pictures"
+: >"$labels_file"
+: >"$expected_file"
+for src in "$main_dir"/site/diagrams/*.puml; do
+  [ -f "$src" ] || continue
+  name="$(basename "$src" .puml)"
+  case "$name" in
+    palette-*) continue ;;
+  esac
+  label="$(diagram_label "$src")"
+  if [ -z "$label" ]; then
+    fail "the diagram $name carries no label: the picture of it cannot be told from the picture of another diagram"
+    continue
+  fi
+  printf '%s %s\n' "$name" "$label" >>"$labels_file"
+  printf '%s-dark.svg\n%s-light.svg\n' "$name" "$name" >>"$expected_file"
+done
+expected_pictures="$(LC_ALL=C sort "$expected_file" | tr '\n' ' ')"
+
+sources_before="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+
+run_pipeline "$main_dir" "$tmp/main.log" \
+  "PLANTUML=$plantuml_bin" \
+  "${base_env[@]}" \
+  "PATH=$shim:$stripped_path"
+main_rc=$?
+if [ "$main_rc" -ne 0 ]; then
+  fail "the pipeline answered $main_rc where both themes of every diagram must be drawn and the answer must be 0"
+  sed -n '1,8p' "$tmp/main.log" >&2
 fi
 
-if [ -s "$light_picture" ] && [ -s "$dark_picture" ]; then
-  if cmp -s "$light_picture" "$dark_picture"; then
-    fail "the light picture of the probe and the dark picture of the probe are the same picture"
-  fi
-  if ! grep -qF 'background:#FFFFFF' "$light_picture"; then
-    fail "the light picture of the probe does not carry the background #FFFFFF of the site"
-  fi
-  if ! grep -qF '#999999' "$light_picture"; then
-    fail "the light picture of the probe does not carry the border #999999 of the site"
-  fi
-  if ! grep -qF 'background:#000000' "$dark_picture"; then
-    fail "the dark picture of the probe does not carry the background #000000 of the site"
-  fi
-  if ! grep -qF '#646464' "$dark_picture"; then
-    fail "the dark picture of the probe does not carry the border #646464 of the site"
-  fi
-fi
-
-# The tree of the diagrams keeps the palettes and the probe, and nothing else:
-# the pipeline must not leave a file of its own next to the sources.
-sources="$(cd "$fixture/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
-if [ "$sources" != "palette-dark.puml palette-light.puml probe.puml " ]; then
-  fail "the tree of the diagrams kept something that is not a palette and not the probe: $sources"
-fi
-
-if [ ! -d "$fixture/site/assets/diagrams" ]; then
+if [ ! -d "$main_dir/site/assets/diagrams" ]; then
   fail "the pipeline wrote no tree of pictures: site/assets/diagrams does not exist"
 else
-  pictures="$(cd "$fixture/site/assets/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
-  if [ "$pictures" != "probe-dark.svg probe-light.svg " ]; then
-    fail "the tree of the pictures kept something that is not a picture of the probe: $pictures"
+  pictures="$(cd "$main_dir/site/assets/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+  if [ "$pictures" != "$expected_pictures" ]; then
+    fail "the pipeline drew [$pictures] and not two pictures for every diagram: $expected_pictures"
   fi
+fi
+
+# The tree of the sources keeps the sources and nothing else: the pipeline
+# must not leave a file of its own next to them.
+sources_after="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+if [ "$sources_after" != "$sources_before" ]; then
+  fail "the pipeline wrote next to the sources: [$sources_after] and not [$sources_before]"
+fi
+
+# The colours of the pictures are the tokens of the site.  The tokens are
+# read from the CSS of the site: a change of a token that the skin follows
+# is not a failure of the pipeline.
+light_background="$(css_token ':root {' --face-default-bg)"
+dark_background="$(css_token '[data-theme="dark"] {' --face-default-bg)"
+light_border="$(css_token ':root {' --face-divider)"
+dark_border="$(css_token '[data-theme="dark"] {' --face-divider)"
+
+while read -r name label; do
+  for theme in light dark; do
+    picture="$main_dir/site/assets/diagrams/$name-$theme.svg"
+    if [ ! -s "$picture" ]; then
+      fail "the picture of $name ($theme) is missing or empty"
+      continue
+    fi
+    # The picture comes from its own source.
+    if ! grep -qF -- "$label" "$picture"; then
+      fail "the picture of $name ($theme) does not carry the label $label of its own source"
+    fi
+    # ... and from no other source.
+    while read -r other_name other_label; do
+      [ "$other_name" != "$name" ] || continue
+      if grep -qF -- "$other_label" "$picture"; then
+        fail "the picture of $name ($theme) carries the label $other_label of the diagram $other_name"
+      fi
+    done <"$labels_file"
+    # The picture comes from the skin of the file: the marker of the copy of
+    # the skin of the fixture is in the picture.
+    if ! grep -qF -- "$skin_marker" "$picture"; then
+      fail "the picture of $name ($theme) does not carry the marker $skin_marker of the skin of the fixture: the picture was not drawn with the skin of the file"
+    fi
+    # The colours of the picture are the tokens of the site.
+    if [ "$theme" = light ]; then
+      background="$light_background"
+      border="$light_border"
+    else
+      background="$dark_background"
+      border="$dark_border"
+    fi
+    if [ -z "$background" ] || [ -z "$border" ]; then
+      fail "the tokens of the site are not in $site_css: the colours of the pictures cannot be measured"
+      continue
+    fi
+    if ! grep -qiF -- "background:$background" "$picture"; then
+      fail "the picture of $name ($theme) does not carry the background $background of the site"
+    fi
+    if ! grep -qiF -- "stroke:$border" "$picture"; then
+      fail "the picture of $name ($theme) does not carry the border $border of the site"
+    fi
+  done
+  # The two themes of a diagram are two pictures and not one picture twice.
+  light_picture="$main_dir/site/assets/diagrams/$name-light.svg"
+  dark_picture="$main_dir/site/assets/diagrams/$name-dark.svg"
+  if [ -s "$light_picture" ] && [ -s "$dark_picture" ]; then
+    if cmp -s "$light_picture" "$dark_picture"; then
+      fail "the light picture of $name and the dark picture of $name are the same picture"
+    fi
+  fi
+done <"$labels_file"
+
+# --- 9. the failures answer 1, not 0 -------------------------------------------
+
+# A diagram that PlantUML cannot read: the pipeline must answer 1.
+broken_dir="$tmp/broken"
+mkdir -p "$broken_dir/site/diagrams" || blocked "cannot make the tree of the check"
+cp "$light_palette" "$dark_palette" "$broken_dir/site/diagrams/" || blocked "cannot make the tree of the check"
+cat >"$broken_dir/site/diagrams/broken.puml" <<'PUML'
+@startuml
+state "broken" as broken
+broken --> > : this is not a diagram
+@enduml
+PUML
+run_pipeline "$broken_dir" "$tmp/broken.log" \
+  "PLANTUML=$plantuml_bin" \
+  "${base_env[@]}" \
+  "PATH=$shim:$stripped_path"
+broken_rc=$?
+if [ "$broken_rc" -ne 1 ]; then
+  fail "the pipeline answered $broken_rc where PlantUML cannot read the diagram and the answer must be 1"
+  sed -n '1,8p' "$tmp/broken.log" >&2
+fi
+
+# A PlantUML that writes no picture: the pipeline must answer 1.
+fake_plantuml="$tmp/fake-plantuml"
+printf '#!/bin/sh\nexit 0\n' >"$fake_plantuml" || blocked "cannot make the tree of the check"
+chmod +x "$fake_plantuml" || blocked "cannot make the tree of the check"
+quiet_dir="$tmp/quiet"
+mkdir -p "$quiet_dir/site/diagrams" || blocked "cannot make the tree of the check"
+cp "$light_palette" "$dark_palette" "$quiet_dir/site/diagrams/" || blocked "cannot make the tree of the check"
+cat >"$quiet_dir/site/diagrams/quiet.puml" <<'PUML'
+@startuml
+state "quiet" as quiet
+@enduml
+PUML
+run_pipeline "$quiet_dir" "$tmp/quiet.log" \
+  "PLANTUML=$fake_plantuml" \
+  "${base_env[@]}" \
+  "PATH=$shim:$stripped_path"
+quiet_rc=$?
+if [ "$quiet_rc" -ne 1 ]; then
+  fail "the pipeline answered $quiet_rc where PlantUML writes no picture and the answer must be 1"
+  sed -n '1,8p' "$tmp/quiet.log" >&2
+fi
+
+# A PlantUML that writes a picture that is an error of PlantUML, and answers
+# 0: the third branch of the failure of the pipeline.  PlantUML itself
+# answers 200 on a diagram it cannot read, so this branch needs a picture
+# that is an error and a tool that is satisfied.
+error_plantuml="$tmp/error-plantuml"
+cat >"$error_plantuml" <<'FAKE'
+#!/bin/sh
+# A PlantUML that writes a picture that is an error of PlantUML, and answers 0.
+out=""
+src=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out="$2"; shift 2 ;;
+    *) src="$1"; shift ;;
+  esac
+done
+name="${src##*/}"
+name="${name%.puml}"
+printf '<svg>Syntax Error</svg>\n' >"$out/$name.svg"
+exit 0
+FAKE
+chmod +x "$error_plantuml" || blocked "cannot make the tree of the check"
+error_dir="$tmp/error"
+mkdir -p "$error_dir/site/diagrams" || blocked "cannot make the tree of the check"
+cp "$light_palette" "$dark_palette" "$error_dir/site/diagrams/" || blocked "cannot make the tree of the check"
+cat >"$error_dir/site/diagrams/error.puml" <<'PUML'
+@startuml
+state "error" as error
+@enduml
+PUML
+run_pipeline "$error_dir" "$tmp/error.log" \
+  "PLANTUML=$error_plantuml" \
+  "${base_env[@]}" \
+  "PATH=$shim:$stripped_path"
+error_rc=$?
+if [ "$error_rc" -ne 1 ]; then
+  fail "the pipeline answered $error_rc where the picture is an error of PlantUML and the answer must be 1"
+  sed -n '1,8p' "$tmp/error.log" >&2
 fi
 
 # --- the end -------------------------------------------------------------------

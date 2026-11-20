@@ -13,6 +13,7 @@
     "docs/PLAN.md",
     "docs/ARCHITECTURE-CATCHUP-PLAN.md",
     "docs/SITE-DIAGRAMS-PLAN.md",
+    "site/assets/diagrams/.gitkeep",
     "AGENTS.md"
   ],
   "checks": [

@@ -3683,7 +3683,7 @@
     },
     {
       "id": "the-diagram-pipeline-renders-both-themes",
-      "text": "The pipeline of the diagrams renders every diagram in both themes: `scripts/dev diagrams` finds PlantUML by itself (the environment, PATH, the profile of the user, the store of nix), answers with the code 3 when the tool is not there, and writes two pictures per diagram into `site/assets/diagrams/` — the light one and the dark one — drawn with the two skins of the site, whose colours are the tokens of the site.",
+      "text": "The pipeline of the diagrams renders every diagram in both themes: `scripts/dev diagrams` finds PlantUML by itself — every step of the chain of the search works alone (the environment, PATH, the profile of the user, the store of nix) — answers with the code 3 when the tool is not there, answers with the code 1 when PlantUML fails or writes no picture, and writes two pictures for every diagram of the tree into `site/assets/diagrams/` — the light one and the dark one — each picture drawn from its own source with the skin of the site, whose colours are the tokens of the site.",
       "scope": [
         "scripts/dev",
         "scripts/lib/tools.sh",
@@ -3702,7 +3702,7 @@
           "spec": "./scripts/dev check tests/checks/check-the-diagram-pipeline-renders-both-themes.sh"
         }
       ],
-      "falsifier": "a diagram of the site is not rendered in both themes, or the pipeline renders one theme only, or the pipeline does not find PlantUML by itself, or the pipeline answers with the code 0 when the tool is not there, or the skins of the themes do not carry the colours of the site, or the control of the claim does not make the check fail by its own assertion",
+      "falsifier": "a step of the chain of the search does not work alone, or the pipeline renders one theme only, or a diagram of the tree is not drawn, or a picture is not drawn from its own source, or the pipeline answers with the code 0 when the tool is not there, or the pipeline answers with the code 0 when PlantUML fails or writes no picture, or the skins of the themes do not carry the colours of the site, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|for theme in light dark; do|for theme in light; do|' scripts/dev",
       "waiver": null
