@@ -93,7 +93,7 @@ session and the update, and the update names the mode."
                   yeah-check--failures))
           (unless (and (listp available)
                        (equal (sort (yeah-check--mode-ids available) #'string<)
-                              '("build" "plan")))
+                              '("auto" "build" "plan")))
             (push (format "the session did not publish the modes it may be in: %S"
                           available)
                   yeah-check--failures))

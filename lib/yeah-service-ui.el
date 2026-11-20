@@ -55,12 +55,14 @@ When nil, the service inherits the person's full init file."
   "Return the standing permissions of PROFILE as permission rule plists.
 `plan' denies the tools that change the world, `build' grants nothing —
 every effect is asked of the person over the wire, and this buffer is
-what answers — and `allow' grants the tools that edit, so that the agent
-may work without asking."
+what answers — `allow' grants the tools that edit, so that the agent
+may work without asking, and `auto' is the profile of the kernel that
+grants everything: there is nobody to ask."
   (pcase profile
     ('plan (yeah-perm-profile "plan"))
     ('allow (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'allow))
                     '("edit" "write" "bash")))
+    ('auto (yeah-perm-profile "auto"))
     (_ nil)))
 
 (defvar-local yeah-service-ui--client nil
@@ -525,7 +527,7 @@ the agent look but not touch, `build' asks the person for every effect
          "Yeah service permissions: "
          '(("Build — ask before changing the world" . "build")
            ("Plan — read only" . "plan")
-           ("Allow edits — unattended" . "allow"))
+           ("Auto — unattended, nobody answers" . "auto"))
          nil t "build"))))
     (setq client
           (yeah-client-connect

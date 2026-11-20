@@ -27,7 +27,7 @@ export interface YeahLaunch {
   /** Хост провайдера. */
   host: string;
   /** Профиль разрешений: `plan` запрещает, `build` спрашивает человека. */
-  profile: "plan" | "build";
+  profile: "plan" | "build" | "auto";
   /** Каталог данных Yeah; пусто — умолчание ядра. */
   dataHome: string;
 }

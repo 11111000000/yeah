@@ -2448,6 +2448,64 @@ a full zram, and that host was not reproduced.  The repair does not make the
 corpse disappear faster; it stops the measure of the claim from depending on the
 reaping, which was never the subject of the claim.
 
+## The mode without a person and the trash of the agent — wave 76 (2026-11-19, 18:05–00:20)
+
+Two decisions of the owner on this day: the mode in which the orchestrator
+never asks the person, and the trash in place of the deletion.
+
+**The live route (19 November 2026, 00:14).**  The catalog of the provider
+after the plugin was reloaded: `Plan, Build, Auto`.  The run:
+
+```
+$ paseo run --provider yeah --mode auto --cwd /home/az/Projects/yeah \
+    --title "Живой режим auto: команда без вопроса" \
+    "Выполни в терминале команду pwd и напиши ответ словом OK."
+```
+
+The journal of the session holds the mode and the decisions:
+
+```
+{"type":"session-mode","mode":"auto",...}
+{"type":"tool-request","tool":"mcp--paseo--list_hosts",...}
+{"type":"permission-request","action":"mcp--paseo--list_hosts",...}
+{"type":"permission-decision","action":"mcp--paseo--list_hosts","effect":"allow",
+ "reply":":once","reason":"the auto mode allows mcp--paseo--list_hosts without a question",...}
+```
+
+The orchestrator was asked **zero** times.  The reason in the record is the
+whole of the wave: the mode decides before anybody is asked, because there is
+nobody to ask.  The second call of the model (`mcp--paseo--create_terminal`)
+was decided the same way.
+
+**What the live run did not finish.**  The model chose the tools of the
+orchestrator (the MCP server of Paseo) instead of the `bash` of Yeah, and the
+call of `create_terminal` did not answer: the last record of the session is
+the usage of the turn of 00:17:16, and the run was still `running` at 00:26.
+That is a separate matter -- the tools of the orchestrator over the ACP route --
+and this wave does not claim anything about it.  What the live run proves is
+narrower and is about the permissions: the session in the mode `auto` decided
+both calls itself, and the person was not asked about either.
+
+**The measurement of the trash.**  A file moved into the trash and came back
+with its content; a tree moved with what was in it; two files of one name got
+two entries (`victim.txt` and `victim.txt.1`); the `rm -rf` of the shell left
+the tree in the trash and not on the disk, and the inner file of the tree
+came with it.  Without `gio` the shim refuses the removal instead of letting
+it through (`rm: command not found`), so the failure of the host is a failure
+and not a deletion.
+
+**The measurement of the guard.**  Refused by name, with the reason: `sudo
+rm -rf /tmp/x`, `/bin/rm -rf /tmp/x`, `find . -delete`, `shred -u secret`,
+`dd if=/dev/zero of=/dev/sda`, `mkfs.ext4 /dev/sdb1`, `git clean -fdx`, the
+fork bomb.  Passed through: `rm -rf build` (it goes into the trash), `git
+status`, `cargo build --release`, `ls -la`, `make test`.
+
+**What this does not prove.**  The guard is a list of forms and not a
+sandbox, and a command that hides its intent is not caught by it.  The
+boundary of the agent is the account it runs as and the trash that keeps
+what it throws away; the map of what is and is not protected is
+`docs/AGENT-SAFETY.md`.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The

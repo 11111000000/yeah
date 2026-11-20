@@ -234,13 +234,16 @@ PROFILE and ROOT enrich the session metadata without changing the journal."
 
 (defun yeah-product--choose-profile ()
   "Ask the person which permission profile the session runs under.
-The answer is `plan' or `build'; `build' is the default, and it is the
-behaviour of the harness without a profile: the person is asked for
-every tool that changes the world."
+The answer is `plan', `build' or `auto'; `build' is the default, and it
+is the behaviour of the harness without a profile: the person is asked
+for every tool that changes the world.  `auto' is for a session that
+runs with nobody at the keyboard: nothing is asked, because nobody
+would answer."
   (completing-read
    "Yeah profile: "
    '(("Build — ask before changing the world" . "build")
-     ("Plan — read only" . "plan"))
+     ("Plan — read only" . "plan")
+     ("Auto — nobody answers, nothing is asked" . "auto"))
    nil t "build"))
 
 (defun yeah-product--system-prompt (root)

@@ -464,11 +464,29 @@ its own journal, so a child of depth one does not look like a root after a
 restart and is refused the delegation that would go deeper than the agent of
 the child allows. The promises above are kept and made explicit, not relaxed.*
 
-### D9 — Plan and Build are permission profiles
+### D9 — Plan, Build and Auto are permission profiles
 
 Plan mode is a read-oriented rule profile. Build mode enables the normal
 approved effect set. Switching modes is a journal event. PlanExit is an
 approval operation, not a second execution engine.
+
+Auto mode is the third profile: it allows the tools that change the world
+without a question, because there is nobody to answer the question. The
+owner decided on 2026-11-19 that the mode is needed (the orchestrator runs
+the agent unattended, and every question is a question nobody answers). The
+mode does not make the agent safe: the safety of the agent is the safety of
+its tools, and that is why the deletion of the agent is a move into the
+trash of the user and not a removal (`lib/yeah-trash.el`), and why the
+commands that destroy in place are refused by name
+(`lib/yeah-shell-guard.el`). The guard is a list of forms and not a
+sandbox: the honest boundary of the agent is the account it runs as, and
+the map of what is and is not protected is `docs/AGENT-SAFETY.md`.
+
+*Amended on 2026-11-19 (wave 76): the profile `auto` was added, the effect
+`allow` of a profile is honoured by the wire and by the approval of the
+attached path, and a rule may name every action with the wildcard. The
+decision of the owner is recorded in `docs/PASEO-INTEGRATION-PLAN.md` §5.1
+and in `docs/PLAN.md` §16.65.*
 
 ### D10 — Design rationale and verified facts live together
 
@@ -640,6 +658,22 @@ configuration of that Emacs is. The price is named, not hidden: the mode line
 of the file is part of its content, so it is ignored, and the buffer of the
 person shows the file in the mode of its name. The rule is added, and the
 security model is made explicit, not relaxed.*
+
+*Amended on 2026-11-19 (wave 76), and the amendment names a debt instead of
+hiding it: two lines of this model are a **declaration and not a
+description**. The first is "canonical workspace paths and explicit
+outside-workspace permission": there is no such check in the kernel, the
+tools of a session read and write wherever they are told to, and the
+directory of the session is the working directory and not a boundary. The
+second is "no secret files or credentials in logs": the output of a tool and
+the arguments of a tool are written into the journal as they are, and a
+credential read by a command lands in the log. The map of what is protected
+and what is not is `docs/AGENT-SAFETY.md`; the two debts above are its
+sections 2.1 and 2.3, and they are the first two waves proposed there. The
+third line of this model is true and stays true: there is no claim that a
+regex or a whitelist is a complete sandbox -- the guard of the shell
+(`lib/yeah-shell-guard.el`) is a list of forms, and the trash of the agent
+(`lib/yeah-trash.el`) keeps what the agent throws away.*
 
 ## 9. Product and interface
 

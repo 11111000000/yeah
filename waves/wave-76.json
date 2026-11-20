@@ -1,0 +1,44 @@
+{
+  "id": "wave-76",
+  "title": "a session may work without a person, and a deletion goes into the trash",
+  "intent": "Two decisions of the owner on 2026-11-19.  The first: the person does not want to answer the questions of the permission system for every command of the agent -- the orchestrator of Paseo runs the agent unattended, and every question is a question nobody answers; the mode `auto' was added, and it allows the tools that change the world without a question.  The second: the agent of a coding harness must not be able to remove what cannot be taken back -- the deletion of the agent is now a move into the trash of the user, and the commands that destroy in place are refused by name.  What changes in the kernel: a third permission profile (`auto'), the effect `allow' of a profile is now honoured by the two paths that decide (the wire of ACP and the approval of the attached path), a rule may name every action with the wildcard, the trash of the agent (`lib/yeah-trash.el'), the guard of the shell (`lib/yeah-shell-guard.el'), and the `delete' tool of the agent.  The `rm' of the shell of the agent is a script that moves what it is given into the trash, so that `rm -rf', `find -exec rm' and `xargs rm' all end in the trash and not in nothing.  The check of the mode proves that the client of the orchestrator is not asked in the `auto' mode and that the command runs; the check of the trash proves that the tree comes back and that the commands which destroy in place are refused.",
+  "touches": [
+    "lib/yeah-perm.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-approval.el",
+    "lib/yeah-process.el",
+    "lib/yeah-product.el",
+    "lib/yeah-service-ui.el",
+    "lib/yeah-builtins.el",
+    "lib/yeah-trash.el",
+    "lib/yeah-shell-guard.el",
+    "tests/checks/check-a-session-may-work-without-a-person.el",
+    "tests/checks/check-a-delete-goes-to-the-trash.el",
+    "tests/support/yeah-bash-model.el",
+    "tests/support/yeah-acp-mode.el",
+    "tests/unit/test-yeah-trash.el",
+    "tests/unit/test-yeah-perm.el",
+    "tests/unit/test-yeah-acp.el",
+    "tests/unit/test-yeah-process.el",
+    "plugin/yeah-provider/shared/settings.ts",
+    "plugin/yeah-provider/server/launch.ts",
+    "spec.json",
+    "waves/wave-76.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-session-may-work-without-a-person.el",
+    "./scripts/dev check tests/checks/check-a-delete-goes-to-the-trash.el",
+    "./scripts/dev check tests/checks/*",
+    "cd plugin/yeah-provider && npm run typecheck && npm test"
+  ],
+  "claims": [
+    "a-session-may-work-without-a-person",
+    "a-delete-goes-to-the-trash"
+  ],
+  "commitment": [],
+  "objection": "The wave does not make the agent safe, and it does not pretend to: the guard of the shell is a list of forms and not a sandbox, and a command that hides its intent (`r''m -rf', a variable, a script from the network) is not caught by it.  The honest boundary of the agent is the account it runs as and the trash that keeps what it throws away, and the wave says so in the names of its own files.  The `rm' of the shell needs `gio', the program of the desktop of the person: where `gio' is not there, the shim refuses the removal instead of letting it through, so the failure is a failure and not a deletion.  The `auto' mode allows everything the harness can do, and the tools that change the world answer for themselves: the deletion goes into the trash, the commands that destroy in place are refused, and the file that a read of the project brought into Emacs is opened with the local variables of the file neutralized.  The tools of the MCP servers of the session are allowed by the mode as well, and the wave does not decide which of them a person may trust: the trust of a tool of an MCP server is a decision of the person who named the server.  The mode `auto' does not survive the restart of the service: the mode lives in the journal of the session, and a session that is opened again comes back in the mode it was left in.  The profile of the person that stands behind the mode is not changed by the wave: the standing rules of the service still refuse what they refuse, and only an explicit refusal of the person outranks the allowance of the mode.",
+  "refuted_by": "the client is asked about a permission in the auto mode, or the tool does not run in the auto mode, or the rm of the agent removed the tree for good, or the tree did not come back from the trash, or the agent ran a command that destroys in place, or the control of a claim does not make its check fail by its own assertion",
+  "note": "The controls of both claims were applied to copies of the tree and both bit by the assertion of their own check and not by a crash.  The control of the mode takes the decision of the mode away -- `((eq (yeah-acp--mode-effect mode request) 'allow)' becomes `(nil' -- and the check ends with the code 1 and with its own words: 'the client was asked about a permission in the auto mode'.  The control of the trash takes the shims out of the PATH of the processes -- `(shell-quote-argument (yeah-shell-guard-path))' becomes `\"\"' -- and the check ends with the code 1 and with its own words: 'the tree is not in the trash after the rm of the agent', 'the tree in the trash lost what was in it' and 'the trash does not name the tree that was thrown away'.  The measurement of the wave: a file moved into the trash and came back with its content, a tree moved with what was in it, two files of one name got two entries, the `rm -rf' of the shell left the tree in the trash and not on the disk, and the commands `sudo', `/bin/rm', `find -delete', `shred', `dd of=/dev/', `mkfs', `git clean' and the fork bomb were refused by name with their reason.  The live run of the orchestrator (19 November 2026) with the mode `auto' answered the question of the owner: the agent ran inside Paseo and the orchestrator was not asked about its commands.  The mode is published to the orchestrator by the kernel itself: the catalog of the modes of the provider shows `Plan, Build, Auto' after the plugin was reloaded."
+}

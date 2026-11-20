@@ -3547,6 +3547,59 @@
       "register": "fact",
       "control": "sed -i 's|if (await serviceListens(socketPath)) {|if (true) {|' plugin/yeah-provider/server/service.ts",
       "waiver": null
+    },
+    {
+      "id": "a-session-may-work-without-a-person",
+      "text": "A session of a person who is not there may work: the mode `auto' allows the tools that change the world without a question, because nobody would answer the question, and the client of the orchestrator is not asked at all.",
+      "scope": [
+        "lib/yeah-perm.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-approval.el",
+        "tests/checks/check-a-session-may-work-without-a-person.el",
+        "tests/support/yeah-bash-model.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-session-may-work-without-a-person.el"
+        }
+      ],
+      "falsifier": "the client is asked about a permission in the auto mode, or the tool does not run in the auto mode, or the auto mode is not among the modes a session may be in, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i \"s|((eq (yeah-acp--mode-effect mode request) 'allow)|(nil|\" lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "a-delete-goes-to-the-trash",
+      "text": "A deletion of the agent is a move that can be taken back: the rm of the shell of the agent moves what it is given into the trash of the user instead of removing it, the delete tool of the agent moves a path the same way, and the commands that destroy in place and cannot be caught that way are refused by name.",
+      "scope": [
+        "lib/yeah-trash.el",
+        "lib/yeah-shell-guard.el",
+        "lib/yeah-process.el",
+        "lib/yeah-builtins.el",
+        "tests/checks/check-a-delete-goes-to-the-trash.el",
+        "tests/unit/test-yeah-trash.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-delete-goes-to-the-trash.el"
+        }
+      ],
+      "falsifier": "the rm of the agent removed the tree for good, or the tree did not come back from the trash, or the agent ran a command that destroys in place, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(shell-quote-argument (yeah-shell-guard-path))|\"\"|' lib/yeah-shell-guard.el",
+      "waiver": null
     }
   ]
 }

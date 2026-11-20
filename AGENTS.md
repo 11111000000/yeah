@@ -999,6 +999,20 @@ work item. Never resolve it by silently making documentation more optimistic.
   (`mathc record the-owner-decided-the-order-of-the-next-waves owner --by az
   --outcome pass`).  The map after that record is `green`: 153 claims of 153
   hold, `uncovered: 0`, and the exit code is 0 (docs/PLAN.md §16.64).
+- Wave 76 gave the agent a mode without a person and a trash instead of a
+  deletion, and the two are one decision: a mode that allows everything is
+  only as safe as the tools it allows.  The profile `auto` allows the tools
+  that change the world without a question (the orchestrator runs the agent
+  unattended, and a question nobody answers is a hang), the `rm` of the
+  shell of the agent is a script that moves what it is given into the trash
+  of the user (`lib/yeah-trash.el`), and the commands that destroy in place
+  are refused by name (`lib/yeah-shell-guard.el`).  The guard is a list of
+  forms and NOT a sandbox: there is no boundary of the working directory
+  either, and the secrets of the output of a tool are written into the
+  journal as they are.  The map of what is protected and what is not is
+  `docs/AGENT-SAFETY.md`, and it names two debts of `docs/ARCHITECTURE.md` §8
+  (the workspace paths and the secrets in the log) that the architecture
+  declared and the code did not make (docs/PLAN.md §16.65).
 
 ## The commands
 

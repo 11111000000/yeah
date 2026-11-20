@@ -103,7 +103,8 @@ that change the world are asked about, one by one.")
 
 (defconst yeah-acp--mode-names
   '(("plan" "Plan" "the agent may look at the world, but not change it")
-    ("build" "Build" "the agent may change the world, and the person decides each step"))
+    ("build" "Build" "the agent may change the world, and the person decides each step")
+    ("auto" "Auto" "the agent may change the world, and nobody is there to answer"))
   "The name and the description of every mode of a session.
 The modes themselves are the permission profiles of the kernel
 (`yeah-perm-profiles'); this table only names them for the client, which
@@ -256,25 +257,46 @@ to the gptel transport of the service's own configuration.")
 This variable is bound dynamically while a connection is served, so the
 messages of one connection do not reach another one.")
 
+(defun yeah-acp--mode-allows (state request)
+  "Return the decision that the mode of STATE allows REQUEST without a question.
+A standing refusal of the person still wins: the mode of the session is
+the decision about the session, and the refusal of the person about a
+tool is the decision about that tool."
+  (let ((action (plist-get request :action))
+        (resource (plist-get request :resource)))
+    (if (eq (yeah-perm-effect action resource (yeah-perm-rules-list)) 'deny)
+        (list :effect :deny :reply :reject
+              :reason (format "the standing permissions deny %s on %s"
+                              action resource))
+      (list :effect :allow :reply :once
+            :reason (format "the %s mode allows %s without a question"
+                            (or (plist-get state :mode) yeah-acp--default-mode)
+                            action)))))
+
 (defun yeah-acp--session-answerer (state)
   "Return the answerer of STATE: the client of the session over the wire.
 The mode of the session decides first: a mode that forbids an action
-refuses it without a question, because a mode is the decision of the
-person and not a question to the person.  The rules of the session decide
-next; what they do not name is asked of the client as a
+refuses it without a question, and a mode that allows it allows it
+without a question -- a mode is the decision of the person and not a
+question to the person.  The rules of the session decide next; what
+they do not name is asked of the client as a
 `session/request_permission', and the call waits for the answer.  The
 question is asked of the connection the session belongs to."
   (lambda (request)
     (let ((mode (plist-get state :mode)))
-      (if (yeah-acp--mode-denies-p mode request)
-          (list :effect :deny :reply :reject
-                :reason (format "the %s mode does not allow %s"
-                                (or mode yeah-acp--default-mode)
-                                (plist-get request :action)))
+      (cond
+       ((yeah-acp--mode-denies-p mode request)
+        (list :effect :deny :reply :reject
+              :reason (format "the %s mode does not allow %s"
+                              (or mode yeah-acp--default-mode)
+                              (plist-get request :action))))
+       ((eq (yeah-acp--mode-effect mode request) 'allow)
+        (yeah-acp--mode-allows state request))
+       (t
         (funcall (or yeah-acp--answerer
                      (yeah-acp--client-answerer (plist-get state :id)
                                                  (yeah-acp--output-for state)))
-                 request)))))
+                  request))))))
 
 (defun yeah-acp--session-transport (state)
   "Return the transport of the session of STATE.

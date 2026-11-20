@@ -16,6 +16,7 @@
 
 (require 'cl-lib)
 (require 'yeah-result)
+(require 'yeah-shell-guard)
 
 (defconst yeah-process--default-timeout 120
   "Default maximum process runtime in seconds.")
@@ -186,6 +187,10 @@ optional IDLE seconds without output.  Return the job ID immediately."
               (list "yeah-process-bash: idle must be a positive integer")))
     (unless (functionp done)
       (signal 'user-error (list "yeah-process-bash: done must be a function")))
+    ;; The guard of the shell decides before the process starts: a command
+    ;; that destroys in place is refused by name, and the reason of the
+    ;; refusal is the message of the failure.
+    (yeah-shell-guard-check command)
     (let* ((directory (yeah-process--directory directory))
            (id (yeah-process--new-id))
            (buffer (generate-new-buffer (format " *yeah-process-%s*" id)))
@@ -218,7 +223,7 @@ optional IDLE seconds without output.  Return the job ID immediately."
                     (make-process
                      :name (format "yeah-process-%s" id)
                      :buffer buffer
-                     :command (list "sh" "-c" command)
+                     :command (list "sh" "-c" (yeah-shell-guard--wrap command))
                      :coding '(utf-8 . utf-8)
                      :connection-type 'pipe
                      :noquery t

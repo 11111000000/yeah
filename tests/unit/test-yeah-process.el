@@ -83,7 +83,7 @@
                 (should (equal command (plist-get metadata :command)))
                 (should (equal directory (plist-get metadata :directory))))
               (let ((job (gethash id yeah-process--jobs)))
-                (should (equal (list "sh" "-c" command)
+                (should (equal (list "sh" "-c" (yeah-shell-guard--wrap command))
                                (process-command (yeah-process--job-process job)))))
               (let ((status (yeah-process-job-status id)))
                 (should (equal "exited"

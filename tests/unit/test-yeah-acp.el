@@ -598,7 +598,7 @@ their names to the person."
            (modes (plist-get answer :modes))
            (available (plist-get modes :availableModes)))
       (should (equal "build" (plist-get modes :currentModeId)))
-      (should (equal '("build" "plan")
+      (should (equal '("auto" "build" "plan")
                      (sort (mapcar (lambda (mode) (plist-get mode :id)) available)
                            #'string<)))
       (should (cl-every (lambda (mode) (stringp (plist-get mode :name)))

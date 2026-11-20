@@ -142,7 +142,26 @@ world and says nothing about the others."
   "A profile that does not exist is not a profile."
   (should-not (yeah-perm-profile "rewrite"))
   (should (member "plan" (yeah-perm-profiles)))
-  (should (member "build" (yeah-perm-profiles))))
+  (should (member "build" (yeah-perm-profiles)))
+  (should (member "auto" (yeah-perm-profiles))))
+
+(ert-deftest yeah-perm-profile-auto-allows-everything ()
+  "The auto profile allows every action: there is nobody to ask."
+  (let ((rules (yeah-perm-profile "auto")))
+    (should (eq 'allow (yeah-perm-effect "bash" "rm -rf /" rules)))
+    (should (eq 'allow (yeah-perm-effect "edit" "/tmp/x" rules)))
+    (should (eq 'allow (yeah-perm-effect "read" "/tmp/x" rules)))
+    (should (eq 'allow (yeah-perm-effect "whatever" "whatever" rules)))))
+
+(ert-deftest yeah-perm-a-rule-may-name-every-action ()
+  "A rule with the wildcard action matches every action.
+The rule of the profile that speaks about every action at once needs
+the wildcard of the action, and the wildcard of the resource was
+always there."
+  (let ((rules (list (yeah-perm-rule-make "*" "*" 'allow))))
+    (should (eq 'allow (yeah-perm-effect "bash" "anything" rules)))
+    (should (eq 'allow (yeah-perm-effect "whatever" "anything" rules)))
+    (should (eq 'ask (yeah-perm-effect "bash" "anything" nil)))))
 
 (ert-deftest yeah-perm-profile-does-not-change-the-persistent-rules ()
   "A profile is a mode of work, not a policy of the person."

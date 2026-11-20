@@ -146,22 +146,29 @@ question. Return the decision."
   "Answer REQUEST under the permission profile PROFILE.
 
 PERSON answers what the profile does not decide.  The profile decides
-first: a tool the profile forbids is refused, and everything else is
-left to the person.  A safe read needs no question: when there is a
-person to ask, the read answers itself and says why."
+first: a tool the profile forbids is refused, a tool the profile allows
+is allowed without a question, and everything else is left to the
+person.  A safe read needs no question: when there is a person to ask,
+the read answers itself and says why."
   (let* ((rules (yeah-perm-profile profile))
          (action (plist-get request :action))
          (resource (plist-get request :resource))
          (effect (if rules
                      (yeah-perm-effect action resource rules)
                    'ask)))
-    (if (eq effect 'deny)
-        (list :effect :deny :reply :reject
-              :reason (format "the %s profile does not allow %s" profile action))
-      (if person
-          (or (yeah-approval-safe-read-decision request)
-              (funcall person request))
-        (funcall (or person #'yeah-approval-policy-decision) request)))))
+    (cond
+     ((eq effect 'deny)
+      (list :effect :deny :reply :reject
+            :reason (format "the %s profile does not allow %s" profile action)))
+     ((eq effect 'allow)
+      (list :effect :allow :reply :once
+            :reason (format "the %s profile allows %s without a question"
+                            profile action)))
+     (person
+      (or (yeah-approval-safe-read-decision request)
+          (funcall person request)))
+     (t
+      (funcall (or person #'yeah-approval-policy-decision) request)))))
 
 (defun yeah-approval-profile-answerer (profile &optional person)
   "Return an answerer that answers under the permission profile PROFILE.

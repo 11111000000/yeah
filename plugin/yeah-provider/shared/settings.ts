@@ -35,8 +35,8 @@ export const yeahSettings = defineSettings({
     models: z.string().max(2000).default(""),
     /** Хост провайдера. */
     host: z.string().max(200).default("api.minimax.io"),
-    /** Профиль разрешений: `build` спрашивает человека, `plan` запрещает. */
-    profile: z.union([z.literal("plan"), z.literal("build")]).default("build"),
+    /** Профиль разрешений: `build` спрашивает человека, `plan` запрещает, `auto` никого не спрашивает. */
+    profile: z.union([z.literal("plan"), z.literal("build"), z.literal("auto")]).default("build"),
     /**
      * Размещение ядра: `spawn` — свой Emacs на соединение, `service` — один
      * Emacs на всех агентов, сессии приходят к нему по сокету.

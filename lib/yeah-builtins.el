@@ -6,9 +6,9 @@
 
 ;;; Commentary:
 ;;
-;; One registration point for file, editing, process, Emacs-native and task
-;; list tools.  Modules provide specifications; `yeah-tools' owns registration
-;; and dispatch.
+;; One registration point for file, editing, process, Emacs-native, task
+;; list and trash tools.  Modules provide specifications; `yeah-tools' owns
+;; registration and dispatch.
 
 ;;; Code:
 
@@ -18,6 +18,7 @@
 (require 'yeah-emacs)
 (require 'yeah-git)
 (require 'yeah-todo)
+(require 'yeah-trash)
 
 (defun yeah-builtins-specs ()
   "Return all built-in tool specifications in stable registration order."
@@ -27,6 +28,7 @@
           (yeah-emacs-tools)
           (yeah-todo-tools)
           (yeah-git-tools)
+          (yeah-trash-tools)
           (list (list :name "finish"
                       :description
                       "End the run. Call this only when the task is done and its work is verified: the run stops with your summary. A run that has not touched anything yet has nothing to finish."

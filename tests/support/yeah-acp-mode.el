@@ -60,6 +60,20 @@ The model of the service is the fake one of the checks."
                       t
                       nil))
 
+(defun yeah-acp-mode--start-bash (name data-home)
+  "Start the service of the checks under NAME with the model that calls bash.
+The model of this service is the fake one that runs a command, and the
+command writes a marker in the directory of the session."
+  (yeah-service-start name
+                      (with-temp-buffer
+                        (insert-file-contents
+                         (expand-file-name "tests/support/yeah-bash-model.el"))
+                        (buffer-string))
+                      data-home
+                      "#'yeah-bash-model-transport"
+                      t
+                      nil))
+
 (provide 'yeah-acp-mode)
 
 ;;; yeah-acp-mode.el ends here

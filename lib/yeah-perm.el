@@ -11,8 +11,9 @@
 ;;
 ;; The agent consults this module before invoking a tool.  A rule combines
 ;; an action string, a resource string and an effect (`allow', `deny', `ask').
-;; Actions match exactly; resources match exactly or by the literal wildcard
-;; "*".  The last matching rule wins, and no match defaults to `ask'.
+;; Actions match exactly, or by the literal wildcard "*"; resources match
+;; exactly or by the literal wildcard "*".  The last matching rule wins, and
+;; no match defaults to `ask'.
 ;; Deny/ask signal `user-error'; callers such as approvals convert these to
 ;; decisions.
 ;;
@@ -92,29 +93,35 @@ Returns RULE. Signals `user-error' if RULE is malformed."
   "Return all current permission rules in registration order."
   yeah-perm--rules)
 
-(defconst yeah-perm--mutating-tools '("edit" "write" "bash" "job-cancel" "delegate")
+(defconst yeah-perm--mutating-tools '("edit" "write" "bash" "job-cancel" "delegate"
+                                       "git_commit" "delete")
   "The tools that change the world.
 They are the tools a permission profile has an opinion about; every
 other tool is read-only or harmless.  A delegation is one of them: a
-child of a plan would change the world behind the plan.")
+child of a plan would change the world behind the plan.  A commit is one
+of them too: it writes history that nobody asked to be written.  A
+deletion is one of them: it takes a path away, even when it only moves
+it into the trash.")
 
 (defun yeah-perm-profiles ()
   "Return the names of the permission profiles."
-  '("plan" "build"))
+  '("plan" "build" "auto"))
 
 (defun yeah-perm-profile (name)
   "Return the rules of the permission profile NAME, or nil.
 
 `plan' denies the tools that change the world: the agent may look, but
 not touch.  `build' asks for them: the person decides each one, and
-the profile decides nothing else.  A profile is a mode of work, not a
-policy of the person, so its rules are not added to the persistent
-ruleset."
+the profile decides nothing else.  `auto' allows them: there is nobody
+to ask, and the mode says so before anybody is asked.  A profile is a
+mode of work, not a policy of the person, so its rules are not added to
+the persistent ruleset."
   (pcase name
     ("plan" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'deny))
                     yeah-perm--mutating-tools))
     ("build" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'ask))
                      yeah-perm--mutating-tools))
+    ("auto" (list (yeah-perm-rule-make "*" "*" 'allow)))
     (_ nil)))
 
 (defun yeah-perm-rules-append (rules rule)
@@ -136,11 +143,14 @@ Matches the convention used by `yeah-emcp--reset-for-test' and
 
 (defun yeah-perm--rule-matches-p (rule action resource)
   "Non-nil if RULE matches a query `(ACTION RESOURCE)'.
-A rule matches when its action is exactly ACTION and its
-resource is exactly RESOURCE **or** the literal wildcard
-`\"*\"'. Action is never a wildcard."
+A rule matches when its action is exactly ACTION **or** the literal
+wildcard `\"*\"', and its resource is exactly RESOURCE **or** the literal
+wildcard `\"*\".  The wildcard of the action is the rule of the profile
+that speaks about every action at once; a rule of the person that names
+an action names one action."
   (declare (pure t) (side-effect-free t))
-  (and (string= action (plist-get rule :action))
+  (and (or (string= action (plist-get rule :action))
+           (string= "*" (plist-get rule :action)))
        (or (string= resource (plist-get rule :resource))
            (string= "*" (plist-get rule :resource)))))
 
