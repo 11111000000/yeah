@@ -38,6 +38,10 @@
 10. `docs/PLAN.md` §19 — the order of the work on the integration: the waves,
     the four points outside the plan of the owner, and the decisions that only
     the owner may make.
+11. `docs/ARCHITECTURE-CATCHUP-PLAN.md` — the order of the waves that bring
+    the code up to the architecture: the tracks A, B and C of the code, the
+    waves of the diagrams (D) and of the documentation (E), and the decision
+    of the owner of 2026-11-20 that named that order.
 
 If two sources contradict each other, report the contradiction in the open
 work item. Never resolve it by silently making documentation more optimistic.
@@ -1013,6 +1017,54 @@ work item. Never resolve it by silently making documentation more optimistic.
   `docs/AGENT-SAFETY.md`, and it names two debts of `docs/ARCHITECTURE.md` §8
   (the workspace paths and the secrets in the log) that the architecture
   declared and the code did not make (docs/PLAN.md §16.65).
+- The order of the work is the catch-up plan, `docs/ARCHITECTURE-CATCHUP-PLAN.md`:
+  the code catches up to `docs/ARCHITECTURE.md`, and the diagrams follow the
+  code, not the other way round.  The owner named the order on 2026-11-20:
+  A0 (the decision about the waiting states), then A1, then A3, then the tracks
+  B (the contract of a tool) and C (the scopes of an approval), and the waves
+  of the diagrams (D) and of the documentation (E) after them.  A1 is wave 77,
+  A3 is wave 78, B4 is wave 79; the rest of B, all of C, D and E are open.
+- Wave 77 made the waiting states part of the state machine.  The table of the
+  machine (`lib/yeah-loop.el`) was rewritten against the real paths of the
+  runtime: twenty cells became thirty-one, the dead cells (`tick-resume`,
+  `ask-user`) are gone, the living ones moved onto the path they really take
+  (`permission-ask` leads from `awaiting-tool` to `awaiting-user-permission`,
+  `answer` and `timeout` lead back), and the cells of the waiting were added
+  (`nudge`, `rate-blocked`, `rate-relief`).  The runtime walks the table and
+  not around it: a state changes only through `yeah-turn--tick`
+  (`lib/yeah-turn.el`), and a run that is nudged no longer writes a false
+  `completed` into its own history.  The state `awaiting-user-input` was
+  removed -- twelve states became eleven -- because no event of the runtime
+  ever entered it, and the kernel has no mechanism "the model asks the
+  person" (docs/PLAN.md §16.66).  The claim `a-run-waits-in-a-state` says
+  that a run which waits for a person stands in `awaiting-user-permission` and
+  leaves it when the answer comes, and that a run whose provider was busy
+  passes through `blocked-on-rate`.  What the wave does not do: the state of a
+  run is not written into the journal, so a run that was waiting when Emacs
+  died is still lost, and the state of the waiting is not shown to the person
+  (`lib/yeah-faces.el` knows it, the place that shows it is another wave).
+- Wave 78 said the table of the machine out loud.  A check reads the sources of
+  the kernel with the reader of Emacs, looks for the calls of `yeah-turn--tick`
+  and for the label each of them takes, and says that every label of the table
+  has such a place; the same check walks the table from the first state and
+  says that every state is reachable.  The check is static on purpose: a
+  dynamic one would need a run that takes every move, and there is no such run
+  -- a run that meets no busy provider never takes `rate-blocked`, and a run
+  that never grows long never takes `budget-overflow`.  The code of the kernel
+  did not change: the table of wave 77 was already honest, and the wave only
+  keeps it that way (docs/PLAN.md §16.69).  The claim
+  `every-transition-of-the-table-is-taken` says that the runtime has a place
+  where it takes every move of the table -- not that a run takes every move,
+  which no run can do.
+- Wave 79 closed the vocabulary of the kinds of a call.  A tool that declares
+  a kind outside the vocabulary is refused by name, and the message names the
+  tool and the kind (`lib/yeah-tools.el`); before the wave such a kind passed
+  silently and the call went on the wire as `other`.  The vocabulary is a
+  convention of the kernel and not an enumeration of the protocol:
+  `schemas/acp-v1.json` declares the kind of a call as a plain string and
+  names no values.  The wave also corrected the premise of B4 in the catch-up
+  plan, which named a place of the defect that does not exist (docs/PLAN.md
+  §16.70).
 
 ## The commands
 
