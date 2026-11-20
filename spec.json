@@ -2260,7 +2260,7 @@
       ],
       "falsifier": "the turn that spent its budget ends in a state other than 'failed', or the wire answers the run that did not finish with 'end_turn'",
       "register": "fact",
-      "control": "sed -i \"s|(yeah-turn--mark-done turn 'failed)|(yeah-turn--mark-done turn)|\" lib/yeah-turn.el",
+      "control": "sed -i \"s|(yeah-turn--tick turn 'error)$|(yeah-turn--tick turn 'no-tool-calls)|\" lib/yeah-turn.el",
       "waiver": null
     },
     {
@@ -3599,6 +3599,35 @@
       "falsifier": "the rm of the agent removed the tree for good, or the tree did not come back from the trash, or the agent ran a command that destroys in place, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|(shell-quote-argument (yeah-shell-guard-path))|\"\"|' lib/yeah-shell-guard.el",
+      "waiver": null
+    },
+    {
+      "id": "a-run-waits-in-a-state",
+      "text": "A run that waits for the answer of a person, or for a provider that was too busy, says so in its state: the run waits in `awaiting-user-permission' or in `blocked-on-rate', it leaves that state when the answer comes, and every move the runtime made is a cell of the table of the machine.",
+      "scope": [
+        "lib/yeah-loop.el",
+        "lib/yeah-state.el",
+        "lib/yeah-turn.el",
+        "lib/yeah-approval.el",
+        "lib/yeah-faces.el",
+        "tests/checks/check-a-run-waits-in-a-state.el",
+        "tests/unit/test-yeah-loop.el",
+        "tests/unit/test-yeah-state.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-run-waits-in-a-state.el"
+        }
+      ],
+      "falsifier": "the run that waits for a person is not in the state `awaiting-user-permission', or the run that waits for a busy provider is not in the state `blocked-on-rate', or the run does not leave the waiting state when the answer comes, or the runtime made a move that the table of the machine does not have, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i \"s|(yeah-turn--tick turn 'permission-ask)|nil|\" lib/yeah-turn.el",
       "waiver": null
     }
   ]

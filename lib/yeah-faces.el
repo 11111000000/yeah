@@ -127,7 +127,6 @@ display can show the resulting glyph.  With `never', use text alone."
     (queued . pending)
     (waiting . pending)
     (awaiting-user-permission . pending)
-    (awaiting-user-input . pending)
     (blocked-on-rate . pending)
     (running . running)
     (deciding . running)

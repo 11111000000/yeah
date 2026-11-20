@@ -15,20 +15,28 @@
 
 (yeah-state--init-table)
 
-(ert-deftest yeah-state-list-has-exactly-12-states ()
-  "The state list must contain exactly the 12 contract states."
+(ert-deftest yeah-state-list-has-exactly-11-states ()
+  "The state list must contain exactly the 11 states of the machine.
+Every one of them is a state the machine can be in: the table of
+`lib/yeah-loop.el' leads into each of them and out of each of them."
   (let ((expected '(idle deciding post-decide awaiting-tool
-                    awaiting-user-permission awaiting-user-input
+                    awaiting-user-permission
                     accumulating compacting blocked-on-rate
                     interrupted completed failed))
         (got yeah-state-list))
-    (should (= (length got) 12))
+    (should (= (length got) 11))
     (should (equal got expected))))
 
 (ert-deftest yeah-state-p-recognises-all-states ()
-  "`yeah-state-p' returns non-nil for the 10 contract states."
+  "`yeah-state-p' returns non-nil for every state of the machine."
   (dolist (state yeah-state-list)
     (should (yeah-state-p state))))
+
+(ert-deftest yeah-state-p-rejects-the-state-that-was-removed ()
+  "The state `awaiting-user-input' is no state of the machine.
+It named an event the kernel does not have: the run waits for the
+person in `awaiting-user-permission' (wave 77)."
+  (should-not (yeah-state-p 'awaiting-user-input)))
 
 (ert-deftest yeah-state-p-rejects-symbols-outside-the-set ()
   "`yeah-state-p' returns nil for any other symbol, including
@@ -43,10 +51,10 @@ plausible names that are not in the contract."
   (should (yeah-state-terminal-p 'completed))
   (should (yeah-state-terminal-p 'failed)))
 
-(ert-deftest yeah-state-terminal-p-returns-nil-for-nine-states ()
-  "The nine non-terminal states are not terminal."
+(ert-deftest yeah-state-terminal-p-returns-nil-for-eight-states ()
+  "The eight non-terminal states are not terminal."
   (dolist (state '(idle deciding post-decide awaiting-tool
-                   awaiting-user-permission awaiting-user-input
+                   awaiting-user-permission
                    accumulating compacting blocked-on-rate))
     (should-not (yeah-state-terminal-p state))))
 

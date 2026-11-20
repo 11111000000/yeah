@@ -1,0 +1,31 @@
+{
+  "id": "wave-77",
+  "title": "a run that waits says so in its state, and the table and the runtime agree",
+  "intent": "The decision of the owner of 2026-11-20 (A0): the waiting states enter the state machine.  The table of `lib/yeah-loop.el' named the states `awaiting-user-permission' and `blocked-on-rate', and no move of the runtime ever led into them: the cells were there and the transitions were not.  A run that waited for the answer of a person said `awaiting-tool', and a run that waited for a provider that was too busy said `deciding'; nothing could tell a run that waits for a person from a run that waits for a tool.  What changes in the kernel: the table of the machine is rewritten against the real paths of the runtime (31 cells, every cell a move the runtime really makes), the runtime moves through the table and not around it (`yeah-turn--tick' is the only way a state changes), the states of the waiting are entered and left (`permission-ask', `answer', `timeout', `rate-blocked', `rate-relief', `nudge'), the terminal events `error' and `interrupt' are edges from every state that is not terminal, and the state `awaiting-user-input' is removed: the kernel has no event that puts a run into it, and a state that nothing can enter is a lie in the history of the run.  The check of the wave proves that a run waits in a state, that it leaves that state when the answer comes, and that every move the runtime made is a cell of the table.",
+  "touches": [
+    "lib/yeah-state.el",
+    "lib/yeah-loop.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-approval.el",
+    "lib/yeah-faces.el",
+    "tests/checks/check-a-run-waits-in-a-state.el",
+    "tests/unit/test-yeah-loop.el",
+    "tests/unit/test-yeah-state.el",
+    "tests/unit/test-yeah-control.el",
+    "spec.json",
+    "waves/wave-77.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-run-waits-in-a-state.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "a-run-waits-in-a-state"
+  ],
+  "commitment": [],
+  "objection": "The wave does not make the state of a run survive the restart of the harness: the state of a run is not written into the journal, so a run that was waiting for a person when the Emacs died is still lost.  It does not add the mechanism of the input of the person (`awaiting-user-input' comes back with it).  It does not make the state of the waiting visible in the interface: `lib/yeah-faces.el' knows the state, and the place that shows it to the person is a separate wave.  The table of the machine is still not covered in the other direction: a cell that no move of the runtime ever takes is still possible, and the check of that is wave A3 of `docs/ARCHITECTURE-CATCHUP-PLAN.md`.  And the wave says what it changed and what it did not: two deviations from the plan of the owner are named in `docs/PLAN.md` 16.66, and neither of them changes the behaviour of a run.",
+  "refuted_by": "the run that waits for the person is not in the state `awaiting-user-permission', or the run that waits for a busy provider is not in the state `blocked-on-rate', or the run does not leave the waiting state when the answer comes, or the runtime made a move that the table of the machine does not have, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The control of the claim was applied to a copy of the tree and bit by the assertion of its own check and not by a crash.  The first control takes the tick of `permission-ask' away -- `(yeah-turn--tick turn 'permission-ask)' becomes `nil' -- and the check ends with the code 1 and with its own words: `the run that waits for the person is in awaiting-tool, not in the state of a run that waits', `the history of the run does not hold the waiting state: (deciding post-decide awaiting-tool)' and `the run ended in failed, not in completed'.  The second control takes the tick of `rate-blocked' away, and the check ends with the code 1 and with its own words: `the history of the run does not hold the state of a run that waits for a provider'.  The measurement of the wave: the machine has eleven states and thirty-one cells, every state is reachable and every state is left, the unit tests of the machine are thirty-two and the whole unit suite is four hundred and fifty-eight, and the ninety-seven checks of the repository pass."
+}

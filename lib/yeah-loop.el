@@ -1,4 +1,4 @@
-;;; yeah-loop.el --- the 20 FSM transitions of the agent loop -*- lexical-binding: t; -*-
+;;; yeah-loop.el --- the FSM transitions of the agent loop -*- lexical-binding: t; -*-
 ;;
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -6,11 +6,17 @@
 
 ;;; Commentary:
 ;;
-;; This file defines the current 20 transitions of the agent-loop FSM and
-;; exposes `yeah-loop-tick', which returns the next state for a state/event
+;; This file defines the transitions of the agent-loop FSM and exposes
+;; `yeah-loop-tick', which returns the next state for a state/event
 ;; pair or signals `user-error' for an invalid transition.  The target
 ;; invariants are valid, bounded and recoverable transitions, not a permanent
 ;; transition count; see `docs/ARCHITECTURE.md' and `docs/PLAN.md'.
+;;
+;; The table is the contract of the machine, and the runtime keeps it: every
+;; move the runtime makes is a cell of this table, and every label of this
+;; table is a move the runtime makes (wave 77).  The table was not that
+;; before: seven of its cells named events the runtime never had, and three
+;; of its states could not be entered at all.
 
 ;;; Code:
 
@@ -18,38 +24,55 @@
 (require 'yeah-state)
 
 (defconst yeah-loop--raw-transitions
-  '(;; happy path
-    (idle           user-prompt     . deciding)
-    (idle           tick-resume     . deciding)
-    (deciding       stream-end      . post-decide)
-    (post-decide    no-tool-calls   . completed)
-    (post-decide    tool-call       . awaiting-tool)
-    (post-decide    permission-ask  . awaiting-user-permission)
-    (post-decide    ask-user        . awaiting-user-input)
-    ;; the model is asked again, with the results of what was dispatched
-    (post-decide    continue        . deciding)
-    ;; the model answered with nothing usable: the run failed
-    (deciding       error           . failed)
-    (awaiting-tool  tool-end        . accumulating)
-    (accumulating   budget-ok       . post-decide)
-    (accumulating   budget-overflow . compacting)
-    (compacting     compact-done    . post-decide)
-    (blocked-on-rate rate-relief    . deciding)
-    ;; interrupt fan-in (two sources)
-    (deciding       interrupt       . interrupted)
-    (awaiting-tool  interrupt       . interrupted)
-    ;; wait-state timeouts
-    (awaiting-user-permission timeout . failed)
-    (awaiting-user-permission answer  . post-decide)
-    (awaiting-user-input     timeout . failed)
-    (awaiting-user-input     answer  . post-decide))
-  "The 20 raw transition cells.
+  '((;; the run starts
+     idle           user-prompt     . deciding)
+     ;; the model is asked and answers
+     (deciding       stream-end      . post-decide)
+     ;; the answer of the model is read: it ends the run, it calls tools, or
+     ;; the model is asked again
+     (post-decide    no-tool-calls   . completed)
+     (post-decide    tool-call       . awaiting-tool)
+     (post-decide    continue        . deciding)
+     (post-decide    nudge           . deciding)
+     ;; the tools of the model run and settle
+     (awaiting-tool  tool-end        . accumulating)
+     (accumulating   budget-ok       . post-decide)
+     (accumulating   budget-overflow . compacting)
+     (compacting     compact-done    . post-decide)
+     ;; the run waits for the person: a tool that may not run yet asks a
+     ;; question, and the question waits for the answer
+     (awaiting-tool  permission-ask  . awaiting-user-permission)
+     (awaiting-user-permission answer  . awaiting-tool)
+     (awaiting-user-permission timeout . awaiting-tool)
+     ;; the run waits for the provider: it was busy, and the request is
+     ;; asked again
+     (deciding       rate-blocked    . blocked-on-rate)
+     (blocked-on-rate rate-relief    . deciding)
+     ;; a run that is not finished can fail in any state it lives in
+     (idle             error         . failed)
+     (deciding         error         . failed)
+     (post-decide      error         . failed)
+     (awaiting-tool    error         . failed)
+     (awaiting-user-permission error . failed)
+     (accumulating     error         . failed)
+     (compacting       error         . failed)
+     (blocked-on-rate  error         . failed)
+     ;; and it can be cancelled in any state it lives in
+     (idle             interrupt     . interrupted)
+     (deciding         interrupt     . interrupted)
+     (post-decide      interrupt     . interrupted)
+     (awaiting-tool    interrupt     . interrupted)
+     (awaiting-user-permission interrupt . interrupted)
+     (accumulating     interrupt     . interrupted)
+     (compacting       interrupt     . interrupted)
+     (blocked-on-rate  interrupt     . interrupted))
+  "The raw transition cells of the machine.
 Each cell has the shape (FROM LABEL . TO). The runtime
 transition table is built from this list at load time so that
 the count can be checked.")
 
-(unless (= 20 (length yeah-loop--raw-transitions))
-  (error "yeah-loop: transition count drift; expected 20, got %d"
+(unless (= 31 (length yeah-loop--raw-transitions))
+  (error "yeah-loop: transition count drift; expected 31, got %d"
          (length yeah-loop--raw-transitions)))
 
 (defvar yeah-loop-transitions yeah-loop--raw-transitions
