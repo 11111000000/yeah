@@ -1135,6 +1135,25 @@ work item. Never resolve it by silently making documentation more optimistic.
   baked into the code with a marker of the fixture.  No grep of the wording of
   the report is left.  The code of the pipeline, the skins and the site are
   untouched (docs/PLAN.md §16.75).
+- Wave 84 gave the site a diagram that is born out of the code.  The machine of
+  the kernel is a table (`yeah-state-list`, `yeah-loop--raw-transitions`), and the
+  diagram of that machine is written out of the table: `lib/yeah-state-diagram.el`
+  says the PlantUML source, `scripts/dev state-diagram` writes it, and
+  `scripts/dev diagrams` generates it before it draws anything — a generation that
+  failed ends the pipeline with its own answer, and nothing is drawn.  The source
+  is committed (`site/diagrams/state-machine.puml`), and the check compares its
+  bytes with the bytes that a **copy** of the kernel writes, adds a cell and a
+  state to that copy and waits for the arrow and for the state, and reads the
+  numbers of the machine out of the code.  **PlantUML does not read a dash in an
+  identifier:** a name with a dash in it (`post-decide`) keeps its text as the
+  label of the state and gets an identifier of its own (`post_decide`), and the
+  ends of the arrows speak that identifier — the names of the machine are in the
+  picture as they are.  `@startuml state-machine` gives the picture the name of
+  the diagram and not the name of the file, and the pipeline learned to find the
+  picture that a diagram which names itself writes.  `scripts/dev diagrams` needs
+  the kernel now: a tree without one answers with the code 3 and draws nothing.
+  The wave commits no SVG — the pictures of the site are waves D3 and D4
+  (docs/PLAN.md §16.76).
 
 ## The commands
 

@@ -3706,6 +3706,33 @@
       "register": "fact",
       "control": "sed -i 's|for theme in light dark; do|for theme in light; do|' scripts/dev",
       "waiver": null
+    },
+    {
+      "id": "the-state-diagram-comes-from-the-code",
+      "text": "The diagram of the state machine of the site is generated out of the code of the kernel and not drawn by hand: `scripts/dev diagrams` reads `yeah-state-list` and `yeah-loop--raw-transitions` from a live Emacs and writes `site/diagrams/state-machine.puml` before it draws anything, the file of the repository is byte-equal to the file that the generator writes from the current code, every cell of the table is an arrow of the diagram and every state of the machine is a state of it, and a table that changed and a diagram that was not regenerated is a defect the check names.",
+      "scope": [
+        "lib/yeah-state-diagram.el",
+        "lib/yeah-loop.el",
+        "lib/yeah-state.el",
+        "scripts/dev",
+        "site/diagrams/state-machine.puml",
+        "tests/checks/check-the-state-diagram-comes-from-the-code.sh"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-state-diagram-comes-from-the-code.sh"
+        }
+      ],
+      "falsifier": "the diagram of the repository is not the file that the generator writes from the current code, or the generator does not read the table of the machine, or the generator does not read the list of the states, or the diagram does not carry every cell and every state of the machine, or the pipeline does not draw the machine in both themes, or the pipeline answers with the code 0 when the machine cannot be generated, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i \"s|(deciding       stream-end      . post-decide)|(deciding       stream-end      . accumulating)|\" lib/yeah-loop.el",
+      "waiver": null
     }
   ]
 }
