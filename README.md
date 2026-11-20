@@ -303,7 +303,8 @@ actual gptel contracts.
 Read in this order:
 
 0. `docs/VISION.md` — why Yeah exists: the environment people invested
-   themselves in, surviving the era of agents as a participant;
+   themselves in, surviving the era of agents as a participant
+   (Russian: `docs/VISION.ru.md`);
 1. `docs/ARCHITECTURE.md` — the purpose, ten design decisions, component
    contracts, security model and non-goals;
 2. `docs/PLAN.md` — eight detailed stages from the present prototype to 1.0,

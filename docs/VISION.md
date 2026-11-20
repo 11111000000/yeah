@@ -4,6 +4,8 @@
 > lives in `spec.json` and `./scripts/dev map`; what is being built lives in
 > `docs/PLAN.md`. The vision is the reason for both.
 
+Russian version: [`VISION.ru.md`](VISION.ru.md).
+
 ## 1. The environment is people
 
 Emacs is not an editor and not an API surface. It is a place people have
