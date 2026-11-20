@@ -1249,6 +1249,74 @@ work item. Never resolve it by silently making documentation more optimistic.
   so outright.  The old check of wave 86 answers with the code 0 on the same
   mutation; the new one answers with the code 1.  The code of the pipeline is
   untouched (docs/PLAN.md §16.81).
+- Wave 90 repaired the proof of the table of the machine, the fourth time.  The kernel is
+  honest; the proof was weaker than its own doctrine in four places, and all four are one
+  family.  **The walk of the code read a name as a call**: the head of a quoted list became
+  a call, so a definition that named only a quoted list became a root of the runtime and the
+  move inside it a move of the runtime — the doctrine of the check says the opposite (a name
+  calls nothing), and the code of the walk said otherwise.  **A name in a list of names was
+  a call**: the bindings of a `let`, the variable of the spec of a `dolist`, the pattern of a
+  `pcase`, the types of the handlers of a `condition-case`, the type and the slots of a
+  `cl-defstruct`, the name of a derived mode — the runtime reads them and does not run
+  them.  **A tick that stands in data was a place of the runtime**: the runtime does not run
+  a quoted form, so such a tick witnesses nothing.  Now **the walk does not go into data**:
+  the operands of `quote` are names, the designator of `function` is a name, the parameters
+  of a `lambda` are names, the body of a `lambda` is code wherever it stands, a list of
+  names is names (the values of the bindings, the collection of the spec, the subject of
+  `pcase`), the bodies of the clauses and of the handlers are code, and the walk goes into
+  them.  The type, the options and the slots of a `cl-defstruct` are names and the value of
+  a slot is code; the name of a mode and the name of its parent are names, the value of the
+  keyword is code and the body of the mode is code.  The first argument of `funcall`/`apply`
+  **stays a call** (the runtime calls the value there).  The promise was brought to what is
+  measured: the text of the claim now says that the walk reads a name as a name and not as
+  a call, and that a tick in data is no place of the runtime.  Twelve controls — three by
+  the writer and **nine by the parent, independently of the report of the writer** — all gave
+  the verdict asked for; three of the parent's controls measured the classes named by the
+  review: a tick in a quoted form in a live function was quiet with the numbers of before
+  (23/23), while the name of a type in a `cl-defstruct` and the name of a derived mode,
+  each with a definition that nobody calls, answered with the code 1 and the class
+  `:places-of-a-dead-definition` (expected 0, measured 1).  The kernel is untouched
+  (docs/PLAN.md §16.82).
+- Wave 91 repaired the proof of the pipeline of the diagrams, the fourth time.  The
+  pipeline is honest; the proof was weaker than the promise in two places.  **The probe
+  of "one place" was a probe of the wording**: it looked for five groups of words (the
+  command on the PATH, the type of the shell, the binary of the user in the profile, the
+  store of nix, the binary of a tool), and a step of the search written in other words
+  was not seen.  And **two probes of a copy of the chain were literal**: the head of the
+  chain was read as `find_tool()` with no space (`find_tool ()` is the same function),
+  and the pair of the steps of the profile was read as `-x ... .nix-profile/bin/` with
+  both markers on one line — so a full second chain that overlapped the common one
+  passed.  Now **the chain is proved by the behaviour of the pipeline and not by its
+  wording**: a copy of the tree whose chain hands out a **decoy instrument** — a PlantUML
+  that writes a picture with a mark of its own, and an Emacs that writes a mark and calls
+  the Emacs of the machine — is drawn by the pipeline.  A pipeline that takes the
+  instrument from the chain draws the pictures of the decoy; a pipeline that searches for
+  the instrument by itself draws the pictures of the machine and leaves no mark at all.
+  The check demands the mark in every picture of the copy and the mark of the Emacs of
+  the chain.  The textual probes are kept as a supplement: the head of the chain is read
+  with a space or without it, the definition is looked for in every file of `scripts/`,
+  and the steps are looked for in the whole of a file and in the code of the file.  The
+  old check of wave 89 answers 0 on a mutation it cannot see; the new one answers 1.  The
+  code of the pipeline is untouched (docs/PLAN.md §16.83).
+- Wave 92 repaired the proof of the diagram of the machine of the states, the third
+  time.  The kernel and the generator are honest; the proof was not.  **The comparison
+  reported a duplicate cell as an absent cell**: the table of the machine named one cell
+  twice, the diagram carried one arrow for the two cells, and the comparison fell into
+  `report_absent` — so the check answered with the false subject "the generator does
+  not read the table", while the generator read the table and the table said one thing
+  about one event twice.  A false refusal with a false subject is worse than no
+  refusal: it sends the reader to the generator, and the defect is in the table.  Now
+  the comparison counts the cells the table names twice, the arrows the diagram carries
+  for them and the arrows the diagram repeats, and the defect has a subject of its own:
+  `twice` (the table names the same cell more than once) and `twice-arrow` (the diagram
+  carries the same arrow more than once).  The subjects of wave 87 stay where they are
+  true.  **The check proves this on itself**: a copy of the kernel whose table names the
+  same cell twice is compared with the diagram of the repository, and the comparison
+  must name the duplicate and must not call the cell absent — and the old comparison of
+  wave 87, put back into the new check, fails with two refusals, so the path of the
+  duplicate is measured and not a comment.  The duplicate itself is forbidden where it
+  belongs: the machine has a unit test of its own.  The kernel and the generator are
+  untouched (docs/PLAN.md §16.84).
 
 ## The commands
 
