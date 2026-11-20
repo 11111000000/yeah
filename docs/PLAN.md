@@ -5432,7 +5432,7 @@ post_decide`), а концы стрелок говорят производны�
 821 строка и 31 259 байт, стало 940 строк и 36 910 байт).
 
 **Находка F12 — «цепочка живёт в одном месте» удовлетворялось комментарием.**
-Проба искала **любое упоминание** пути `lib/tools.sh` в `scripts/dev` — и комментарий
+Проба искала в `scripts/dev` **любое упоминание** файла цепочки — и комментарий
 `# shellcheck source=scripts/lib/tools.sh` её удовлетворял: удаление строки
 подключения оставляло проверку зелёной.  Кроме того, копия тела цепочки под
 **другим именем** не ловилась вовсе: `grep -rl '^find_tool()'` находит только
@@ -5461,7 +5461,7 @@ id прежний; текст говорит, что цепочка поиска
 |---|---|---|
 | Честный код | ничего | код 0, 28 с |
 | Подключение цепочки убрано (F12) | строка `. "$script_dir/lib/tools.sh"` удалена, комментарий оставлен | «scripts/dev does not read scripts/lib/tools.sh: the pipeline does not use the chain of the search», код 1 |
-| Копия тела цепочки под другим именем (F12) | `scripts/lib/tools-copy.sh` с телом под именем `find_tool_of_the_copy` | «the body of the chain of the search is copied in scripts/lib/tools-copy.sh: the chain lives in one place (scripts/lib/tools.sh) and not in two», код 1 |
+| Копия тела цепочки под другим именем (F12) | копия `tools.sh` в `scripts/lib/` под именем `find_tool_of_the_copy` | «the body of the chain of the search is copied in scripts/lib/tools-copy.sh: the chain lives in one place (scripts/lib/tools.sh) and not in two», код 1 |
 | Исходник урезан (F17) | обёртка собирается из исходника **без** строк `second-of-` | «the picture of alpha (light) does not carry the label second-of-alpha of its own source: the picture was drawn from a part of its source» (и ещё три картинки), код 1 |
 | Цепочка не подключена, тело скопировано в `scripts/dev` | строка подключения удалена, тело вставлено в `scripts/dev` | три сообщения разом: «does not read», «defined in [scripts/dev scripts/lib/tools.sh]», «the body of the chain of the search is copied in scripts/dev», код 1 |
 | Контроль claim'а (прежний) | `for theme in light dark` → `light` | «the pipeline drew [alpha-light.svg beta-light.svg state-machine-light.svg ] and not two pictures for every diagram», код 1 |
