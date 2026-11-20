@@ -2534,6 +2534,57 @@ not a run of the agent over a task.
 * The criteria of readiness of §4.3 of `docs/PASEO-INTEGRATION-PLAN.md` were
   not observed in the interface of Paseo: that needs a live run and a watching
   person.
+## The live run of the package of the waves 87 to 89 (2026-11-20, 21:48 UTC)
+
+**What was run.**  One live run through the orchestrator Paseo on the code of the
+package, with the short prompt of the rule 5 of `docs/PLAN.md` §19.1:
+
+```
+$ paseo run --provider yeah --cwd /home/az/Projects/yeah \
+    --title "Живой маршрут пакета 87-89" \
+    "Ответь только словом OK и вызови finish. Больше ничего не делай."
+AGENT ID                              STATUS      PROVIDER    CWD                             TITLE
+c1343063-e35a-4664-815e-bfcc34051241  completed   yeah        /home/az/Projects/yeah          Живой маршрут пакета 87-89
+```
+
+The run began at 21:48:27 UTC and came to an end at 21:48:32 UTC — six seconds.
+The model was `MiniMax-M3.1-Flash`, the mode was `build`, and the agent came to
+`idle` with `LastUsage` `InputTokens: 12924, OutputTokens: 34`.
+
+**What the journal says.**  The journal of the session
+(`session-13-31f4b7.jsonl`) holds the whole run:
+
+| Record | What it says |
+|---|---|
+| `user-message` | the prompt of the run, carried through the wire of the orchestrator |
+| `assistant-message` | `I'll respond with OK and finish.` — the model **described** its next step and called no tool |
+| `nudge` | the harness asked the model to act and named the tools it had not called |
+| `tool-request` | `finish`, kind `other`, named argument `{"summary": "OK"}` |
+| `permission-request` / `permission-decision` | the request of the permission and the decision that allowed it |
+| `tool-end` | `finish`, `ok: true`, payload `OK` |
+| `finish` | the summary `OK` |
+
+**What this proves.**  The route of the orchestrator reaches the model on the code
+of the package, and the model **acts** on it: the tool `finish` was called with the
+summary `OK`, and the run ended.  The tree of the repository was not changed by the
+run (`git status` was empty afterwards).
+
+**The shape of the first answer is measured, not hidden.**  The model answered with
+a description of its next step and called no tool, and the harness nudged it once.
+That is the known shape of the provider (the claims of the waves 38 and 39: the
+nudge carries the state of the work), and the run continued and finished.  The
+nudge of this run is recorded in the journal of the session, and it is a fact of
+this run and not a defect repaired here.
+
+**What it does not prove.**
+
+* It is one run with a prompt of two sentences, and not a run of the agent over a
+  task: nothing was written, nothing was checked, and no code of the repository was
+  read by the model.
+* It says nothing about the three proofs of the package.  Those are the business of
+  the gate of 2026-11-20 21:25–21:41 UTC (`docs/PLAN.md` §16.79, §16.80, §16.81)
+  and of the discriminator that follows it.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
