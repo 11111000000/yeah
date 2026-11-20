@@ -13,7 +13,13 @@
 #      search of a tool by itself; no other script of `scripts/` defines the
 #      chain or carries a copy of its body, and a copy of the body that is
 #      rewritten in other words is not seen — the searches of the checks
-#      themselves are their own, by design;
+#      themselves are their own, by design; and the instrument of the
+#      pipeline comes from that chain and from nowhere else: a copy of the
+#      tree in which the chain hands out a decoy instrument draws the pictures
+#      of the decoy, and a pipeline that searches for the instrument by itself
+#      leaves no mark of the decoy at all — a step of the search that is
+#      written in other words is not seen by a reading of the words, and the
+#      decoy is what sees it;
 #   2. the pipeline answers 3 when the instrument is not there at all;
 #   3. every diagram of the tree is drawn in both themes: two pictures for
 #      every diagram, and every picture comes from the whole of its own
@@ -200,7 +206,10 @@ mkdir -p "$tmp/home-empty" "$tmp/store-empty" || blocked "cannot make the tree o
 # that drifts apart, and the copy that drifts is the one that answers "the
 # tool is not here" when the tool is.
 chain_file="scripts/lib/tools.sh"
-if ! grep -q '^find_tool()' "$chain_file"; then
+# The head of the chain is read with a space or without it: `find_tool()' and
+# `find_tool ()' are the same function, and a probe that reads one of them
+# reads half of the writing of the chain.
+if ! grep -qE '^[[:space:]]*find_tool[[:space:]]*\(\)' "$chain_file"; then
   fail "$chain_file does not define find_tool: the search of the pipeline has no one place to live"
 fi
 
@@ -279,6 +288,14 @@ awk -f "$tmp/code-of.awk" -v strip_calls=0 scripts/dev >"$pipeline_code_whole" |
 # The words of the steps: the command on the PATH, the type of the shell,
 # the binary of the user in the profile and the store of nix.
 steps_of_a_search='command[[:space:]]+-[vV]|type[[:space:]]+-[Pp]|which[[:space:]]+(emacs|plantuml|mathc)|\.nix-profile/bin|NIX_STORE_DIR|bin/(plantuml|emacs)'
+
+# The two steps that turn a search of a tool into a chain: the lookup of the
+# command on the PATH, and the binary of the user in the profile.  They are
+# looked for in the whole of a file and not in one line of it: a chain that
+# names the profile of the user in one line and tests it in another is a
+# chain, and a probe that reads one line at a time does not see it.
+step_on_the_path='command[[:space:]]+-[vV]|type[[:space:]]+-[Pp]|which[[:space:]]+(emacs|plantuml|mathc)'
+step_of_the_profile='\.nix-profile'
 own_steps="$(grep -oE "$steps_of_a_search" "$pipeline_code" 2>/dev/null | LC_ALL=C sort -u | tr '\n' ' ')"
 if [ -n "$own_steps" ]; then
   own_line="$(grep -nE "$steps_of_a_search" "$pipeline_code" 2>/dev/null | head -n 1 | cut -d: -f1)"
@@ -287,8 +304,9 @@ if [ -n "$own_steps" ]; then
 fi
 
 # The chain is defined in one place and under one name: no other file of the
-# scripts defines find_tool.
-chain_copies="$(grep -rl '^find_tool()' scripts/ 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')"
+# scripts defines find_tool.  The head of the definition is read with a space
+# or without it, as the head of the chain itself is read.
+chain_copies="$(grep -rlE '^[[:space:]]*find_tool[[:space:]]*\(\)' scripts/ 2>/dev/null | LC_ALL=C sort | tr '\n' ' ')"
 if [ "$chain_copies" != "$chain_file " ]; then
   fail "the chain of the search is defined in [$chain_copies] and not in one place: $chain_file"
 fi
@@ -341,11 +359,16 @@ while read -r file; do
     continue
   fi
 
-  # The steps of the search are in this file: the probe of the command on the
-  # PATH and the probe of the binary of the user in the profile are the steps
-  # of the search of a tool, and a file that carries them searches for a tool
-  # by itself.
-  if grep -q 'command -v' "$normalized" && grep -qE '\-x[^#]*\.nix-profile/bin/' "$normalized"; then
+  # The steps of the search are in this file: the lookup of the command on
+  # the PATH and the binary of the user in the profile are the steps of the
+  # search of a tool, and a file that carries them searches for a tool by
+  # itself.
+  #
+  # The code of the file is read and not the text of it: a comment is a word
+  # about the code, and the help of a wrapper is a text and not a code.
+  file_code="$tmp/code-of-file"
+  awk -f "$tmp/code-of.awk" -v strip_calls=0 "$file" >"$file_code" || blocked "cannot read the code of $file"
+  if grep -qE "$step_on_the_path" "$file_code" && grep -qE "$step_of_the_profile" "$file_code"; then
     fail "the steps of the chain of the search are in $file: the chain lives in one place ($chain_file) and not in two"
   fi
 done <"$script_files"
@@ -686,7 +709,134 @@ else
   assert_chain_pictures "$store_dir" "of the store"
 fi
 
-# --- 6. the instrument is not there: the answer is 3, not 0 --------------------
+# --- 6. the instrument of the pipeline comes from the chain of the search -----
+
+# The chain of the search is a function, and the pipeline calls it.  A copy of
+# the tree in which the chain hands out a decoy instrument tells the truth
+# about the pipeline that no reading of the words can tell: a pipeline that
+# takes the instrument from the chain draws the pictures of the decoy, and a
+# pipeline that searches for the instrument by itself draws the pictures of
+# the machine and leaves no mark of the decoy at all.
+#
+# The decoy is two instruments: a PlantUML that writes a picture with a mark
+# of its own, and an Emacs that writes a mark of its own and calls the Emacs
+# of the machine.  The tree of the decoy is a copy of the tree of the
+# repository, so the chain that the pipeline reads is the chain of the copy,
+# and a change of the pipeline is a change of the copy.
+decoy_mark="YeahWave91DecoyMark"
+decoy_tree="$tmp/decoy"
+chain_fixture "$decoy_tree"
+cp -R "$REPO/scripts" "$decoy_tree/scripts" || blocked "cannot make the tree of the check"
+
+# The PlantUML of the decoy: it writes a picture that carries the mark of the
+# decoy and not the picture of the diagram.
+decoy_plantuml="$tmp/decoy-plantuml"
+cat >"$tmp/decoy-plantuml.in" <<'FAKE'
+#!/bin/sh
+# A PlantUML of the decoy: it writes a picture that carries the mark of the
+# decoy and not the picture of the diagram.
+out=""
+src=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -o) out="$2"; shift 2 ;;
+    *) src="$1"; shift ;;
+  esac
+done
+name="${src##*/}"
+name="${name%.puml}"
+printf '<svg>__MARK__</svg>\n' >"$out/$name.svg"
+exit 0
+FAKE
+sed "s|__MARK__|$decoy_mark|" "$tmp/decoy-plantuml.in" >"$decoy_plantuml" || blocked "cannot make the tree of the check"
+chmod +x "$decoy_plantuml" || blocked "cannot make the tree of the check"
+
+# The Emacs of the decoy: it writes the mark of the decoy and calls the Emacs
+# of the machine with the arguments it was given.
+decoy_emacs="$tmp/decoy-emacs"
+decoy_emacs_mark="$tmp/decoy-emacs.mark"
+cat >"$tmp/decoy-emacs.in" <<'FAKE'
+#!/bin/sh
+# An Emacs of the decoy: it writes the mark of the decoy and calls the Emacs
+# of the machine with the arguments it was given.
+printf '%s\n' "$*" >"__MARK_FILE__"
+exec "__EMACS__" "$@"
+FAKE
+sed -e "s|__MARK_FILE__|$decoy_emacs_mark|" -e "s|__EMACS__|$emacs_bin|" "$tmp/decoy-emacs.in" >"$decoy_emacs" || blocked "cannot make the tree of the check"
+chmod +x "$decoy_emacs" || blocked "cannot make the tree of the check"
+
+# The chain of the copy: the chain of the repository with a body that hands
+# out the decoy instead of the instrument of the machine.  The body is the
+# body of the chain with two lines at its head, and the head of the chain is
+# read with a space or without it, as the head of the chain itself is read.
+cat >"$tmp/decoy-block.in" <<'BLOCK'
+  case "${1:-} ${2:-}" in
+    *PLANTUML*|*plantuml*) printf '%s' "__PLANTUML__"; return 0 ;;
+    *EMACS*|*emacs*) printf '%s' "__EMACS__"; return 0 ;;
+  esac
+BLOCK
+sed -e "s|__PLANTUML__|$decoy_plantuml|" -e "s|__EMACS__|$decoy_emacs|" "$tmp/decoy-block.in" >"$tmp/decoy-block" || blocked "cannot make the tree of the check"
+awk -v block="$tmp/decoy-block" '
+  /^[[:space:]]*find_tool[[:space:]]*[(][)][[:space:]]*[{]/ && !placed {
+    print
+    while ((getline line < block) > 0) print line
+    close(block)
+    placed = 1
+    next
+  }
+  { print }
+' "$REPO/scripts/lib/tools.sh" >"$decoy_tree/scripts/lib/tools.sh" || blocked "cannot make the tree of the check"
+
+# The decoy that is not in the chain is a check that cannot measure: the
+# check says so and does not pretend that the pipeline was measured.
+decoy_placed=0
+if grep -qF "$decoy_plantuml" "$decoy_tree/scripts/lib/tools.sh"; then
+  decoy_placed=1
+else
+  fail "the decoy of the instrument is not in the chain of $chain_file: the chain of the search cannot be measured"
+fi
+
+if [ "$decoy_placed" -eq 1 ]; then
+  # The instrument of the machine is on the PATH of the run: a pipeline that
+  # searches for the instrument by itself finds it and draws the pictures of
+  # the machine, and the mark of the decoy is in no picture of them.
+  decoy_path="$shim:$PATH"
+  for dir in "${plantuml_dirs[@]+"${plantuml_dirs[@]}"}"; do
+    decoy_path="$decoy_path:$dir"
+  done
+  (
+    cd "$decoy_tree" || blocked "cannot enter the tree of the decoy"
+    env "EMACS=$emacs_bin" "PLANTUML=$plantuml_bin" \
+      "${base_env[@]}" \
+      "PATH=$decoy_path" bash "$decoy_tree/scripts/dev" diagrams
+  ) >"$tmp/decoy.log" 2>&1
+  decoy_rc=$?
+  if [ "$decoy_rc" -ne 0 ]; then
+    fail "the pipeline answered $decoy_rc in the tree where the chain of the search hands out the decoy of the instrument: the pipeline does not take the instrument from the chain ($chain_file)"
+    sed -n '1,8p' "$tmp/decoy.log" >&2
+  else
+    # Every picture of the tree of the decoy carries the mark of the decoy:
+    # the decoy is the instrument that drew them.
+    decoy_pictures=0
+    for picture in "$decoy_tree/site/assets/diagrams"/*.svg; do
+      [ -f "$picture" ] || continue
+      decoy_pictures=$((decoy_pictures + 1))
+      if ! grep -qF "$decoy_mark" "$picture"; then
+        fail "the picture $(basename "$picture") of the tree of the decoy does not carry the mark of the decoy: the pipeline did not draw with the instrument of the chain ($chain_file)"
+      fi
+    done
+    if [ "$decoy_pictures" -eq 0 ]; then
+      fail "the tree of the decoy holds no picture: the instrument of the chain ($chain_file) was not used"
+    fi
+    # The Emacs of the decoy was called: the mark of the decoy is written by
+    # the Emacs of the chain and by no other Emacs.
+    if [ ! -f "$decoy_emacs_mark" ]; then
+      fail "the pipeline did not call the Emacs of the chain ($chain_file): the pipeline writes a step of the search of a tool by itself"
+    fi
+  fi
+fi
+
+# --- 7. the instrument is not there: the answer is 3, not 0 --------------------
 
 missing_dir="$tmp/chain-missing"
 chain_fixture "$missing_dir"
@@ -702,7 +852,7 @@ elif ! grep -qi 'plantuml' "$tmp/chain-missing.log"; then
   fail "the pipeline answered 3 but said nothing about plantuml on its stderr"
 fi
 
-# --- 7. the contract of the wrapper --------------------------------------------
+# --- 8. the contract of the wrapper --------------------------------------------
 
 unknown_log="$tmp/unknown.log"
 bash "$REPO/scripts/dev" no-such-subcommand >"$unknown_log" 2>&1
@@ -721,7 +871,7 @@ if [ "$args_rc" -ne 2 ]; then
   fail "the pipeline answered $args_rc to an argument and the answer must be 2"
 fi
 
-# --- 8. every diagram, in both themes ------------------------------------------
+# --- 9. every diagram, in both themes ------------------------------------------
 
 main_dir="$tmp/main"
 mkdir -p "$main_dir/site/diagrams" || blocked "cannot make the tree of the check"
@@ -921,7 +1071,7 @@ while read -r name label; do
   fi
 done <"$labels_file"
 
-# --- 9. the failures answer 1, not 0 -------------------------------------------
+# --- 10. the failures answer 1, not 0 -------------------------------------------
 
 # A diagram that PlantUML cannot read: the pipeline must answer 1.
 broken_dir="$tmp/broken"
