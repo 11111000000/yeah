@@ -3629,6 +3629,29 @@
       "register": "fact",
       "control": "sed -i \"s|(yeah-turn--tick turn 'permission-ask)|nil|\" lib/yeah-turn.el",
       "waiver": null
+    },
+    {
+      "id": "every-transition-of-the-table-is-taken",
+      "text": "Every cell of the table of the machine is taken: every label the table names has a place in the runtime where a run takes that move, and every state of the machine is reachable from the first one through the cells of the table.",
+      "scope": [
+        "lib",
+        "tests/checks/check-every-transition-of-the-table-is-taken.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-every-transition-of-the-table-is-taken.el"
+        }
+      ],
+      "falsifier": "a label of the table of the machine has no place in the runtime where a run takes that move, or a state of the machine is not reachable from the first one through the cells of the table, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i \"s|(yeah-turn--tick turn 'tool-end)|nil|g\" lib/yeah-turn.el",
+      "waiver": null
     }
   ]
 }

@@ -1,0 +1,25 @@
+{
+  "id": "wave-78",
+  "title": "every cell of the table of the machine is taken by the runtime",
+  "intent": "The wave A3 of `docs/ARCHITECTURE-CATCHUP-PLAN.md`: the check that should have existed and that would have caught the finding A at once.  The table of the machine (`lib/yeah-loop.el') names the moves a run can make, and nothing said that the runtime has a move for every cell of that table: seven labels were called nowhere, and three states could not be entered at all.  A cell that the runtime never takes is a promise the machine does not keep, and a reader of the table cannot tell a promise from a fact.  What changes: a new check reads the sources of the kernel with the reader of Emacs, looks for the calls of `yeah-turn--tick' and for the label each of them takes, and says that every label of the table has such a place; the same check walks the table from the first state and says that every state of the machine is reachable.  The check is static on purpose: it answers about the whole kernel at once and it answers the same way twice, while a dynamic check would need a run that takes every move of the table, and there is no such run (a run that meets no busy provider never takes `rate-blocked', and a run that never grows long never takes `budget-overflow').  The code of the kernel does not change: the table of wave 77 is already honest, and this wave only says so out loud and keeps it that way.",
+  "touches": [
+    "lib/yeah-loop.el",
+    "lib/yeah-turn.el",
+    "tests/checks/check-every-transition-of-the-table-is-taken.el",
+    "spec.json",
+    "waves/wave-78.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-every-transition-of-the-table-is-taken.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "every-transition-of-the-table-is-taken"
+  ],
+  "commitment": [],
+  "objection": "The check says that the runtime has a place where it takes every move of the table; it does not say that a run takes every move, and it cannot: there is no run that meets a busy provider and grows long and waits for a person at the same time.  The check reads the sources of the kernel as text, so a move that the runtime takes through a variable that the reader cannot see would be reported as missing; the runtime computes no label today, and the machine refuses a label it does not have, so a move of that kind cannot pass unnoticed.  The wave does not close the gap of the state of a run (the state is not written into the journal, `docs/PLAN.md` 16.66) and does not make the reverse side of the table live: the check says that every state is reachable through the cells of the table, not that the runtime reaches it on every path.  And the wave does not touch the code of the kernel: the table of wave 77 is already honest, and a check that only says so is a check against the next wave, not against this one.",
+  "refuted_by": "a label of the table of the machine has no place in the runtime where a run takes that move, or a state of the machine is not reachable from the first one through the cells of the table, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The control of the claim takes the tick of `tool-end' away -- `(yeah-turn--tick turn 'tool-end)' becomes `nil' -- and the check ends with the code 1 and with its own words: `the table of the machine names 1 move(s) that the runtime does not take: (tool-end)'.  The control was applied to a copy of the tree on 2026-11-20; the clean tree gives the code 0.  The measurement of the wave: the table of the machine has seventeen labels and eleven states, every label of the table is taken in `lib/', every state of the machine is reachable from `idle' through the cells of the table, the whole unit suite is four hundred and fifty-eight, and the checks of the repository pass.  The claim of the wave is the claim of the plan: `every-transition-of-the-table-is-taken'."
+}
