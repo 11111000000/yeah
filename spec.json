@@ -3632,10 +3632,11 @@
     },
     {
       "id": "every-transition-of-the-table-is-taken",
-      "text": "Every cell of the table of the machine is taken: every label the table names has a place in the runtime where a run takes that move, and every state of the machine is reachable from the first one through the cells of the table.",
+      "text": "Every cell of the table of the machine is a move the runtime takes: for every cell of the table the machine makes that move, the runtime takes that label in a place of the code that lives, and the cell is walked; a fan of a label covers exactly the states a run can live in and ends in one state, and every state of the machine is reachable from the first one through the cells of the table.",
       "scope": [
         "lib",
-        "tests/checks/check-every-transition-of-the-table-is-taken.el"
+        "tests/checks/check-every-transition-of-the-table-is-taken.el",
+        "tests/unit/test-yeah-loop.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -3645,12 +3646,16 @@
       "requirements": [
         {
           "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-loop.el"
+        },
+        {
+          "kind": "verifier",
           "spec": "./scripts/dev check tests/checks/check-every-transition-of-the-table-is-taken.el"
         }
       ],
-      "falsifier": "a label of the table of the machine has no place in the runtime where a run takes that move, or a state of the machine is not reachable from the first one through the cells of the table, or the control of the claim does not make the check fail by its own assertion",
+      "falsifier": "a cell of the table of the machine is not a move the machine makes, or a label of the table has no live place in the runtime where a run takes that move, or a fan of the table does not cover exactly the states a run can live in, or a cell of the table is never walked, or a state of the machine is not reachable from the first one through the cells of the table, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
-      "control": "sed -i \"s|(yeah-turn--tick turn 'tool-end)|nil|g\" lib/yeah-turn.el",
+      "control": "sed -i \"s|(compacting       error         . failed)|(compacting       interrupt     . interrupted)|\" lib/yeah-loop.el",
       "waiver": null
     },
     {
