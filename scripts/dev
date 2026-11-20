@@ -8,6 +8,7 @@
 #   check FILE...         — run the checks; every check has a limit of time
 #   bench [--run]         — validate the benchmark task set, or run the benchmark
 #   pixel                 — photograph the real interface and compare two pictures
+#   diagrams              — render every diagram of site/diagrams in both themes
 #   map                   — the standing specification: claims, states, uncovered
 #   run                   — execute the checks, bind the evidence, write the trail
 #   gate                  — the gate of the project (scripts/gate); the exit code is the verdict
@@ -40,21 +41,21 @@ script_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)"
 . "$script_dir/lib/method.sh"
 # shellcheck source=scripts/lib/copies.sh
 . "$script_dir/lib/copies.sh"
+# shellcheck source=scripts/lib/tools.sh
+. "$script_dir/lib/tools.sh"
 
+# The search for Emacs is one thing and it lives in one place: the steps are
+# the environment, PATH, the profile of the user and the store of nix.
 find_emacs() {
-  if [ -n "${EMACS:-}" ] && [ -x "${EMACS}" ]; then
-    printf '%s' "${EMACS}"
-    return 0
-  fi
-  if command -v emacs >/dev/null 2>&1; then
-    command -v emacs
-    return 0
-  fi
-  if [ -x "$HOME/.nix-profile/bin/emacs" ]; then
-    printf '%s' "$HOME/.nix-profile/bin/emacs"
-    return 0
-  fi
-  return 1
+  find_tool EMACS emacs
+}
+
+# The search for PlantUML has the same shape and one step more: the tool is
+# the instrument of the author, it is not part of the runtime of the site,
+# and the store of nix is the place where it lives when the profile of the
+# user is swept.
+find_plantuml() {
+  find_tool PLANTUML plantuml "${NIX_STORE_DIR:-/nix/store}/*plantuml*/bin/plantuml"
 }
 
 # The script that runs a check under a limit of time.  It lives next to
@@ -101,6 +102,7 @@ Subcommands:
   check FILE...         — run the checks; every check has a limit of time
   bench [--run]         — validate the benchmark task set, or run the benchmark
   pixel                 — photograph the real interface and compare two pictures
+  diagrams              — render every diagram of site/diagrams in both themes
   map                   — the standing specification: claims, states, uncovered
   run                   — execute the checks, bind the evidence, write the trail
   gate                  — the gate of the project (scripts/gate); the exit code is the verdict
@@ -115,6 +117,14 @@ Exit codes:
 Environment:
   MATHC  — path to the math-coding binary (default: `mathc` on PATH)
   EMACS  — path to the Emacs binary (default: `emacs` on PATH)
+  PLANTUML
+         — path to the PlantUML binary (default: `plantuml` on PATH, then
+           ~/.nix-profile/bin, then the store of nix).  PlantUML draws the
+           diagrams of the site; it is the instrument of the author and not
+           a part of the runtime.
+  NIX_STORE_DIR
+         — the store of nix where the tools are looked for last (default:
+           /nix/store)
   YEAH_CHECK_TIMEOUT
          — the limit of one check, in seconds (default: 120).  A check that
            passed the limit is stopped, and the run answers with the third
@@ -305,6 +315,83 @@ EOF
     clean_bytecode
     bash tests/pixel/check-interface-is-seen.sh
     exit $?
+    ;;
+
+  diagrams)
+    # The pipeline of the diagrams.  PlantUML is the instrument of the
+    # author: the site publishes the pictures that are ready, and the site
+    # itself has no build step.
+    if [ $# -gt 0 ]; then
+      echo "scripts/dev diagrams: takes no arguments" >&2
+      exit 2
+    fi
+    if [ ! -d site/diagrams ]; then
+      echo "scripts/dev diagrams: site/diagrams does not exist" >&2
+      exit 2
+    fi
+    plantuml_bin="$(find_plantuml)" || {
+      echo "scripts/dev diagrams: plantuml is not on PATH, PLANTUML is not set, and it is not in the store of nix" >&2
+      exit 3
+    }
+    out_dir="site/assets/diagrams"
+    mkdir -p "$out_dir" || {
+      echo "scripts/dev diagrams: cannot make $out_dir" >&2
+      exit 3
+    }
+    tmp="$(mktemp -d "${TMPDIR:-/tmp}/yeah-diagrams.XXXXXX")" || {
+      echo "scripts/dev diagrams: cannot make a temporary directory" >&2
+      exit 3
+    }
+    # The pictures are written in the temporary directory first and moved to
+    # their place one by one: a render that fails leaves no half-written
+    # picture behind.
+    trap 'rm -rf "$tmp"' EXIT
+    diagrams=0
+    pictures=0
+    for src in site/diagrams/*.puml; do
+      [ -f "$src" ] || continue
+      name="$(basename "$src" .puml)"
+      case "$name" in
+        palette-*) continue ;;
+      esac
+      if ! grep -q '^[[:space:]]*@startuml' "$src"; then
+        echo "scripts/dev diagrams: $src has no @startuml line" >&2
+        exit 2
+      fi
+      for theme in light dark; do
+        palette="site/diagrams/palette-$theme.puml"
+        if [ ! -f "$palette" ]; then
+          echo "scripts/dev diagrams: $palette does not exist" >&2
+          exit 2
+        fi
+        # The skin of a theme goes inside the diagram: a skinparam outside of
+        # @startuml is an error of PlantUML.  The file that is rendered is
+        # named after the diagram and the theme, and PlantUML writes the
+        # picture after the name of that file.
+        wrapper="$tmp/$name-$theme.puml"
+        sed "/^[[:space:]]*@startuml/r $palette" "$src" >"$wrapper"
+        mkdir -p "$tmp/out"
+        if ! "$plantuml_bin" -tsvg -o "$tmp/out" "$wrapper" >"$tmp/log" 2>&1; then
+          echo "scripts/dev diagrams: plantuml failed on $name ($theme)" >&2
+          cat "$tmp/log" >&2
+          exit 1
+        fi
+        picture="$tmp/out/$name-$theme.svg"
+        if [ ! -s "$picture" ]; then
+          echo "scripts/dev diagrams: plantuml wrote no picture for $name ($theme)" >&2
+          cat "$tmp/log" >&2
+          exit 1
+        fi
+        if grep -q 'Syntax Error' "$picture"; then
+          echo "scripts/dev diagrams: the picture of $name ($theme) is an error of PlantUML" >&2
+          exit 1
+        fi
+        mv "$picture" "$out_dir/$name-$theme.svg"
+        pictures=$((pictures + 1))
+      done
+      diagrams=$((diagrams + 1))
+    done
+    echo "diagrams: rendered $pictures picture(s) of $diagrams diagram(s) into $out_dir"
     ;;
 
   map)

@@ -1,0 +1,27 @@
+' Palette of the dark theme — modus-vivendi, the dark theme Emacs 30 ships.
+' The colours carry the site tokens: --face-default-bg, --face-default-fg,
+' --face-fringe-bg, --face-divider and --face-prose.
+' The values are taken from site/styles.css, the [data-theme="dark"] block (lines 89-132).
+skinparam nodeStyle rectangle
+skinparam stateStyle rectangle
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName "DejaVu Sans Mono"
+skinparam backgroundColor #000000
+skinparam defaultFontColor #FFFFFF
+skinparam ArrowColor #989898
+skinparam ArrowFontColor #989898
+skinparam StateBackgroundColor #000000
+skinparam StateBorderColor #646464
+skinparam StateFontColor #FFFFFF
+skinparam packageBackgroundColor #1E1E1E
+skinparam packageBorderColor #646464
+skinparam packageFontColor #FFFFFF
+skinparam componentBackgroundColor #000000
+skinparam componentBorderColor #646464
+skinparam componentFontColor #FFFFFF
+skinparam activityBackgroundColor #000000
+skinparam activityBorderColor #646464
+skinparam activityFontColor #FFFFFF
+skinparam noteBackgroundColor #1E1E1E
+skinparam noteBorderColor #646464
