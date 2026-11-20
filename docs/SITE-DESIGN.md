@@ -421,7 +421,7 @@ two by a reader who looked at the site.
   of. Worse, the card a reader sent showed an expansion the name never
   had: `Yeah — Y-combinator, Emacs Agent Harness`. That text is from the
   deploy of the 11th of November; the 12th already corrected it
-  (`4e3081c`, "the name was expanded as 'Y-combinator, Emacs Agent
+  (`238073f`, "the name was expanded as 'Y-combinator, Emacs Agent
   Harness', which lost the recursion the name actually has"), and the
   redesign dropped the name from the title altogether. The social
   platforms cache a preview by its URL, so the wrong card outlived the
