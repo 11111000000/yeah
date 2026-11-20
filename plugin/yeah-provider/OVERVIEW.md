@@ -29,7 +29,7 @@ Settings live in the host settings of Paseo under Yeah:
 | `emacsPath` | path to Emacs; empty means the usual places are searched |
 | `model` | model the provider uses |
 | `host` | host of the model backend |
-| `profile` | permission profile: `build` asks the person, `plan` forbids edits |
+| `profile` | permission profile of the process: `build` asks the person, `plan` forbids edits, `auto` allows everything; the mode of the session is a different thing (below) |
 | `serviceMode` | placement of the kernel: `spawn` raises one Emacs per connection, `service` keeps one Emacs for every agent and the sessions come to it over a socket |
 | `serviceName` | name of the service, which is the name of its socket; services with different names do not get in each other's way |
 | `keyFile` | environment file that holds the provider key |
@@ -41,6 +41,26 @@ reaches its configuration. It is read from the environment file named by
 its owner only, or from `YEAH_ACP_KEY` in the environment of the daemon. The
 value is passed to the Emacs process through the environment and is not
 printed or written to a log by the plugin.
+There are two profiles here and they are not the same thing. The setting
+`profile` of the plugin chooses the profile of the process at launch
+(`YEAH_ACP_PROFILE`) and fills the standing rules of permissions of the
+kernel: `plan` forbids the tools that change the world, `build` asks the
+person, `auto` allows everything. A standing refusal decides everything, on
+the wire too: a tool that the standing rules forbid is not asked about, it is
+refused. The mode of the session is the other thing: it travels over ACP, the
+kernel publishes three of them in the answer of `session/new` (`plan`,
+`build`, `auto`; the third came with wave 76), and the client of the
+orchestrator switches them with `session/set_mode`. The mode of the session
+decides: `plan` forbids, `auto` allows without a question, `build` asks the
+client. A run without questions is therefore the mode `auto`, and it is
+switched on the side of the client (`paseo run --provider yeah --mode auto`;
+the live run of 19 November 2026 asked zero times). The setting `profile`
+alone does not switch the mode of the session: it fills the standing rules of
+the process, and a standing permission does not remove the question -- the
+mode of the session does. The mode does not make the work of the agent safe:
+a deletion goes into the trash of the user and the commands that destroy in
+place are refused by name, but there is no boundary of the working directory
+and the secrets in the journal are not masked (`docs/AGENT-SAFETY.md`).
 
 ## What the plugin adds to the wire
 
@@ -123,15 +143,22 @@ them.
   the plugin removes that limit, and it is not the default: the default is
   still `spawn`, one Emacs per connection.
 - `session/set_mode` and a change of the model of a session over the wire do
-  not exist: the profile and the model are chosen when the process starts.
+  exist (waves 43, parts 3 and 4, 18 November 2026): the mode of the session
+  and the model of the session are chosen over the wire. The setting `profile`
+  of the plugin is a different thing — the standing rules of the process
+  (above).
 - The `mcpServers` of a session are not ignored: the kernel connects to them
   and their tools become the tools of the runs of that session (wave 66 gave the
   kernel an HTTP transport for MCP). Who starts those servers stays outside the
   kernel.
-- The working directory of a session is not applied to the tools. Relative
-  paths of the agent resolve against the working directory of the Emacs
-  process.
-- The arguments of a tool arrive as a positional list of values, so the
-  interface of Paseo shows no diff of an edit.
 - The journal of the session stays the source of truth: ACP projects part of
   what a run did, and the rest is in the JSONL file of the session.
+Two entries of that list are old and are not gaps any more. The working
+directory of a session is applied to the tools: a relative path of the agent
+resolves against the directory of the session, not against the working
+directory of the Emacs process (wave 43, part 1, 18 November 2026). The
+arguments of a tool arrive under the names the tool declared, and the plugin
+translates the names of an edit into the ones the client of Paseo reads (`path`
+to `filePath`, `old_str` to `oldString`, `new_str` to `newString`; wave 43,
+part 2). The diff of an edit in the interface of Paseo has not been observed
+since: only a live run can show it.
