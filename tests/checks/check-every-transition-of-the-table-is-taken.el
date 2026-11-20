@@ -65,8 +65,9 @@
 ;;    place whose label cannot be read is a defect of its own now, and the
 ;;    check names it by its file and its line.
 ;;
-;; The version of wave 90 closed one more hole of the proof (the finding F23 of
-;; the discriminator of the waves 87 to 89).  The code of the kernel did not
+;; The version of wave 90 closed three more holes of the proof (the finding F23
+;; of the discriminator of the waves 87 to 89, and the two classes of escape
+;; that the review of the wave found beside it).  The code of the kernel did not
 ;; change again: the hole was in the proof.
 ;;
 ;; 1. A name in a quoted list counted as a call (F23).  The walk of the calls
@@ -80,6 +81,24 @@
 ;;    `lambda' is code wherever it stands, also under a `function', and a name
 ;;    in the first argument of a `funcall' or of an `apply' is still a call,
 ;;    because the runtime calls the value there.
+;;
+;; 2. A name in a list of names counted as a call.  The walk of the calls read
+;;    the names of the bindings of a `let' as calls, and the same held of the
+;;    variable of the spec of a `dolist', of the pattern of a `pcase' and of
+;;    the types of the handlers of a `condition-case'.  A name in a list of
+;;    names calls nothing: the runtime reads the names and it does not run
+;;    them, and a definition that only such a list names is dead for the
+;;    runtime.  The walk does not go into the names now: the values of the
+;;    bindings, the collection of the spec, the subject of a `pcase', the
+;;    bodies of the clauses and the bodies of the handlers are code, and the
+;;    walk goes into them.
+;;
+;; 3. A tick in a quoted form counted as a place.  The walk of the places read
+;;    the operands of a `quote' as code, and a tick that stood in a quoted
+;;    form was a place of the runtime: the runtime does not run a quoted form,
+;;    so such a place witnesses nothing at all.  The walk does not go into
+;;    data now: a tick in a `quote' is no place, and the parts that are
+;;    unquoted in a `backquote' are the only code of it.
 ;;
 ;; The report is compared with the numbers the check measured on the kernel
 ;; of 2026-11-20 as well: a measurement that got smaller is a proof that got
@@ -172,8 +191,22 @@
   '(funcall apply)
   "The forms that call the function that stands in their first argument.")
 
+(defconst yeah-check--backquote-symbols
+  (list (intern "`") 'backquote)
+  "The symbols that stand for a backquote in a form.
+The reader of Emacs gives a backquote the symbol whose name is a backquote and
+not the symbol `backquote', and the check reads the forms of the kernel with
+the reader, so it has to know both of the symbols.")
+
+(defconst yeah-check--unquote-symbols
+  (list (intern ",") (intern ",@") 'unquote 'unquote-splicing)
+  "The symbols that stand for an unquote in a form.
+The reader of Emacs gives an unquote the symbol whose name is a comma and not
+the symbol `unquote', and the check reads the forms of the kernel with the
+reader, so it has to know both of the symbols.")
+
 (defconst yeah-check--names-of-a-value
-  '(quote function)
+  (append '(quote function) yeah-check--backquote-symbols)
   "The heads of the forms that name a value and do not call it.")
 
 (defconst yeah-check--expected-measurement
@@ -298,6 +331,41 @@ not the head of a call."
     (yeah-check--calls-in-1 form table))
   table)
 
+(defun yeah-check--calls-in-bindings (bindings table)
+  "Add to TABLE the symbols the values of BINDINGS call.
+BINDINGS is a list of bindings, and the name of a binding is a name and not a
+call: the runtime reads the value of the binding and not its name.  The value
+of a binding is code, and the walk goes into it."
+  (dolist (binding bindings)
+    (when (consp binding)
+      (yeah-check--calls-in-1 (cadr binding) table)))
+  table)
+
+(defun yeah-check--calls-in-data (form table)
+  "Add to TABLE the symbols the unquoted parts of FORM call.
+FORM is data: the runtime does not run it, and a name in it calls nothing.  The
+parts that are unquoted in it are the code that the runtime runs, and the walk
+goes into them."
+  (cond
+   ((consp form)
+    (let ((head (car form)))
+      (if (memq head yeah-check--unquote-symbols)
+          (yeah-check--calls-in-1 (cadr form) table)
+        (let ((out table) (tail form))
+          (while (consp tail)
+            (setq out (yeah-check--calls-in-data (car tail) out))
+            (setq tail (cdr tail)))
+          (when tail
+            (setq out (yeah-check--calls-in-data tail out)))
+          out))))
+   ((vectorp form)
+    (let ((out table) (index 0))
+      (while (< index (length form))
+        (setq out (yeah-check--calls-in-data (aref form index) out))
+        (setq index (1+ index)))
+      out))
+   (t table)))
+
 (defun yeah-check--calls-in-1 (form table)
   "Add to TABLE the symbols FORM calls.
 A call is a symbol in the head of a form.  A function designator and a quoted
@@ -313,10 +381,20 @@ form too, and its tail is walked apart from its head.
 The walk does not go into data (the finding F23 of the discriminator of the
 waves 87 to 89).  A quoted form is a list of names and not code, and a name
 in it calls nothing: the walk of the operands of a `quote' stopped, and a
-definition that only a quoted list names is dead for the runtime.  The
-designator of a `function' is a name and not code as well, and the parameters
-of a `lambda' are names and not code either.  The body of a `lambda' is code
-wherever it stands, also under a `function'.
+definition that only a quoted list names is dead for the runtime.  A
+backquoted form is data as well, and the parts that are unquoted in it are the
+code that the runtime runs.  The designator of a `function' is a name and not
+code as well, and the parameters of a `lambda' are names and not code either.
+The body of a `lambda' is code wherever it stands, also under a `function'.
+
+A list of names is a list of names and not code, wherever it stands: the
+parameters of a `lambda', the names of the bindings of a `let', the variable
+of the spec of a `dolist', the pattern of a `pcase' and the types of the
+handlers of a `condition-case'.  The runtime reads the names and does not run
+them, and a definition that only such a list names is dead for the runtime.
+The values of the bindings, the collection of the spec, the subject of a
+`pcase', the body of the clause and the body of the handler are code, and the
+walk goes into them.
 
 The names go into a table and not into a list: a list that the walk passes
 down would lose the names that the walk adds, because the caller keeps the
@@ -334,6 +412,10 @@ head of the list and not the new cell."
       (cond
        ;; A quoted form is data and not code: the walk does not go into it.
        ((eq head 'quote) nil)
+       ;; A backquoted form is data as well, and the parts that are unquoted
+       ;; in it are the code that the runtime runs.
+       ((memq head yeah-check--backquote-symbols)
+        (yeah-check--calls-in-data (cdr form) table))
        ;; The designator of a `function' is a name and not code.  The body of
        ;; a `lambda' is code wherever it stands, and it is walked.
        ((eq head 'function)
@@ -344,6 +426,42 @@ head of the list and not the new cell."
        ;; is code.
        ((eq head 'lambda)
         (yeah-check--calls-in-body (cdr (cdr form)) table))
+       ;; The names of the bindings of a `let' are names and not code, and
+       ;; their values and the body of the `let' are code.
+       ((memq head '(let let* cl-letf))
+        (yeah-check--calls-in-bindings (cadr form) table)
+        (yeah-check--calls-in-body (cddr form) table))
+       ;; The variable of the spec of a `dolist' or of a `dotimes' is a name,
+       ;; and the collection of the spec and the body are code.  The result
+       ;; variable of the spec is a name as well, and the runtime writes the
+       ;; result of the loop into it.
+       ((memq head '(dolist dotimes))
+        (let ((spec (cadr form)))
+          (when (consp spec)
+            (yeah-check--calls-in-1 (cadr spec) table)))
+        (yeah-check--calls-in-body (cddr form) table))
+       ;; The pattern of a `pcase' is data, the subject is code, and the body
+       ;; of the clause is code.  The pattern of a clause is its first element
+       ;; and its body is the rest of it: a keyword clause of a `pcase' names
+       ;; the branch in its first element and its body is the rest of it.
+       ((memq head '(pcase cl-case))
+        (yeah-check--calls-in-1 (cadr form) table)
+        (let ((tail (cddr form)))
+          (while (consp tail)
+            (let ((clause (car tail)))
+              (when (consp clause)
+                (yeah-check--calls-in-body (cdr clause) table)))
+            (setq tail (cdr tail)))))
+       ;; The variable of a `condition-case' is a name, the types of the
+       ;; handlers are data, and the bodies of the handlers are code.
+       ((eq head 'condition-case)
+        (yeah-check--calls-in-1 (caddr form) table)
+        (let ((tail (cdddr form)))
+          (while (consp tail)
+            (let ((clause (car tail)))
+              (when (consp clause)
+                (yeah-check--calls-in-body (cdr clause) table)))
+            (setq tail (cdr tail)))))
        (t
         (let ((tail form))
           (while (consp tail)
@@ -704,6 +822,34 @@ bindings at all."
                        (list (cadr binding)) definition out guard before aliases))))))
     (yeah-check--ticks-in-body (cddr form) definition out guard before inner)))
 
+(defun yeah-check--ticks-in-data (form definition acc guard before aliases)
+  "Collect the tick calls of the unquoted parts of FORM into ACC.
+FORM is data: the runtime does not run it, and a tick that stands in it is no
+tick of the runtime.  The parts that are unquoted in it are the code that the
+runtime runs, and the walk goes into them."
+  (cond
+   ((consp form)
+    (let ((head (car form)))
+      (if (memq head yeah-check--unquote-symbols)
+          (yeah-check--ticks-in (cadr form) definition acc guard before aliases)
+        (let ((out acc) (tail form))
+          (while (consp tail)
+            (setq out (yeah-check--ticks-in-data
+                       (car tail) definition out guard before aliases))
+            (setq tail (cdr tail)))
+          (when tail
+            (setq out (yeah-check--ticks-in-data
+                       tail definition out guard before aliases)))
+          out))))
+   ((vectorp form)
+    (let ((out acc) (index 0))
+      (while (< index (length form))
+        (setq out (yeah-check--ticks-in-data
+                   (aref form index) definition out guard before aliases))
+        (setq index (1+ index)))
+      out))
+   (t acc)))
+
 (defun yeah-check--ticks-in (form definition acc guard before aliases)
   "Collect the tick calls of FORM into ACC.
 DEFINITION is the name of the definition FORM belongs to, or nil.  GUARD is
@@ -711,7 +857,12 @@ the list of the tests of the conditionals the call sits under; a test that
 says which state the run is in is what tells the check from which state the
 run takes the move.  BEFORE is the list of the sets of the labels of the
 moves that precede FORM in its branch.  ALIASES are the names that hold the
-state of the run where FORM is read."
+state of the run where FORM is read.
+
+A tick that stands in data is no tick of the runtime: the walk does not go into
+a `quote', and the parts that are unquoted in a `backquote' are the only code
+of it.  The designator of a `function' is a name and not code, and the body of
+a `lambda' is code wherever it stands, also under a `function'."
   (cond
    ((and (consp form) (eq (car form) yeah-check--tick-function))
     (let ((labels (yeah-check--label-of form)))
@@ -731,6 +882,21 @@ state of the run where FORM is read."
    ((consp form)
     (let ((head (car form)))
       (cond
+       ((eq head 'quote)
+        ;; A quoted form is data and not code: the runtime does not run it,
+        ;; and a tick that stands in a quoted form is no place of the runtime.
+        acc)
+       ((memq head yeah-check--backquote-symbols)
+        ;; A backquoted form is data as well, and the parts that are unquoted
+        ;; in it are the code that the runtime runs.
+        (yeah-check--ticks-in-data (cdr form) definition acc guard before aliases))
+       ((eq head 'function)
+        ;; The designator of a `function' is a name and not code.  The body of
+        ;; a `lambda' is code wherever it stands, and it is walked.
+        (let ((designator (cadr form)))
+          (if (and (consp designator) (eq (car designator) 'lambda))
+              (yeah-check--ticks-in designator definition acc guard before aliases)
+            acc)))
        ((eq head 'if)
         (let* ((test (cadr form))
                (out (yeah-check--ticks-in-body (list (nth 2 form)) definition acc
@@ -764,6 +930,10 @@ state of the run where FORM is read."
           (while tail
             (let ((clause (car tail)))
               (when (consp clause)
+                ;; The pattern of a clause is data and not code: it names the
+                ;; branch and it runs nothing.  The pattern of a clause is its
+                ;; first element and its body is the rest of it: a keyword
+                ;; clause names the branch in its first element.
                 (setq out (yeah-check--ticks-in-body
                            (cdr clause) definition out
                            (append (if about-the-state (list (car clause)) nil)
