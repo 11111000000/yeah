@@ -1097,7 +1097,12 @@ work item. Never resolve it by silently making documentation more optimistic.
   (`--face-default-bg`, `--face-default-fg`, `--face-fringe-bg`,
   `--face-divider`, `--face-prose` of `site/styles.css`).  The wave draws no
   diagram: the first one — the machine of the states, born out of the code — is
-  the wave D1 (docs/PLAN.md §16.73).
+  the wave D1 (docs/PLAN.md §16.73).  A discriminator found the proof weaker
+  than the promise: the chain of the search is not measured step by step, one
+  diagram is not every diagram, the code 1 of a failed PlantUML is not
+  measured, and the colours of the picture are checked against numbers instead
+  of against the tokens of the site.  The code of the wave is honest; the proof
+  is repaired in wave 83 (docs/PLAN.md §16.73).
 
 ## The commands
 
