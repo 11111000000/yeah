@@ -1103,6 +1103,21 @@ work item. Never resolve it by silently making documentation more optimistic.
   measured, and the colours of the picture are checked against numbers instead
   of against the tokens of the site.  The code of the wave is honest; the proof
   is repaired in wave 83 (docs/PLAN.md §16.73).
+- Wave 82 repaired the proof of the table of the machine.  The check promised a
+  cell and proved a label, and the reason was in two dead branches: the
+  arguments of a form are `(cdr form)`, and the code took `(cdr (cdr form))`,
+  so the state of a place was never read and any place of a label witnessed any
+  cell of that label.  The check now reads the state of a place from its guard,
+  binds every cell to its `FROM` (a place that takes the move of the cell from
+  another state is named), compares a fan of a label with the runtime and not
+  with the table (a runtime that narrows a fan breaks the check), and separates
+  "live for the runtime" from "live for the tests": a root of the runtime is an
+  autoload cookie or a reference of a top-level form of `lib/`, and a definition
+  that only the tests call is dead for the runtime.  An error of the check is a
+  verdict and not the death of the process.  Sixteen of the thirty-one cells
+  rest on a guard that says nothing about the state — the check counts those
+  cells and names them, and only the runtime can make them strong.  The claim
+  is amended and not renamed (docs/PLAN.md §16.74).
 
 ## The commands
 
