@@ -1,0 +1,46 @@
+@startuml state-machine
+' The machine of the kernel: the states of `yeah-state-list' and the cells of `yeah-loop--raw-transitions'.
+state idle
+state deciding
+state "post-decide" as post_decide
+state "awaiting-tool" as awaiting_tool
+state "awaiting-user-permission" as awaiting_user_permission
+state accumulating
+state compacting
+state "blocked-on-rate" as blocked_on_rate
+state interrupted
+state completed
+state failed
+[*] --> idle
+idle --> deciding : user-prompt
+deciding --> post_decide : stream-end
+post_decide --> completed : no-tool-calls
+post_decide --> awaiting_tool : tool-call
+post_decide --> deciding : continue
+post_decide --> deciding : nudge
+awaiting_tool --> accumulating : tool-end
+accumulating --> post_decide : budget-ok
+accumulating --> compacting : budget-overflow
+compacting --> post_decide : compact-done
+awaiting_tool --> awaiting_user_permission : permission-ask
+awaiting_user_permission --> awaiting_tool : answer
+awaiting_user_permission --> awaiting_tool : timeout
+deciding --> blocked_on_rate : rate-blocked
+blocked_on_rate --> deciding : rate-relief
+idle --> failed : error
+deciding --> failed : error
+post_decide --> failed : error
+awaiting_tool --> failed : error
+awaiting_user_permission --> failed : error
+accumulating --> failed : error
+compacting --> failed : error
+blocked_on_rate --> failed : error
+idle --> interrupted : interrupt
+deciding --> interrupted : interrupt
+post_decide --> interrupted : interrupt
+awaiting_tool --> interrupted : interrupt
+awaiting_user_permission --> interrupted : interrupt
+accumulating --> interrupted : interrupt
+compacting --> interrupted : interrupt
+blocked_on_rate --> interrupted : interrupt
+@enduml
