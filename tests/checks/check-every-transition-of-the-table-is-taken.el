@@ -24,6 +24,28 @@
 ;; every cell was witnessed by any place of the label, and a runtime that took
 ;; the move of `deciding' from `post-decide' instead passed.
 ;;
+;; The version of wave 82 read the state of a place and compared the fans with
+;; the runtime.  The discriminator of that wave named three gaps of the proof
+;; (the findings F9, F10 and F11 of wave 85), and this version closes them.
+;;
+;; 1. The state of a place was read from the guard around it alone.  A guard
+;;    that says nothing about the state left the place blind, and the runtime
+;;    took the move of `tool-end' from `accumulating' without the check
+;;    seeing it.  The state of a place is now read from the guard *and* from
+;;    the moves that precede it in the same branch: the runtime sets the state
+;;    of a run to the state the machine moves to, so the state after a move is
+;;    known even where the guard says nothing.
+;; 2. A name of a function counted as a call of it: `(function f)' and `'f'
+;;    put the function into the graph of the runtime, and a definition that
+;;    only a `defconst' names was live for the runtime.  A call is a symbol in
+;;    the head of a form; a name is a name, and it calls nothing.  A name in
+;;    the first argument of `funcall' or of `apply' is a call, because the
+;;    runtime calls the value there.
+;; 3. A state that a local variable held was not read at all: the guard
+;;    around the place said nothing, the place dropped out of every check,
+;;    and the check passed.  A local variable that is bound to the state of
+;;    the run names the state now.
+;;
 ;; This check asks the question the claim asks.  Five things are checked.
 ;;
 ;; 1. The table is well formed: every cell is `(FROM LABEL . TO)', the states
@@ -32,7 +54,9 @@
 ;; 2. Every cell of the table is a move the runtime takes: the runtime takes
 ;;    the label of the cell in a place that lives, and the place is in the
 ;;    state the cell names.  The state of a place is read from the guard
-;;    around it and from the moves that precede it in the same branch.
+;;    around it and from the moves that precede it in the same branch.  A
+;;    place the runtime does not run witnesses nothing at all: a cell whose
+;;    only place is dead is a move the runtime does not take.
 ;; 3. Every place of the runtime takes the move of the machine from the
 ;;    states the machine has that move from: a place whose guard names the
 ;;    state is in exactly those states, and a place that takes a move the
@@ -42,7 +66,10 @@
 ;;    table gives it to, the runtime takes it from no other state, and the
 ;;    fan ends the run in one state.  The fan is compared with the runtime
 ;;    and not with the table: a fan that the runtime narrows is a fan the
-;;    runtime does not keep, and the table cannot see that.
+;;    runtime does not keep, and the table cannot see that.  A fan whose
+;;    coverage is not fully stated is not judged: a coverage that is read in
+;;    part proves nothing about the states that are missing from it, and the
+;;    report says how much of it was read.
 ;; 5. Every state of the machine is reachable from the first one through the
 ;;    cells of the table.
 ;;
@@ -51,15 +78,21 @@
 ;; form of the kernel calls.  A definition that only the tests or the scripts
 ;; call is dead for the runtime -- the tests run it and the runtime does not
 ;; -- and a move that sits in such a definition is not a move of the runtime.
+;; A definition that only a *name* reaches is dead for the runtime as well:
+;; the name is not a call, and the runtime does not run what nobody calls.
 ;; The liveness for the tests is a property of its own, and this check does
 ;; not measure it.
 ;;
-;; A guard that says nothing about the state is a case of its own, and the
+;; A place that says nothing about the state is a case of its own, and the
 ;; check names it.  Such a place excludes no state and witnesses the cells
 ;; of its label weakly: the runtime takes the label, and the machine has
-;; that move only from the state of the cell.  The check counts those cells
-;; and names them, so that a reader sees how much of the proof rests on
-;; them.  The same holds for a fan the runtime does not state the states of.
+;; that move only from the state of the cell.  The check counts those places,
+;; counts the labels that have no place at all that names the state, and
+;; names both of them by their file and their line, so that a reader sees
+;; how much of the proof rests on them.  The same holds for a fan the runtime
+;; does not state the states of.  A place the runtime does not run is not a
+;; weak witness either: it witnesses nothing, and a cell whose only place is
+;; such a place is a move the runtime does not take.
 ;;
 ;; The check is static on purpose: it answers about the whole kernel at once,
 ;; and it answers the same way twice.  A dynamic check would need a run that
@@ -88,6 +121,10 @@
 (defconst yeah-check--definition-forms
   '(defun defmacro defsubst cl-defun cl-defmacro define-minor-mode)
   "The forms of the kernel that define a function.")
+
+(defconst yeah-check--callers-of-a-value
+  '(funcall apply)
+  "The forms that call the function that stands in their first argument.")
 
 (defun yeah-check--root ()
   "Return the root of the project."
@@ -171,10 +208,21 @@ a definition with that cookie is a door the outside world may come in by."
            hit))
         (t nil)))
 
+(defun yeah-check--called-value (form)
+  "Return the symbol FORM calls as a value, or nil.
+A value that is called is a symbol, a quoted symbol or a function designator."
+  (cond ((symbolp form) form)
+        ((and (consp form) (memq (car form) '(quote function))
+              (consp (cdr form)) (symbolp (car (cdr form))))
+         (car (cdr form)))
+        (t nil)))
+
 (defun yeah-check--calls-in-1 (form table)
-  "Add to TABLE the symbols FORM calls or names.
-A call is a symbol in the head of a form; a function designator and a quoted
-symbol are names too, and the runtime reaches a function through both.
+  "Add to TABLE the symbols FORM calls.
+A call is a symbol in the head of a form.  A function designator and a quoted
+symbol are names and not calls: a name calls nothing, and a definition that
+only a name reaches is dead for the runtime.  A name in the first argument of
+`funcall' or of `apply' is a call, because the runtime calls the value there.
 
 The walk goes into every subform, and not into the head of a form only: the
 body of a `let' or of a `cl-letf' is a call of the runtime like any other,
@@ -186,11 +234,14 @@ down would lose the names that the walk adds, because the caller keeps the
 head of the list and not the new cell."
   (cond
    ((consp form)
-    (when (symbolp (car form))
-      (puthash (car form) t table)
-      (when (memq (car form) '(function quote))
-        (when (and (consp (cdr form)) (symbolp (car (cdr form))))
-          (puthash (car (cdr form)) t table))))
+    (let ((head (car form)))
+      (when (symbolp head)
+        (unless (memq head '(quote function))
+          (puthash head t table))
+        (when (memq head yeah-check--callers-of-a-value)
+          (let ((called (yeah-check--called-value (cadr form))))
+            (when called
+              (puthash called t table))))))
     (let ((tail form))
       (while (consp tail)
         (yeah-check--calls-in-1 (car tail) table)
@@ -201,11 +252,12 @@ head of the list and not the new cell."
     (let ((index 0))
       (while (< index (length form))
         (yeah-check--calls-in-1 (aref form index) table)
-        (setq index (1+ index))))))
+        (setq index (1+ index)))))
+   (t nil))
   table)
 
 (defun yeah-check--calls-in (form)
-  "Return the symbols FORM calls or names, without repeats."
+  "Return the symbols FORM calls, without repeats."
   (let ((table (make-hash-table :test (quote eq))))
     (yeah-check--calls-in-1 form table)
     (let (names)
@@ -241,7 +293,8 @@ head of the list and not the new cell."
 A root is a definition with the cookie of an autoload, and a definition a
 top-level form of the kernel calls.  A definition that only the tests or the
 scripts call is not a root: the runtime does not run it, and a move that
-sits in such a place is not a move of the runtime."
+sits in such a place is not a move of the runtime.  A definition that a
+top-level form only *names* is not a root either: a name calls nothing."
   (let ((known (make-hash-table :test #'eq))
         (roots nil))
     (dolist (definition definitions)
@@ -336,20 +389,29 @@ ones it names."
             ((and (consp thing) (cl-every #'symbolp thing)) thing)
             (t nil)))))
 
-(defun yeah-check--other-argument (form)
+(defun yeah-check--names-the-state (form aliases)
+  "Return non-nil when FORM reads the state of the run.
+The accessor that reads the state names it, and so does a local variable that
+holds it: `(let ((state (yeah-turn-state turn))) (eq state 'deciding))' says
+the same as `(eq (yeah-turn-state turn) 'deciding)'.  ALIASES are the names
+that hold the state where FORM is read."
+  (or (yeah-check--mentions yeah-check--state-reader form)
+      (seq-some (lambda (alias) (yeah-check--mentions alias form)) aliases)))
+
+(defun yeah-check--other-argument (form aliases)
   "Return the argument of FORM that is not the state of the run.
 The arguments of a form are `(cdr form)': the state of the run stands in one
 of them, and the states it is compared with stand in another one."
   (let ((args (cdr form)))
     (cond ((and (consp args)
-                (yeah-check--mentions yeah-check--state-reader (car args)))
+                (yeah-check--names-the-state (car args) aliases))
            (cadr args))
           ((and (consp (cdr args))
-                (yeah-check--mentions yeah-check--state-reader (cadr args)))
+                (yeah-check--names-the-state (cadr args) aliases))
            (car args))
           (t nil))))
 
-(defun yeah-check--state-set (form)
+(defun yeah-check--state-set (form aliases)
   "Return the states FORM allows the run to be in, or nil when it says nothing.
 A form that names the state of the run says which states it allows; a form
 that does not name it says nothing and leaves the states to the machine.
@@ -362,18 +424,18 @@ stands in one argument and the states it is compared with in another one."
    ((and (consp form) (eq (car form) 'quote))
     (yeah-check--quoted-states form))
    ((and (consp form) (eq (car form) 'eq)
-         (yeah-check--mentions yeah-check--state-reader form))
-    (yeah-check--quoted-states (yeah-check--other-argument form)))
+         (yeah-check--names-the-state form aliases))
+    (yeah-check--quoted-states (yeah-check--other-argument form aliases)))
    ((and (consp form) (eq (car form) 'memq)
-         (yeah-check--mentions yeah-check--state-reader form))
-    (yeah-check--quoted-states (yeah-check--other-argument form)))
+         (yeah-check--names-the-state form aliases))
+    (yeah-check--quoted-states (yeah-check--other-argument form aliases)))
    ((and (consp form) (eq (car form) 'not))
-    (let ((set (yeah-check--state-set (cadr form))))
+    (let ((set (yeah-check--state-set (cadr form) aliases)))
       (and set (cl-set-difference yeah-state-list set))))
    ((and (consp form) (memq (car form) '(or and)))
     (let (sets)
       (dolist (operand (cdr form))
-        (let ((set (yeah-check--state-set operand)))
+        (let ((set (yeah-check--state-set operand aliases)))
           (when set (push set sets))))
       (when sets
         (if (eq (car form) 'or)
@@ -381,13 +443,13 @@ stands in one argument and the states it is compared with in another one."
           (yeah-check--intersection sets)))))
    (t nil)))
 
-(defun yeah-check--states-of-a-guard (guard)
+(defun yeah-check--states-of-a-guard (guard aliases)
   "Return the states GUARD admits, or nil when GUARD says nothing about them.
-The tests of the guard that say nothing about the state leave the states to
-the machine, and the tests that say something are intersected."
+The tests of the guard that say nothing about the state leave the states to the
+machine, and the tests that say something are intersected."
   (let (sets)
     (dolist (test guard)
-      (let ((set (yeah-check--state-set test)))
+      (let ((set (yeah-check--state-set test aliases)))
         (when set (push set sets))))
     (yeah-check--intersection sets)))
 
@@ -395,49 +457,92 @@ the machine, and the tests that say something are intersected."
   "Return the state the machine moves to from STATE on LABEL, or nil."
   (and (yeah-state-p state) (yeah-loop-transition-p state label)))
 
-(defun yeah-check--state-at (states before)
-  "Return the states the run is in after the moves BEFORE, and the moves the
-machine does not have.
+(defun yeah-check--destination-of (label)
+  "Return the state the machine moves to on LABEL, or nil.
+The destination is nil when the label has no cell in the table and when it has
+several: the machine moves to one state on every label of the table, and a
+label with two destinations says nothing about the state after it."
+  (let (destinations)
+    (dolist (cell (yeah-check--cells))
+      (when (eq (nth 1 cell) label)
+        (push (nthcdr 2 cell) destinations)))
+    (setq destinations (delete-dups destinations))
+    (when (= 1 (length destinations))
+      (car destinations))))
 
-STATES is the set of the states a place admits, or nil when its guard says
-nothing about the state.  BEFORE is a list of the sets of the labels of the
-moves that precede the place in its branch.  A move that the machine does not
-have is returned as a defect: the runtime takes a move the machine does not
-have, and the run would break at it.
+(defun yeah-check--destinations-of (labels)
+  "Return the state the machine moves to on the labels LABELS, or nil.
+The labels of a move the runtime computes are read as a set, and the state
+after such a move is known when every label of the set leads to one state."
+  (let (destinations)
+    (dolist (label labels)
+      (let ((destination (yeah-check--destination-of label)))
+        (when destination
+          (push destination destinations))))
+    (setq destinations (delete-dups destinations))
+    (when (= 1 (length destinations))
+      (car destinations))))
+
+(defun yeah-check--state-at (states before)
+  "Return the states the run is in at the place, and the moves the machine does
+not have.
+
+STATES is the set of the states the guard of the place admits, or nil when the
+guard says nothing about the state.  BEFORE is a list of the sets of the labels
+of the moves that precede the place in its branch.  A move that the machine
+does not have is returned as a defect: the runtime takes a move the machine
+does not have, and the run would break at it.
+
+The state of a place is read from the moves that precede it in the same branch.
+The runtime sets the state of a run to the state the machine moves to
+(`yeah-turn--tick' does it), and every label of the table leads to one state
+and to one only, so the state after a move is known even where the guard
+says nothing about the state.  The guard of a place says the state of the
+block the place sits in, and the moves of the block come after that state: the
+chain is the more precise of the two, and it is the one that names the state
+of the place.  A place with no move before it in its branch is named by its
+guard alone.
+
+Every move of the chain must be a move the machine has from the state the
+move before it left the run in, and a label the table does not name at all is
+a move the machine does not have.
 
 The answer is a plist and not two values: `multiple-value-bind' is not a
 macro of Emacs and not a function of it, and a check that calls a name that
 does not exist dies instead of answering."
-  (let ((broken nil))
+  (let (broken
+        (state nil)
+        (previous nil))
     (dolist (labels before)
-      (when states
-        (cond ((null labels)
-               ;; A move whose label the runtime does not name narrows
-               ;; nothing.
-               (setq states nil))
-              ((null (cdr labels))
-               (let (next)
-                 (dolist (state states)
-                   (let ((to (yeah-check--destination state (car labels))))
-                     (if to
-                         (push to next)
-                       (push (list state (car labels)) broken))))
-                 (setq states (delete-dups next))))
-              (t
-               ;; A move whose label the runtime computes narrows nothing.
-               (setq states nil)))))
-    (list :states states :broken broken)))
+      ;; A label the table does not name is a move the machine does not have.
+      (dolist (label labels)
+        (when (null (yeah-check--states-of-a-label label))
+          (push (list nil label) broken)))
+      ;; The move must be a move the machine has from the state the move
+      ;; before it left the run in.
+      (when previous
+        (dolist (label labels)
+          (unless (yeah-check--destination previous label)
+            (push (list previous label) broken))))
+      ;; The state the move leaves the run in is the state the machine moves
+      ;; to, and every label of the table leads to one state and to one only.
+      (let ((destination (yeah-check--destinations-of labels)))
+        (setq previous destination)
+        (setq state (and destination (list destination)))))
+    (list :states (if before (or state states) states)
+          :broken broken)))
 
-(defun yeah-check--ticks-in-body (body definition acc guard before)
+(defun yeah-check--ticks-in-body (body definition acc guard before aliases)
   "Walk BODY, a list of forms, and collect the tick calls into ACC.
 GUARD is the list of the tests of the conditionals the body sits under.
 BEFORE is the list of the sets of the labels of the moves that precede the
 body in its branch: a tick that stands alone in the body happens before what
-follows it."
+follows it.  ALIASES are the names that hold the state of the run where the
+body is read."
   (let ((tail body) (out acc) (seen before))
     (while (consp tail)
       (let ((form (car tail)))
-        (setq out (yeah-check--ticks-in form definition out guard seen))
+        (setq out (yeah-check--ticks-in form definition out guard seen aliases))
         (when (and (consp form) (eq (car form) yeah-check--tick-function))
           ;; The labels of the move are one set, and the set goes into the
           ;; list of the sets as one element: `append' would spread the
@@ -447,19 +552,70 @@ follows it."
       (setq tail (cdr tail)))
     out))
 
-(defun yeah-check--ticks-in (form definition acc guard before)
+(defun yeah-check--state-aliases (bindings aliases)
+  "Return the names of BINDINGS that are bound to the state of the run.
+ALIASES are the names that hold the state where BINDINGS are read: a binding
+whose value is the state of the run names the state under its own name."
+  (let (names)
+    (dolist (binding bindings)
+      (when (and (consp binding)
+                 (symbolp (car binding))
+                 (yeah-check--names-the-state (cadr binding) aliases))
+        (push (car binding) names)))
+    (nreverse names)))
+
+(defun yeah-check--ticks-in-a-let (form definition acc guard before aliases)
+  "Walk the bindings and the body of the `let' FORM.
+A local variable that is bound to the state of the run names the state: the
+guard around a place that reads such a variable says which state the run is
+in.  The bindings of a `let' are read in the scope outside it, and the
+bindings of a `let*' one after another.
+
+The bindings of a `let' are the first element of its body, and not the whole
+of it: `(cdr form)' holds the bindings *and* the forms of the body.  A walk
+that took every element of it for a binding walked the body twice -- once as
+a binding of the `let' and once as its body -- and the second walk lost the
+guard of the body, so the place was counted twice and its state was read
+from nothing.  A `let' whose first element is not a list of bindings has no
+bindings at all."
+  (let* ((star (eq (car form) 'let*))
+         (bindings (let ((first (cdr form)))
+                     (if (consp first) (car first) nil)))
+         (out acc)
+         (inner aliases))
+    (if star
+        (dolist (binding bindings)
+          (when (consp binding)
+            (let ((name (car binding))
+                  (value (cadr binding)))
+              (setq out (yeah-check--ticks-in-body
+                         (list value) definition out guard before inner))
+              (when (and (symbolp name)
+                         (yeah-check--names-the-state value inner))
+                (setq inner (cons name inner))))))
+      (progn
+        (setq inner (append inner (yeah-check--state-aliases bindings aliases)))
+        (dolist (binding bindings)
+          (when (consp binding)
+            (setq out (yeah-check--ticks-in-body
+                       (list (cadr binding)) definition out guard before aliases))))))
+    (yeah-check--ticks-in-body (cddr form) definition out guard before inner)))
+
+(defun yeah-check--ticks-in (form definition acc guard before aliases)
   "Collect the tick calls of FORM into ACC.
 DEFINITION is the name of the definition FORM belongs to, or nil.  GUARD is
 the list of the tests of the conditionals the call sits under; a test that
 says which state the run is in is what tells the check from which state the
 run takes the move.  BEFORE is the list of the sets of the labels of the
-moves that precede FORM in its branch."
+moves that precede FORM in its branch.  ALIASES are the names that hold the
+state of the run where FORM is read."
   (cond
    ((and (consp form) (eq (car form) yeah-check--tick-function))
     (push (list :definition definition
                 :call form
                 :labels (yeah-check--label-of form)
                 :guard guard
+                :aliases aliases
                 :before before)
           acc)
     acc)
@@ -469,17 +625,18 @@ moves that precede FORM in its branch."
        ((eq head 'if)
         (let* ((test (cadr form))
                (out (yeah-check--ticks-in-body (list (nth 2 form)) definition acc
-                                             (append (list test) guard) before)))
+                                             (append (list test) guard) before
+                                             aliases)))
           (if (nth 3 form)
               (yeah-check--ticks-in-body (list (nth 3 form)) definition out
                                          (append (list (list 'not test)) guard)
-                                         before)
+                                         before aliases)
             out)))
        ((memq head '(when unless))
         (let* ((test (cadr form))
                (inner (if (eq head 'when) test (list 'not test))))
           (yeah-check--ticks-in-body (cddr form) definition acc
-                                     (append (list inner) guard) before)))
+                                     (append (list inner) guard) before aliases)))
        ((eq head 'cond)
         (let ((out acc) (tail (cdr form)))
           (while tail
@@ -487,13 +644,13 @@ moves that precede FORM in its branch."
               (when (consp clause)
                 (setq out (yeah-check--ticks-in-body
                            (cdr clause) definition out
-                           (append (list (car clause)) guard) before))))
+                           (append (list (car clause)) guard) before aliases))))
             (setq tail (cdr tail)))
           out))
        ((memq head '(pcase cl-case))
         (let* ((subject (cadr form))
                (about-the-state
-                (yeah-check--mentions yeah-check--state-reader subject))
+                (yeah-check--names-the-state subject aliases))
                (out acc) (tail (cddr form)))
           (while tail
             (let ((clause (car tail)))
@@ -501,16 +658,66 @@ moves that precede FORM in its branch."
                 (setq out (yeah-check--ticks-in-body
                            (cdr clause) definition out
                            (append (if about-the-state (list (car clause)) nil)
-                                   guard) before))))
+                                   guard) before aliases))))
             (setq tail (cdr tail)))
           out))
+       ((memq head '(let let*))
+        (yeah-check--ticks-in-a-let form definition acc guard before aliases))
+       ((memq head '(and or))
+        ;; The operands of `and' and of `or' are short-circuited: the state
+        ;; after one of them is not the state before the next one.
+        (let ((out acc) (tail (cdr form)))
+          (while tail
+            (setq out (yeah-check--ticks-in-body
+                       (list (car tail)) definition out guard before aliases))
+            (setq tail (cdr tail)))
+          out))
+       ((memq head '(dolist dotimes while))
+        ;; The body of a loop runs again with the state the loop began with:
+        ;; the moves in it do not precede the code after the loop.  The body
+        ;; of a loop starts after its own head and its own binding: the
+        ;; third element of the form, and not the fourth one.
+        (yeah-check--ticks-in-body (cddr form) definition acc guard before
+                                   aliases))
        (t
         ;; A form of the runtime is walked by its elements: the head of the
         ;; form and every argument of it.  The tail of a form may be a dotted
         ;; pair, and a walk that went on after the last cell of it would read
         ;; a symbol as a list.
-        (yeah-check--ticks-in-body form definition acc guard before)))))
+        (yeah-check--ticks-in-body form definition acc guard before aliases)))))
    (t acc)))
+
+(defun yeah-check--tick-lines (file)
+  "Return the lines of FILE that hold a call of the tick function.
+The lines are the lines of the calls in the order the calls stand in the
+file, and the places of the file are in the same order."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (let ((lines nil)
+          (needle (format "(%s " yeah-check--tick-function)))
+      (goto-char (point-min))
+      (while (search-forward needle nil t)
+        (push (line-number-at-pos (match-beginning 0)) lines))
+      (nreverse lines))))
+
+(defun yeah-check--sites-with-lines (file places)
+  "Return PLACES with the file and the line of every place.
+The line of a place is the line of its call in the source of FILE, and it is
+nil when the number of the calls of the file and the number of its places
+differ: the check does not guess a line it cannot prove."
+  (let ((lines (yeah-check--tick-lines file)))
+    (if (= (length lines) (length places))
+        (let (out)
+          (while places
+            (let ((place (car places))
+                  (line (car lines)))
+              ;; `plist-put' takes one property at a time.
+              (setq place (plist-put place :file file))
+              (push (plist-put place :line line) out))
+            (setq places (cdr places))
+            (setq lines (cdr lines)))
+          (nreverse out))
+      (mapcar (lambda (place) (plist-put place :file file)) places))))
 
 (defun yeah-check--tick-sites ()
   "Return the places of the ticks of the kernel, with the state of each.
@@ -519,17 +726,21 @@ of the place is the state its guard admits, moved by the moves that precede
 it in its branch, and a move the machine does not have is kept beside it."
   (let (sites)
     (dolist (file (yeah-check--sources-of-the-kernel))
-      (dolist (entry (yeah-check--forms-of file))
-        (let* ((form (plist-get entry :form))
-               (name (yeah-check--definition-name form)))
-          (setq sites (yeah-check--ticks-in
-                       (if name (cddr form) form)
-                       name sites nil nil)))))
+      (let (here)
+        (dolist (entry (yeah-check--forms-of file))
+          (let* ((form (plist-get entry :form))
+                 (name (yeah-check--definition-name form)))
+            (setq here (yeah-check--ticks-in
+                        (if name (cddr form) form)
+                        name here nil nil nil))))
+        (setq sites (append sites (yeah-check--sites-with-lines file (nreverse here))))))
     (nreverse
      (mapcar (lambda (site)
                (let ((result
                       (yeah-check--state-at
-                       (yeah-check--states-of-a-guard (plist-get site :guard))
+                       (yeah-check--states-of-a-guard
+                        (plist-get site :guard)
+                        (plist-get site :aliases))
                        (plist-get site :before))))
                  ;; `plist-put' changes the list it is given and may give a
                  ;; new one back: the answer of the place is the list that
@@ -552,6 +763,11 @@ it in its branch, and a move the machine does not have is kept beside it."
   (delete-dups (mapcar (lambda (cell) (nth 0 cell))
                        (seq-filter (lambda (cell) (eq (nth 1 cell) label))
                                    (yeah-check--cells)))))
+
+(defun yeah-check--fans-of-the-table ()
+  "Return the labels the table gives to several states."
+  (seq-filter (lambda (label) (> (length (yeah-check--states-of-a-label label)) 1))
+              (yeah-check--labels-of-the-table)))
 
 (defun yeah-check--live-sites (live places)
   "Return the places PLACES that sit in a definition the runtime runs."
@@ -588,32 +804,41 @@ with the state of the cell."
 
 (defun yeah-check--every-cell-is-a-move-of-the-runtime (places)
   "Every cell of the table is a move the runtime takes.
-The runtime takes the label of the cell in a place that lives, and the place
-is in a state the machine has the move from: a place that takes the move of
-the cell from another state takes a move the machine does not have from
-there.
+The runtime takes the label of the cell in a place that lives, and some place
+of that label stands in a state the cell names: the runtime takes the move
+from the state of the cell.
 
-A place whose guard says nothing about the state excludes no state, and it
-witnesses the cell weakly: the runtime takes the label, and the machine has
-that move only from the state of the cell."
+PLACES are the places the runtime runs.  A place the runtime does not run
+witnesses nothing: a definition that only a name reaches is dead for the
+runtime, and a cell whose only place is dead is a move the runtime does not
+take.
+
+A label the table gives to several states is a fan, and the runtime takes a
+fan in several places: one place may stand in the states of one cell of the
+fan and another in the states of another one.  A place of a fan that stands
+in states the machine has no move of that label from is a defect of its own,
+and the check names it apart.
+
+A place that says nothing about the state excludes no state: it witnesses
+the cell of its label weakly, and the check counts those places and says how
+much of the proof rests on them."
   (let (broken)
     (dolist (cell (yeah-check--cells))
       (let ((from (nth 0 cell))
             (label (nth 1 cell))
-            (witnessed nil))
+            (witnessed nil)
+            (weakly nil))
+        ;; Every place of the label is read before the cell is judged: a place
+        ;; that comes after the witness is a place of the label as well.
         (dolist (place places)
           (when (memq label (plist-get place :labels))
-            (setq witnessed t)
             (let ((states (plist-get place :states)))
-              (when (and states (not (memq from states)))
-                (push (list cell
-                            :the-runtime-takes-the-move-from-another-state
-                            (plist-get place :definition)
-                            (cl-set-difference states
-                                               (yeah-check--states-of-a-label label)))
-                      broken)))))
-        (unless witnessed
+              (cond ((null states) (setq weakly t))
+                    ((memq from states) (setq witnessed t))))))
+        (unless (or witnessed weakly)
           (push (list cell :the-runtime-does-not-take-the-move) broken))))
+    ;; The verdict stands outside the walk over the cells: `dolist' answers nil
+    ;; whatever its body says, and a verdict inside it would be lost.
     (yeah-check--fail
      (null broken)
      (format "the table of the machine names %d cell(s) the runtime does not take: %S"
@@ -625,7 +850,11 @@ the machine has that move from.
 The state of a place is the state its guard admits, moved by the moves that
 precede it in its branch.  A place that takes a move the machine does not
 have is named, and so is a place that stands in a state the machine has no
-move of that label from."
+move of that label from.
+
+A label the table does not name at all is a move the machine does not have,
+and the place that takes it is named whatever the state of the place is: the
+runtime takes a move that the machine cannot make."
   (let (broken)
     (dolist (place places)
       (dolist (move (plist-get place :broken))
@@ -634,6 +863,13 @@ move of that label from."
                     :from (nth 0 move)
                     :label (nth 1 move))
               broken))
+      (dolist (label (plist-get place :labels))
+        (when (null (yeah-check--states-of-a-label label))
+          (push (list :the-runtime-takes-a-move-the-machine-has-not
+                      :place (plist-get place :definition)
+                      :from nil
+                      :label label)
+                broken)))
       (let ((states (plist-get place :states)))
         (when states
           (dolist (label (plist-get place :labels))
@@ -652,8 +888,8 @@ move of that label from."
 (defun yeah-check--coverage-of-a-fan (places label)
   "Return the states the runtime takes the fan LABEL from.
 The coverage is what the runtime says: the states the guards of the places of
-the fan admit.  A place whose guard says nothing about the state says
-nothing, and the coverage of such a fan is not stated."
+the fan admit.  A place that says nothing about the state says nothing, and
+the coverage of such a fan is not stated."
   (let (coverage)
     (dolist (place places)
       (when (memq label (plist-get place :labels))
@@ -661,23 +897,46 @@ nothing, and the coverage of such a fan is not stated."
           (push state coverage))))
     (delete-dups coverage)))
 
+(defun yeah-check--fan-is-fully-stated (places label)
+  "Return non-nil when every place of the fan LABEL names the state of the run.
+A place that says nothing about the state leaves the coverage of the fan
+incomplete: the runtime may take the fan from a state the check cannot see.
+The check accuses the runtime of narrowing a fan only when it has read the
+whole coverage of the fan: a coverage that is read in part proves nothing
+about the states that are missing from it."
+  (let ((complete t))
+    (dolist (place places)
+      (when (memq label (plist-get place :labels))
+        (unless (plist-get place :states)
+          (setq complete nil))))
+    complete))
+
 (defun yeah-check--every-fan-is-kept-by-the-runtime (places)
   "Every fan of the table is kept by the runtime.
 A fan is a label the table gives to several states.  The runtime takes the
-fan in a place, and the guard of that place says from which states the run
+fan in a place, and the state of that place says from which states the run
 may be when the fan is taken.  The states the runtime takes the fan from are
 the states the machine has the move from: a fan the runtime narrows is a fan
-the runtime does not keep.  The fan ends the run in one state."
+the runtime does not keep, and the fan the runtime takes from a state the
+machine does not give it to is a fan the runtime keeps too wide.  The fan
+ends the run in one state.
+
+A fan whose coverage is not fully stated is not judged here: the check says
+in its report how much of the coverage it read."
   (let (broken)
     (dolist (label (yeah-check--labels-of-the-table))
       (let ((states (yeah-check--states-of-a-label label)))
         (when (> (length states) 1)
           (let ((coverage (yeah-check--coverage-of-a-fan places label)))
-            (unless (or (null coverage)
-                        (cl-subsetp states coverage))
-              (push (list label :the-runtime-narrows-the-fan
-                          (cl-set-difference states coverage))
-                    broken)))
+            (when (yeah-check--fan-is-fully-stated places label)
+              (unless (cl-subsetp states coverage)
+                (push (list label :the-runtime-narrows-the-fan
+                            (cl-set-difference states coverage))
+                      broken))
+              (unless (cl-subsetp coverage states)
+                (push (list label :the-runtime-takes-the-fan-from-another-state
+                            (cl-set-difference coverage states))
+                      broken))))
           (let ((destinations (delete-dups
                                 (mapcar (lambda (cell) (nthcdr 2 cell))
                                         (seq-filter
@@ -714,11 +973,34 @@ the runtime does not keep.  The fan ends the run in one state."
      (format "the table of the machine has %d state(s) that no path leads to: %S"
              (length unreachable) unreachable))))
 
-(defun yeah-check--weak-cells (places)
-  "Return the cells that rest on a guard that says nothing about the state.
+(defun yeah-check--silent-places (places)
+  "Return the places that say nothing about the state.
 A place whose guard names the state proves the cell it witnesses; a place
-whose guard says nothing about the state does not name any state, and the
-cell it witnesses rests on the machine alone."
+whose guard says nothing about the state and which no move precedes in its
+branch names no state at all, and the cell it witnesses rests on the machine
+alone."
+  (seq-filter (lambda (place) (null (plist-get place :states))) places))
+
+(defun yeah-check--dark-labels (places)
+  "Return the labels of the table that no place names the state of.
+A label that no place localizes is a label the runtime does not say where it
+takes: the proof for such a label rests on the machine alone."
+  (let (dark)
+    (dolist (label (yeah-check--labels-of-the-table))
+      (let ((stated nil))
+        (dolist (place places)
+          (when (and (memq label (plist-get place :labels))
+                     (plist-get place :states))
+            (setq stated t)))
+        (unless stated
+          (push label dark))))
+    (nreverse dark)))
+
+(defun yeah-check--weak-cells (places)
+  "Return the cells that rest on a place that says nothing about the state.
+A place that names the state proves the cell it witnesses; a place that says
+nothing about the state names no state, and the cell it witnesses rests on
+the machine alone."
   (let (weak)
     (dolist (cell (yeah-check--cells))
       (let ((from (nth 0 cell))
@@ -736,11 +1018,22 @@ cell it witnesses rests on the machine alone."
 (defun yeah-check--unstated-fans (places)
   "Return the fans the runtime does not state the states of."
   (let (unstated)
-    (dolist (label (yeah-check--labels-of-the-table))
-      (when (and (> (length (yeah-check--states-of-a-label label)) 1)
-                 (null (yeah-check--coverage-of-a-fan places label)))
+    (dolist (label (yeah-check--fans-of-the-table))
+      (when (null (yeah-check--coverage-of-a-fan places label))
         (push label unstated)))
     (nreverse unstated)))
+
+(defun yeah-check--name-of-a-place (place)
+  "Return the name of PLACE: the definition it sits in, the move it takes and
+the line of the call in the source of the kernel."
+  (list (plist-get place :definition)
+        (plist-get place :labels)
+        (let ((file (plist-get place :file)))
+          (if file
+              (format "%s:%s"
+                      (file-relative-name file (yeah-check--root))
+                      (or (plist-get place :line) "?"))
+            "?"))))
 
 (defun yeah-check--report (places all)
   "Say what the check measured.
@@ -752,12 +1045,28 @@ of the ticks of the kernel."
            (length yeah-state-list)
            (length all)
            (length places))
+  (let ((silent (yeah-check--silent-places places)))
+    (message "table: %d of the %d place(s) name the state of the run, %d do not: %S"
+             (- (length places) (length silent))
+             (length places)
+             (length silent)
+             (mapcar #'yeah-check--name-of-a-place silent)))
+  (let ((dark (yeah-check--dark-labels places)))
+    (message "table: %d of the %d label(s) of the table have no place that names the state: %S"
+             (length dark) (length (yeah-check--labels-of-the-table)) dark))
   (let ((weak (yeah-check--weak-cells places)))
-    (message "table: %d cell(s) rest on a guard that says nothing about the state: %S"
+    (message "table: %d cell(s) rest on a place that says nothing about the state: %S"
              (length weak) weak))
-  (let ((unstated (yeah-check--unstated-fans places)))
-    (when unstated
-      (message "table: the runtime does not say from which states it takes the fan(s): %S"
+  (let ((fans (yeah-check--fans-of-the-table))
+        (unstated (yeah-check--unstated-fans places)))
+    (let ((complete (seq-filter (lambda (label)
+                                   (yeah-check--fan-is-fully-stated places label))
+                                 fans)))
+      (message "table: %d of the %d fan(s) of the table has a stated coverage, %d of them a complete one, %d does not: %S"
+               (- (length fans) (length unstated))
+               (length fans)
+               (length complete)
+               (length unstated)
                unstated))))
 
 (defun yeah-check--verdict ()
