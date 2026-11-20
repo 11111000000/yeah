@@ -65,6 +65,74 @@
 ;;    place whose label cannot be read is a defect of its own now, and the
 ;;    check names it by its file and its line.
 ;;
+;; The version of wave 90 closed four more holes of the proof (the finding F23
+;; of the discriminator of the waves 87 to 89, and the three classes of escape
+;; that the review of the wave found beside it).  The code of the kernel did not
+;; change again: the hole was in the proof.
+;;
+;; 1. A name in a quoted list counted as a call (F23).  The walk of the calls
+;;    went into the operands of a `quote', and the head of the quoted list
+;;    became a call: a definition that only a quoted list named was a root of
+;;    the runtime, and the move inside it was a move of the runtime.  The
+;;    doctrine of this check says the opposite -- a name is not a call -- and
+;;    the code of the walk said otherwise.  The walk does not go into data
+;;    now: the operands of a `quote' are names, the designator of a `function'
+;;    is a name, and the parameters of a `lambda' are names.  The body of a
+;;    `lambda' is code wherever it stands, also under a `function', and a name
+;;    in the first argument of a `funcall' or of an `apply' is still a call,
+;;    because the runtime calls the value there.
+;;
+;; 2. A name in a list of names counted as a call.  The walk of the calls read
+;;    the names of the bindings of a `let' as calls, and the same held of the
+;;    variable of the spec of a `dolist', of the pattern of a `pcase' and of
+;;    the types of the handlers of a `condition-case'.  A name in a list of
+;;    names calls nothing: the runtime reads the names and it does not run
+;;    them, and a definition that only such a list names is dead for the
+;;    runtime.  The walk does not go into the names now: the values of the
+;;    bindings, the collection of the spec, the subject of a `pcase', the
+;;    bodies of the clauses and the bodies of the handlers are code, and the
+;;    walk goes into them.
+;;
+;; 3. A tick in a quoted form counted as a place.  The walk of the places read
+;;    the operands of a `quote' as code, and a tick that stood in a quoted
+;;    form was a place of the runtime: the runtime does not run a quoted form,
+;;    so such a place witnesses nothing at all.  The walk does not go into
+;;    data now: a tick in a `quote' is no place, and the parts that are
+;;    unquoted in a `backquote' are the only code of it.
+;;
+;; 4. The name of a type and the names of the slots counted as calls.  The
+;;    description of a `cl-defstruct' is a list of names, and the walk of the
+;;    calls read the head of it as a call: a definition whose name only the
+;;    description of a struct named was a root of the runtime, and the move
+;;    inside it was a move of the runtime.  The walk does not go into the
+;;    names now: the name of the type, the names of its options and the names
+;;    of its slots are names, the value of a slot is code, and the walk goes
+;;    into it.  The obsolete `defstruct' is the same position: it expands into
+;;    a `cl-defstruct' and the walk reads it the same way.
+;;
+;;    The name of a derived mode and the name of its parent are names as
+;;    well, and the walk reads the position of a `define-derived-mode' by rule
+;;    now: the name of the mode, the name of its parent, the name of the mode
+;;    line and the doc string are names and data, the value of a keyword is
+;;    code, and the body of the mode is code.  No escape of the runtime was
+;;    open in that position -- the name of a mode stands in a symbol, and the
+;;    walk reads a symbol as no call -- and the rule is written down because
+;;    the walk reads the positions it knows, and a position it does not know
+;;    is read as a call.
+;;
+;; The walk reads the positions it knows, and a position it does not know is
+;; read as a call.  The kernel holds no other such position today, and the
+;; positions of the family that it does not hold are named here: the keys of
+;; the clauses of a `case' are data, the names of the bindings of a
+;; `destructuring-bind' and of a `multiple-value-bind' are names, the
+;; specializer of a `cl-defmethod' is data, and the doc string of a
+;; `cl-defgeneric' is data.  The names of a `defalias' stand in a `quote',
+;; and the walk reads a quoted form as data.  The name of a `defvar' and of a
+;; `defconst' and of a `defcustom' is a symbol and not a list, and the walk
+;; cannot read it as a call.  A kernel that grows one of the positions above
+;; would need the walk to learn it, and the objection of the wave names that
+;; gap.
+;;
 ;; The report is compared with the numbers the check measured on the kernel
 ;; of 2026-11-20 as well: a measurement that got smaller is a proof that got
 ;; weaker, and a weaker proof must not pass as if it were the same one.
@@ -155,6 +223,31 @@
 (defconst yeah-check--callers-of-a-value
   '(funcall apply)
   "The forms that call the function that stands in their first argument.")
+
+(defconst yeah-check--backquote-symbols
+  (list (intern "`") 'backquote)
+  "The symbols that stand for a backquote in a form.
+The reader of Emacs gives a backquote the symbol whose name is a backquote and
+not the symbol `backquote', and the check reads the forms of the kernel with
+the reader, so it has to know both of the symbols.")
+
+(defconst yeah-check--unquote-symbols
+  (list (intern ",") (intern ",@") 'unquote 'unquote-splicing)
+  "The symbols that stand for an unquote in a form.
+The reader of Emacs gives an unquote the symbol whose name is a comma and not
+the symbol `unquote', and the check reads the forms of the kernel with the
+reader, so it has to know both of the symbols.")
+
+(defconst yeah-check--names-of-a-value
+  (append '(quote function) yeah-check--backquote-symbols)
+  "The heads of the forms that name a value and do not call it.")
+
+(defconst yeah-check--derived-mode-keywords
+  '(:group :syntax-table :abbrev-table :after-hook :interactive)
+  "The keywords of the arguments of a `define-derived-mode'.
+The walk goes into the value of such a keyword, for the form of an
+`:after-hook' is run by the mode.  A name that stands in the value of a
+keyword is a name and not a call.")
 
 (defconst yeah-check--expected-measurement
   '((:cells . 31)
@@ -269,6 +362,94 @@ A value that is called is a symbol, a quoted symbol or a function designator."
          (car (cdr form)))
         (t nil)))
 
+(defun yeah-check--calls-in-body (body table)
+  "Add to TABLE the symbols the forms of BODY call.
+BODY is a list of forms and each of them is walked on its own: a list of forms
+is not a form, and the head of such a list is the head of its first form and
+not the head of a call."
+  (dolist (form body)
+    (yeah-check--calls-in-1 form table))
+  table)
+
+(defun yeah-check--calls-in-bindings (bindings table)
+  "Add to TABLE the symbols the values of BINDINGS call.
+BINDINGS is a list of bindings, and the name of a binding is a name and not a
+call: the runtime reads the value of the binding and not its name.  The value
+of a binding is code, and the walk goes into it."
+  (dolist (binding bindings)
+    (when (consp binding)
+      (yeah-check--calls-in-1 (cadr binding) table)))
+  table)
+
+(defun yeah-check--calls-in-a-defstruct (form table)
+  "Add to TABLE the symbols the values of the slots of FORM call.
+FORM is a `cl-defstruct': the name of the type, the names of the options and
+the names of the slots are names and not calls, for the runtime reads them
+and it does not run them.  The value of a slot is code, and the walk goes
+into it.  The obsolete `defstruct' is the same position."
+  (let ((tail (cdr form))
+        (out table))
+    ;; The name of the type and the names of its options stand in the first
+    ;; element of the form, and they are names.
+    (when (and (consp tail) (consp (car tail)))
+      (setq tail (cdr tail)))
+    ;; The doc string of the type is data, and the slots stand after it.
+    (when (and (consp tail) (stringp (car tail)))
+      (setq tail (cdr tail)))
+    (while (consp tail)
+      (let ((slot (car tail)))
+        ;; A slot is a name and a value: the value of the slot is code and
+        ;; the name of it is a name.
+        (when (consp slot)
+          (setq out (yeah-check--calls-in-1 (cadr slot) out))))
+      (setq tail (cdr tail)))
+    out))
+
+(defun yeah-check--calls-in-a-derived-mode (form table)
+  "Add to TABLE the symbols the code of the `define-derived-mode' FORM calls.
+The name of the mode and the name of its parent are names and not calls: the
+runtime reads them and it does not run them.  The name of the mode line, the
+doc string, the values of the keywords and the body of the mode are code."
+  (let ((tail (cdddr form))
+        (out table))
+    ;; The name of the mode line and the doc string are strings: they are data
+    ;; and not code.
+    (while (and (consp tail) (stringp (car tail)))
+      (setq tail (cdr tail)))
+    ;; The value of a keyword is code.
+    (while (and (consp tail)
+                (consp (car tail))
+                (memq (caar tail) yeah-check--derived-mode-keywords))
+      (setq out (yeah-check--calls-in-1 (cadr (car tail)) out))
+      (setq tail (cddr tail)))
+    ;; The body of the mode is code.
+    (yeah-check--calls-in-body tail out)))
+
+(defun yeah-check--calls-in-data (form table)
+  "Add to TABLE the symbols the unquoted parts of FORM call.
+FORM is data: the runtime does not run it, and a name in it calls nothing.  The
+parts that are unquoted in it are the code that the runtime runs, and the walk
+goes into them."
+  (cond
+   ((consp form)
+    (let ((head (car form)))
+      (if (memq head yeah-check--unquote-symbols)
+          (yeah-check--calls-in-1 (cadr form) table)
+        (let ((out table) (tail form))
+          (while (consp tail)
+            (setq out (yeah-check--calls-in-data (car tail) out))
+            (setq tail (cdr tail)))
+          (when tail
+            (setq out (yeah-check--calls-in-data tail out)))
+          out))))
+   ((vectorp form)
+    (let ((out table) (index 0))
+      (while (< index (length form))
+        (setq out (yeah-check--calls-in-data (aref form index) out))
+        (setq index (1+ index)))
+      out))
+   (t table)))
+
 (defun yeah-check--calls-in-1 (form table)
   "Add to TABLE the symbols FORM calls.
 A call is a symbol in the head of a form.  A function designator and a quoted
@@ -281,6 +462,31 @@ body of a `let' or of a `cl-letf' is a call of the runtime like any other,
 and a walk that stopped at the head would lose it.  A pair with a dot is a
 form too, and its tail is walked apart from its head.
 
+The walk does not go into data (the finding F23 of the discriminator of the
+waves 87 to 89).  A quoted form is a list of names and not code, and a name
+in it calls nothing: the walk of the operands of a `quote' stopped, and a
+definition that only a quoted list names is dead for the runtime.  A
+backquoted form is data as well, and the parts that are unquoted in it are the
+code that the runtime runs.  The designator of a `function' is a name and not
+code as well, and the parameters of a `lambda' are names and not code either.
+The body of a `lambda' is code wherever it stands, also under a `function'.
+
+A list of names is a list of names and not code, wherever it stands: the
+parameters of a `lambda', the names of the bindings of a `let', the variable
+of the spec of a `dolist', the pattern of a `pcase' and the types of the
+handlers of a `condition-case'.  The runtime reads the names and does not run
+them, and a definition that only such a list names is dead for the runtime.
+The values of the bindings, the collection of the spec, the subject of a
+`pcase', the body of the clause and the body of the handler are code, and the
+walk goes into them.
+
+The description of the slots of a `cl-defstruct' is a list of names as well:
+the name of the type, the names of the options and the names of the slots are
+names, and the value of a slot is code.  The obsolete `defstruct' is the same
+position.  The name of a derived mode and the name of its parent are names
+too, and the value of a keyword of a `define-derived-mode' and the body of the
+mode are code.
+
 The names go into a table and not into a list: a list that the walk passes
 down would lose the names that the walk adds, because the caller keeps the
 head of the list and not the new cell."
@@ -288,18 +494,83 @@ head of the list and not the new cell."
    ((consp form)
     (let ((head (car form)))
       (when (symbolp head)
-        (unless (memq head '(quote function))
+        (unless (memq head yeah-check--names-of-a-value)
           (puthash head t table))
         (when (memq head yeah-check--callers-of-a-value)
           (let ((called (yeah-check--called-value (cadr form))))
             (when called
-              (puthash called t table))))))
-    (let ((tail form))
-      (while (consp tail)
-        (yeah-check--calls-in-1 (car tail) table)
-        (setq tail (cdr tail)))
-      (when tail
-        (yeah-check--calls-in-1 tail table))))
+              (puthash called t table)))))
+      (cond
+       ;; A quoted form is data and not code: the walk does not go into it.
+       ((eq head 'quote) nil)
+       ;; A backquoted form is data as well, and the parts that are unquoted
+       ;; in it are the code that the runtime runs.
+       ((memq head yeah-check--backquote-symbols)
+        (yeah-check--calls-in-data (cdr form) table))
+       ;; The designator of a `function' is a name and not code.  The body of
+       ;; a `lambda' is code wherever it stands, and it is walked.
+       ((eq head 'function)
+        (let ((designator (cadr form)))
+          (when (and (consp designator) (eq (car designator) 'lambda))
+            (yeah-check--calls-in-1 designator table))))
+       ;; The parameters of a `lambda' are names and not code, and its body
+       ;; is code.
+       ((eq head 'lambda)
+        (yeah-check--calls-in-body (cdr (cdr form)) table))
+       ;; The names of the bindings of a `let' are names and not code, and
+       ;; their values and the body of the `let' are code.
+       ((memq head '(let let* cl-letf))
+        (yeah-check--calls-in-bindings (cadr form) table)
+        (yeah-check--calls-in-body (cddr form) table))
+       ;; The variable of the spec of a `dolist' or of a `dotimes' is a name,
+       ;; and the collection of the spec and the body are code.  The result
+       ;; variable of the spec is a name as well, and the runtime writes the
+       ;; result of the loop into it.
+       ((memq head '(dolist dotimes))
+        (let ((spec (cadr form)))
+          (when (consp spec)
+            (yeah-check--calls-in-1 (cadr spec) table)))
+        (yeah-check--calls-in-body (cddr form) table))
+       ;; The pattern of a `pcase' is data, the subject is code, and the body
+       ;; of the clause is code.  The pattern of a clause is its first element
+       ;; and its body is the rest of it: a keyword clause of a `pcase' names
+       ;; the branch in its first element and its body is the rest of it.
+       ((memq head '(pcase cl-case))
+        (yeah-check--calls-in-1 (cadr form) table)
+        (let ((tail (cddr form)))
+          (while (consp tail)
+            (let ((clause (car tail)))
+              (when (consp clause)
+                (yeah-check--calls-in-body (cdr clause) table)))
+            (setq tail (cdr tail)))))
+       ;; The variable of a `condition-case' is a name, the types of the
+       ;; handlers are data, and the bodies of the handlers are code.
+       ((eq head 'condition-case)
+        (yeah-check--calls-in-1 (caddr form) table)
+        (let ((tail (cdddr form)))
+          (while (consp tail)
+            (let ((clause (car tail)))
+              (when (consp clause)
+                (yeah-check--calls-in-body (cdr clause) table)))
+            (setq tail (cdr tail)))))
+       ;; The description of the slots of a `cl-defstruct' is a list of names:
+       ;; the name of the type, the names of the options and the names of the
+       ;; slots are names and not calls.  The value of a slot is code.  The
+       ;; obsolete `defstruct' is the same position: it expands into a
+       ;; `cl-defstruct' and the walk reads it the same way.
+       ((memq head '(cl-defstruct defstruct))
+        (yeah-check--calls-in-a-defstruct form table))
+       ;; The name of a derived mode and the name of its parent are names and
+       ;; not calls, and the rest of the form is code.
+       ((eq head 'define-derived-mode)
+        (yeah-check--calls-in-a-derived-mode form table))
+       (t
+        (let ((tail form))
+          (while (consp tail)
+            (yeah-check--calls-in-1 (car tail) table)
+            (setq tail (cdr tail)))
+          (when tail
+            (yeah-check--calls-in-1 tail table)))))))
    ((vectorp form)
     (let ((index 0))
       (while (< index (length form))
@@ -653,6 +924,34 @@ bindings at all."
                        (list (cadr binding)) definition out guard before aliases))))))
     (yeah-check--ticks-in-body (cddr form) definition out guard before inner)))
 
+(defun yeah-check--ticks-in-data (form definition acc guard before aliases)
+  "Collect the tick calls of the unquoted parts of FORM into ACC.
+FORM is data: the runtime does not run it, and a tick that stands in it is no
+tick of the runtime.  The parts that are unquoted in it are the code that the
+runtime runs, and the walk goes into them."
+  (cond
+   ((consp form)
+    (let ((head (car form)))
+      (if (memq head yeah-check--unquote-symbols)
+          (yeah-check--ticks-in (cadr form) definition acc guard before aliases)
+        (let ((out acc) (tail form))
+          (while (consp tail)
+            (setq out (yeah-check--ticks-in-data
+                       (car tail) definition out guard before aliases))
+            (setq tail (cdr tail)))
+          (when tail
+            (setq out (yeah-check--ticks-in-data
+                       tail definition out guard before aliases)))
+          out))))
+   ((vectorp form)
+    (let ((out acc) (index 0))
+      (while (< index (length form))
+        (setq out (yeah-check--ticks-in-data
+                   (aref form index) definition out guard before aliases))
+        (setq index (1+ index)))
+      out))
+   (t acc)))
+
 (defun yeah-check--ticks-in (form definition acc guard before aliases)
   "Collect the tick calls of FORM into ACC.
 DEFINITION is the name of the definition FORM belongs to, or nil.  GUARD is
@@ -660,7 +959,12 @@ the list of the tests of the conditionals the call sits under; a test that
 says which state the run is in is what tells the check from which state the
 run takes the move.  BEFORE is the list of the sets of the labels of the
 moves that precede FORM in its branch.  ALIASES are the names that hold the
-state of the run where FORM is read."
+state of the run where FORM is read.
+
+A tick that stands in data is no tick of the runtime: the walk does not go into
+a `quote', and the parts that are unquoted in a `backquote' are the only code
+of it.  The designator of a `function' is a name and not code, and the body of
+a `lambda' is code wherever it stands, also under a `function'."
   (cond
    ((and (consp form) (eq (car form) yeah-check--tick-function))
     (let ((labels (yeah-check--label-of form)))
@@ -680,6 +984,21 @@ state of the run where FORM is read."
    ((consp form)
     (let ((head (car form)))
       (cond
+       ((eq head 'quote)
+        ;; A quoted form is data and not code: the runtime does not run it,
+        ;; and a tick that stands in a quoted form is no place of the runtime.
+        acc)
+       ((memq head yeah-check--backquote-symbols)
+        ;; A backquoted form is data as well, and the parts that are unquoted
+        ;; in it are the code that the runtime runs.
+        (yeah-check--ticks-in-data (cdr form) definition acc guard before aliases))
+       ((eq head 'function)
+        ;; The designator of a `function' is a name and not code.  The body of
+        ;; a `lambda' is code wherever it stands, and it is walked.
+        (let ((designator (cadr form)))
+          (if (and (consp designator) (eq (car designator) 'lambda))
+              (yeah-check--ticks-in designator definition acc guard before aliases)
+            acc)))
        ((eq head 'if)
         (let* ((test (cadr form))
                (out (yeah-check--ticks-in-body (list (nth 2 form)) definition acc
@@ -713,6 +1032,10 @@ state of the run where FORM is read."
           (while tail
             (let ((clause (car tail)))
               (when (consp clause)
+                ;; The pattern of a clause is data and not code: it names the
+                ;; branch and it runs nothing.  The pattern of a clause is its
+                ;; first element and its body is the rest of it: a keyword
+                ;; clause names the branch in its first element.
                 (setq out (yeah-check--ticks-in-body
                            (cdr clause) definition out
                            (append (if about-the-state (list (car clause)) nil)
