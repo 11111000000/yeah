@@ -8,8 +8,12 @@
 #      search works alone — the variable of the environment, the command on
 #      PATH, the binary of ~/.nix-profile/bin, the glob of the store of nix —
 #      and not only the step that this machine happens to carry; and the chain
-#      of the search lives in one place: the pipeline reads it there, and no
-#      other script of the tree carries a copy of its body;
+#      of the search lives in one place in `scripts/`: the pipeline reads it
+#      from `scripts/lib/tools.sh`, calls it, and writes no step of the
+#      search of a tool by itself; no other script of `scripts/` defines the
+#      chain or carries a copy of its body, and a copy of the body that is
+#      rewritten in other words is not seen — the searches of the checks
+#      themselves are their own, by design;
 #   2. the pipeline answers 3 when the instrument is not there at all;
 #   3. every diagram of the tree is drawn in both themes: two pictures for
 #      every diagram, and every picture comes from the whole of its own
@@ -32,7 +36,10 @@
 # check and nothing else.
 #
 # The search for PlantUML of this script is a chain of its own: the check
-# must not lean on the code that it checks.
+# must not lean on the code that it checks.  The promise of the claim is
+# about the scripts of the tree and not about the checks: the checks carry
+# their own search on purpose, and a check that leaned on the chain of the
+# pipeline would prove nothing about the pipeline.
 #
 # The words of the report of the pipeline are not measured: the number of the
 # pictures and the number of the diagrams are read from the tree, and a
@@ -209,6 +216,74 @@ fi
 # the search of the chain and not a search of its own.
 if ! grep -qE '^[[:space:]]*find_tool[[:space:]]' scripts/dev; then
   fail "scripts/dev does not call find_tool: the pipeline does not use the chain of the search"
+fi
+
+# The pipeline writes no step of the search of a tool by itself.  The steps
+# of the chain are the steps of one search, and a search that the pipeline
+# writes is a second place where the chain lives — a copy that is rewritten
+# and not copied, and a copy that drifts apart is the one that answers "the
+# tool is not here" when the tool is.
+#
+# The probe is a probe of the code and not a probe of the wording: the steps
+# are words of code — the command on the PATH, the type of the shell, the
+# binary of the user in the profile, the store of nix — and a copy of the
+# chain that is written in other words carries them too.
+#
+# The mentions are not steps: a comment is a word about the code, the help
+# of the wrapper is a text and not code, and the calls of find_tool are the
+# chain itself.
+cat >"$tmp/code-of.awk" <<'AWK'
+# code-of.awk — the code of a shell file.
+#
+#   * a whole-line comment is a word about the code, and not code;
+#   * the body of a here-document is a text, and not code;
+#   * with strip_calls=1 the calls of find_tool are taken out: the call is
+#     the chain itself, and not a search of a second place.
+#
+# The two runs of this program (with and without the calls) hold the same
+# number of lines, and the line of one is the line of the other.
+in_heredoc {
+  if ($0 ~ "^[[:space:]]*" delim "[[:space:]]*$") in_heredoc = 0
+  next
+}
+{
+  line = $0
+  stripped = line
+  sub(/^[[:space:]]+/, "", stripped)
+  if (stripped == "" || stripped ~ /^#/) next
+  if (line ~ /<<</) next
+  if (match(line, /[[:space:]]<<-?[[:space:]]*/)) {
+    pre = substr(line, 1, RSTART - 1)
+    rest = substr(line, RSTART + RLENGTH)
+    if (pre !~ /["']/ && match(rest, /^["']?[A-Za-z_][A-Za-z0-9_]*["']?/)) {
+      delim = substr(rest, 1, RLENGTH)
+      gsub(/["']/, "", delim)
+      if (substr(rest, RLENGTH + 1) ~ /^[[:space:]]*$/) {
+        in_heredoc = 1
+        next
+      }
+    }
+  }
+  if (strip_calls) {
+    gsub(/find_tool([^A-Za-z0-9_][^;|&#]*)?/, "", line)
+  }
+  print line
+}
+AWK
+
+pipeline_code="$tmp/pipeline-code"
+pipeline_code_whole="$tmp/pipeline-code-whole"
+awk -f "$tmp/code-of.awk" -v strip_calls=1 scripts/dev >"$pipeline_code" || blocked "cannot read the code of the pipeline"
+awk -f "$tmp/code-of.awk" -v strip_calls=0 scripts/dev >"$pipeline_code_whole" || blocked "cannot read the code of the pipeline"
+
+# The words of the steps: the command on the PATH, the type of the shell,
+# the binary of the user in the profile and the store of nix.
+steps_of_a_search='command[[:space:]]+-[vV]|type[[:space:]]+-[Pp]|which[[:space:]]+(emacs|plantuml|mathc)|\.nix-profile/bin|NIX_STORE_DIR|bin/(plantuml|emacs)'
+own_steps="$(grep -oE "$steps_of_a_search" "$pipeline_code" 2>/dev/null | LC_ALL=C sort -u | tr '\n' ' ')"
+if [ -n "$own_steps" ]; then
+  own_line="$(grep -nE "$steps_of_a_search" "$pipeline_code" 2>/dev/null | head -n 1 | cut -d: -f1)"
+  own_where="$(sed -n "${own_line}p" "$pipeline_code_whole" | sed 's/^[[:space:]]*//')"
+  fail "scripts/dev writes a step of the search of a tool by itself [$own_steps] — the line: $own_where: the chain of the search lives in one place ($chain_file) and not in two"
 fi
 
 # The chain is defined in one place and under one name: no other file of the
