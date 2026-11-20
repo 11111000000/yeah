@@ -41,14 +41,26 @@ reaches its configuration. It is read from the environment file named by
 its owner only, or from `YEAH_ACP_KEY` in the environment of the daemon. The
 value is passed to the Emacs process through the environment and is not
 printed or written to a log by the plugin.
-The profile `auto` is the mode of a run without a person: the orchestrator runs
-the agent unattended, and nobody answers the questions of the permission
-system. In that mode the tools that change the world are allowed in advance,
-and the question never reaches the client of the orchestrator (wave 76,
-`docs/PLAN.md` §16.65). The mode does not make the work of the agent safe: a
-deletion goes into the trash of the user and the commands that destroy in place
-are refused by name, but there is no boundary of the working directory and the
-secrets in the journal are not masked (`docs/AGENT-SAFETY.md`).
+There are two profiles here and they are not the same thing. The setting
+`profile` of the plugin chooses the profile of the process at launch
+(`YEAH_ACP_PROFILE`) and fills the standing rules of permissions of the
+kernel: `plan` forbids the tools that change the world, `build` asks the
+person, `auto` allows everything. A standing refusal decides everything, on
+the wire too: a tool that the standing rules forbid is not asked about, it is
+refused. The mode of the session is the other thing: it travels over ACP, the
+kernel publishes three of them in the answer of `session/new` (`plan`,
+`build`, `auto`; the third came with wave 76), and the client of the
+orchestrator switches them with `session/set_mode`. The mode of the session
+decides: `plan` forbids, `auto` allows without a question, `build` asks the
+client. A run without questions is therefore the mode `auto`, and it is
+switched on the side of the client (`paseo run --provider yeah --mode auto`;
+the live run of 19 November 2026 asked zero times). The setting `profile`
+alone does not switch the mode of the session: it fills the standing rules of
+the process, and a standing permission does not remove the question -- the
+mode of the session does. The mode does not make the work of the agent safe:
+a deletion goes into the trash of the user and the commands that destroy in
+place are refused by name, but there is no boundary of the working directory
+and the secrets in the journal are not masked (`docs/AGENT-SAFETY.md`).
 
 ## What the plugin adds to the wire
 
