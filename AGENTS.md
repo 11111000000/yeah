@@ -1021,8 +1021,10 @@ work item. Never resolve it by silently making documentation more optimistic.
   the code catches up to `docs/ARCHITECTURE.md`, and the diagrams follow the
   code, not the other way round.  The owner named the order on 2026-11-20:
   A0 (the decision about the waiting states), then A1, then A3, then the tracks
-  B (the contract of a tool) and C (the scopes of an approval), and the waves
-  of the diagrams (D) and of the documentation (E) after them.  A1 is wave 77,
+  B (the contract of a tool) and C (the scopes of an approval) -- both of them
+  independent of A, so they may run in parallel -- and the waves of the
+  diagrams (D) and of the documentation (E) after them; the waves of the
+  diagrams wait for the decision of the owner about PlantUML.  A1 is wave 77,
   A3 is wave 78, B4 is wave 79; the rest of B, all of C, D and E are open.
 - Wave 77 made the waiting states part of the state machine.  The table of the
   machine (`lib/yeah-loop.el`) was rewritten against the real paths of the
