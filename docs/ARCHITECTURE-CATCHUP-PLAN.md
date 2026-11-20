@@ -58,8 +58,8 @@
 Состояния `awaiting-user-permission`, `awaiting-user-input`, `blocked-on-rate`
 недостижимы.
 
-**История.** Состояния введены 12 октября 2026 (`5bca3e2`, `8e2f324`, ветка
-tier0). Волна 16.1 от 15 ноября (`a9840f9`, «the answerer that answers later»)
+**История.** Состояния введены 12 октября 2026 (`5e11402`, `8dc5212`, ветка
+tier0). Волна 16.1 от 15 ноября (`fda466a`, «the answerer that answers later»)
 заменила блокирующий вопрос отложенным разрешением и не тронула ни
 `yeah-state.el`, ни `yeah-loop.el`. Архитектура (D7 «The human is an
 asynchronous master») описывает асинхронное решение — код соответствует,
