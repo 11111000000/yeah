@@ -65,6 +65,22 @@
 ;;    place whose label cannot be read is a defect of its own now, and the
 ;;    check names it by its file and its line.
 ;;
+;; The version of wave 90 closed one more hole of the proof (the finding F23 of
+;; the discriminator of the waves 87 to 89).  The code of the kernel did not
+;; change again: the hole was in the proof.
+;;
+;; 1. A name in a quoted list counted as a call (F23).  The walk of the calls
+;;    went into the operands of a `quote', and the head of the quoted list
+;;    became a call: a definition that only a quoted list named was a root of
+;;    the runtime, and the move inside it was a move of the runtime.  The
+;;    doctrine of this check says the opposite -- a name is not a call -- and
+;;    the code of the walk said otherwise.  The walk does not go into data
+;;    now: the operands of a `quote' are names, the designator of a `function'
+;;    is a name, and the parameters of a `lambda' are names.  The body of a
+;;    `lambda' is code wherever it stands, also under a `function', and a name
+;;    in the first argument of a `funcall' or of an `apply' is still a call,
+;;    because the runtime calls the value there.
+;;
 ;; The report is compared with the numbers the check measured on the kernel
 ;; of 2026-11-20 as well: a measurement that got smaller is a proof that got
 ;; weaker, and a weaker proof must not pass as if it were the same one.
@@ -155,6 +171,10 @@
 (defconst yeah-check--callers-of-a-value
   '(funcall apply)
   "The forms that call the function that stands in their first argument.")
+
+(defconst yeah-check--names-of-a-value
+  '(quote function)
+  "The heads of the forms that name a value and do not call it.")
 
 (defconst yeah-check--expected-measurement
   '((:cells . 31)
@@ -269,6 +289,15 @@ A value that is called is a symbol, a quoted symbol or a function designator."
          (car (cdr form)))
         (t nil)))
 
+(defun yeah-check--calls-in-body (body table)
+  "Add to TABLE the symbols the forms of BODY call.
+BODY is a list of forms and each of them is walked on its own: a list of forms
+is not a form, and the head of such a list is the head of its first form and
+not the head of a call."
+  (dolist (form body)
+    (yeah-check--calls-in-1 form table))
+  table)
+
 (defun yeah-check--calls-in-1 (form table)
   "Add to TABLE the symbols FORM calls.
 A call is a symbol in the head of a form.  A function designator and a quoted
@@ -281,6 +310,14 @@ body of a `let' or of a `cl-letf' is a call of the runtime like any other,
 and a walk that stopped at the head would lose it.  A pair with a dot is a
 form too, and its tail is walked apart from its head.
 
+The walk does not go into data (the finding F23 of the discriminator of the
+waves 87 to 89).  A quoted form is a list of names and not code, and a name
+in it calls nothing: the walk of the operands of a `quote' stopped, and a
+definition that only a quoted list names is dead for the runtime.  The
+designator of a `function' is a name and not code as well, and the parameters
+of a `lambda' are names and not code either.  The body of a `lambda' is code
+wherever it stands, also under a `function'.
+
 The names go into a table and not into a list: a list that the walk passes
 down would lose the names that the walk adds, because the caller keeps the
 head of the list and not the new cell."
@@ -288,18 +325,32 @@ head of the list and not the new cell."
    ((consp form)
     (let ((head (car form)))
       (when (symbolp head)
-        (unless (memq head '(quote function))
+        (unless (memq head yeah-check--names-of-a-value)
           (puthash head t table))
         (when (memq head yeah-check--callers-of-a-value)
           (let ((called (yeah-check--called-value (cadr form))))
             (when called
-              (puthash called t table))))))
-    (let ((tail form))
-      (while (consp tail)
-        (yeah-check--calls-in-1 (car tail) table)
-        (setq tail (cdr tail)))
-      (when tail
-        (yeah-check--calls-in-1 tail table))))
+              (puthash called t table)))))
+      (cond
+       ;; A quoted form is data and not code: the walk does not go into it.
+       ((eq head 'quote) nil)
+       ;; The designator of a `function' is a name and not code.  The body of
+       ;; a `lambda' is code wherever it stands, and it is walked.
+       ((eq head 'function)
+        (let ((designator (cadr form)))
+          (when (and (consp designator) (eq (car designator) 'lambda))
+            (yeah-check--calls-in-1 designator table))))
+       ;; The parameters of a `lambda' are names and not code, and its body
+       ;; is code.
+       ((eq head 'lambda)
+        (yeah-check--calls-in-body (cdr (cdr form)) table))
+       (t
+        (let ((tail form))
+          (while (consp tail)
+            (yeah-check--calls-in-1 (car tail) table)
+            (setq tail (cdr tail)))
+          (when tail
+            (yeah-check--calls-in-1 tail table)))))))
    ((vectorp form)
     (let ((index 0))
       (while (< index (length form))
