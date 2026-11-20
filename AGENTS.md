@@ -1154,6 +1154,28 @@ work item. Never resolve it by silently making documentation more optimistic.
   the kernel now: a tree without one answers with the code 3 and draws nothing.
   The wave commits no SVG — the pictures of the site are waves D3 and D4
   (docs/PLAN.md §16.76).
+- Wave 85 repaired the proof of the table of the machine, the second time.  The
+  kernel is honest; the proof was not, and the check of the cells **could not
+  fail at all**: the verdict stood inside a `dolist`, and `dolist' returns nil,
+  so the check answered "yes" whatever the kernel said.  The verdict is out of
+  the loop now, and the witness of a cell is read over **all** the places of its
+  label and not over the first one.  A witness is a place **the runtime runs**:
+  a place that only a name, a test or a script reaches is dead for the runtime
+  and witnesses nothing — death and silence are two different things, so a
+  **live** place that names no state witnesses a cell weakly, and that is a
+  measurement and not a refusal.  A name is not a call: `'f' and `(function f)'
+  name a definition, while the name in the first argument of `funcall' and of
+  `apply' is a call, because the runtime calls the value there.  The state of a
+  place is read from the guard around the place and from the chain of the moves
+  before it, and a state bound to a local variable is read as well.  A fan is
+  judged only when the runtime states the whole coverage of it — the coverage of
+  the fan `interrupt' is not stated at all, and the check names that fan instead
+  of blaming the runtime.  The report names the numbers: 31 cells, 17 labels, 11
+  states, 23 places of a tick (all 23 live), 14 of the 23 naming the state and 9
+  naming none, 8 of the 17 labels with no place that names a state, 15 of the 31
+  cells resting on a place that names no state, 16 of the 31 proven by the state
+  of their place, and 1 of the 2 fans with the whole coverage stated.  The
+  claim is amended and not renamed (docs/PLAN.md §16.78).
 - Wave 86 repaired the proof of the pipeline of the diagrams, the second time.
   The pipeline works, but two promises of the check were not measured: the chain
   of the search "lives in one place" was satisfied by a comment that named the
