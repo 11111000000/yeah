@@ -1067,6 +1067,19 @@ work item. Never resolve it by silently making documentation more optimistic.
   names no values.  The wave also corrected the premise of B4 in the catch-up
   plan, which named a place of the defect that does not exist (docs/PLAN.md
   §16.70).
+- Wave 80 made the proof of the table match its promise.  A discriminator found
+  that the check of wave 78 promised a cell of the table and proved a label: the
+  cell `(compacting error . failed)` was replaced with
+  `(compacting interrupt . interrupted)`, the machine could no longer move a run
+  out of `compacting` into `failed` on the label `error`, and the check stayed
+  green.  The check now speaks about cells: the machine makes every cell, the
+  runtime takes the label in a place of the code that lives, a fan of a label
+  covers exactly the states a run can live in and ends in one state, and every
+  cell is walked.  The liveness of a place is a graph: a root is an autoload
+  cookie, a reference of the tests or of the scripts or of a top-level form of
+  `lib/`, and the walk goes on by the calls.  The label is read from the
+  position of the label and from nowhere else.  The claim of wave 78 is amended
+  and not renamed (docs/PLAN.md §16.72).
 
 ## The commands
 
