@@ -2414,8 +2414,8 @@
     },
     {
       "id": "the-owner-decided-the-order-of-the-next-waves",
-      "text": "the owner named the order of the next waves on 2026-11-16 and on 2026-11-19, and the plan of the project follows those orders",
-      "scope": [ "docs/PLAN.md" ],
+      "text": "the owner named the order of the next waves on 2026-11-16, on 2026-11-19 and on 2026-11-20 (the catch-up plan: A0, then A1 or A2, then A3, then D, then E), and the plan of the project follows those orders",
+      "scope": [ "docs/PLAN.md", "docs/ARCHITECTURE-CATCHUP-PLAN.md" ],
       "source": null,
       "kind": "acceptance",
       "phase": "pre-merge",
@@ -2428,7 +2428,7 @@
           "minimum_independence": "external"
         }
       ],
-      "falsifier": "the order of the waves in docs/PLAN.md is not the order the owner named on 2026-11-16 and on 2026-11-19",
+      "falsifier": "the order of the waves in docs/PLAN.md is not the order the owner named on 2026-11-16, on 2026-11-19 and on 2026-11-20",
       "register": "judgment",
       "control": "sed -i 's/wave 41, wave 42, wave 43, wave 44/wave 44, wave 43, wave 42, wave 41/' docs/PLAN.md",
       "waiver": null
@@ -3598,7 +3598,7 @@
       ],
       "falsifier": "the rm of the agent removed the tree for good, or the tree did not come back from the trash, or the agent ran a command that destroys in place, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
-      "control": "sed -i 's|(shell-quote-argument (yeah-shell-guard-path))|\"\"|' lib/yeah-shell-guard.el",
+      "control": "sed -i 's|gio trash --|false gio trash --|' lib/yeah-shell-guard.el",
       "waiver": null
     },
     {
