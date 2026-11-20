@@ -65,8 +65,8 @@
 ;;    place whose label cannot be read is a defect of its own now, and the
 ;;    check names it by its file and its line.
 ;;
-;; The version of wave 90 closed three more holes of the proof (the finding F23
-;; of the discriminator of the waves 87 to 89, and the two classes of escape
+;; The version of wave 90 closed four more holes of the proof (the finding F23
+;; of the discriminator of the waves 87 to 89, and the three classes of escape
 ;; that the review of the wave found beside it).  The code of the kernel did not
 ;; change again: the hole was in the proof.
 ;;
@@ -99,6 +99,39 @@
 ;;    so such a place witnesses nothing at all.  The walk does not go into
 ;;    data now: a tick in a `quote' is no place, and the parts that are
 ;;    unquoted in a `backquote' are the only code of it.
+;;
+;; 4. The name of a type and the names of the slots counted as calls.  The
+;;    description of a `cl-defstruct' is a list of names, and the walk of the
+;;    calls read the head of it as a call: a definition whose name only the
+;;    description of a struct named was a root of the runtime, and the move
+;;    inside it was a move of the runtime.  The walk does not go into the
+;;    names now: the name of the type, the names of its options and the names
+;;    of its slots are names, the value of a slot is code, and the walk goes
+;;    into it.  The obsolete `defstruct' is the same position: it expands into
+;;    a `cl-defstruct' and the walk reads it the same way.
+;;
+;;    The name of a derived mode and the name of its parent are names as
+;;    well, and the walk reads the position of a `define-derived-mode' by rule
+;;    now: the name of the mode, the name of its parent, the name of the mode
+;;    line and the doc string are names and data, the value of a keyword is
+;;    code, and the body of the mode is code.  No escape of the runtime was
+;;    open in that position -- the name of a mode stands in a symbol, and the
+;;    walk reads a symbol as no call -- and the rule is written down because
+;;    the walk reads the positions it knows, and a position it does not know
+;;    is read as a call.
+;;
+;; The walk reads the positions it knows, and a position it does not know is
+;; read as a call.  The kernel holds no other such position today, and the
+;; positions of the family that it does not hold are named here: the keys of
+;; the clauses of a `case' are data, the names of the bindings of a
+;; `destructuring-bind' and of a `multiple-value-bind' are names, the
+;; specializer of a `cl-defmethod' is data, and the doc string of a
+;; `cl-defgeneric' is data.  The names of a `defalias' stand in a `quote',
+;; and the walk reads a quoted form as data.  The name of a `defvar' and of a
+;; `defconst' and of a `defcustom' is a symbol and not a list, and the walk
+;; cannot read it as a call.  A kernel that grows one of the positions above
+;; would need the walk to learn it, and the objection of the wave names that
+;; gap.
 ;;
 ;; The report is compared with the numbers the check measured on the kernel
 ;; of 2026-11-20 as well: a measurement that got smaller is a proof that got
@@ -208,6 +241,13 @@ reader, so it has to know both of the symbols.")
 (defconst yeah-check--names-of-a-value
   (append '(quote function) yeah-check--backquote-symbols)
   "The heads of the forms that name a value and do not call it.")
+
+(defconst yeah-check--derived-mode-keywords
+  '(:group :syntax-table :abbrev-table :after-hook :interactive)
+  "The keywords of the arguments of a `define-derived-mode'.
+The walk goes into the value of such a keyword, for the form of an
+`:after-hook' is run by the mode.  A name that stands in the value of a
+keyword is a name and not a call.")
 
 (defconst yeah-check--expected-measurement
   '((:cells . 31)
@@ -341,6 +381,50 @@ of a binding is code, and the walk goes into it."
       (yeah-check--calls-in-1 (cadr binding) table)))
   table)
 
+(defun yeah-check--calls-in-a-defstruct (form table)
+  "Add to TABLE the symbols the values of the slots of FORM call.
+FORM is a `cl-defstruct': the name of the type, the names of the options and
+the names of the slots are names and not calls, for the runtime reads them
+and it does not run them.  The value of a slot is code, and the walk goes
+into it.  The obsolete `defstruct' is the same position."
+  (let ((tail (cdr form))
+        (out table))
+    ;; The name of the type and the names of its options stand in the first
+    ;; element of the form, and they are names.
+    (when (and (consp tail) (consp (car tail)))
+      (setq tail (cdr tail)))
+    ;; The doc string of the type is data, and the slots stand after it.
+    (when (and (consp tail) (stringp (car tail)))
+      (setq tail (cdr tail)))
+    (while (consp tail)
+      (let ((slot (car tail)))
+        ;; A slot is a name and a value: the value of the slot is code and
+        ;; the name of it is a name.
+        (when (consp slot)
+          (setq out (yeah-check--calls-in-1 (cadr slot) out))))
+      (setq tail (cdr tail)))
+    out))
+
+(defun yeah-check--calls-in-a-derived-mode (form table)
+  "Add to TABLE the symbols the code of the `define-derived-mode' FORM calls.
+The name of the mode and the name of its parent are names and not calls: the
+runtime reads them and it does not run them.  The name of the mode line, the
+doc string, the values of the keywords and the body of the mode are code."
+  (let ((tail (cdddr form))
+        (out table))
+    ;; The name of the mode line and the doc string are strings: they are data
+    ;; and not code.
+    (while (and (consp tail) (stringp (car tail)))
+      (setq tail (cdr tail)))
+    ;; The value of a keyword is code.
+    (while (and (consp tail)
+                (consp (car tail))
+                (memq (caar tail) yeah-check--derived-mode-keywords))
+      (setq out (yeah-check--calls-in-1 (cadr (car tail)) out))
+      (setq tail (cddr tail)))
+    ;; The body of the mode is code.
+    (yeah-check--calls-in-body tail out)))
+
 (defun yeah-check--calls-in-data (form table)
   "Add to TABLE the symbols the unquoted parts of FORM call.
 FORM is data: the runtime does not run it, and a name in it calls nothing.  The
@@ -395,6 +479,13 @@ them, and a definition that only such a list names is dead for the runtime.
 The values of the bindings, the collection of the spec, the subject of a
 `pcase', the body of the clause and the body of the handler are code, and the
 walk goes into them.
+
+The description of the slots of a `cl-defstruct' is a list of names as well:
+the name of the type, the names of the options and the names of the slots are
+names, and the value of a slot is code.  The obsolete `defstruct' is the same
+position.  The name of a derived mode and the name of its parent are names
+too, and the value of a keyword of a `define-derived-mode' and the body of the
+mode are code.
 
 The names go into a table and not into a list: a list that the walk passes
 down would lose the names that the walk adds, because the caller keeps the
@@ -462,6 +553,17 @@ head of the list and not the new cell."
               (when (consp clause)
                 (yeah-check--calls-in-body (cdr clause) table)))
             (setq tail (cdr tail)))))
+       ;; The description of the slots of a `cl-defstruct' is a list of names:
+       ;; the name of the type, the names of the options and the names of the
+       ;; slots are names and not calls.  The value of a slot is code.  The
+       ;; obsolete `defstruct' is the same position: it expands into a
+       ;; `cl-defstruct' and the walk reads it the same way.
+       ((memq head '(cl-defstruct defstruct))
+        (yeah-check--calls-in-a-defstruct form table))
+       ;; The name of a derived mode and the name of its parent are names and
+       ;; not calls, and the rest of the form is code.
+       ((eq head 'define-derived-mode)
+        (yeah-check--calls-in-a-derived-mode form table))
        (t
         (let ((tail form))
           (while (consp tail)
