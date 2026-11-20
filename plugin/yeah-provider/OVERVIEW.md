@@ -29,7 +29,7 @@ Settings live in the host settings of Paseo under Yeah:
 | `emacsPath` | path to Emacs; empty means the usual places are searched |
 | `model` | model the provider uses |
 | `host` | host of the model backend |
-| `profile` | permission profile: `build` asks the person, `plan` forbids edits |
+| `profile` | permission profile: `build` asks the person, `plan` forbids edits, `auto` asks nobody (a run without a person) |
 | `serviceMode` | placement of the kernel: `spawn` raises one Emacs per connection, `service` keeps one Emacs for every agent and the sessions come to it over a socket |
 | `serviceName` | name of the service, which is the name of its socket; services with different names do not get in each other's way |
 | `keyFile` | environment file that holds the provider key |
@@ -41,6 +41,14 @@ reaches its configuration. It is read from the environment file named by
 its owner only, or from `YEAH_ACP_KEY` in the environment of the daemon. The
 value is passed to the Emacs process through the environment and is not
 printed or written to a log by the plugin.
+The profile `auto` is the mode of a run without a person: the orchestrator runs
+the agent unattended, and nobody answers the questions of the permission
+system. In that mode the tools that change the world are allowed in advance,
+and the question never reaches the client of the orchestrator (wave 76,
+`docs/PLAN.md` §16.65). The mode does not make the work of the agent safe: a
+deletion goes into the trash of the user and the commands that destroy in place
+are refused by name, but there is no boundary of the working directory and the
+secrets in the journal are not masked (`docs/AGENT-SAFETY.md`).
 
 ## What the plugin adds to the wire
 
