@@ -46,7 +46,30 @@
 ;;    and the check passed.  A local variable that is bound to the state of
 ;;    the run names the state now.
 ;;
-;; This check asks the question the claim asks.  Five things are checked.
+;; The version of wave 88 closed two more holes of the proof (the findings F19
+;; and F20 of the discriminator of that wave).  The code of the kernel did not
+;; change: both holes were in the proof.
+;;
+;; 1. A place that stands in no definition of the kernel counted as live
+;;    (F19).  A top-level form of the kernel is not the code of a run: a tick
+;;    that stands in the body of a constant that nobody calls is a move the
+;;    runtime does not take, and the check counted it as a witness of the
+;;    cell of that move.  Such a place is dead for the runtime now, and the
+;;    check names the places of that kind apart, so that a reader sees how
+;;    many there are.
+;; 2. A place whose label the check cannot read dropped out of every verdict
+;;    (F20).  The label of such a place names no cell of the table, is
+;;    checked against no state, and breaks the chain of the moves around it,
+;;    so a runtime that took a move the machine does not have passed the
+;;    check and the report of the check said less than it said before.  A
+;;    place whose label cannot be read is a defect of its own now, and the
+;;    check names it by its file and its line.
+;;
+;; The report is compared with the numbers the check measured on the kernel
+;; of 2026-11-20 as well: a measurement that got smaller is a proof that got
+;; weaker, and a weaker proof must not pass as if it were the same one.
+;;
+;; This check asks the question the claim asks.  Six things are checked.
 ;;
 ;; 1. The table is well formed: every cell is `(FROM LABEL . TO)', the states
 ;;    of the cell are states of the machine, the label is a symbol, and the
@@ -61,7 +84,10 @@
 ;;    states the machine has that move from: a place whose guard names the
 ;;    state is in exactly those states, and a place that takes a move the
 ;;    machine does not have from a state its guard admits is named.
-;; 4. Every fan of the table -- a label the table gives to several states --
+;; 4. Every place of the runtime names the move it takes: a place whose label
+;;    the check cannot read is a defect of its own, because the runtime takes
+;;    a move there that the check cannot name and the machine may not have.
+;; 5. Every fan of the table -- a label the table gives to several states --
 ;;    is kept by the runtime: the runtime takes the fan from every state the
 ;;    table gives it to, the runtime takes it from no other state, and the
 ;;    fan ends the run in one state.  The fan is compared with the runtime
@@ -70,8 +96,9 @@
 ;;    coverage is not fully stated is not judged: a coverage that is read in
 ;;    part proves nothing about the states that are missing from it, and the
 ;;    report says how much of it was read.
-;; 5. Every state of the machine is reachable from the first one through the
-;;    cells of the table.
+;; 6. Every state of the machine is reachable from the first one through the
+;;    cells of the table, and the numbers the check measured are the numbers
+;;    it measured before.
 ;;
 ;; The liveness of a place is the liveness of the *runtime*: a root is a
 ;; definition with the cookie of an autoload and a definition a top-level
@@ -80,6 +107,9 @@
 ;; -- and a move that sits in such a definition is not a move of the runtime.
 ;; A definition that only a *name* reaches is dead for the runtime as well:
 ;; the name is not a call, and the runtime does not run what nobody calls.
+;; A place that stands in no definition at all is dead for the runtime too:
+;; a top-level form of the kernel is not the code of a run, and the runtime
+;; runs the moves of a run inside the definitions it calls and nowhere else.
 ;; The liveness for the tests is a property of its own, and this check does
 ;; not measure it.
 ;;
@@ -125,6 +155,28 @@
 (defconst yeah-check--callers-of-a-value
   '(funcall apply)
   "The forms that call the function that stands in their first argument.")
+
+(defconst yeah-check--expected-measurement
+  '((:cells . 31)
+    (:labels . 17)
+    (:states . 11)
+    (:places . 23)
+    (:live-places . 23)
+    (:places-without-a-definition . 0)
+    (:places-of-a-dead-definition . 0)
+    (:places-naming-the-state . 14)
+    (:places-not-naming-the-state . 9)
+    (:labels-without-a-place-that-names-the-state . 8)
+    (:cells-resting-on-a-silent-place . 15)
+    (:fans . 2)
+    (:fans-with-a-stated-coverage . 1)
+    (:fans-with-a-complete-coverage . 1))
+  "The numbers the check measured on the kernel of 2026-11-20.
+Every number of the report of the check is here, so that a measurement that
+got smaller cannot pass as if it were the same one: a proof that rests on
+less is a weaker proof, and the check says so instead of staying quiet.
+A number changes when the kernel changes on purpose, and the constant is
+changed then and not before.")
 
 (defun yeah-check--root ()
   "Return the root of the project."
@@ -611,13 +663,19 @@ moves that precede FORM in its branch.  ALIASES are the names that hold the
 state of the run where FORM is read."
   (cond
    ((and (consp form) (eq (car form) yeah-check--tick-function))
-    (push (list :definition definition
-                :call form
-                :labels (yeah-check--label-of form)
-                :guard guard
-                :aliases aliases
-                :before before)
-          acc)
+    (let ((labels (yeah-check--label-of form)))
+      (push (list :definition definition
+                  :call form
+                  :labels labels
+                  ;; A label the check cannot read names no cell of the
+                  ;; table, is compared with no state, and breaks the chain
+                  ;; of the moves around it.  Such a place is a defect of its
+                  ;; own, and the check names it.
+                  :readable (not (null labels))
+                  :guard guard
+                  :aliases aliases
+                  :before before)
+            acc))
     acc)
    ((consp form)
     (let ((head (car form)))
@@ -750,6 +808,24 @@ it in its branch, and a move the machine does not have is kept beside it."
                  site))
              sites))))
 
+(defun yeah-check--at-of-a-place (place)
+  "Return where PLACE stands: the file of the kernel and the line of the call.
+A place is named by its file and its line, so that a reader of the report
+sees where the proof of the table rests."
+  (let ((file (plist-get place :file)))
+    (if file
+        (format "%s:%s"
+                (file-relative-name file (yeah-check--root))
+                (or (plist-get place :line) "?"))
+      "?")))
+
+(defun yeah-check--name-of-a-place (place)
+  "Return the name of PLACE: the definition it sits in, the move it takes and
+the line of the call in the source of the kernel."
+  (list (plist-get place :definition)
+        (plist-get place :labels)
+        (yeah-check--at-of-a-place place)))
+
 (defun yeah-check--cells ()
   "Return the cells of the table of the machine."
   yeah-loop-transitions)
@@ -770,11 +846,32 @@ it in its branch, and a move the machine does not have is kept beside it."
               (yeah-check--labels-of-the-table)))
 
 (defun yeah-check--live-sites (live places)
-  "Return the places PLACES that sit in a definition the runtime runs."
+  "Return the places PLACES that sit in a definition the runtime runs.
+A place that stands in no definition of the kernel is dead for the runtime
+as well: a top-level form of the kernel is not the code of a run, and the
+runtime runs the moves of a run inside the definitions it calls.  A tick
+that stands in the body of a constant that nobody calls is a move the
+runtime does not take, and it witnesses nothing."
   (seq-filter (lambda (place)
-                (or (null (plist-get place :definition))
-                    (memq (plist-get place :definition) live)))
+                (let ((definition (plist-get place :definition)))
+                  (and definition (memq definition live))))
               places))
+
+(defun yeah-check--places-without-a-definition (all)
+  "Return the places of ALL that stand in no definition of the kernel.
+A top-level form of the kernel is not a definition of a function, and a move
+that stands in one is a move the runtime does not take.  The check names the
+places of that kind apart, so that a reader sees how many there are."
+  (seq-filter (lambda (place) (null (plist-get place :definition))) all))
+
+(defun yeah-check--places-of-a-dead-definition (live all)
+  "Return the places of ALL that stand in a definition the runtime does not run.
+A definition that only a name, a test or a script reaches is dead for the
+runtime, and a move that stands in it is not a move of the runtime."
+  (seq-filter (lambda (place)
+                (let ((definition (plist-get place :definition)))
+                  (and definition (not (memq definition live)))))
+              all))
 
 (defun yeah-check--the-table-is-well-formed ()
   "Every cell of the table is a cell the machine makes.
@@ -802,7 +899,7 @@ with the state of the cell."
      (format "the table of the machine names %d cell(s) the machine does not make: %S"
              (length broken) broken))))
 
-(defun yeah-check--every-cell-is-a-move-of-the-runtime (places)
+(defun yeah-check--every-cell-is-a-move-of-the-runtime (places all)
   "Every cell of the table is a move the runtime takes.
 The runtime takes the label of the cell in a place that lives, and some place
 of that label stands in a state the cell names: the runtime takes the move
@@ -811,7 +908,9 @@ from the state of the cell.
 PLACES are the places the runtime runs.  A place the runtime does not run
 witnesses nothing: a definition that only a name reaches is dead for the
 runtime, and a cell whose only place is dead is a move the runtime does not
-take.
+take.  ALL are all the places of the kernel, and a cell that nobody takes is
+named together with the places that take its label, so that a reader sees
+where the move the runtime does not take stands.
 
 A label the table gives to several states is a fan, and the runtime takes a
 fan in several places: one place may stand in the states of one cell of the
@@ -836,7 +935,14 @@ much of the proof rests on them."
               (cond ((null states) (setq weakly t))
                     ((memq from states) (setq witnessed t))))))
         (unless (or witnessed weakly)
-          (push (list cell :the-runtime-does-not-take-the-move) broken))))
+          (push (list cell
+                      :the-runtime-does-not-take-the-move
+                      :the-places-that-take-the-label
+                      (mapcar #'yeah-check--name-of-a-place
+                              (seq-filter (lambda (place)
+                                            (memq label (plist-get place :labels)))
+                                          all)))
+                broken))))
     ;; The verdict stands outside the walk over the cells: `dolist' answers nil
     ;; whatever its body says, and a verdict inside it would be lost.
     (yeah-check--fail
@@ -883,6 +989,28 @@ runtime takes a move that the machine cannot make."
     (yeah-check--fail
      (null broken)
      (format "the runtime takes %d move(s) the machine does not have: %S"
+             (length broken) broken))))
+
+(defun yeah-check--every-place-names-its-move (places)
+  "Every place of the runtime names the move it takes.
+The label of a place is the third argument of the call of the tick, and the
+check reads it as the set of the labels the computation names.  A place whose
+label the check cannot read is a defect of its own: the runtime takes a move
+there that the check cannot name, and the machine may not have it at all.
+Such a place witnesses no cell, is compared with no state, and breaks the
+chain of the moves around it, so the check names it by its file and its line
+instead of staying quiet about it."
+  (let (broken)
+    (dolist (place places)
+      (unless (plist-get place :readable)
+        (push (list :the-runtime-takes-a-move-the-check-cannot-read
+                    :place (plist-get place :definition)
+                    :at (yeah-check--at-of-a-place place)
+                    :the-call (plist-get place :call))
+              broken)))
+    (yeah-check--fail
+     (null broken)
+     (format "the runtime takes %d move(s) the check cannot read: %S"
              (length broken) broken))))
 
 (defun yeah-check--coverage-of-a-fan (places label)
@@ -1023,51 +1151,95 @@ the machine alone."
         (push label unstated)))
     (nreverse unstated)))
 
-(defun yeah-check--name-of-a-place (place)
-  "Return the name of PLACE: the definition it sits in, the move it takes and
-the line of the call in the source of the kernel."
-  (list (plist-get place :definition)
-        (plist-get place :labels)
-        (let ((file (plist-get place :file)))
-          (if file
-              (format "%s:%s"
-                      (file-relative-name file (yeah-check--root))
-                      (or (plist-get place :line) "?"))
-            "?"))))
+(defun yeah-check--measurement (live places all)
+  "Return the numbers the check measured, as a plist.
+PLACES are the places the runtime runs, ALL are all the places of the ticks of
+the kernel, and LIVE are the definitions the runtime runs.
+Every number of the report of the check is here, so that the report and the
+verdict speak of the same measurement."
+  (let* ((silent (yeah-check--silent-places places))
+         (dark (yeah-check--dark-labels places))
+         (weak (yeah-check--weak-cells places))
+         (fans (yeah-check--fans-of-the-table))
+         (unstated (yeah-check--unstated-fans places))
+         (complete (seq-filter (lambda (label)
+                                 (yeah-check--fan-is-fully-stated places label))
+                               fans)))
+    (list :cells (length (yeah-check--cells))
+          :labels (length (yeah-check--labels-of-the-table))
+          :states (length yeah-state-list)
+          :places (length all)
+          :live-places (length places)
+          :places-without-a-definition
+          (length (yeah-check--places-without-a-definition all))
+          :places-of-a-dead-definition
+          (length (yeah-check--places-of-a-dead-definition live all))
+          :places-naming-the-state (- (length places) (length silent))
+          :places-not-naming-the-state (length silent)
+          :labels-without-a-place-that-names-the-state (length dark)
+          :cells-resting-on-a-silent-place (length weak)
+          :fans (length fans)
+          :fans-with-a-stated-coverage (- (length fans) (length unstated))
+          :fans-with-a-complete-coverage (length complete))))
 
-(defun yeah-check--report (places all)
+(defun yeah-check--the-measurement-is-the-expected-one (measured)
+  "Return a failure when MEASURED is not the measurement the check expects.
+The numbers of the measurement are the numbers of the report, and the report
+is compared with the numbers the check measured on the kernel of 2026-11-20.
+A measurement that got smaller is a proof that got weaker: the check says so
+instead of reporting a smaller proof as if it were the same one.  A number
+changes when the kernel changes on purpose, and the constant is changed then."
+  (let (broken)
+    (dolist (pair yeah-check--expected-measurement)
+      (let* ((name (car pair))
+             (expected (cdr pair))
+             (got (plist-get measured name)))
+        (unless (eql expected got)
+          (push (list name :expected expected :measured got) broken))))
+    (yeah-check--fail
+     (null broken)
+     (format "the check measured the table differently than it measured it before: %S"
+             broken))))
+
+(defun yeah-check--report (live places all)
   "Say what the check measured.
-PLACES are the places of the ticks the runtime runs, and ALL are the places
-of the ticks of the kernel."
-  (message "table: %d cell(s), %d label(s), %d state(s); %d place(s) of a tick in the kernel, %d of them live"
-           (length (yeah-check--cells))
-           (length (yeah-check--labels-of-the-table))
-           (length yeah-state-list)
-           (length all)
-           (length places))
-  (let ((silent (yeah-check--silent-places places)))
+PLACES are the places of the ticks the runtime runs, ALL are the places of
+the ticks of the kernel, and LIVE are the definitions the runtime runs."
+  (let* ((measured (yeah-check--measurement live places all))
+         (silent (yeah-check--silent-places places))
+         (dark (yeah-check--dark-labels places))
+         (weak (yeah-check--weak-cells places))
+         (unstated (yeah-check--unstated-fans places))
+         (without (yeah-check--places-without-a-definition all))
+         (dead (yeah-check--places-of-a-dead-definition live all)))
+    (message "table: %d cell(s), %d label(s), %d state(s); %d place(s) of a tick in the kernel, %d of them live"
+             (plist-get measured :cells)
+             (plist-get measured :labels)
+             (plist-get measured :states)
+             (plist-get measured :places)
+             (plist-get measured :live-places))
     (message "table: %d of the %d place(s) name the state of the run, %d do not: %S"
-             (- (length places) (length silent))
-             (length places)
-             (length silent)
-             (mapcar #'yeah-check--name-of-a-place silent)))
-  (let ((dark (yeah-check--dark-labels places)))
+             (plist-get measured :places-naming-the-state)
+             (plist-get measured :places)
+             (plist-get measured :places-not-naming-the-state)
+             (mapcar #'yeah-check--name-of-a-place silent))
     (message "table: %d of the %d label(s) of the table have no place that names the state: %S"
-             (length dark) (length (yeah-check--labels-of-the-table)) dark))
-  (let ((weak (yeah-check--weak-cells places)))
+             (plist-get measured :labels-without-a-place-that-names-the-state)
+             (plist-get measured :labels) dark)
     (message "table: %d cell(s) rest on a place that says nothing about the state: %S"
-             (length weak) weak))
-  (let ((fans (yeah-check--fans-of-the-table))
-        (unstated (yeah-check--unstated-fans places)))
-    (let ((complete (seq-filter (lambda (label)
-                                   (yeah-check--fan-is-fully-stated places label))
-                                 fans)))
-      (message "table: %d of the %d fan(s) of the table has a stated coverage, %d of them a complete one, %d does not: %S"
-               (- (length fans) (length unstated))
-               (length fans)
-               (length complete)
-               (length unstated)
-               unstated))))
+             (plist-get measured :cells-resting-on-a-silent-place) weak)
+    (message "table: %d of the %d fan(s) of the table has a stated coverage, %d of them a complete one, %d does not: %S"
+             (plist-get measured :fans-with-a-stated-coverage)
+             (plist-get measured :fans)
+             (plist-get measured :fans-with-a-complete-coverage)
+             (length unstated)
+             unstated)
+    (message "table: %d place(s) of a tick stand outside a definition of the kernel: %S"
+             (length without)
+             (mapcar #'yeah-check--name-of-a-place without))
+    (message "table: %d place(s) of a tick stand in a definition the runtime does not run: %S"
+             (length dead)
+             (mapcar #'yeah-check--name-of-a-place dead))))
 
 (defun yeah-check--verdict ()
   "Return the failures of the check, or nil when the check passes.
@@ -1078,17 +1250,22 @@ process: a check that dies has not bitten."
              (live (yeah-check--live-definitions definitions))
              (all (yeah-check--tick-sites))
              (places (yeah-check--live-sites live all))
+             (measured (yeah-check--measurement live places all))
              (failures (delq nil
                              (list (yeah-check--the-table-is-well-formed)
                                    (yeah-check--every-cell-is-a-move-of-the-runtime
-                                    places)
+                                    places all)
                                    (yeah-check--every-place-takes-the-move-the-machine-has
+                                    places)
+                                   (yeah-check--every-place-names-its-move
                                     places)
                                    (yeah-check--every-fan-is-kept-by-the-runtime
                                     places)
-                                   (yeah-check--every-state-of-the-machine-is-reachable)))))
+                                   (yeah-check--every-state-of-the-machine-is-reachable)
+                                   (yeah-check--the-measurement-is-the-expected-one
+                                    measured)))))
         (unless failures
-          (yeah-check--report places all))
+          (yeah-check--report live places all))
         failures)
     (error
      (list (format "the check could not read the kernel: %s"
