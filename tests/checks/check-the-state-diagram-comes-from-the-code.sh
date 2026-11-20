@@ -17,12 +17,15 @@
 #      list of the copy comes into the diagram;
 #   4. the pipeline of the diagrams writes the source out of the code and
 #      draws both themes of it;
-#   5. the diagram covers the machine: as many arrows as the table has
-#      cells, and the states of the machine and no others — the numbers
-#      are read out of the code and are not written here;
+#   5. the diagram covers the machine: every cell of the table is an arrow
+#      of the diagram and the arrow says what the cell says, and the states
+#      of the machine and no others — the numbers are read out of the code
+#      and are not written here;
 #   6. a tree without a kernel cannot generate the diagram, and the answer
 #      of that is 3 and not 0;
-#   7. the tree of the repository is never written: every run happens in a
+#   7. the pipeline of the diagrams in a tree without a kernel ends with the
+#      answer of the generation that failed and draws nothing;
+#   8. the tree of the repository is never written: every run happens in a
 #      temporary tree, and the trap of this script removes it.
 #
 # The search for the tools of this script is a search of its own: the check
@@ -38,6 +41,9 @@
 set -u
 
 failures=0
+# The counter of the readings of the machine: every tree of the check is
+# read into a tree of its own.
+machine_counter=0
 fail() {
   echo "state-diagram: $1" >&2
   failures=1
@@ -171,10 +177,180 @@ diagram_states() {
   sed -n 's/^state "\([^"]*\)".*/\1/p; s/^state \([A-Za-z][A-Za-z0-9_]*\)$/\1/p' "$1"
 }
 
-# The arrows of a diagram: the cells of the table.  The arrow of the start
-# of the machine carries no label and is not a cell.
-diagram_arrows() {
-  grep -c '^[^ ]* --> [^ ]* : ' "$1"
+# The machine of the kernel, read out of the code of a tree: the names of the
+# states and the cells of the table of the transitions.  The numbers of this
+# check are the numbers of the code, and they are not written here.
+#
+# The states are written one per line into $stem.states, the cells of the
+# table as FROM LABEL TO into $stem.cells, and the raw words of the reading
+# into $stem.raw.
+read_machine() {
+  local lib="$1" stem="$2"
+  "$emacs_bin" -Q --batch -L "$lib" --eval \
+    '(progn (require (quote yeah-state)) (require (quote yeah-loop))
+             (dolist (state yeah-state-list) (princ (format "state %s\n" state)))
+             (dolist (cell yeah-loop--raw-transitions)
+               (princ (format "cell %s\t%s\t%s\n"
+                              (nth 0 cell) (nth 1 cell) (nthcdr 2 cell)))))' \
+    2>/dev/null >"$stem.raw" || true
+  sed -n 's/^state //p' "$stem.raw" >"$stem.states"
+  sed -n 's/^cell //p' "$stem.raw" >"$stem.cells"
+}
+
+# The comparison of the cells of the table and the arrows of the diagram.
+# The program is written here and not taken from the tree: the check must
+# not lean on the code that it checks.
+#
+# The first file holds the cells of the table, one per line, as FROM LABEL TO;
+# the second file is the diagram of the state machine.  Every line of the
+# output is a defect, and its first field is the kind of it:
+#
+#   absent  — the cell is not in the diagram at all;
+#   leads   — the arrow of the cell is there and its ends are not the ends
+#             of the cell;
+#   label   — the arrow of the cell is there and its label is not the label
+#             of the cell;
+#   count   — the diagram has another number of arrows than the table has
+#             cells.
+#
+# The identifier of a state is its letters, its digits and its underscore:
+# PlantUML reads no other name as an identifier, and a name with a dash in it
+# is carried by the diagram under an identifier of its own.
+cat >"$tmp/compare-cells.awk" <<'AWK'
+BEGIN { FS = "[ \t]+" }
+
+function ident(text) { gsub(/[^A-Za-z0-9_]/, "_", text); return text }
+
+function report_absent(i) {
+  printf "absent\t%s\t%s\t%s\n", c_from[i], c_label[i], c_to[i]
+}
+
+function report_leads(i, j) {
+  printf "leads\t%s\t%s\t%s\t%s --> %s : %s\n",
+    c_from[i], c_label[i], c_to[i], a_src[j], a_tgt[j], a_lbl[j]
+}
+
+function report_label(i, j) {
+  printf "label\t%s\t%s\t%s\t%s --> %s : %s\n",
+    c_from[i], c_label[i], c_to[i], a_src[j], a_tgt[j], a_lbl[j]
+}
+
+FILENAME == cells_file {
+  cells++
+  c_from[cells] = $1
+  c_label[cells] = $2
+  c_to[cells] = $3
+  c_idfrom[cells] = ident($1)
+  c_idto[cells] = ident($3)
+  next
+}
+
+{
+  if (!match($0, / --> /)) next
+  src = substr($0, 1, RSTART - 1)
+  rest = substr($0, RSTART + 5)
+  if (!match(rest, / : /)) next
+  tgt = substr(rest, 1, RSTART - 1)
+  lbl = substr(rest, RSTART + 3)
+  arrows++
+  a_src[arrows] = src
+  a_tgt[arrows] = tgt
+  a_lbl[arrows] = lbl
+}
+
+END {
+  if (arrows != cells)
+    printf "count\t%d\t%d\n", arrows, cells
+
+  # The cells that the diagram draws as they are.
+  for (i = 1; i <= cells; i++)
+    for (j = 1; j <= arrows; j++)
+      if (!taken[j] && a_src[j] == c_idfrom[i] && a_tgt[j] == c_idto[i] && a_lbl[j] == c_label[i]) {
+        taken[j] = 1
+        drawn[i] = 1
+        break
+      }
+
+  for (i = 1; i <= cells; i++) {
+    if (drawn[i]) continue
+    # The same source and the same label: the arrow is the arrow of the
+    # cell and it leads somewhere else.
+    j = 0
+    for (k = 1; k <= arrows; k++)
+      if (!taken[k] && a_src[k] == c_idfrom[i] && a_lbl[k] == c_label[i]) { j = k; break }
+    if (j) { taken[j] = 1; report_leads(i, j); continue }
+    # The same label: the cell is in the diagram and the ends of its arrow
+    # are not the ends of the cell.
+    j = 0
+    for (k = 1; k <= arrows; k++)
+      if (!taken[k] && a_lbl[k] == c_label[i]) { j = k; break }
+    if (j) { taken[j] = 1; report_leads(i, j); continue }
+    # The same source: the cell is in the diagram and the label of its
+    # arrow is not the label of the cell.
+    j = 0
+    for (k = 1; k <= arrows; k++)
+      if (!taken[k] && a_src[k] == c_idfrom[i]) { j = k; break }
+    if (j) { taken[j] = 1; report_label(i, j); continue }
+    # The arrow of the cell in the order of the table: the cell is in the
+    # diagram and neither its ends nor its label are its own.
+    if (arrows == cells && !taken[i]) { taken[i] = 1; report_label(i, i); continue }
+    report_absent(i)
+  }
+}
+AWK
+
+# Every cell of the table of the transitions is an arrow of the diagram, and
+# the arrow says what the cell says.  The cells are read out of the code of
+# the tree and the arrows out of the diagram of that tree.
+#
+# The three kinds of the defect are told apart: a cell that is not in the
+# diagram at all (the generator does not read the table) and a cell that is
+# in the diagram but leads somewhere else (the generator reads the table and
+# writes the cell wrong).
+compare_cells() {
+  local lib="$1" diagram="$2" tag="$3" stem kind from label to actual
+  local reported=0 compare_rc=0
+  machine_counter=$((machine_counter + 1))
+  stem="$tmp/compare-$machine_counter"
+  read_machine "$lib" "$stem"
+  if [ ! -s "$stem.raw" ]; then
+    fail "$tag: the machine of the kernel could not be read out of the code"
+    return 1
+  fi
+  if [ ! -s "$diagram" ]; then
+    fail "$tag: the diagram of the machine is missing or empty"
+    return 1
+  fi
+  LC_ALL=C awk -v cells_file="$stem.cells" -f "$tmp/compare-cells.awk" \
+    "$stem.cells" "$diagram" >"$stem.problems"
+  compare_rc=$?
+  if [ "$compare_rc" -ne 0 ]; then
+    fail "$tag: the comparison of the cells of the table and the arrows of the diagram did not finish (the answer is $compare_rc): nothing was compared"
+    return 1
+  fi
+  if [ ! -s "$stem.cells" ]; then
+    fail "$tag: the table of the transitions has no cells to compare"
+    return 1
+  fi
+  while IFS=$'\t' read -r kind from label to actual; do
+    reported=$((reported + 1))
+    if [ "$reported" -gt 5 ]; then
+      continue
+    fi
+    case "$kind" in
+      absent)
+        fail "$tag: the generator does not read the table: the cell ($from $label $to) is not in the diagram";;
+      leads)
+        fail "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual)";;
+      label)
+        fail "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual) and the label of the arrow is not the label of the cell";;
+      count)
+        fail "$tag: the diagram has $from arrows and the table of the transitions has $label cells";;
+    esac
+  done <"$stem.problems"
+  if [ "$reported" -gt 5 ]; then
+    fail "$tag: and $((reported - 5)) more cells of the table are not arrows of the diagram"
+  fi
 }
 
 emacs_bin="$(find_emacs_here)" || {
@@ -238,8 +414,17 @@ else
   if [ "$cell_rc" -ne 0 ]; then
     fail "the generation of the diagram of the changed table answered $cell_rc and not 0"
     sed -n '1,8p' "$tmp/cell.log" >&2
-  elif ! grep -q "^idle --> deciding : $cell_label$" "$cell_dir/site/diagrams/state-machine.puml"; then
-    fail "the diagram of the changed table has no arrow of the new cell: the generator does not read the table"
+  elif [ ! -s "$cell_dir/site/diagrams/state-machine.puml" ]; then
+    fail "the generation of the diagram of the changed table wrote no file"
+  else
+    # Every cell of the changed table is an arrow of its diagram, and the
+    # arrow of the new cell says what the new cell says.  The two kinds of
+    # the defect are told apart: the new cell is not in the diagram at all
+    # (the generator does not read the table), or it is there and it leads
+    # somewhere else (the generator reads the table and writes the cell
+    # wrong).
+    compare_cells "$cell_dir/lib" "$cell_dir/site/diagrams/state-machine.puml" \
+      "the diagram of the changed table"
   fi
 fi
 
@@ -283,24 +468,18 @@ fi
 
 # --- 5. the diagram covers the machine ----------------------------------------
 
-# The machine of the kernel, read out of the code: the number of the
-# states, the number of the cells and the names of the states.  The
-# numbers are not written here.  The code is read out of the copy of the
-# kernel of the check, and not out of the tree of the repository: a stale
-# .elc of the tree would be the machine of yesterday.
-machine_facts="$("$emacs_bin" -Q --batch -L "$gen_dir/lib" --eval \
-  '(progn (require (quote yeah-state)) (require (quote yeah-loop))
-         (princ (format "%d %d %s"
-                        (length yeah-state-list)
-                        (length yeah-loop--raw-transitions)
-                        (mapconcat (lambda (s) (symbol-name s)) yeah-state-list " "))))' \
-  2>/dev/null)"
-if [ -z "$machine_facts" ]; then
+# The machine of the kernel, read out of the code: the names of the states
+# and the cells of the table of the transitions.  The numbers are not written
+# here.  The code is read out of the copy of the kernel of the check, and not
+# out of the tree of the repository: a stale .elc of the tree would be the
+# machine of yesterday.
+machine_stem="$tmp/machine"
+read_machine "$gen_dir/lib" "$machine_stem"
+if [ ! -s "$machine_stem.raw" ]; then
   fail "the machine of the kernel could not be read out of the code"
 else
-  machine_states_count="$(printf '%s' "$machine_facts" | awk '{print $1}')"
-  machine_cells_count="$(printf '%s' "$machine_facts" | awk '{print $2}')"
-  machine_state_names="$(printf '%s' "$machine_facts" | cut -d' ' -f3-)"
+  machine_states_count="$(wc -l <"$machine_stem.states" | tr -d ' ')"
+  machine_state_names="$(tr '\n' ' ' <"$machine_stem.states")"
 
   diagram_file="$gen_dir/site/diagrams/state-machine.puml"
   if [ -s "$diagram_file" ]; then
@@ -313,10 +492,10 @@ else
     if [ "$diagram_states_count" != "$machine_states_count" ]; then
       fail "the diagram has $diagram_states_count states and the machine has $machine_states_count"
     fi
-    diagram_arrows_count="$(diagram_arrows "$diagram_file")"
-    if [ "$diagram_arrows_count" != "$machine_cells_count" ]; then
-      fail "the diagram has $diagram_arrows_count arrows and the table of the transitions has $machine_cells_count cells"
-    fi
+    # Every cell of the table is an arrow of the diagram, and the arrow says
+    # what the cell says: the count of the arrows is not the proof of that,
+    # and the cells are compared one by one.
+    compare_cells "$gen_dir/lib" "$diagram_file" "the diagram of the machine"
   fi
 fi
 
@@ -373,6 +552,37 @@ bare_rc=$?
 if [ "$bare_rc" -ne 3 ]; then
   fail "the generation answered $bare_rc in a tree without a kernel and the answer must be 3"
   sed -n '1,4p' "$tmp/bare.log" >&2
+fi
+
+# --- 7b. the pipeline of the diagrams in a tree without a kernel ---------------
+
+# The pipeline of the diagrams ends with the answer of the generation that
+# failed, and it draws nothing when the generation failed: the sources of an
+# earlier run are in the tree here, and they are the sources of yesterday
+# without a kernel to write the sources of today.
+bare_pipe_dir="$tmp/bare-pipeline"
+mkdir -p "$bare_pipe_dir/lib" "$bare_pipe_dir/scripts" "$bare_pipe_dir/site/diagrams" || blocked "cannot make the tree of the check"
+cp -R "$REPO/scripts/." "$bare_pipe_dir/scripts/" || blocked "cannot make the tree of the check"
+cp "$REPO"/site/diagrams/*.puml "$bare_pipe_dir/site/diagrams/" || blocked "cannot make the tree of the check"
+(
+  cd "$bare_pipe_dir" || blocked "cannot enter the tree of the run"
+  EMACS="$emacs_bin" PLANTUML="$plantuml_bin" bash scripts/dev diagrams
+) >"$tmp/bare-pipeline.log" 2>&1
+bare_pipe_rc=$?
+# The pictures that the pipeline drew, wherever in the tree they are: the
+# promise is that nothing is drawn, and not that nothing is drawn in one
+# directory.
+bare_pipe_pictures="$(find "$bare_pipe_dir" -type f -name '*.svg' 2>/dev/null | wc -l | tr -d ' ')"
+if [ "$bare_pipe_rc" -ne 3 ]; then
+  fail "the pipeline of the diagrams answered $bare_pipe_rc in a tree without a kernel and the answer must be 3: the answer of the generation that failed is the answer of the pipeline"
+  sed -n '1,4p' "$tmp/bare-pipeline.log" >&2
+fi
+if [ "$bare_pipe_pictures" -ne 0 ]; then
+  if [ "$bare_pipe_rc" -eq 3 ]; then
+    fail "the pipeline of the diagrams answered 3 and drew $bare_pipe_pictures picture(s) in a tree without a kernel: nothing must be drawn when the generation failed"
+  else
+    fail "the pipeline of the diagrams drew $bare_pipe_pictures picture(s) in a tree without a kernel although the generation failed (the answer was $bare_pipe_rc): nothing must be drawn when the generation failed"
+  fi
 fi
 
 # --- 8. the tree of the repository is not written ----------------------------
