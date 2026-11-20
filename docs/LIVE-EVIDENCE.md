@@ -18,7 +18,7 @@ skip is not a pass, and a skip never turns into a claim.
 | `tests/live/live-interactive-path.el` | the interactive product path against a live provider: open a session, ask, cancel, quit, restart, recover the pending input | provider key | `emacs -Q --batch -L lib -l tests/live/live-interactive-path.el` | 2026-11-16 13:10 UTC, on the code of wave 38, with MiniMax-M2.7 — pass on the first attempt ("the interactive path works") ||
 | `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-16 16:08 UTC, on the code of wave 39 — pass on the first attempt ("the primary path works with a live model"): the harness nudges the model that only announced the file, the write is approved over the wire, and the file holds `42`.  The run of 14:34 UTC (wave 38) failed with `end_turn` and nothing done: the budget of the supervision of the kernel was zero, and the run of a model that only announced its next step was marked finished (§ "The live checks of the ACP route") ||
 | `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-16 13:10 UTC, on the code of wave 38, with MiniMax-M2.7 — pass on the first attempt ("the child repaired the canary") ||
-| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-16 13:11 UTC, against the published repository (revision `0c07695`), on the code of wave 38 — pass: "the clean installation works" ||
+| `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-16 13:11 UTC, against the published repository (revision `a0259e6`), on the code of wave 38 — pass: "the clean installation works" ||
 | `tests/pixel/check-interface-is-seen.sh` | the interface is really on the screen: Emacs itself draws the journal and the approval view under a frame server, the screen is photographed, and the pictures are compared with each other and with the same buffer without the interface | a frame server (Xvfb), a terminal emulator, ImageMagick, Emacs — **no provider key** | `YEAH_XVFB=… YEAH_XTERM=… YEAH_MAGICK=… ./scripts/dev pixel` | 2026-11-15, pass — "the interface is on the screen: 767 colours, 16953 pixels between the journal and the approval view" |
 | `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-16 13:12 UTC, on the code of wave 38, with MiniMax-M2.7 and pi: Yeah passed 1 of 3 tasks and 2 failed, pi passed 3 of 3 — **not a verdict about parity** (the threshold is a decision of the owner, the sample is three tasks); the row of each failed task names the shape of the run ("the model answered with an empty message 3 times and the run ended without an effect"), which is what wave 38 added (see "The live checks and the pilot after wave 38") ||
 
@@ -247,7 +247,7 @@ an open question of the product.
 
 ## The pilot after the turn learned to wait (2026-11-15, 15:39)
 
-The fifth run of the pilot, on the code of wave 28 (`6c139e5`), under the same
+The fifth run of the pilot, on the code of wave 28 (`008c1ca`), under the same
 conditions (`bench/results/20261115T153957Z.jsonl`):
 
 | Task | Yeah | pi |
@@ -269,7 +269,7 @@ provider answered, Yeah passed.
 
 ## The live checks after the turn learned to wait (2026-11-15, 15:37)
 
-The live checks on the code of wave 28 (`6c139e5`), with a live provider:
+The live checks on the code of wave 28 (`008c1ca`), with a live provider:
 
 | Check | Exit | What it says |
 |---|---|---|
@@ -346,7 +346,7 @@ runner of today would be recorded as blocked.
 ## The pilot that measured the copy of the version token (2026-11-15, 17:06)
 
 The sixth run of the pilot (`bench/results/20261115T170600Z.jsonl`), on the
-code of waves 30+31 (`a1ff7c1`), with MiniMax-M2.7 and pi as the second
+code of waves 30+31 (`d833a9d`), with MiniMax-M2.7 and pi as the second
 harness:
 
 | Task | Yeah | pi |
@@ -1954,7 +1954,7 @@ written down in the list below.
 
 The sixth gate of this repository ran on 2026-11-19 at 02:29:33 UTC, in a session
 of its own, and it came out red.  It was the first full gate after `origin/main`
-was merged into `main` (commit `b530d3b`, 2026-11-19), and the one claim it
+was merged into `main` (commit `f975b80`, 2026-11-19), and the one claim it
 refused to call green was `the-documentation-points-at-files-that-exist`.  The map
 said `verdict: red`, 142 claims held, one `refuted`, `uncovered: 0`, `next: the
 claim the-documentation-points-at-files-that-exist is refuted`, and the run ended
@@ -1979,7 +1979,7 @@ and for four years the names pointed at nothing.
 that a name is a path of this repository when its first part is a thing of the top
 level of the repository, and the things of the top level are the ones git knows.
 Before the merge the directory `sessions/` did not exist in this repository at
-all — `origin/main` brought it with commit `60f8daf` — so `sessions/calc.jsonl`
+all — `origin/main` brought it with commit `d162d3c` — so `sessions/calc.jsonl`
 was not a name of this repository, and the rule had no reason to look for it.  The
 name pointed into the empty.  The merge brought five journals of the same kind
 (`sessions/wave41.jsonl`, `sessions/wave41b.jsonl`, `sessions/wave41c.jsonl`,
