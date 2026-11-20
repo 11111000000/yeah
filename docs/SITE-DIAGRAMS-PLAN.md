@@ -495,7 +495,7 @@ Status — единственное место, где читатель ищет
 «shared/exclusive or resource-lock declaration», «timeout and output limits».
 В коде спецификация инструмента — это `:name`, `:description`, `:input`,
 `:handler` плюс необязательные `:kind`, `:concurrency`, `:async`
-(`lib/yeah-tools.el:104–133`). Поля риска, блокировки ресурса, таймаута и
+(`lib/yeah-tools.el:120–153`). Поля риска, блокировки ресурса, таймаута и
 лимита вывода нет; риск выводится из `:kind` и из глобального списка
 `yeah-perm--mutating-tools` (`lib/yeah-perm.el:96–97`), лимит вывода — общий
 (`lib/yeah-result.el:23`), таймауты — в аргументах инструментов.
