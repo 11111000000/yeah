@@ -26,7 +26,11 @@
 #   7. the pipeline of the diagrams in a tree without a kernel ends with the
 #      answer of the generation that failed and draws nothing;
 #   8. the tree of the repository is never written: every run happens in a
-#      temporary tree, and the trap of this script removes it.
+#      temporary tree, and the trap of this script removes it;
+#   9. the comparison tells a cell that the table of the machine names twice
+#      from a cell that the diagram does not carry: a table that says the
+#      same thing twice is a machine that says one thing about one event
+#      twice, and not a generator that does not read the table.
 #
 # The search for the tools of this script is a search of its own: the check
 # must not lean on the code that it checks.
@@ -211,7 +215,13 @@ read_machine() {
 #   label   — the arrow of the cell is there and its label is not the label
 #             of the cell;
 #   count   — the diagram has another number of arrows than the table has
-#             cells.
+#             cells;
+#   twice   — the table of the machine names the same cell more than once and
+#             the diagram carries fewer arrows for that cell than the table
+#             names cells;
+#   twice-arrow
+#           — the diagram carries the same arrow more than once and the cell
+#             of the table has no arrow of its own.
 #
 # The identifier of a state is its letters, its digits and its underscore:
 # PlantUML reads no other name as an identifier, and a name with a dash in it
@@ -233,6 +243,20 @@ function report_leads(i, j) {
 function report_label(i, j) {
   printf "label\t%s\t%s\t%s\t%s --> %s : %s\n",
     c_from[i], c_label[i], c_to[i], a_src[j], a_tgt[j], a_lbl[j]
+}
+
+# The table of the machine names the same cell more than once, and the
+# diagram carries fewer arrows for that cell than the table names cells.
+function report_twice(i) {
+  printf "twice\t%s\t%s\t%s\t%d\t%d\n",
+    c_from[i], c_label[i], c_to[i], c_same[i], c_arrows[i]
+}
+
+# The diagram carries the same arrow more than once, and the cell of the
+# table has no arrow of its own.
+function report_twice_arrow(i, j) {
+  printf "twice-arrow\t%s\t%s\t%s\t%s --> %s : %s\t%d\n",
+    c_from[i], c_label[i], c_to[i], a_src[j], a_tgt[j], a_lbl[j], a_same[j]
 }
 
 FILENAME == cells_file {
@@ -262,6 +286,32 @@ END {
   if (arrows != cells)
     printf "count\t%d\t%d\n", arrows, cells
 
+  # The cells of the table that say the same thing, and the arrows of the
+  # diagram that say the same thing.  A cell that the table names twice is
+  # not a cell that the diagram does not carry: the table of the machine
+  # says one thing about one event twice, and the diagram carries one
+  # arrow for one cell.
+  for (i = 1; i <= cells; i++) {
+    c_same[i] = 1
+    c_arrows[i] = 0
+    for (k = 1; k <= cells; k++)
+      if (k != i && c_from[k] == c_from[i] && c_label[k] == c_label[i] && c_to[k] == c_to[i])
+        c_same[i]++
+    for (j = 1; j <= arrows; j++)
+      if (a_src[j] == c_idfrom[i] && a_tgt[j] == c_idto[i] && a_lbl[j] == c_label[i])
+        c_arrows[i]++
+  }
+  for (j = 1; j <= arrows; j++) {
+    a_same[j] = 1
+    for (k = 1; k <= arrows; k++)
+      if (k != j && a_src[k] == a_src[j] && a_tgt[k] == a_tgt[j] && a_lbl[k] == a_lbl[j])
+        a_same[j]++
+  }
+  # The first arrow that the diagram carries more than once.
+  repeated = 0
+  for (j = 1; j <= arrows; j++)
+    if (a_same[j] > 1) { repeated = j; break }
+
   # The cells that the diagram draws as they are.
   for (i = 1; i <= cells; i++)
     for (j = 1; j <= arrows; j++)
@@ -286,14 +336,34 @@ END {
       if (!taken[k] && a_lbl[k] == c_label[i]) { j = k; break }
     if (j) { taken[j] = 1; report_leads(i, j); continue }
     # The same source: the cell is in the diagram and the label of its
-    # arrow is not the label of the cell.
+    # arrow is not the label of the cell.  The diagram carries that arrow
+    # more than once: the cell has no arrow of its own, and the diagram
+    # repeats the arrow of another cell.
     j = 0
     for (k = 1; k <= arrows; k++)
       if (!taken[k] && a_src[k] == c_idfrom[i]) { j = k; break }
-    if (j) { taken[j] = 1; report_label(i, j); continue }
+    if (j) {
+      taken[j] = 1
+      if (a_same[j] > 1) report_twice_arrow(i, j)
+      else report_label(i, j)
+      continue
+    }
+    # The table of the machine names the same cell more than once, and the
+    # diagram carries fewer arrows for that cell than the table names
+    # cells: the cell is not an absent cell, it is a cell of a table that
+    # says the same thing twice.
+    if (c_same[i] > 1 && c_arrows[i] < c_same[i]) { report_twice(i); continue }
     # The arrow of the cell in the order of the table: the cell is in the
     # diagram and neither its ends nor its label are its own.
-    if (arrows == cells && !taken[i]) { taken[i] = 1; report_label(i, i); continue }
+    if (arrows == cells && !taken[i]) {
+      taken[i] = 1
+      if (a_same[i] > 1) report_twice_arrow(i, i)
+      else report_label(i, i)
+      continue
+    }
+    # The diagram carries the same arrow more than once: the cell is not
+    # in the diagram, and the diagram repeats the arrow of another cell.
+    if (repeated) { report_twice_arrow(i, repeated); continue }
     report_absent(i)
   }
 }
@@ -303,13 +373,19 @@ AWK
 # the arrow says what the cell says.  The cells are read out of the code of
 # the tree and the arrows out of the diagram of that tree.
 #
-# The three kinds of the defect are told apart: a cell that is not in the
-# diagram at all (the generator does not read the table) and a cell that is
-# in the diagram but leads somewhere else (the generator reads the table and
-# writes the cell wrong).
+# The kinds of the defect are told apart: a cell that is not in the diagram
+# at all (the generator does not read the table), a cell that is in the
+# diagram but leads somewhere else (the generator reads the table and writes
+# the cell wrong), a cell that the table of the machine names twice (the
+# machine says one thing about one event twice) and an arrow that the
+# diagram carries more than once (the diagram repeats an arrow).
+#
+# The mode is "fail": a defect is a failure of the check.  The mode is
+# "print": the defects are printed and the check decides what to do with
+# them -- the control of the cell that the table names twice reads them.
 compare_cells() {
-  local lib="$1" diagram="$2" tag="$3" stem kind from label to actual
-  local reported=0 compare_rc=0
+  local lib="$1" diagram="$2" tag="$3" mode="${4:-fail}"
+  local reported=0 compare_rc=0 stem kind from label to actual extra message
   machine_counter=$((machine_counter + 1))
   stem="$tmp/compare-$machine_counter"
   read_machine "$lib" "$stem"
@@ -332,24 +408,51 @@ compare_cells() {
     fail "$tag: the table of the transitions has no cells to compare"
     return 1
   fi
-  while IFS=$'\t' read -r kind from label to actual; do
+  while IFS=$'\t' read -r kind from label to actual extra; do
     reported=$((reported + 1))
-    if [ "$reported" -gt 5 ]; then
-      continue
+    message="$(problem_message "$tag" "$kind" "$from" "$label" "$to" "$actual" "$extra")"
+    if [ "$mode" = fail ]; then
+      if [ "$reported" -gt 5 ]; then
+        continue
+      fi
+      fail "$message"
+    else
+      printf '%s\n' "$message"
     fi
-    case "$kind" in
-      absent)
-        fail "$tag: the generator does not read the table: the cell ($from $label $to) is not in the diagram";;
-      leads)
-        fail "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual)";;
-      label)
-        fail "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual) and the label of the arrow is not the label of the cell";;
-      count)
-        fail "$tag: the diagram has $from arrows and the table of the transitions has $label cells";;
-    esac
   done <"$stem.problems"
-  if [ "$reported" -gt 5 ]; then
+  if [ "$mode" = fail ] && [ "$reported" -gt 5 ]; then
     fail "$tag: and $((reported - 5)) more cells of the table are not arrows of the diagram"
+  fi
+}
+
+# The message of a defect of the comparison: the kind of the defect says
+# what is wrong, and the words say it in one sentence.  A cell that the
+# table of the machine names twice is not an absent cell: the generator
+# reads the table, and the table says the same thing twice.
+problem_message() {
+  local tag="$1" kind="$2" from="$3" label="$4" to="$5" actual="$6" extra="$7"
+  case "$kind" in
+    absent)
+      printf '%s\n' "$tag: the generator does not read the table: the cell ($from $label $to) is not in the diagram";;
+    leads)
+      printf '%s\n' "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual)";;
+    label)
+      printf '%s\n' "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual) and the label of the arrow is not the label of the cell";;
+    count)
+      printf '%s\n' "$tag: the diagram has $from arrows and the table of the transitions has $label cells";;
+    twice)
+      printf '%s\n' "$tag: the table of the machine names the same cell more than once: the cell ($from $label $to) is named $actual times and the diagram carries $(plural "$extra" arrow) for it, so the diagram does not carry every cell of the table";;
+    twice-arrow)
+      printf '%s\n' "$tag: the diagram carries the same arrow more than once: the arrow ($actual) is drawn $extra times and the cell ($from $label $to) is not in the diagram";;
+  esac
+}
+
+# The number and the word: one arrow, two arrows.
+plural() {
+  if [ "$1" -eq 1 ]; then
+    printf '%s %s' "$1" "$2"
+  else
+    printf '%s %ss' "$1" "$2"
   fi
 }
 
@@ -496,6 +599,58 @@ else
     # what the cell says: the count of the arrows is not the proof of that,
     # and the cells are compared one by one.
     compare_cells "$gen_dir/lib" "$diagram_file" "the diagram of the machine"
+  fi
+fi
+
+# --- 5b. a cell that the table names twice is not an absent cell --------------
+
+# The table of the machine names the same cell twice and the diagram carries
+# one arrow for the two: the comparison must name the duplicate and must not
+# call the cell an absent one.  The generator draws one arrow for every cell
+# of the table, so the diagram of a table that names the same cell twice
+# carries that arrow twice; a cell that the table names twice and the
+# diagram carries once is a cell that the diagram does not carry, and the
+# comparison says so with its own words.
+#
+# The tree of this control is a copy of the kernel whose table names the same
+# cell twice, and the diagram of the repository is the diagram of the table
+# without that cell twice: the diagram carries one arrow for the two cells of
+# the table.  The comparison of that tree is read here, and it must name the
+# duplicate and not an absent cell.  The diagram of the repository is the
+# diagram here on purpose: the control must read the comparison and not the
+# health of the generator.
+dup_dir="$tmp/duplicate"
+make_tree "$dup_dir"
+dup_file="$dup_dir/lib/yeah-loop.el"
+
+dup_count="$(sed -n 's/^(unless (= \([0-9][0-9]*\) (length yeah-loop--raw-transitions)).*/\1/p' "$dup_file")"
+if [ -z "$dup_count" ]; then
+  fail "lib/yeah-loop.el does not count the cells of the table: the copy of the kernel cannot be changed"
+else
+  dup_count_new=$((dup_count + 1))
+  sed -i "s/(unless (= $dup_count (length yeah-loop--raw-transitions)/(unless (= $dup_count_new (length yeah-loop--raw-transitions)/" "$dup_file"
+  sed -i "s/expected $dup_count, got/expected $dup_count_new, got/" "$dup_file"
+  # The same cell of the table, once more: the table says one thing about
+  # one event twice.
+  awk '
+    /\(deciding[ \t]+stream-end[ \t]+\. post-decide\)/ && !added { print; added = 1 }
+    { print }
+  ' "$dup_file" >"$dup_file.new" || blocked "cannot make the tree of the check"
+  mv "$dup_file.new" "$dup_file" || blocked "cannot make the tree of the check"
+  dup_rows="$(grep -cE '\(deciding[[:space:]]+stream-end[[:space:]]+\. post-decide\)' "$dup_file" || true)"
+  if [ "$dup_rows" -ne 2 ]; then
+    fail "the table of the copy does not name the same cell twice: the copy of the kernel cannot be changed"
+  else
+    dup_messages="$(compare_cells "$dup_dir/lib" "$REPO/site/diagrams/state-machine.puml" \
+      "the cell that the table of the machine names twice" print)"
+    if ! printf '%s\n' "$dup_messages" | grep -q "names the same cell more than once"; then
+      fail "the comparison of the cells does not tell a duplicate from an absent cell: the cell that the table of the machine names twice must be named as a duplicate"
+      printf '%s\n' "$dup_messages" | sed -n '1,5p' >&2
+    fi
+    if printf '%s\n' "$dup_messages" | grep -q "does not read the table: the cell (deciding stream-end post-decide)"; then
+      fail "the comparison of the cells calls the cell that the table of the machine names twice an absent cell: a table that says the same thing twice is a machine that says one thing about one event twice"
+      printf '%s\n' "$dup_messages" | sed -n '1,5p' >&2
+    fi
   fi
 fi
 
