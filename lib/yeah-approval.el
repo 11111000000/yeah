@@ -216,10 +216,15 @@ answerer and a marked one answer the same request."
             (list "yeah-approval-async: TIMEOUT must be positive seconds")))
   (yeah-approval-async-answerer--make :function answerer :timeout timeout))
 
-(defun yeah-approval--deny (reason)
+(defun yeah-approval--deny (reason &optional timeout)
   "Return the refusal of a question that could not be answered.
-REASON says why the question was refused."
-  (list :effect :deny :reply :reject :reason reason))
+REASON says why the question was refused.  TIMEOUT says that the answer did
+not come in time: the run that waits for the answer tells that in its state,
+and the two are told apart."
+  (let ((decision (list :effect :deny :reply :reject :reason reason)))
+    (when timeout
+      (plist-put decision :timeout t))
+    decision))
 
 (defun yeah-approval--decision-p (decision)
   "Return non-nil when DECISION is a decision the kernel understands.
@@ -274,7 +279,7 @@ ordinary answerer is answered before this function returns."
                  timeout nil
                  (lambda ()
                    (finish (yeah-approval--deny
-                            "the answer did not come in time"))))))
+                            "the answer did not come in time" t))))))
         (condition-case err
             (funcall (yeah-approval-async-answerer-function answerer)
                      request #'finish)

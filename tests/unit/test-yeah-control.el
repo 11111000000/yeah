@@ -865,13 +865,20 @@ does not bring it back."
                                    (funcall callback "finished")))))
                      answerer 60000 0)))
               (should (= 0 dispatched))
-              (should (eq 'awaiting-tool (yeah-turn-state turn)))
+              ;; The run waits for the person, and its state says so: the
+              ;; question that waits is a state of the machine (wave 77).
+              (should (eq 'awaiting-user-permission (yeah-turn-state turn)))
               (yeah-turn-resume-permission
                turn "permission-1" (list :effect :allow :reply :once))
+              ;; The second answer came too late: the first one won.
               (yeah-turn-resume-permission
                turn "permission-1" (list :effect :deny :reply :reject))
               (should (= 1 dispatched))
               (should (yeah-turn-done turn))
+              ;; The run has really been in the waiting state, and it has
+              ;; left it.
+              (should (memq 'awaiting-user-permission (yeah-turn-states turn)))
+              (should-not (eq 'awaiting-user-permission (yeah-turn-state turn)))
               (let* ((records (yeah-session-records session))
                      (request (cl-find-if
                                (lambda (record)

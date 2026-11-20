@@ -187,23 +187,27 @@ retryable: the run says why it stopped."
              (null status))
         (and status (memq status yeah-turn--busy-statuses)))))
 
-(defun yeah-turn--retry (turn reason transport answerer)
+(defun yeah-turn--retry (turn reason transport answerer &optional status)
   "Ask the model again after the provider dropped the request.
 REASON says why the request was dropped, and it is written into the journal:
 the model is told what happened, and the question is asked again.
-The machine does not move: it was waiting for the model, and it waits
-again."
+
+STATUS is the HTTP status of the failure, or nil when the provider never
+answered.  A request that the provider dropped is asked again at once and the
+machine does not move: it was waiting for the model, and it waits again.  A
+provider that is busy is a wait of its own: the run moves into
+`blocked-on-rate', and the answer of the provider moves it back."
   (setf (yeah-turn-retries turn) (1+ (yeah-turn-retries turn)))
   (yeah-turn--write turn "retry" (yeah-turn--context turn)
                     :payload (yeah-turn--reason-text reason))
+  (when (and status (memq status yeah-turn--busy-statuses))
+    (yeah-turn--tick turn 'rate-blocked))
   (yeah-turn--ask turn (or (yeah-turn-prompt turn) "") transport answerer))
 
-(defun yeah-turn--mark-done (turn &optional terminal-state)
-  "Mark TURN done, optionally in TERMINAL-STATE, and notify exactly once."
-  (when terminal-state
-    (setf (yeah-turn-state turn) terminal-state)
-    (setf (yeah-turn-states turn)
-          (append (yeah-turn-states turn) (list terminal-state))))
+(defun yeah-turn--mark-done (turn)
+  "Mark TURN done and notify exactly once.
+The state of the turn is not touched here: a state of the run comes from the
+table of the machine and from nothing else (wave 77)."
   (setf (yeah-turn-done turn) t)
   (when-let ((timer (yeah-turn-deadline-timer turn)))
     (cancel-timer timer)
@@ -235,6 +239,20 @@ the path and not by a printed list of arguments."
   (or (and (listp args) (stringp (car args)) (car args))
       (format "%S" args)))
 
+(defvar yeah-turn--failing nil
+  "Non-nil while a turn records a failure.
+A tick that fails calls `yeah-turn--fail', and that function must not
+call the tick again: a failure that fails to fail would never end.")
+
+(defun yeah-turn--set-state (turn state)
+  "Set the state of TURN to STATE and record it in the history of the run.
+Every move of the machine goes through here, so that the history of the
+run holds the states it has really been in."
+  (setf (yeah-turn-state turn) state)
+  (setf (yeah-turn-states turn)
+        (append (yeah-turn-states turn) (list state)))
+  state)
+
 (defun yeah-turn--tick (turn label)
   "Move TURN on LABEL and record the state it moved to.
 Return the new state. A transition that the machine does not have is a
@@ -242,12 +260,11 @@ bug in the turn, and the run stops with that reason."
   (let ((from (yeah-turn-state turn)))
     (condition-case err
         (let ((to (yeah-loop-tick from label)))
-          (setf (yeah-turn-state turn) to)
-          (setf (yeah-turn-states turn)
-                (append (yeah-turn-states turn) (list to)))
+          (yeah-turn--set-state turn to)
           to)
       (user-error
-       (yeah-turn--fail turn (error-message-string err))
+       (unless yeah-turn--failing
+         (yeah-turn--fail turn (error-message-string err)))
        (yeah-turn-state turn)))))
 
 (defun yeah-turn--context (turn &optional tool-call-id parent-event-id)
@@ -300,12 +317,18 @@ The reason that goes into the log is bounded: the answer of a provider that
 refused a request holds the whole conversation of the run, and the journal
 keeps records, not conversations."
   (let ((text (yeah-turn--reason-text reason)))
-    (if (eq (yeah-turn-state turn) 'deciding)
-        (yeah-turn--tick turn 'error)
-      (unless (memq (yeah-turn-state turn) '(completed failed interrupted))
-        (setf (yeah-turn-state turn) 'failed)
-        (setf (yeah-turn-states turn)
-              (append (yeah-turn-states turn) (list 'failed)))))
+    (unless (or yeah-turn--failing
+                (memq (yeah-turn-state turn) '(completed failed interrupted)))
+      (let ((yeah-turn--failing t))
+        ;; The failure is a transition of the machine like any other one:
+        ;; the table has an `error' edge from every state that is not
+        ;; terminal.
+        (yeah-turn--tick turn 'error)))
+    (unless (memq (yeah-turn-state turn) '(completed failed interrupted))
+      ;; The machine has no `error' edge from here, which means that the
+      ;; table is broken.  The run ends anyway, and the state is set
+      ;; without the machine, because the machine is what failed.
+      (yeah-turn--set-state turn 'failed))
     (setf (yeah-turn-error turn) text)
     (yeah-turn--mark-done turn)
     (when (yeah-turn-session turn)
@@ -320,6 +343,12 @@ The first answer wins; a cancelled turn ignores a late answer."
   (when-let ((resume (gethash request-id (yeah-turn-pending-permissions turn))))
     (remhash request-id (yeah-turn-pending-permissions turn))
     (unless (yeah-turn-done turn)
+      ;; The run stops waiting for the person before the tool of the answer
+      ;; runs: a tool that settles at once settles into `awaiting-tool'.
+      (when (zerop (hash-table-count (yeah-turn-pending-permissions turn)))
+        (yeah-turn--tick turn (if (plist-get decision :timeout)
+                                  'timeout
+                                'answer)))
       (funcall resume decision))))
 
 (defun yeah-turn--fresh-permission-id (turn)
@@ -507,7 +536,13 @@ slot owns stable ids shared by request, permission and tool-end."
       ;; The question waits for an answer.  It is registered before the
       ;; tool starts, so that the answer finds it whenever it arrives.
       (puthash detail (plist-get slot :resume)
-               (yeah-turn-pending-permissions turn)))
+               (yeah-turn-pending-permissions turn))
+      ;; The run waits for the person, and its state says so.  The state is
+      ;; a projection of the questions that wait: a batch that asks two
+      ;; questions waits once, and the run stops waiting when the last
+      ;; question is answered.
+      (when (eq (yeah-turn-state turn) 'awaiting-tool)
+        (yeah-turn--tick turn 'permission-ask)))
     (let ((decision-event-id
            (yeah-turn--write-decision
             turn slot effect reply
@@ -899,7 +934,7 @@ acted, and the run must not spend its nudge budget on the noise."
   "Nudge the model of TURN after it answered ANSWER.
 SPEND says whether the nudge spends the budget of the run: the budget pays
 for the nudges that no effect answered."
-  (yeah-turn--tick turn 'no-tool-calls)
+  (yeah-turn--tick turn 'nudge)
   (cl-incf (yeah-turn-nudges turn))
   (when (yeah-turn--silent-p answer)
     (cl-incf (yeah-turn-silent-nudges turn)))
@@ -916,9 +951,6 @@ for the nudges that no effect answered."
                       (yeah-turn--context
                        turn nil (yeah-turn-turn-event-id turn))
                       :payload nudge)
-    (setf (yeah-turn-state turn) 'deciding)
-    (setf (yeah-turn-states turn)
-          (append (yeah-turn-states turn) (list 'deciding)))
     (yeah-turn--ask turn nudge transport answerer)))
 
 (defun yeah-turn--counted (n noun)
@@ -1022,7 +1054,8 @@ ended by the noise of the provider."
                            turn nil (yeah-turn-turn-event-id turn))
                           :payload (yeah-turn--unfinished-payload turn)
                           :reason "the nudge budget was spent")
-        (yeah-turn--mark-done turn 'failed))
+        (yeah-turn--tick turn 'error)
+        (yeah-turn--mark-done turn))
        (t
         (yeah-turn--tick turn 'no-tool-calls)
         (yeah-turn--mark-done turn))))))
@@ -1030,6 +1063,11 @@ ended by the noise of the provider."
 (defun yeah-turn--answer (turn answer answerer &optional transport info)
   "Handle the model's ANSWER in TURN. The ANSWERER answers requests."
   (unless (yeah-turn-done turn)
+    ;; The provider answered: the run does not wait for it any more.  A run
+    ;; that was waiting for a provider that was busy goes back to the state
+    ;; in which it asks the model.
+    (when (eq (yeah-turn-state turn) 'blocked-on-rate)
+      (yeah-turn--tick turn 'rate-relief))
     ;; The usage of the request is written once.  The transport hands the info
     ;; of the request to every shape of it -- the reasoning of the model and
     ;; the answer that follows it carry the same tokens -- and the road to the
@@ -1076,7 +1114,8 @@ ended by the noise of the provider."
           ;; The provider dropped the request, and it is asked again: the
           ;; model is told what the run has done (wave 47), so the retry
           ;; continues the work instead of starting it over.
-          (yeah-turn--retry turn (cdr answer) transport answerer)
+          (yeah-turn--retry turn (cdr answer) transport answerer
+                             (yeah-turn--status-code info))
         (yeah-turn--fail turn (format "%s" (cdr answer)))))
      (t
       (yeah-turn--fail turn (format "the model answered with %S" answer))))))
@@ -1373,7 +1412,10 @@ completed effects or guarantee termination of process descendants."
                       :payload (or reason "cancelled by user"))
     (when-let ((pending (yeah-turn-pending-permissions turn)))
       (clrhash pending))
-    (yeah-turn--mark-done turn 'interrupted)
+    ;; The cancel is a transition of the machine: a run that is not
+    ;; finished can be cancelled in any state it lives in.
+    (yeah-turn--tick turn 'interrupt)
+    (yeah-turn--mark-done turn)
     (when-let ((fsm (yeah-turn-model-fsm turn)))
       (when (and (fboundp 'gptel-fsm-info) (fboundp 'gptel-abort))
         (let ((buffer (plist-get (gptel-fsm-info fsm) :buffer)))
