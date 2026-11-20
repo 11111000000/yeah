@@ -1154,6 +1154,20 @@ work item. Never resolve it by silently making documentation more optimistic.
   the kernel now: a tree without one answers with the code 3 and draws nothing.
   The wave commits no SVG — the pictures of the site are waves D3 and D4
   (docs/PLAN.md §16.76).
+- Wave 86 repaired the proof of the pipeline of the diagrams, the second time.
+  The pipeline works, but two promises of the check were not measured: the chain
+  of the search "lives in one place" was satisfied by a comment that named the
+  file, and a copy of the body of the chain under another name was not seen at
+  all; and "the picture is drawn from its own source" was measured by the label
+  of the source, so a picture drawn from a cut source passed.  The check now
+  looks for the sourcing line and the call of the chain, extracts the body of
+  the chain from `scripts/lib/tools.sh` and searches every other file of
+  `scripts/` for a copy of that body — name-blind — and for the steps of the
+  search; and it compares every label of the source, the states and the arrows,
+  with the texts of the picture.  The old check answers with the code 0 on a
+  copy of the body and on a cut source; the new one answers with the code 1.
+  The code of the pipeline, the skins and the site are untouched (docs/PLAN.md
+  §16.77).
 
 ## The commands
 
