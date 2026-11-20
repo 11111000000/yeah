@@ -3655,7 +3655,7 @@
       ],
       "falsifier": "a cell of the table of the machine is not a move the machine makes, or a label of the table has no live place in the runtime where a run takes that move, or a live place takes the move of a cell from a state the cell does not lead from, or the runtime takes a move the machine does not have, or the runtime narrows a fan of the table, or a fan of the table does not end in one state, or a state of the machine is not reachable from the first one through the cells of the table, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
-      "control": "sed -i \"s|(when (eq (yeah-turn-state turn) 'idle)|(when (eq (yeah-turn-state turn) 'deciding)|\" lib/yeah-turn.el",
+      "control": "sed -i \"s|(compacting       error         . failed)|(compacting       interrupt     . interrupted)|\" lib/yeah-loop.el && sed -i \"s|(when (eq (yeah-turn-state turn) 'idle)|(when (eq (yeah-turn-state turn) 'deciding)|\" lib/yeah-turn.el",
       "waiver": null
     },
     {
