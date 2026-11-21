@@ -40,6 +40,17 @@
 ;; name that starts with `..' points at a research clone that stands next
 ;; to it, and where that clone stands is not a fact of this repository.
 ;;
+;; The records of the waves are read as well: `waves/*.json' holds the
+;; record of every wave, and a record names the sections of the documents
+;; of the project.  A record is a document of the past, though: it names
+;; the files of the day of its wave, and a file that was moved or removed
+;; since that day is named by a record and is not a defect of the record.
+;; The rule of the file that must be on disk therefore belongs to the
+;; documents of the present, and the records are held to the rule of the
+;; section: the section a record names is a heading of the file it names.
+;; A section is a heading of a document, and a program and a record have
+;; no sections.
+;;
 ;; The output of a run is not a file of the repository either.  The record
 ;; of a bench run lies in `bench/results/', and the pictures of the pixel
 ;; checks lie in `tests/artifacts/': git ignores both, they are written by
@@ -70,6 +81,14 @@
 
 (defvar yeah-check--sections-cache (make-hash-table :test #'equal)
   "The sections of the documents this check has read.")
+
+(defconst yeah-check--records "waves/*.json"
+  "The pattern of the records of the waves of the project.
+A record of a wave is a document of the past: it names the files of the
+day of its wave, and a file that was moved or removed since that day is
+named by a record and is not a defect of the record.  The records are
+held to the rule of the section: the section a record names is a heading
+of the file it names.")
 
 (defun yeah-check--root ()
   "Return the root of the project."
@@ -119,15 +138,32 @@ else, so they are the files a reader of that copy can follow."
     (split-string (cdr result) (string ?\C-@) t)))
 
 (defun yeah-check--documents ()
-  "Return the documents of the project that this check reads."
+  "Return the documents of the project that this check reads.
+The records of the waves are documents as well: `waves/*.json' holds the
+record of every wave, and the guard follows the names of the sections
+they name."
   (let (documents)
     (dolist (file (file-expand-wildcards (expand-file-name "docs/*.md" (yeah-check--root))))
+      (push file documents))
+    (dolist (file (file-expand-wildcards (expand-file-name yeah-check--records (yeah-check--root))))
       (push file documents))
     (dolist (file '("AGENTS.md" "README.md" "ELISP_BEST_PRACTICES.md"))
       (let ((path (expand-file-name file (yeah-check--root))))
         (when (file-readable-p path)
           (push path documents))))
     (sort documents #'string<)))
+
+(defun yeah-check--record-p (file)
+  "Return non-nil when FILE is a record of a wave.
+A record of a wave is a document of the past of the project: it names
+the files of the day of its wave."
+  (string-prefix-p "waves/" (file-relative-name file (yeah-check--root))))
+
+(defun yeah-check--document-p (file)
+  "Return non-nil when FILE is a document with headings.
+A section is a heading of a document: a program and a record of a wave
+have no sections, and a name of a section of them is left alone."
+  (string-suffix-p ".md" file))
 
 (defun yeah-check--top-level (files)
   "Return the names of the things of the top level of the repository.
@@ -273,15 +309,26 @@ repository it names, and the number of the section it names, or nil."
         (let* ((document (car mention))
                (line (nth 1 mention))
                (path (nth 2 mention))
-               (number (nth 3 mention)))
+               (number (nth 3 mention))
+               (record (yeah-check--record-p document)))
           (unless (and ignored (cl-position path ignored :test #'string=))
             (setq names (1+ names))
             (let ((target (expand-file-name path (yeah-check--root))))
-              (unless (file-exists-p target)
+              ;; A record of a wave names the files of the day of its
+              ;; wave: a file that was moved or removed since that day
+              ;; is named by a record, and that is not a defect of the
+              ;; record.  The documents of the present name what is
+              ;; there, and the rule of the file belongs to them.
+              (unless (or record (file-exists-p target))
                 (push (format "%s: line %d: it names %s, and there is no such file"
                               (file-name-nondirectory document) line path)
                       yeah-check--failures))
-              (when (and number (file-exists-p target))
+              ;; A section is a heading of a document: a program and a
+              ;; record have no sections, and a name of a section of
+              ;; them is left alone.
+              (when (and number
+                         (file-exists-p target)
+                         (yeah-check--document-p target))
                 (unless (cl-position number (yeah-check--sections target) :test #'string=)
                   (push (format "%s: line %d: it names %s §%s, and there is no such section"
                                 (file-name-nondirectory document) line path number)
