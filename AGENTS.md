@@ -1401,9 +1401,10 @@ work item. Never resolve it by silently making documentation more optimistic.
   that is led elsewhere is the cell whose label the diagram carries on other ends.  The kind
   `twice` is still told before the kind `label`.  **A contradiction of two documents is
   recorded and not resolved silently**: the intent of wave 95, its section of the plan and the
-  head of the file of the check name the rule by the label, while the claim said "a cell that
-  the diagram does not carry at all", and the code of wave 95 did not hold the literal reading
-  of it.  The reading was chosen by the parent on 2026-11-21 — the rule of wave 95 — and the
+  rule in the file of the check name the rule by the label, while the head of the file and the
+  claim said "a cell that the diagram does not carry at all", and the code of wave 95 did not
+  hold the literal reading of it.  The reading was chosen by the parent on 2026-11-21 — the
+  rule of wave 95 — and the
   claim is amended and not rewritten (the same id, scope, requirements and control): its text
   and its falsifier now say in words that cannot be read in two ways which cell is an absent
   cell and which cell is led elsewhere.  The falsifier gains a second refusal, and that
