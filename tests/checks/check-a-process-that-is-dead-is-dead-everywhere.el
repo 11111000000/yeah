@@ -44,12 +44,13 @@
 ;;      a measurement of the host: a zombie cannot be made to appear on
 ;;      purpose without a race, and the rule is a function of a letter,
 ;;      so the verdict can be measured on the letter alone;
-;;   3. the rule is not spread over the tree: no check of `tests/checks/'
-;;      and no module of `lib/' probes the existence of the path of a
-;;      process, no file of them defines a second rule of the life of a
-;;      process, the reader of the stat file of a process lives in one
-;;      module of the kernel, and a file that asks the rule asks the
-;;      state as well;
+;;   3. the rule is not spread over the tree: no file of the tree probes
+;;      the existence of the path of a process, no file of it defines a
+;;      second rule of the life of a process -- neither by the shape of
+;;      the name of a function nor by the trait of a file that decides
+;;      the life of a process by itself --, the reader of the stat file
+;;      of a process lives in one module of the kernel, and a file that
+;;      asks the rule asks the state as well;
 ;;   4. the readings of the kernel still decide: the state of a living
 ;;      process is a letter, the state of a process that is gone is nil,
 ;;      and neither reading raises an error;
@@ -62,6 +63,45 @@
 ;;
 ;; The third part names the file that breaks the rule.  A check that
 ;; cannot say who breaks the rule is a check that says "somebody".
+;;
+;; The third part of the wave 101 looked at two directories of the tree
+;; -- `tests/checks/' and `lib/' -- and it knew a rule of the life of a
+;; process by the shape of its name only: a function whose name ends in
+;; `-alive-p' and whose arguments name a pid.  The falsifier of the
+;; claim of the wave 101 is wider than that: "another file of the
+;; repository defines the rule of the life of a process beside it".  A
+;; second rule in `scripts/' or in `tests/support/', a second rule with
+;; another name, and a second rule that decides the life of a process
+;; without the shape of the name were all invisible to that guard, and
+;; the promise of the claim was wider than its measurement.
+;;
+;; The guard of the third part is wider now, on both sides:
+;;
+;;   * it reads the code of the whole tree and not of two directories of
+;;     it.  The files that are not code are left alone, and the reason
+;;     is named: a document NAMES the rule of the life of a process --
+;;     `spec.json', the records of the waves and the documents of
+;;     `docs/' talk about it -- and a program DEFINES it.  A guard that
+;;     reads a document for a rule of its own cries wolf;
+;;   * it knows a rule of the life of a process by two shapes and not by
+;;     one: by the name of a function (`-alive-p' and a process in its
+;;     arguments), and by the trait of a file that decides the life of a
+;;     process by itself -- a file that reads the state of a process and
+;;     holds the letters that live (`S' and `R') decides the life of a
+;;     process whatever its functions are called.
+;;
+;; Two files of the tree are named as the exceptions of the trait, and
+;; the names are in the code and not in a guess:
+;;
+;;   * `lib/yeah-proc.el' is the rule itself;
+;;   * the check that proves the rule holds the letters of the stand of
+;;     the rule on purpose -- the stand is a table of the states of the
+;;     rule, and a table of the letters that live is not a second rule.
+;;
+;; The rule about the stat file of a process keeps its old scope: it
+;; holds for the kernel and not for the checks, because one check of
+;; `tests/checks/' reads the stat file of a process by itself, and that
+;; check is the subject of the claim of the wave 100.
 ;;
 ;; One check of `tests/checks/' reads the stat file of a process by
 ;; itself: the check of the reader of wave 100 compares the answer of
@@ -194,10 +234,33 @@ is not among them."
   "\"/proc/[^\"]*stat\""
   "The shape of a read of the stat file of a process.")
 
+(defconst yeah-dead--code-extensions
+  '("el" "sh" "ts" "mjs" "js")
+  "The extensions of the files of the tree that hold code.
+The guard of the rule reads these files and the other files of the tree
+are left alone.  The reason is named: a document names the rule of the
+life of a process and a program defines it, and a guard that reads a
+document for a rule of its own cries wolf.")
+
+(defconst yeah-dead--the-rule "lib/yeah-proc.el"
+  "The file of the kernel that holds the rule of the life of a process.
+The rule lives here and nowhere else, and this file is the one file of
+the tree that the guard of the rule allows to decide the life of a
+process.")
+
+(defconst yeah-dead--the-stand-of-the-rule
+  "tests/checks/check-a-process-that-is-dead-is-dead-everywhere.el"
+  "The check that proves the rule of the life of a process.
+The check holds the letters of the stand of the rule on purpose: the
+stand is a table of the states of the rule, and a table of the letters
+that live is not a second rule.  The file is named here and not left to
+a guess.")
+
 (defun yeah-dead--root ()
   "Return the root of the repository: the directory that holds `spec.json'."
-  (or (locate-dominating-file default-directory "spec.json")
-      (expand-file-name default-directory)))
+  (expand-file-name
+   (or (locate-dominating-file default-directory "spec.json")
+       default-directory)))
 
 (defun yeah-dead--text (path)
   "Return the text of the file PATH, or nil when it cannot be read."
@@ -215,15 +278,71 @@ the error is kept, so a reader that dies is named and not hidden."
       (cons 'ok (funcall reader pid))
     (error (cons 'error err))))
 
-(defun yeah-dead--files (root)
-  "Return the files of the tree that carry the rule, with their names.
-The rule of the life of a process must not be spread over the checks
-and over the kernel, so every one of them is read."
+(defun yeah-dead--code-files (root)
+  "Return the files of the tree that hold code, with their names.
+The rule of the life of a process must not be spread over the tree: a
+second rule in `scripts/' or in `tests/support/' is a second rule as
+well, and the guard of the wave 101 looked at two directories only.
+
+The walk is the walk of Emacs (`directory-files-recursively') and not a
+walk of our own: a walk of our own calls a function of Elisp for every
+file of the tree, the interpreter counts the nesting of every one of
+those calls, and a directory of a hundred files is enough to reach the
+limit of the nesting."
   (let (files)
-    (dolist (pattern '("tests/checks/*.el" "lib/*.el"))
-      (dolist (path (file-expand-wildcards (expand-file-name pattern root)))
+    (dolist (extension yeah-dead--code-extensions)
+      (dolist (path (directory-files-recursively
+                     root (concat "\\." extension "\\'") nil
+                     (lambda (directory)
+                       (not (string-prefix-p "." (file-name-nondirectory directory))))))
         (push (cons (file-relative-name path root) path) files)))
-    (nreverse files)))
+    (sort files (lambda (one other) (string< (car one) (car other))))))
+
+(defun yeah-dead--code-text (path)
+  "Return the code of the file PATH, without its comments.
+A comment names the rule of the life of a process, and a comment does
+not define it.  The comments of the files of the tree are the lines
+that begin with `;;', with `#' and with `//'."
+  (with-temp-buffer
+    (insert-file-contents path)
+    (let (lines)
+      (dolist (line (split-string (buffer-string) "\n" t))
+        (let ((trimmed (string-trim line)))
+          (unless (or (string-prefix-p ";" trimmed)
+                      (string-prefix-p "#" trimmed)
+                      (string-prefix-p "//" trimmed))
+            (push line lines))))
+      (mapconcat #'identity (nreverse lines) "\n"))))
+
+(defun yeah-dead--reads-a-process-state (text)
+  "Return non-nil when TEXT reads the state of a process.
+The state of a process is read through the reader of the kernel
+(`yeah-proc-state'), or out of the stat file of the process, or it is
+named as the state of a pid."
+  (or (string-match-p "yeah-proc-state" text)
+      (string-match-p "/proc/[^ \t\n\"']*stat" text)
+      (and (string-match-p "\\<state\\>" text)
+           (string-match-p "\\<pid\\>" text))))
+
+(defun yeah-dead--holds-the-letters-of-life (text)
+  "Return non-nil when TEXT holds the letters that live.
+The letters are the letters of the state of a process that runs: `S'
+and `R'.  They are written as letters of a string in Elisp, and as the
+letters of a pattern of a case in the shell."
+  (or (string-match-p "\"S\"" text)
+      (string-match-p "\"R\"" text)
+      (string-match-p "'S'" text)
+      (string-match-p "'R'" text)
+      (string-match-p "S|R" text)))
+
+(defun yeah-dead--decides-the-life (text)
+  "Return non-nil when TEXT decides the life of a process by itself.
+The trait of a second rule is two things in one file: the file reads
+the state of a process, and the file holds the letters that live.  A
+file that does both decides the life of a process by itself, whatever
+its functions are called."
+  (and (yeah-dead--reads-a-process-state text)
+       (yeah-dead--holds-the-letters-of-life text)))
 
 (defun yeah-dead--stand-tree ()
   "Return the tree of the stand: a directory for every process of it.
@@ -260,12 +379,12 @@ second answer to the same question."
         (let ((name (match-string 1 line))
               (args (match-string 2 line)))
           (when (and (string-suffix-p "-alive-p" name)
-                     (string-match-p "\\<pid\\>" args))
+                     (string-match-p "\\<pid\\>\\|\\bprocess" args))
             (push name names)))))
     (nreverse names)))
 
 (let* ((root (yeah-dead--root))
-       (files (yeah-dead--files root)))
+       (files (yeah-dead--code-files root)))
   ;; 1. the rule of the life of a process is a function of one letter
   (dolist (entry yeah-dead--states)
     (let* ((state (car entry))
@@ -314,11 +433,23 @@ second answer to the same question."
             (push (format "the file %s asks whether the path of a process exists: the state of the process decides whether it lives, and the state is read through the reader of the kernel"
                           name)
                   yeah-dead--failures)))
-        ;; no file defines a second rule of the life of a process
+        ;; no file defines a second rule of the life of a process by the
+        ;; shape of the name of a function
         (dolist (rule (yeah-dead--local-rule text))
           (push (format "the file %s defines the rule %s: the rule of the life of a process is one function of the kernel (%s)"
                         name rule "yeah-proc-alive-p")
                 yeah-dead--failures))
+        ;; no file of the tree decides the life of a process by itself:
+        ;; a file that reads the state of a process and holds the letters
+        ;; that live decides the life of a process whatever its functions
+        ;; are called.  The two files that are allowed to do that are
+        ;; named: the rule of the kernel and the stand of the rule.
+        (unless (or (string= name yeah-dead--the-rule)
+                    (string= name yeah-dead--the-stand-of-the-rule))
+          (when (yeah-dead--decides-the-life (yeah-dead--code-text path))
+            (push (format "the file %s decides the life of a process by itself: the rule of the life of a process is one function of the kernel (%s)"
+                          name "yeah-proc-alive-p")
+                  yeah-dead--failures)))
         ;; the reader of the stat file of a process lives in one module
         ;; of the kernel
         (when (and (string-prefix-p "lib/" name)
