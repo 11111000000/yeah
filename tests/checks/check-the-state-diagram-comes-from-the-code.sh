@@ -34,10 +34,12 @@
 #      same thing twice is a machine that says one thing about one event
 #      twice, and not a generator that does not read the table;
 #  10. the comparison tells the cases apart on small tables of its own: a
-#      cell that the diagram does not carry is an absent cell and not a cell
-#      that is led elsewhere, an arrow that leads a cell elsewhere is an
-#      arrow of the label of that cell, and an arrow that the table of the
-#      machine does not name is named as such.  A comparison that cannot
+#      cell whose label the diagram carries nowhere is an absent cell and not
+#      a cell that is led elsewhere, a cell whose label the diagram carries
+#      on the ends of the arrows of the other cells is a cell that is led
+#      elsewhere and not an absent cell, an arrow that leads a cell elsewhere
+#      is an arrow of the label of that cell, and an arrow that the table of
+#      the machine does not name is named as such.  A comparison that cannot
 #      say "absent" cannot prove that the diagram carries every cell, and
 #      the check says so.  Every kind of the defect has a stand of its own,
 #      so that the break of one kind is caught by the stand of that kind,
@@ -244,9 +246,10 @@ read_machine() {
 #             cell of the table is not in the diagram.
 #
 # The kinds tell the cases apart, and every one of them names a subject that
-# is there: a cell that the diagram does not carry is an absent cell and not
-# a cell that is led elsewhere, and an arrow that leads a cell elsewhere is
-# an arrow of that label and not a guess by the order of the table.
+# is there: a cell whose label the diagram carries nowhere is an absent cell
+# and not a cell that is led elsewhere, and an arrow that leads a cell
+# elsewhere is an arrow of that label and not a guess by the order of the
+# table.
 #
 # The rule of `absent' and the rule of `label' are told apart by the label of
 # the cell and by nothing else: the label of the cell is looked for in every
@@ -808,10 +811,11 @@ fi
 
 # The comparison of the cells of the table and the arrows of the diagram is a
 # program of its own, and the check proves on small tables what it says: a
-# cell that the diagram does not carry is an absent cell and not a cell that
-# is led elsewhere, an arrow with the label of the cell and with other ends is
-# a cell that is led elsewhere and not an absent cell, a cell that the table
-# names twice is a duplicate and not an absent cell, and an arrow that the
+# cell whose label the diagram carries nowhere is an absent cell and not a
+# cell that is led elsewhere, a cell whose label the diagram carries on the
+# ends of the arrows of the other cells is a cell that is led elsewhere and
+# not an absent cell, a cell that the table names twice is a duplicate and
+# not an absent cell, and an arrow that the
 # table does not name is named as an arrow that the table does not name.
 #
 # A comparison that cannot say "absent" is a comparison that cannot prove
