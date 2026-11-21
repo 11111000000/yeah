@@ -1753,7 +1753,17 @@ work item. Never resolve it by silently making documentation more optimistic.
   always was not written into the rules", "an always answer is remembered for the session" -- and
   the honest tree is green.  **Two candidates were refused, and it is said why**: a mutation that
   changed nothing (the `always-p` of a nil scope) gave the code 0, and a mutation that broke the
-  brackets gave the code 255 -- a check that dies with 255 has not bitten.  The findings F43 and
+  brackets gave the code 255 -- a check that dies with 255 has not bitten.  **The gate caught a
+  defect of this very wave, and it is named here**: the control that was written into `spec.json`
+  for `always-is-remembered-for-the-session` had lost one closing bracket (`nil)))` became `nil))`),
+  so the mutation broke the file, the verifier died with the code 255 and the claim stood
+  **inconclusive** -- the first gate of the package (168 `mathc:` marks, all of the form 2, the
+  code 3) showed it, while the other two claims went to `holds (current)`.  The control was
+  corrected, and the measurement was redone the way it should have been done from the start: the
+  control is taken **out of `spec.json`**, applied to a copy of the tree, the readability of every
+  changed file is checked before the verifier runs, and "the file changed" is checked over the
+  whole tree.  The rule: a control is measured by the string that lies in `spec.json`, and
+  rewriting the measured string by hand makes it a new, unmeasured one.  The findings F43 and
   F44 wait for the wave 106, and F47, F48, F51 and F52 for the wave 107 (docs/PLAN.md §16.101).
 
 ## The commands
