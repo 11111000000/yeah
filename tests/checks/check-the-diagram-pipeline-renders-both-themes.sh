@@ -925,9 +925,13 @@ ln -sf "$emacs_bin" "$decoy_store/emacs-30.2/bin/emacs" || blocked "cannot make 
 
 # The requirement of the mark of the decoy: a picture of the tree of the
 # decoy carries the mark of the decoy.  The requirement is a function and
-# not a line, so that the check can ask it whether it can fail.
+# not a line, so that the check can ask it whether it can fail; it counts
+# the pictures it is asked about, so that the check can tell a measurement
+# from a question that was never asked.
+decoy_asked=0
 decoy_marked_picture() {
   local picture="$1"
+  decoy_asked=$((decoy_asked + 1))
   grep -qF "$decoy_mark" "$picture" 2>/dev/null
 }
 
@@ -942,6 +946,9 @@ printf '<svg>a picture without the mark of the decoy</svg>\n' >"$tmp/picture-wit
 if decoy_marked_picture "$tmp/picture-without-the-mark"; then
   fail "the requirement of the mark of the decoy cannot fail: the decoy of the instrument cannot be measured"
 fi
+# The question of the teeth is not a question about the pictures of the tree
+# of the decoy: the count of the questions starts here.
+decoy_asked=0
 
 if [ "$decoy_placed" -eq 1 ]; then
   # The instrument of the machine is on the PATH of the run, in the variable
@@ -969,13 +976,10 @@ if [ "$decoy_placed" -eq 1 ]; then
     # Every picture of the tree of the decoy carries the mark of the decoy:
     # the decoy is the instrument that drew them.
     decoy_pictures=0
-    decoy_checked=0
     for picture in "$decoy_tree/site/assets/diagrams"/*.svg; do
       [ -f "$picture" ] || continue
       decoy_pictures=$((decoy_pictures + 1))
-      if decoy_marked_picture "$picture"; then
-        decoy_checked=$((decoy_checked + 1))
-      else
+      if ! decoy_marked_picture "$picture"; then
         fail "the picture $(basename "$picture") of the tree of the decoy does not carry the mark of the decoy: the pipeline did not draw with the instrument of the chain ($chain_file)"
       fi
     done
@@ -986,8 +990,8 @@ if [ "$decoy_placed" -eq 1 ]; then
     # decoy: a requirement that was asked about nothing has measured
     # nothing, and a check that measured nothing says so instead of
     # answering 0.
-    if [ "$decoy_checked" -ne "$decoy_pictures" ]; then
-      fail "the requirement of the mark of the decoy was asked about $decoy_checked pictures and not about the $decoy_pictures pictures of the tree of the decoy: the decoy of the instrument was not measured"
+    if [ "$decoy_asked" -ne "$decoy_pictures" ]; then
+      fail "the requirement of the mark of the decoy was asked about $decoy_asked pictures and not about the $decoy_pictures pictures of the tree of the decoy: the decoy of the instrument was not measured"
     fi
     # The Emacs of the decoy was called: the mark of the decoy is written by
     # the Emacs of the chain and by no other Emacs.
