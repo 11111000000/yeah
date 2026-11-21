@@ -1742,6 +1742,20 @@ work item. Never resolve it by silently making documentation more optimistic.
   was written: that is a block of the provider and not a failure of the package
   (docs/PLAN.md §16.100).
 
+- Wave 105 moved the three controls that the wave C1 made dead (2026-11-21): the map of the
+  package said `unknown`, and the claims `wire-permission-request`,
+  `approvals-have-reply-kinds` and `always-is-remembered-for-the-session` stood **inconclusive**
+  -- the wave C1 rewrote the three places that their controls mutate, so the `sed` of the control
+  found nothing and the check passed on an unchanged tree (the class of F38).  The text, the
+  falsifier, the scope, the requirements and the id of the three claims are the same; only the
+  control moved, to the place the wave C1 changed.  **Every control was measured**: each one
+  makes its check refuse by its own assertion -- "the allowed write did not run", "the answer
+  always was not written into the rules", "an always answer is remembered for the session" -- and
+  the honest tree is green.  **Two candidates were refused, and it is said why**: a mutation that
+  changed nothing (the `always-p` of a nil scope) gave the code 0, and a mutation that broke the
+  brackets gave the code 255 -- a check that dies with 255 has not bitten.  The findings F43 and
+  F44 wait for the wave 106, and F47, F48, F51 and F52 for the wave 107 (docs/PLAN.md §16.101).
+
 ## The commands
 
 ```sh
