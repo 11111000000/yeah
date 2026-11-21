@@ -64,6 +64,14 @@
 ;; default, because a default that turned into `allow' would turn the
 ;; snapshot into a hole without a sound.
 ;;
+;; The comparison of the fifth measurement is therefore over the tools the
+;; registry holds: the rule asks by the declarations of the registry, and a
+;; tool that the registry does not hold -- the tool of the bridge, when the
+;; bridge has not registered it -- is not named by the profile, although the
+;; measurement walks its handler.  The check compares the profile with the
+;; measurement over the tools the registry holds, and the failure it writes
+;; names the two sets.
+;;
 ;; Six things are proved:
 ;;
 ;;   1. every tool of the core declares a risk, and the risk is a risk of
@@ -77,12 +85,18 @@
 ;;   4. the category the declaration names is one of the categories the
 ;;      measurement found;
 ;;   5. the rule asks by the declaration: the profiles name exactly the
-;;      tools of the measurement, and a probe whose declaration says that
-;;      it changes the world is named by the profile while a probe whose
-;;      declaration says that it does not is not;
+;;      tools of the measurement that the registry holds, and a probe whose
+;;      declaration says that it changes the world is named by the profile
+;;      while a probe whose declaration says that it does not is not;
 ;;   6. an action that no rule names is asked about and is never allowed:
 ;;      the default of the rule is `ask', and the refusal of the rule
 ;;      says so.
+;;
+;; The comparison of the fifth measurement is proved by a stand of its own:
+;; the check forges a profile that names a tool the measurement does not
+;; find, and a measurement that misses a tool that changes the world, and the
+;; comparison must refuse both of them.  A comparison that accepts everything
+;; would pass the check, and the stand is what says that it does not.
 ;;
 ;; Exit codes: 0 -- the declarations of the tools agree with their
 ;; handlers and with the rule; 1 -- they do not.
@@ -866,6 +880,33 @@ server of MCP come from outside and are not among them."
   (mapcar (lambda (rule) (plist-get rule :action))
           (yeah-perm-profile profile)))
 
+(defun yeah-check--mutating-tools (measured)
+  "Return the names of the tools of MEASURED that change the world.
+MEASURED is the list of the measurements of the core: an entry holds the name
+of a tool, the risk it declares, the effects its handler reaches and whether
+it changes the world.
+
+Only the tools the registry holds are kept.  The rule asks by the
+declarations of the registry, and a tool that the registry does not hold --
+the tool of the bridge, when the bridge has not registered it -- is not named
+by the profile, although the measurement walks its handler."
+  (mapcar (lambda (entry) (nth 0 entry))
+          (seq-filter (lambda (entry)
+                        (and (nth 3 entry)
+                             (yeah-tools-get (nth 0 entry))))
+                      measured)))
+
+(defun yeah-check--profile-mismatch (profile named measured)
+  "Return the failure of the comparison of the profile PROFILE with MEASURED.
+NAMED is the list of the actions the profile names.  The value is nil when
+the two sets agree: the profile names exactly the tools of the registry that
+change the world."
+  (let ((mutating (yeah-check--mutating-tools measured)))
+    (unless (equal (sort (copy-sequence mutating) #'string-lessp)
+                   (sort (copy-sequence named) #'string-lessp))
+      (format "the %s profile names %S, but the tools of the registry that change the world are %S"
+              profile named mutating))))
+
 (let ((failures nil)
       (load-failure nil))
 
@@ -995,22 +1036,35 @@ server of MCP come from outside and are not among them."
       ;; about a tool it does not know.  The comparison is over the tools
       ;; the registry holds.
       (let ((plan (yeah-check--profile-actions "plan"))
-            (build (yeah-check--profile-actions "build"))
-            (mutating (mapcar (lambda (entry) (nth 0 entry))
-                              (seq-filter (lambda (entry)
-                                            (and (nth 3 entry)
-                                                 (yeah-tools-get (nth 0 entry))))
-                                          measured))))
-        (unless (equal (sort (copy-sequence mutating) #'string-lessp)
-                       (sort (copy-sequence plan) #'string-lessp))
-          (push (format "the plan profile names %S, but the tools that change the world are %S"
-                        plan mutating)
-                failures))
-        (unless (equal (sort (copy-sequence mutating) #'string-lessp)
-                       (sort (copy-sequence build) #'string-lessp))
-          (push (format "the build profile names %S, but the tools that change the world are %S"
-                        build mutating)
-                failures))
+            (build (yeah-check--profile-actions "build")))
+        (let ((failure (yeah-check--profile-mismatch "plan" plan measured)))
+          (when failure
+            (push failure failures)))
+        (let ((failure (yeah-check--profile-mismatch "build" build measured)))
+          (when failure
+            (push failure failures)))
+        ;; The stand of the comparison: the comparison must bite, and the
+        ;; stand proves that it does.  A profile that names a tool the
+        ;; measurement does not find must be refused, and a measurement
+        ;; that misses a tool that changes the world must be refused too.
+        ;; A comparison that accepts everything would pass the check, and
+        ;; the stand is what says that it does not.
+        (let ((forged (cons "probe-forged" plan)))
+          (unless (yeah-check--profile-mismatch "plan" forged measured)
+            (push (format "the comparison of the profile with the measurement accepted the profile that names the tool %S, which the measurement does not find"
+                          "probe-forged")
+                  failures)))
+        (let* ((mutating (yeah-check--mutating-tools measured))
+               (one (seq-find (lambda (name) (member name plan)) mutating)))
+          (if (null one)
+              (push "the stand of the comparison could not run: the profile and the measurement have no tool in common"
+                    failures)
+            (let ((faked (seq-remove (lambda (entry) (equal (nth 0 entry) one))
+                                     measured)))
+              (unless (yeah-check--profile-mismatch "plan" plan faked)
+                (push (format "the comparison of the profile with the measurement accepted the measurement that does not hold the tool %S, which changes the world"
+                              one)
+                      failures)))))
         ;; a probe that declares that it does not change the world is not
         ;; asked about, and the rule follows the declaration
         (let ((before (yeah-check--profile-actions "plan")))
