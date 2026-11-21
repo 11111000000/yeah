@@ -27,11 +27,18 @@
 ;; The socket lives in a private directory and its name carries the pid
 ;; of the owner, so two owners never share a socket, and a socket left
 ;; behind by a dead owner is swept when the next owner starts.
+;;
+;; The owner of a socket is alive when the state of its process says so
+;; (`lib/yeah-proc.el').  A zombie owner is dead: it has died already
+;; and waits to be reaped, it holds nothing and serves nobody.  Its
+;; socket is swept, and the socket of a zombie is never the reason why a
+;; service cannot start.
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'files)
+(require 'yeah-proc)
 
 (defgroup yeah-life nil
   "The life of a child process that waits for something."
@@ -59,11 +66,6 @@ that is not alive any more."
         (when (and fields (string-match-p "\\`[0-9]+\\'" (car (last fields))))
           (string-to-number (car (last fields))))))))
 
-(defun yeah-life--owner-alive-p (pid)
-  "Return non-nil when the process PID is alive."
-  (and pid (> pid 0)
-       (file-directory-p (format "/proc/%d" pid))))
-
 (defun yeah-life-directory ()
   "Return the user-private directory that holds the life sockets.
 Anyone who can connect to a life socket can end the life of a child, so
@@ -90,7 +92,11 @@ binding it; a socket of a living owner is never touched, because the life
 of a socket is not worth the risk of killing a living owner."
   (when (file-exists-p path)
     (let ((owner (yeah-life--pid-of path)))
-      (if (and owner (yeah-life--owner-alive-p owner))
+      ;; The owner lives when the state of its process says so.  A
+      ;; zombie owner is dead, and the socket of a dead owner is taken
+      ;; away: a socket of a zombie must not keep a service from
+      ;; starting.
+      (if (and owner (yeah-proc-alive-p (yeah-proc-state owner)))
           (error "yeah-life-adopt: the life socket %s belongs to a living process"
                  path)
         (ignore-errors (delete-file path)))))
@@ -130,7 +136,7 @@ owner."
     (dolist (file (file-expand-wildcards
                    (expand-file-name "yeah-life-*.sock" directory)))
       (let ((pid (yeah-life--pid-of file)))
-        (when (and pid (not (yeah-life--owner-alive-p pid)))
+        (when (and pid (not (yeah-proc-alive-p (yeah-proc-state pid))))
           (ignore-errors (delete-file file)))))))
 
 ;;;###autoload

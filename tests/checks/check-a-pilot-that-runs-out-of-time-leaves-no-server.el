@@ -47,6 +47,10 @@
 ;; measures the death of the server, and the wall time is only the
 ;; bound of the wait, not the measure of the subject.
 ;;
+;; The rule that decides whether a process lives is the one of the kernel
+;; (`lib/yeah-proc.el'), and the tree of the processes cannot answer the
+;; question: the directory of a zombie is there as well.
+;;
 ;; The control of the claim takes the limit away from the runner: the
 ;; runner waits for the pilot for ever, and the check then fails by its
 ;; own assertion -- the runner did not answer the third answer.  That is
@@ -62,22 +66,13 @@
 
 (require 'cl-lib)
 
-;; The reader of the state of a process is the one of the support: the
+;; The reader of the state of a process is the one of the kernel: the
 ;; process of the server dies while the check reads it, and a reader that
 ;; dies on the filesystem does not decide on its own assertion.
-(load (expand-file-name "tests/support/yeah-proc.el") nil t)
+(require 'yeah-proc)
 
 (defvar yeah-limit--failures nil
   "The failures this check found.")
-
-(defun yeah-limit--alive-p (pid)
-  "Return non-nil when the process PID is alive.
-A zombie is not alive: it has died already and waits to be reaped, it
-burns no CPU and answers nobody.  The answer comes from the state of
-the process, so it does not depend on the speed of the host."
-  (and pid (integerp pid) (> pid 0)
-       (let ((state (yeah-proc--state pid)))
-         (and state (not (string= state "Z"))))))
 
 (defun yeah-limit--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
@@ -87,8 +82,12 @@ the process, so it does not depend on the speed of the host."
     (funcall predicate)))
 
 (defun yeah-limit--await-dead (pid timeout)
-  "Return non-nil when the process PID is gone, at most TIMEOUT seconds."
-  (yeah-limit--await (lambda () (not (yeah-limit--alive-p pid))) timeout))
+  "Return non-nil when the process PID is gone, at most TIMEOUT seconds.
+The process is gone when the state of it says so: a zombie is gone, it
+has died already and waits to be reaped."
+  (yeah-limit--await
+   (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
+   timeout))
 
 (defun yeah-limit--kill (pid)
   "Kill the process PID with SIGKILL and return non-nil when the signal was sent."
@@ -170,7 +169,7 @@ the pid of the server and the path of the socket of the server."
                     yeah-limit--failures))
             (when (and (> pilot 0) (> server 0) socket)
               ;; the server serves while the pilot lives
-              (unless (yeah-limit--alive-p server)
+              (unless (yeah-proc-alive-p (yeah-proc-state server))
                 (push (format "the server of the pilot was not alive (pid %d)" server)
                       yeah-limit--failures))
               ;; the limit of the pilot passes, and the pilot ends
@@ -190,7 +189,7 @@ the pid of the server and the path of the socket of the server."
               (unless (yeah-limit--await-dead server 15)
                 (push (format "the server of the pilot was still alive fifteen seconds after the limit passed (pid %d, state %S)"
                               server
-                              (or (yeah-proc--state server) "gone"))
+                              (or (yeah-proc-state server) "gone"))
                       yeah-limit--failures))))))
     ;; the check leaves nothing behind
     (yeah-limit--kill server)

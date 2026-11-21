@@ -27,9 +27,14 @@
 ;; seconds.
 ;;
 ;; The check measures the subject the way the defect was measured: the
-;; process of the server, by its pid, in `/proc'.  It does not ask the
-;; server whether it is alive: a server that answers is a server that
-;; lives.
+;; process of the server, by its pid, in the tree of the processes of the
+;; system.  It does not ask the server whether it is alive: a server that
+;; answers is a server that lives.  The state of the process decides it:
+;; `S' and `R' are a process that runs, and `Z' is a zombie -- a process
+;; that has died already and waits to be reaped, it burns no CPU and it
+;; holds no client.  The rule is the one of the kernel
+;; (`lib/yeah-proc.el'), and the tree of the processes cannot answer the
+;; question: the directory of a zombie is there as well.
 ;;
 ;; The control of the claim takes out the watch of the server: the server
 ;; stops looking at the life of its owner, and the check then fails by
@@ -45,6 +50,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-proc)
 (require 'yeah-service)
 
 (defvar yeah-check--failures nil
@@ -63,11 +69,6 @@ platform can name it, so the check works where `emacs' is not on PATH."
 (defun yeah-check--lib-directory ()
   "Return the directory holding Yeah's Elisp modules."
   (file-name-directory (or (locate-library "yeah-service") "yeah-service.el")))
-
-(defun yeah-check--alive-p (pid)
-  "Return non-nil when the process PID is alive."
-  (and pid (integerp pid) (> pid 0)
-       (file-directory-p (format "/proc/%d" pid))))
 
 (defun yeah-check--owner-command (name data-home pid-file)
   "Return the argv of the owner of the service NAME.
@@ -104,8 +105,12 @@ kills, and the service is the thing that must not stay behind."
     (funcall predicate)))
 
 (defun yeah-check--await-dead (pid timeout)
-  "Return non-nil when the process PID is gone, at most TIMEOUT seconds."
-  (yeah-check--await (lambda () (not (yeah-check--alive-p pid))) timeout))
+  "Return non-nil when the process PID is gone, at most TIMEOUT seconds.
+The process is gone when the state of it says so: a zombie is gone, it
+has died already and waits to be reaped."
+  (yeah-check--await
+   (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
+   timeout))
 
 (defun yeah-check--kill (pid)
   "Kill the process PID with the signal the gate uses.
@@ -147,7 +152,7 @@ defect is about.  Return non-nil when the signal was sent."
               (push (format "the service never bound its socket: %s" socket)
                     yeah-check--failures))
             ;; and the process of the service is alive
-            (unless (yeah-check--alive-p service)
+            (unless (yeah-proc-alive-p (yeah-proc-state service))
               (push (format "the service was not alive before its owner was killed (pid %d)"
                             service)
                     yeah-check--failures))
@@ -165,7 +170,7 @@ defect is about.  Return non-nil when the signal was sent."
               (push (format "the socket of the service stayed behind: %s" socket)
                     yeah-check--failures)))))
     ;; the check leaves nothing behind
-    (when (and service (yeah-check--alive-p service))
+    (when (and service (yeah-proc-alive-p (yeah-proc-state service)))
       (yeah-check--kill service))
     (when (and owner (process-live-p owner))
       (yeah-check--kill (process-id owner)))

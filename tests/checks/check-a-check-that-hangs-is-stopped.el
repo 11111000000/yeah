@@ -22,9 +22,13 @@
 ;; as well, the gate waited for the limit before it stopped the fixture,
 ;; and the gate answered with the third answer and not with a pass.
 ;;
-;; The measure of the subject is the process itself, by its pid, in
-;; `/proc'.  The check does not ask the fixture whether it is alive: a
-;; process that answers is a process that lives.
+;; The measure of the subject is the process itself, by its pid, in the
+;; tree of the processes of the system.  The check does not ask the
+;; fixture whether it is alive: a process that answers is a process that
+;; lives.  The state of the process decides it: `S' and `R' are a
+;; process that runs, and `Z' is a zombie -- a process that has died
+;; already and waits to be reaped.  The rule is the one of the kernel
+;; (`lib/yeah-proc.el').
 ;;
 ;; The control of the claim takes the stop out of the timer of the gate:
 ;; the timer fires, but it does not stop the command, and the check then
@@ -38,13 +42,11 @@
 
 ;;; Code:
 
+(require 'cl-lib)
+(require 'yeah-proc)
+
 (defvar yeah-check--failures nil
   "The failures this check found.")
-
-(defun yeah-check--alive-p (pid)
-  "Return non-nil when the process PID is alive."
-  (and pid (integerp pid) (> pid 0)
-       (file-directory-p (format "/proc/%d" pid))))
 
 (defun yeah-check--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
@@ -54,8 +56,12 @@
     (funcall predicate)))
 
 (defun yeah-check--await-dead (pid timeout)
-  "Return non-nil when the process PID is gone, at most TIMEOUT seconds."
-  (yeah-check--await (lambda () (not (yeah-check--alive-p pid))) timeout))
+  "Return non-nil when the process PID is gone, at most TIMEOUT seconds.
+The process is gone when the state of it says so: a zombie is gone, it
+has died already and waits to be reaped."
+  (yeah-check--await
+   (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
+   timeout))
 
 (defun yeah-check--kill-group (pid signal)
   "Send SIGNAL to the process group of PID.
@@ -133,11 +139,11 @@ and the pid of the child of the fixture."
                 (setq fixture-pid pid
                       child-pid child)
                 ;; the fixture is alive while the gate waits for it
-                (unless (yeah-check--alive-p pid)
+                (unless (yeah-proc-alive-p (yeah-proc-state pid))
                   (push (format "the fixture was not alive (pid %d)" pid)
                         yeah-check--failures))
                 ;; and the child it started is alive as well
-                (unless (yeah-check--alive-p child)
+                (unless (yeah-proc-alive-p (yeah-proc-state child))
                   (push (format "the fixture started no live child (pid %d)" child)
                         yeah-check--failures))
                 ;; the gate waits for the limit, and then stops the check
@@ -179,10 +185,12 @@ and the pid of the child of the fixture."
         (yeah-check--kill-group (process-id gate) "KILL")))
     ;; a check that fails must not leave the check that hangs behind either
     (dolist (pid (nreverse (delq nil (list child-pid fixture-pid))))
-      (when (yeah-check--alive-p pid)
+      (when (yeah-proc-alive-p (yeah-proc-state pid))
         (yeah-check--kill-group pid "TERM")
-        (yeah-check--await (lambda () (not (yeah-check--alive-p pid))) 3)
-        (when (yeah-check--alive-p pid)
+        (yeah-check--await
+         (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
+         3)
+        (when (yeah-proc-alive-p (yeah-proc-state pid))
           (yeah-check--kill-group pid "KILL"))))
     (ignore-errors (delete-file report)))
   (dolist (failure yeah-check--failures)

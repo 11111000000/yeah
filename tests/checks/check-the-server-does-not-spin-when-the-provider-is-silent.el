@@ -24,8 +24,8 @@
 ;; wire stops waiting -- and the measured ticks must then exceed the bound.
 ;; The check fails by its own assertion and not by a crash.
 ;;
-;; The ticks are read by the reader of the support
-;; (tests/support/yeah-proc.el), and the reader decides: a server that is
+;; The ticks are read by the reader of the kernel
+;; (lib/yeah-proc.el), and the reader decides: a server that is
 ;; gone has no ticks, and that is not the number zero.  A check that read
 ;; the ticks of a server that is gone as zero would prove nothing, so the
 ;; check names the server that is not running and fails by that name.
@@ -35,10 +35,10 @@
 (require 'json)
 (require 'seq)
 
-;; The reader of the ticks of a process is the one of the support: the
+;; The reader of the ticks of a process is the one of the kernel: the
 ;; process of the server may die while the check reads it, and a reader
 ;; that dies on the filesystem does not decide on its own assertion.
-(load (expand-file-name "tests/support/yeah-proc.el") nil t)
+(require 'yeah-proc)
 
 (defvar yeah-check--emacs
   (or (and (getenv "EMACS") (file-executable-p (getenv "EMACS"))
@@ -155,7 +155,7 @@ of the model goes out and nothing comes back."
             (sleep-for 2)
             (let* ((clock (yeah-check--clock-ticks))
                    (pid (process-id yeah-check--server))
-                   (before (yeah-proc--ticks pid))
+                   (before (yeah-proc-ticks pid))
                    (wall (+ (float-time) yeah-check--window)))
               (if (null before)
                   ;; the server is gone: it has no ticks, and the ticks of a
@@ -167,7 +167,7 @@ of the model goes out and nothing comes back."
                   (while (< (float-time) wall)
                     (accept-process-output yeah-check--server 0.05)
                     (sleep-for 0.05))
-                  (let* ((after (yeah-proc--ticks pid))
+                  (let* ((after (yeah-proc-ticks pid))
                          (bound (/ (* yeah-check--window yeah-check--bound-percent) 100.0)))
                     (cond
                      ((null after)

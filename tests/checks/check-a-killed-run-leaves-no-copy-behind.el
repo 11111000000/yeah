@@ -92,11 +92,6 @@ process: a name that is set twice is a name that is set by accident."
                              (yeah-copies--base-environment))))
     (append base extra)))
 
-(defun yeah-copies--alive-p (pid)
-  "Return non-nil when the process PID is alive."
-  (and pid (integerp pid) (> pid 0)
-       (file-directory-p (format "/proc/%d" pid))))
-
 (defun yeah-copies--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
   (let ((deadline (+ (float-time) (or timeout 20))))
