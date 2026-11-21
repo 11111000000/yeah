@@ -1436,7 +1436,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   of in ASCII.  The source is written by hand -- `docs/SITE-DIAGRAMS-PLAN.md` names only the
   diagram of the state machine as generated out of the code -- and it is
   `site/diagrams/core-layers.puml`: four packages (the drivers, the core, the journal and
-  the projections), 15 blocks, 64 names of the form `file:line`, every one of them a
+  the projections), 15 blocks, 64 names of the form `file:line` (65 after wave 98), every one of them a
   definition of the kernel.  The picture is the picture of the ASCII figure of the site
   (`site/index.html:482-506`) and of `docs/ARCHITECTURE.md` §5.  **The completeness is part
   of the promise**: `lib/` holds 66 modules, 64 are named by the picture and 2 are in the
@@ -1453,6 +1453,39 @@ work item. Never resolve it by silently making documentation more optimistic.
   the fixture trees of its own, and the render of this picture was proved by a direct run of
   the pipeline.  The insertion into the site is the wave D3 and the check that the picture of
   the site is current is the wave D4 (docs/PLAN.md §16.89).
+- Wave 98 gave the tools a declaration of their own risk, and the rule now asks by the
+  declaration and not by a hand-written list of names.  The field is `:risk`, its vocabulary is
+  four words -- `read`, `write`, `execute`, `destroy` -- and it lives in a new module
+  `lib/yeah-risk.el` (113 lines).  A tool that declares no risk has a risk that is not known,
+  and a risk that is not known changes the world: the rule asks about it, and the absence of a
+  declaration never makes the rule softer.  A tool that declares a risk outside the vocabulary
+  is refused by name at the registration.  **The circle of the requires does not close**: the
+  registry requires the modules that require the permission rule, and the rule asks by the
+  declarations that live in the registry, so the module of the risk knows only the vocabulary
+  and the question, and the registry installs the source of the declarations into it
+  (`yeah-risk--install-source`).  **The set of the tools that change the world is measured and
+  not taken from a constant**: the new check
+  `tests/checks/check-a-tool-declares-its-own-risk.el` (1129 lines) follows the calls of the
+  handler of every tool of the core -- it binds the parameters and the local variables, it
+  remembers the process that the tool started itself, and it tells the text that the model
+  supplied from the text that the kernel supplied -- and proves six things, the sixth of which
+  the parent added: an action that no rule names is asked about and is never allowed, because
+  the profile is a snapshot and the safety of a snapshot rests on that default.  **The Plan
+  profile grew by two tools and the growth is named**: `todo_add` and `todo_update` are
+  forbidden now and were asked about before, because the hand-written list never named them
+  and the list is gone (decision of the parent, 2026-11-21, the owner may cancel it).  **The
+  control of another claim died and was transferred**: the control of
+  `the-plan-profile-denies-a-delegation` mutated the list that this wave removes, so it
+  changed nothing and the check passed -- the class of F38; it now mutates the declaration of
+  the delegation, and the text, the falsifier, the scope, the requirements and the id of that
+  claim are the same.  **The picture of the wave 97 had to be re-anchored and the strengthened
+  check said so**: the wave moved the lines of `lib/`, three names of
+  `site/diagrams/core-layers.puml` left their definitions and the new module was not named;
+  the parent compared all 64 names with a snapshot of the state before the wave (59 did not
+  move, 2 moved on the same definition, 3 left) and the picture now carries 65.  **The
+  remainder of B1 is named**: the list of the safe reads of the approval path
+  (`lib/yeah-approval.el:74-94`) is still a list of names, and that is the next step of B1
+  (docs/PLAN.md §16.90).
 
 ## The commands
 

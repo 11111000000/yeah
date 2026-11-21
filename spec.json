@@ -2054,7 +2054,7 @@
       ],
       "falsifier": "the Plan profile allows a delegation, or the refusal of the run does not come from the profile",
       "register": "fact",
-      "control": "sed -i 's|\"bash\" \"job-cancel\" \"delegate\"|\"bash\" \"job-cancel\"|' lib/yeah-perm.el",
+      "control": "sed -i 's|:risk \"write\"|:risk \"read\"|' lib/yeah-delegate.el",
       "waiver": null
     },
     {
@@ -3756,6 +3756,41 @@
       "falsifier": "the diagram names a file, a line or a module that is not there, or it drops a module of `lib/' silently: a reference to a file that does not exist, a reference to a line the file does not have, a reference to a line that carries no definition, a reference to a path that leaves the repository, a module of `lib/' that the diagram neither names nor lists in its note, a module that the note names without a reason, a module that the note names and the diagram names as well, a block of the picture that names no file, or a package of the picture that is not there, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|lib/yeah-trash.el:220||' site/diagrams/core-layers.puml",
+      "waiver": null
+    },
+    {
+      "id": "a-tool-declares-its-own-risk",
+      "text": "A tool declares whether it changes the world: the field is `:risk', its values come from the vocabulary of the kernel (`read', `write', `execute' or `destroy'), and the permission rule asks by that declaration and not by the name of a tool in a list. The declaration of a tool agrees with what its handler does -- the set of the tools that change the world is measured by following the calls of every handler of the core and is not taken from a constant -- the category the declaration names is one of the categories the measurement found, the profiles name exactly the tools the measurement found, a tool that declares no risk is asked about because a risk that is not known changes the world, and an action that no rule names is asked about and is never allowed.",
+      "scope": [
+        "lib/yeah-risk.el",
+        "lib/yeah-tools.el",
+        "lib/yeah-perm.el",
+        "lib/yeah-builtins.el",
+        "lib/yeah-files.el",
+        "lib/yeah-edit.el",
+        "lib/yeah-process.el",
+        "lib/yeah-emacs.el",
+        "lib/yeah-git.el",
+        "lib/yeah-todo.el",
+        "lib/yeah-trash.el",
+        "lib/yeah-delegate.el",
+        "lib/yeah-bridge.el",
+        "tests/checks/check-a-tool-declares-its-own-risk.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-tool-declares-its-own-risk.el"
+        }
+      ],
+      "falsifier": "the rule asks by a list of names and not by the declaration, or the declaration of a tool and the handler of that tool disagree: a tool of the core that declares no risk, a tool that declares a risk outside the vocabulary of the kernel and is accepted, a tool that changes the world and declares the risk `read', a tool that changes nothing and declares a risk other than `read', a tool that declares a category the measurement of its handler did not find, a profile that names a tool the measurement did not find or that misses a tool the measurement found, a probe that declares the risk `read' and is asked about anyway, a probe that declares that it changes the world and is not asked about, or an action that no rule names that is allowed instead of asked about, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i '0,/:risk \"write\"/{s/:risk \"write\"/:risk \"read\"/}' lib/yeah-edit.el",
       "waiver": null
     }
   ]
