@@ -18,9 +18,10 @@
 ;; name it finds.  It measures four things:
 ;;
 ;;   1. every reference of the form `file:line' points at a file of this
-;;      repository, at a line of that file, and at a line that carries
-;;      code -- an empty line names no code, and a line that holds nothing
-;;      but a comment names no code either;
+;;      repository, at a line of that file, and at a line that carries a
+;;      definition -- an empty line names no code, a line that holds
+;;      nothing but a comment names no code either, and a line that holds
+;;      code that is not a definition names no definition;
 ;;   2. every module of `lib/' is named by the diagram or listed in the
 ;;      note of the modules the picture does not name, with the reason why
 ;;      it is not there.  A module that is nowhere is a module the picture
@@ -80,13 +81,16 @@ the end of the file does not open a line of its own."
       (cons (if (string-empty-p last) (1- (length lines)) (length lines))
             lines))))
 
-(defun yeah-check--code-p (text)
-  "Return non-nil when TEXT carries code.
-An empty line carries no code, and a line that holds nothing but a
-comment carries no code either."
+(defun yeah-check--definition-p (text)
+  "Return non-nil when TEXT carries a definition.
+A definition is the opening of a `defun', a `defconst', a `cl-defun' or a
+`cl-defstruct': the name of the thing the block of the picture names is a
+name of the code, and a line that carries code and no definition names no
+definition.  An empty line carries no code, and a line that holds nothing
+but a comment carries no code either."
   (let ((trimmed (string-trim text)))
     (and (not (string-empty-p trimmed))
-         (not (string-prefix-p ";" trimmed)))))
+         (string-match "\\`[(]\\(cl-\\)?def[a-z-]+[ \t(]" trimmed))))
 
 (defun yeah-check--reference (line)
   "Return the reference of LINE, or nil.
@@ -197,8 +201,8 @@ says that the note names a module and says nothing about it."
                ((or (< line 1) (> line count))
                 (push (format "the diagram names %s:%d, and the file has %d line(s)" file line count)
                       yeah-check--failures))
-               ((not (yeah-check--code-p (nth (1- line) lines)))
-                (push (format "the diagram names %s:%d, and that line carries no code" file line)
+               ((not (yeah-check--definition-p (nth (1- line) lines)))
+                (push (format "the diagram names %s:%d, and that line carries no definition" file line)
                       yeah-check--failures))))))))
       ;; A diagram that names nothing cannot tell a good name from a bad one.
       (when (null references)
