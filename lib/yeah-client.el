@@ -57,16 +57,23 @@ Signal `user-error' when the override is not a supported family."
   (concat socket ".port"))
 
 (defun yeah-client--read-port (socket)
-  "Return the TCP port published for SOCKET, or nil when it is unavailable."
+  "Return the TCP port published for SOCKET, or nil when it is unavailable.
+The service publishes the port in a file next to its socket and removes
+that file when it stops, so the file can vanish between the moment the
+reader looks for it and the moment it reads it.  Only the error of the
+file is caught here -- `file-missing' is a kind of `file-error' -- and
+nothing else is: a reader that hides every failure decides nothing."
   (let ((file (yeah-client-port-file socket)))
     (when (file-readable-p file)
-      (with-temp-buffer
-        (insert-file-contents file)
-        (let ((text (string-trim (buffer-string))))
-          (when (string-match-p "\\`[0-9]+\\'" text)
-            (let ((port (string-to-number text)))
-              (when (and (> port 0) (<= port 65535))
-                port))))))))
+      (condition-case nil
+          (with-temp-buffer
+            (insert-file-contents file)
+            (let ((text (string-trim (buffer-string))))
+              (when (string-match-p "\\`[0-9]+\\'" text)
+                (let ((port (string-to-number text)))
+                  (when (and (> port 0) (<= port 65535))
+                    port)))))
+        (file-error nil)))))
 
 (defun yeah-client-connection-params (socket)
   "Return the network connection parameters for SOCKET.
