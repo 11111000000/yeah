@@ -14,7 +14,7 @@
 
 package "drivers" as drivers {
   component "Human (M-x yeah)\nlib/yeah.el:37\nlib/yeah-compose.el:83\nlib/yeah-shell.el:78\nlib/yeah-doctor-ui.el:148\nlib/yeah-approval-ui.el:114" as human
-  component "ACP clients\nlib/yeah-acp.el:375\nlib/yeah-acp-vocabulary.el:15\nlib/yeah-client.el:165\nlib/yeah-service-ui.el:413" as acp
+  component "ACP clients\nlib/yeah-acp.el:375\nlib/yeah-acp-vocabulary.el:15\nlib/yeah-client.el:172\nlib/yeah-service-ui.el:413" as acp
   component "MCP clients\nlib/yeah-mcp.el:28\nlib/yeah-mcp-client.el:90\nlib/yeah-mcp-http.el:38\nlib/yeah-session-mcp.el:149\nlib/yeah-emcp.el:244" as mcp
   component "Batch\nlib/yeah-placement.el:199" as batch
   component "Wire\nlib/yeah-wire.el:23\nlib/yeah-wire-socket.el:57" as wire
