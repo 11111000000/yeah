@@ -1432,6 +1432,34 @@ work item. Never resolve it by silently making documentation more optimistic.
   amended and not rewritten: the text, the falsifier, the scope, the requirements and the
   control are the same, because the repair gives back to the proof what wave 96 already
   promised.  The kernel and the generator are untouched (docs/PLAN.md §16.91).
+- Wave 100 repaired the evidence apparatus of the project, and the gate of the package of the waves
+  97 to 99 is what asked for it.  That gate ended with the code 1 and one red line:
+  `mathc: ./scripts/dev check tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el exited 1`.
+  The check did not fail on its assertion -- it died on the filesystem: it looked for the stat file
+  of the process of the server and read it after, the process died in between, and the read failed
+  with `file-missing`.  The method reads a crashed verifier as an error and not as a proven
+  control, so the gate named a refutation where there was none.  **A false refusal with a false
+  subject is worse than no refusal at all.**  The reading of a process now lives in one place,
+  `tests/support/yeah-proc.el`: it looks for no file before it reads one (the existence of a file
+  is not a promise that it is still there), it catches the error of the file and nothing else (a
+  reader that swallows every error decides nothing), a process that is gone answers nil -- and nil
+  is not the number zero -- and a PID that names no process answers nil and raises no error.  The
+  two checks that read a process read it through that reader, and a server that is gone is a
+  failure the check names, not a measurement of zero ticks.  **The repair is proved and not only
+  written**: the new check `tests/checks/check-a-check-that-reads-a-gone-process-decides-and-does-not-crash.el`
+  holds seven assertions, and the fifth keeps the fourth honest -- a reader that answers zero for
+  every process passes "the ticks are a number" and makes the check of the silent server vacuous,
+  so the check reads the file of its own process itself, without the reader, and compares with a
+  bracket (the ticks of a process never go down), which no clock can make flaky.  The kernel and
+  the site are untouched; the claim of the wave is new, and the two claims whose proof moved into
+  the support keep their id, text, falsifier, requirements and control (docs/PLAN.md §16.92).
+- The class of that defect is **not** closed.  A read-only survey of the repository (2026-11-21)
+  counted 42 places of it and named 19 of them dangerous.  Six other checks read "the process is
+  alive" by the existence of the directory of the process, and a zombie answers that too, so they
+  can refute a claim that holds; the awk of `scripts/lib/tree.sh:46-50` dies on a stat file that
+  vanishes and cuts the list of the descendants short, so `stop_tree` leaves part of the tree
+  standing; `lib/yeah-client.el:62-64` reads the port file that the stop of the service deletes,
+  where the docstring promises nil.  These are the waves 101 and later.
 - Wave 97 drew the picture of the layers of the core in the notation of components, instead
   of in ASCII.  The source is written by hand -- `docs/SITE-DIAGRAMS-PLAN.md` names only the
   diagram of the state machine as generated out of the code -- and it is

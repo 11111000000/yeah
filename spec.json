@@ -3017,7 +3017,8 @@
       "scope": [
         "lib/yeah-wire.el",
         "lib/yeah-acp.el",
-        "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el"
+        "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el",
+        "tests/support/yeah-proc.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -3146,7 +3147,8 @@
         "scripts/live-pilot",
         "scripts/lib/tree.sh",
         "tests/support/yeah-pilot-fixture.el",
-        "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el"
+        "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
+        "tests/support/yeah-proc.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -3791,6 +3793,31 @@
       "falsifier": "the rule asks by a list of names and not by the declaration, or the declaration of a tool and the handler of that tool disagree: a tool of the core that declares no risk, a tool that declares a risk outside the vocabulary of the kernel and is accepted, a tool that changes the world and declares the risk `read', a tool that changes nothing and declares a risk other than `read', a tool that declares a category the measurement of its handler did not find, a profile that names a tool the measurement did not find or that misses a tool the measurement found, a probe that declares the risk `read' and is asked about anyway, a probe that declares that it changes the world and is not asked about, or an action that no rule names that is allowed instead of asked about, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i '0,/:risk \"write\"/{s/:risk \"write\"/:risk \"read\"/}' lib/yeah-edit.el",
+      "waiver": null
+    },
+    {
+      "id": "a-check-that-reads-a-gone-process-decides-and-does-not-crash",
+      "text": "A check that reads the state of a process decides and does not die on the filesystem: the reader of the tree of the processes lives in one place (`tests/support/yeah-proc.el`), it catches the error of the file and nothing else, a process that is gone answers nil and not an error and not the number zero, a PID that names no process answers nil, a process that lives is read -- its state is a letter and its ticks are the ticks of the kernel --, the answer of the reader of the ticks is the ticks of the process and not the number zero, the checks that read a process read it through that reader and not by a path of their own, and a server that is gone is a failure that the check names and not a measurement of zero ticks.",
+      "scope": [
+        "tests/support/yeah-proc.el",
+        "tests/checks/check-a-check-that-reads-a-gone-process-decides-and-does-not-crash.el",
+        "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
+        "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-check-that-reads-a-gone-process-decides-and-does-not-crash.el"
+        }
+      ],
+      "falsifier": "the reader of a process raises an error where the process is gone, or the reader answers the number zero for a process that is gone, or the reader answers nil for a process that lives, or the reader answers the same ticks for every process, or the reader raises an error for a PID that names no process, or a check of tests/checks/ reads the stat file of a process by itself, or the server that is gone is measured as a process that burns no CPU, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(file-error nil)|(file-error (error \"the reader does not hide the failure of the read\"))|' tests/support/yeah-proc.el",
       "waiver": null
     }
   ]
