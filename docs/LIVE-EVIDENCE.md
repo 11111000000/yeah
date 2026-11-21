@@ -2693,6 +2693,99 @@ described a next step: the model called the tool of the first answer.
   and the code of the four waves merged before it (`98b4e2a`, `530105d`, `f364982`,
   `9d3d1ea`).
 
+## The live run of the package of the waves 97 to 99 (2026-11-21, 06:16 UTC)
+
+**What was run.**  One live run through the orchestrator Paseo on the tree of the
+package.  The prompt of the packages before it was two words — answer and call
+`finish` — and this one is not: the package carries the wave 98, which moved the
+rule of the profile onto the declaration of the tool, so the run had to show a
+tool that changes the world and the question it caused.
+
+```
+$ paseo run --provider yeah --cwd /home/az/Projects/yeah \
+    --title "Живой маршрут пакета 97-99" \
+    "Вызови инструмент todo_add с текстом «проверка маршрута», затем вызови finish. Больше ничего не делай."
+AGENT ID                              STATUS      PROVIDER    CWD                             TITLE
+8f289eab-a9b2-4968-b1bc-44a2ca469dc9  idle        yeah        /home/az/Projects/yeah          Живой маршрут пакета 97-99
+```
+
+The run began at 06:16:44 UTC and came to an end at 06:17:01 UTC — seventeen
+seconds.  The model was `MiniMax-M3.1-Flash`, the mode was `build`, and the
+journal of the session is `session-7-ae346d.jsonl`.  The tree of the repository
+was not changed by the run (`git status` was empty afterwards), and the tree was
+the one of the commit `28b8780`.
+
+**What the journal says.**  The journal holds twenty-seven records, and they
+hold the whole run:
+
+| Record | What it says |
+|---|---|
+| `header` | `session-7-ae346d`, `2026-11-21T06:16:44+0000` |
+| `session-model` | `MiniMax-M3.1-Flash` |
+| `input-queued` / `input-taken` | the prompt of the run, carried through the wire of the orchestrator |
+| `user-message` | the prompt of the run |
+| `usage` | `input: 12941, output: 43` |
+| `assistant-message` | "I'll add the todo item and finish." — words, and no call |
+| `nudge` and `user-message` | the supervision of the run asked for the tools it still needed |
+| `usage` | `input: 13902, output: 776` |
+| `tool-request` | `todo_add`, named argument `{"text": "проверка маршрута"}` |
+| `permission-request` | `todo_add` on `проверка маршрута` |
+| `permission-decision` | `defer` — the question waits for the person |
+| `permission-decision` | `allow`, reply `:once` — the person answered |
+| `todo` | `{"id": "1", "text": "проверка маршрута", "status": "pending"}` |
+| `tool-end` | `todo_add`, `ok: true` |
+| `permission-request` / `permission-decision` | `read` on `README.md` → `allow`, reason "read is a safe read: it changes nothing" |
+| `tool-end` | `read`, `ok: true` |
+| `tool-request` | `finish`, named argument `{"summary": "…"}` |
+| `permission-request` / `permission-decision` | `finish` → `allow`, without a reason and without a reply |
+| `tool-end` | `finish`, `ok: true` |
+| `finish` | the summary of the run |
+
+**What it proves.**  The rule asked exactly where the declaration of the tool
+says that the tool changes the world.  `todo_add` declares the risk `write`
+(`lib/yeah-todo.el:263`); the profile `build` asks for every tool that changes
+the world; the question went out over the wire of ACP and waited; the answer of
+the person (`allow`, once) let the tool run.  The task was created (id `1`), and
+the tool `finish` closed the run with the summary of the model.
+
+The run shows the **second** path as well — the one that answers the tools the
+profile does not name.  `read` declares the risk `read` (`lib/yeah-files.el:240`),
+and the profile therefore does not ask about it; the answer came from the
+hand-written list of the safe reads (`lib/yeah-approval.el:74`), and the decision
+says why: "read is a safe read: it changes nothing".  The tool `finish` is asked
+about by nobody: the kernel allows that name outright (`lib/yeah-turn.el:386`),
+and its decision carries neither a reason nor a reply — the journal shows it.
+
+**The supervision of the run was needed.**  The first answer of the model was
+words without a call — "I'll add the todo item and finish." — and the harness
+asked it for the tools it still needed (the record `nudge`, which carries the
+state of the work).  The model acted after the nudge.  This is the supervision
+that became the default in wave 39, and this run is its live proof in the route
+of ACP: one nudge out of a budget of three.
+
+**What it does not prove.**
+
+* It is one run, one prompt and one model.  The provider was `MiniMax-M3.1-Flash`,
+  and nothing here says that another model asks the same way.
+* The mode was `build`.  The run says nothing about the profile `plan`, which
+  denies the same tools instead of asking, and nothing about `auto`, which
+  allows them.
+* The model did **more** than the prompt told it to do: it read `README.md`, and
+  the prompt said "Больше ничего не делай".  The run was a short prompt and not
+  a task, and the extra call is recorded here as it happened.
+* **The residue of the wave 98 is visible in this run.**  The safe-read list is
+  written by hand, and it does not follow the declarations: the list holds nine
+  names, while the tools that declare the risk `read` are more than nine —
+  `todo_list`, `git_status`, `git_diff` and `delegate-result` declare it and are
+  not in the list, so they are still asked although they change nothing.  The
+  next step of B1 is to make that list follow the declarations; this run does not
+  do it and does not pretend to.
+* The numbers of the usage are the ones the provider reported, and the last
+  request of the run reports `input: 82` — less than the first one
+  (`input: 12941`).  The journal holds no record of a compaction, and this run
+  does not measure the context of the run: the fact is recorded here, not
+  explained.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
