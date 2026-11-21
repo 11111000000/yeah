@@ -31,17 +31,37 @@
 ;;   3. the state of a living process is a letter: the repair did not make
 ;;      the reader blind;
 ;;   4. the ticks of a living process are a number;
-;;   5. the checks that read a process hold no path of the tree of the
+;;   5. the ticks of the reader are the ticks of the process: the check
+;;      reads the file of its own process itself and compares the answer
+;;      of the reader with that reading;
+;;   6. the reader answers nil for a PID that names no process -- nil, a
+;;      string, zero, a negative number -- and it raises no error for it;
+;;   7. the checks that read a process hold no path of the tree of the
 ;;      processes: the reader of the support is the only one that names
 ;;      one, and each of them names the reader it must use.
 ;;
 ;; The first two assertions are the ones that fail on the code before the
-;; repair: that code raised `file-missing' out of the reading.
+;; repair: that code raised `file-missing' out of the reading.  The
+;; sixth is the one that fails on a reader that builds the path of the
+;; file out of a PID that is not a number: the error of the format is
+;; not the error of the file, and such a reader dies instead of
+;; deciding.
 ;;
-;; The fifth assertion names no path of the tree of the processes itself,
-;; and the first two do not either: the only path this check names is the
-;; directory of the process that must not exist, and it names it to prove
-;; that the process is really gone before it believes the reader.
+;; The fifth is the one that keeps the fourth honest.  A reader that
+;; answers zero for every process passes "the ticks are a number", and
+;; the check of the silent server is then vacuous: the difference of the
+;; ticks is zero, and zero does not pass the bound of a core.  The check
+;; therefore reads the file of its own process itself, without the
+;; reader, and compares.  The ticks of a process never go down, so the
+;; answer of the reader must lie between the reading of the check before
+;; it and the reading of the check after it -- an exact comparison that
+;; no clock can make flaky, because the process of the check burns its
+;; own CPU between the two readings.
+;;
+;; The seventh assertion names no path of the tree of the processes
+;; itself, and the first six do not either: the only path this check
+;; names is the file of its own process, and it names it to compare the
+;; reader with the truth.
 ;;
 ;; Exit codes: 0 -- the reader decides; 1 -- it did not.
 
@@ -65,6 +85,13 @@
 The kernel gives no process an id above its own limit, so this id is
 free on every host.")
 
+(defconst yeah-check--no-pids
+  '(nil "42" 0 -1 3.5)
+  "The process ids that name no process.
+None of them is a positive whole number, and the reader has to answer
+nil for every one of them instead of raising the error of the format
+of the path.")
+
 (defun yeah-check--root ()
   "Return the root of the repository: the directory that holds `spec.json'."
   (or (locate-dominating-file default-directory "spec.json")
@@ -85,6 +112,40 @@ the error is kept, so a reader that dies is named and not hidden."
   (condition-case err
       (cons 'ok (funcall reader pid))
     (error (cons 'error err))))
+
+(defun yeah-check--own-ticks (pid)
+  "Return the ticks of CPU that the process PID has used, read here.
+This is the reading of the check itself and not the reading of the
+support: the file of the process is read directly, and the answer of
+the reader of the support is compared with it.  The process of the
+check does not die while it reads its own file, so this reading is
+safe.  The answer is nil when the file cannot be read."
+  (condition-case nil
+      (with-temp-buffer
+        (insert-file-contents (format "/proc/%d/stat" pid))
+        (let* ((text (buffer-string))
+               (close (cl-position ?\) text :from-end t))
+               (fields (split-string (substring text (1+ close)) " " t)))
+          ;; The fields after the name: state, ppid, pgrp, session, tty_nr,
+          ;; tpgid, flags, minflt, cminflt, majflt, cmajflt, utime, stime.
+          (+ (string-to-number (nth 11 fields))
+             (string-to-number (nth 12 fields)))))
+    (file-error nil)))
+
+(defun yeah-check--ticks-ready (pid)
+  "Return non-nil when the process PID has at least one tick of CPU.
+The check compares the reader of the support with its own reading, and a
+comparison against the ticks of a process that has none proves nothing:
+a reader that answers zero for every process would pass it.  The wait
+is bounded, and a process that burns no tick at all is a failure of
+the check and not a pass."
+  (let ((deadline (+ (float-time) 10)))
+    (while (and (< (float-time) deadline)
+                (let ((ticks (yeah-check--own-ticks pid)))
+                  (or (null ticks) (< ticks 1))))
+      (sleep-for 0.05))
+    (let ((ticks (yeah-check--own-ticks pid)))
+      (and (integerp ticks) (>= ticks 1)))))
 
 (let* ((gone yeah-check--gone-pid)
        (self (emacs-pid)))
@@ -134,7 +195,46 @@ the error is kept, so a reader that dies is named and not hidden."
      ((not (numberp ticks))
       (push (format "the ticks of this process are %S and not a number" ticks)
             yeah-check--failures))))
-  ;; 5. the checks that read a process read it through the reader of the
+  ;; 5. the ticks of the reader are the ticks of the process: the check
+  ;;    reads the file of its own process itself and compares
+  (unless (yeah-check--ticks-ready self)
+    (push "the process of the check has no tick of CPU: the comparison of the ticks proves nothing"
+          yeah-check--failures))
+  (let* ((before (yeah-check--own-ticks self))
+         (result (yeah-check--call #'yeah-proc--ticks self))
+         (answer (and (eq 'ok (car result)) (cdr result)))
+         (after (yeah-check--own-ticks self)))
+    (cond
+     ((not (integerp before))
+      (push "the check cannot read the ticks of its own process: the comparison proves nothing"
+            yeah-check--failures))
+     ((numberp answer)
+      ;; the ticks of a process never go down, so the answer of the
+      ;; reader must lie between the two readings of the check
+      (when (or (< answer before) (> answer after))
+        (push (format "the ticks of the reader (%S) are not the ticks of the process: the reading of the check saw %S before the reading of the reader and %S after it"
+                      answer before after)
+              yeah-check--failures)))))
+  ;; 6. the reader answers nil for a PID that names no process, and it
+  ;;    raises no error for it
+  (dolist (pid yeah-check--no-pids)
+    (let ((result (yeah-check--call #'yeah-proc--state pid)))
+      (cond
+       ((not (eq 'ok (car result)))
+        (push (format "the state of the process %S raised an error: %S" pid (cdr result))
+              yeah-check--failures))
+       ((not (null (cdr result)))
+        (push (format "the state of the process %S is %S and not nil" pid (cdr result))
+              yeah-check--failures))))
+    (let ((result (yeah-check--call #'yeah-proc--ticks pid)))
+      (cond
+       ((not (eq 'ok (car result)))
+        (push (format "the ticks of the process %S raised an error: %S" pid (cdr result))
+              yeah-check--failures))
+       ((not (null (cdr result)))
+        (push (format "the ticks of the process %S are %S and not nil" pid (cdr result))
+              yeah-check--failures)))))
+  ;; 7. the checks that read a process read it through the reader of the
   ;;    support and not through a path of their own
   (dolist (entry yeah-check--readers)
     (let* ((name (car entry))
