@@ -20,7 +20,9 @@
 #   5. the diagram covers the machine: every cell of the table is an arrow
 #      of the diagram and the arrow says what the cell says, and the states
 #      of the machine and no others — the numbers are read out of the code
-#      and are not written here;
+#      and are not written here; the diagram of the repository is compared
+#      as well, so that a cell that it does not carry is named with the
+#      cell and not only with the file that is out of date;
 #   6. a tree without a kernel cannot generate the diagram, and the answer
 #      of that is 3 and not 0;
 #   7. the pipeline of the diagrams in a tree without a kernel ends with the
@@ -38,7 +40,9 @@
 #      machine does not name is named as such.  A comparison that cannot
 #      say "absent" cannot prove that the diagram carries every cell, and
 #      the check says so.  Every kind of the defect has a stand of its own,
-#      so that the break of one kind is caught by the stand of that kind.
+#      so that the break of one kind is caught by the stand of that kind,
+#      and the words of the defect are measured too: a kind that is right
+#      and a message that lies is not a stand of that kind.
 #
 # The search for the tools of this script is a search of its own: the check
 # must not lean on the code that it checks.
@@ -692,6 +696,11 @@ else
     # what the cell says: the count of the arrows is not the proof of that,
     # and the cells are compared one by one.
     compare_cells "$gen_dir/lib" "$diagram_file" "the diagram of the machine"
+    # The diagram of the repository is compared as well: it is the file that
+    # the site shows, and a cell that it does not carry is named with the
+    # cell and not only with the file that is out of date.
+    compare_cells "$gen_dir/lib" "$REPO/site/diagrams/state-machine.puml" \
+      "the diagram of the repository"
   fi
 fi
 
@@ -706,28 +715,56 @@ fi
 # comparison says so with its own words.
 #
 # The tree of this control is a copy of the kernel whose table names the same
-# cell twice, and the diagram of the repository is the diagram of the table
-# without that cell twice: the diagram carries one arrow for the two cells of
-# the table.  The comparison of that tree is read here, and it must name the
-# duplicate and not an absent cell.  The diagram of the repository is the
-# diagram here on purpose: the control must read the comparison and not the
-# health of the generator.
+# cell twice, and the diagram that the copy is compared with is a diagram
+# that carries the arrow of the cell once: the comparison of that tree is
+# read here, and it must name the duplicate and not an absent cell.  The
+# diagram of the repository is the diagram here on purpose: the control must
+# read the comparison and not the health of the generator.
 #
 # The copy of the kernel names the cell twice because the fixture of this
 # control adds one row to the table of the tree.  A tree whose table names
-# the cell twice already is a tree the fixture cannot be built on: the copy
-# of such a tree names the cell three times, and the refusal below says what
-# the copy names, what the control needs and what the tree of the repository
-# names.  A refusal that said "the copy does not name the cell twice" would
-# name a defect of the fixture and not the tree that has the duplicate.
+# the cell twice already carries the arrow of the cell twice as well, and the
+# diagram of such a tree is used with one copy of the arrow less: the stand
+# compares a table that names the cell more than once with a diagram that
+# carries the arrow once, and it does that on every tree.  The stand does
+# not skip a tree whose table names the cell twice and prove nothing there:
+# it builds its case there and names the duplicate there.
+#
+# A tree whose table does not name the cell at all is a tree the fixture
+# cannot be built on, and the refusal below says what the copy names, what
+# the control needs and what the table of the tree names.
 dup_dir="$tmp/duplicate"
 make_tree "$dup_dir"
 dup_file="$dup_dir/lib/yeah-loop.el"
 
 # The rows of the cell in the table of the tree of the repository, before the
 # copy is changed: the tree is the subject of the refusal when the copy does
-# not name the cell twice.
+# not name the cell.
 tree_rows="$(grep -cE '\(deciding[[:space:]]+stream-end[[:space:]]+\. post-decide\)' "$REPO/lib/yeah-loop.el" || true)"
+
+# The arrow of the cell as the diagram writes it: the state names of the
+# diagram are the names of the states with the dashes turned into
+# underscores, and the label of the arrow is the label of the cell.
+stand_arrow="$(printf 'deciding\tstream-end\tpost-decide\n' | LC_ALL=C awk 'BEGIN { FS = "[ \t]+" }
+  { gsub(/[^A-Za-z0-9_]/, "_", $1); gsub(/[^A-Za-z0-9_]/, "_", $3); print $1 " --> " $2 " : " $3 }')"
+
+# The diagram that the copy of the kernel is compared with: the diagram of
+# the repository carries the arrow of the cell once for a table that names
+# the cell once, and a diagram that carries it more than once is used with
+# one copy of the arrow less.
+stand_diagram="$REPO/site/diagrams/state-machine.puml"
+stand_arrow_rows="$(grep -c "^$stand_arrow\$" "$stand_diagram" || true)"
+if [ "$stand_arrow_rows" -gt 1 ]; then
+  stand_diagram="$tmp/stand-diagram.puml"
+  LC_ALL=C awk -v arrow="$stand_arrow" '
+    $0 == arrow && !dropped { dropped = 1; next }
+    { print }
+  ' "$REPO/site/diagrams/state-machine.puml" >"$stand_diagram" || blocked "cannot make the diagram of the stand"
+  stand_arrow_rows="$(grep -c "^$stand_arrow\$" "$stand_diagram" || true)"
+  if [ "$stand_arrow_rows" -ne 1 ]; then
+    fail "the diagram of the stand carries the arrow of the cell ($stand_arrow) $stand_arrow_rows times and the stand compares a table that names the cell more than once with a diagram that carries the arrow once"
+  fi
+fi
 
 dup_count="$(sed -n 's/^(unless (= \([0-9][0-9]*\) (length yeah-loop--raw-transitions)).*/\1/p' "$dup_file")"
 if [ -z "$dup_count" ]; then
@@ -744,10 +781,10 @@ else
   ' "$dup_file" >"$dup_file.new" || blocked "cannot make the tree of the check"
   mv "$dup_file.new" "$dup_file" || blocked "cannot make the tree of the check"
   dup_rows="$(grep -cE '\(deciding[[:space:]]+stream-end[[:space:]]+\. post-decide\)' "$dup_file" || true)"
-  if [ "$dup_rows" -ne 2 ]; then
-    fail "the table of the copy names the cell (deciding stream-end post-decide) $dup_rows times and the control of the check needs a copy that names it twice: the table of the tree of the repository names that cell $tree_rows times"
+  if [ "$dup_rows" -lt 2 ]; then
+    fail "the table of the copy names the cell (deciding stream-end post-decide) $dup_rows times and the control of the check needs a copy that names it more than once: the table of the tree of the repository names that cell $tree_rows times"
   else
-    dup_messages="$(compare_cells "$dup_dir/lib" "$REPO/site/diagrams/state-machine.puml" \
+    dup_messages="$(compare_cells "$dup_dir/lib" "$stand_diagram" \
       "the cell that the table of the machine names twice" print)"
     if ! printf '%s\n' "$dup_messages" | grep -q "names the same cell more than once"; then
       fail "the comparison of the cells does not tell a duplicate from an absent cell: the cell that the table of the machine names twice must be named as a duplicate"
@@ -790,9 +827,9 @@ fi
 # machine.
 stand_counter=0
 compare_stand() {
-  local tag="$1" want="$2" avoid="$3" cells="$4" diagram="$5"
+  local tag="$1" want="$2" avoid="$3" cells="$4" diagram="$5" must_say="${6:-}" must_not_say="${7:-}"
   stand_counter=$((stand_counter + 1))
-  local stem="$tmp/stand-$stand_counter" rc=0 kinds kind
+  local stem="$tmp/stand-$stand_counter" rc=0 kinds kind message messages=""
   printf '%s\n' "$cells" >"$stem.cells"
   printf '%s\n' "$diagram" >"$stem.puml"
   LC_ALL=C awk -v cells_file="$stem.cells" -f "$tmp/compare-cells.awk" \
@@ -814,15 +851,38 @@ compare_stand() {
       *" $kind "*) fail "$tag: the comparison of the cells names the defect '$kind' where the case is another one: the kinds it names are [$kinds]";;
     esac
   done
+  # The words of the defect are measured too: a kind that is right and a
+  # message that lies is not a stand of that kind.
+  while IFS=$'\t' read -r kind from label to actual extra extra2 extra3; do
+    [ -n "$kind" ] || continue
+    message="$(problem_message "$tag" "$kind" "$from" "$label" "$to" "$actual" "$extra" "$extra2" "$extra3")"
+    messages="$messages$message"$'\n'
+  done <"$stem.problems"
+  if [ -n "$must_say" ]; then
+    case "$messages" in
+      *"$must_say"*) ;;
+      *) fail "$tag: the message of the defect does not say '$must_say': the messages are [$messages]";;
+    esac
+  fi
+  if [ -n "$must_not_say" ]; then
+    case "$messages" in
+      *"$must_not_say"*) fail "$tag: the message of the defect says '$must_not_say' and it must not: the messages are [$messages]";;
+    esac
+  fi
 }
 
 # The cell (post-decide nudge deciding) is not in the diagram at all: no
 # arrow of the diagram carries the label of that cell, and the arrow
 # (idle --> deciding : strange) is an arrow that the table does not name.
+# The diagram carries the cell of the table (idle user-prompt deciding), so
+# the generator read the table: the message of the defect must not say that
+# the generator does not read it.
 compare_stand "the cell that the diagram does not carry" \
   "absent extra-arrow" "label wrong-label twice" \
   $'idle\tuser-prompt\tdeciding\npost-decide\tnudge\tdeciding' \
-  $'idle --> deciding : user-prompt\nidle --> deciding : strange'
+  $'idle --> deciding : user-prompt\nidle --> deciding : strange' \
+  "the generator reads the table and does not write this cell" \
+  "the generator does not read the table"
 
 # The label of the cell is in the diagram and the ends of its arrow are not
 # the ends of the cell: the generator reads the table and leads the cell
@@ -862,6 +922,21 @@ compare_stand "the number of the arrows and the number of the cells" \
   "count" "absent label wrong-label twice twice-arrow" \
   $'idle\tuser-prompt\tdeciding' \
   $'idle --> deciding : user-prompt\ndeciding --> post_decide : stream-end'
+
+# The label of the cell is in the diagram and not on the ends of the cell:
+# the table names the label three times and every arrow of the diagram with
+# that label is the arrow of another cell, so the arrow of this cell is not
+# in the diagram at all.  The rule that looks for the label of the cell in
+# every arrow of the diagram and not only in the arrows that no cell claims
+# is what tells this cell from an absent cell, and this stand is the guard
+# of that rule: the rule that looked only for the unclaimed arrows called
+# this cell an absent cell.
+compare_stand "the cell whose label the diagram carries on other ends" \
+  "label" "absent wrong-label twice" \
+  $'idle\terror\tfailed\ndeciding\terror\tfailed\npost-decide\terror\tfailed' \
+  $'deciding --> failed : error\npost_decide --> failed : error' \
+  "the label of the cell is in the diagram and not on the ends of the cell" \
+  "the generator does not read the table"
 
 # --- 6. the pipeline writes the source and draws both themes ------------------
 
