@@ -1383,6 +1383,33 @@ work item. Never resolve it by silently making documentation more optimistic.
   own**: four small tables of cells and four small diagrams, written in the file of the
   check and not read out of the kernel.  The kernel and the generator are untouched
   (docs/PLAN.md §16.87).
+- Wave 96 repaired the proof of the diagram of the machine of the states, the fifth time.
+  The kernel and the generator are honest; the proof named a subject that was not there.
+  **The stand of the duplicate named its fixture and not the tree**: the stand built a copy of
+  the kernel with a doubled cell and compared the diagram of that copy with the diagram of the
+  repository; on a tree that names the cell twice already the copy named it three times, and
+  the stand refused with "the table of the copy does not name the same cell twice: the copy of
+  the kernel cannot be changed" — the subject of the refusal was the fixture of the stand and
+  not the tree that the stand measured.  A false refusal with a false subject is worse than no
+  refusal.  The stand now builds the diagram of the comparison out of the diagram of the
+  repository with one copy of the arrow of the cell less, and it proves the duplicate on every
+  tree.  **The rule of the absent cell was newer than the text of the claim**: the label of the
+  cell was looked for only in the arrows that no cell of the table claims, so a cell whose label
+  the diagram carries on the ends of the arrows of the other cells was called an absent cell
+  while its label was in the diagram.  The label is now looked for in every arrow of the
+  diagram: the absent cell is the cell whose label the diagram carries nowhere, and the cell
+  that is led elsewhere is the cell whose label the diagram carries on other ends.  The kind
+  `twice` is still told before the kind `label`.  **A contradiction of two documents is
+  recorded and not resolved silently**: the intent of wave 95, its section of the plan and the
+  head of the file of the check name the rule by the label, while the claim said "a cell that
+  the diagram does not carry at all", and the code of wave 95 did not hold the literal reading
+  of it.  The reading was chosen by the parent on 2026-11-21 — the rule of wave 95 — and the
+  claim is amended and not rewritten (the same id, scope, requirements and control): its text
+  and its falsifier now say in words that cannot be read in two ways which cell is an absent
+  cell and which cell is led elsewhere.  The falsifier gains a second refusal, and that
+  refusal is the defect of wave 95 itself: the label `error` is on 8 cells of the table of the
+  machine and on 8 arrows of the diagram.  The kernel and the generator are untouched
+  (docs/PLAN.md §16.88).
 
 ## The commands
 
