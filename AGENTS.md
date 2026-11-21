@@ -1330,10 +1330,18 @@ work item. Never resolve it by silently making documentation more optimistic.
   decoy runs in an alive environment (the home with the profile, the store with the store,
   `PLANTUML` and `EMACS`, the `PATH`): all four steps of the chain resolve there, and every
   one of them resolves to the instrument of the machine and not to the decoy; the chain of
-  the copy is the only thing that hands out the decoy.  The textual probes read all the
-  files of `scripts/` and look for the second chain under any name, and the requirement of
-  the mark counts how many times it was asked — a requirement that was asked about nothing
-  is noticed and not silently met.  **The boundary of the probe is named, and it is not the
+  the copy is the only thing that hands out the decoy.  The probe of the steps of the search
+  refuses on **any** step it finds in **any** file of `scripts/` — before the wave it demanded
+  a **pair** of steps (the one on the PATH and the one of the profile), and the copy of the
+  finding F28, which used the step of the profile alone, passed; the probe of the second
+  chain, which looks for a function with two or more kinds of steps under any name, is
+  **duplicating** — two kinds include one, and the probe of the file has seen it already, so
+  it cannot fire alone and adds a second line of refusal about the same defect and not a
+  wider reach.  The requirement of the mark counts how many times it was asked — a
+  requirement that was asked about nothing is noticed and not silently met.  **[Amended
+  2026-11-21 by the discriminator of the waves 94 and 95: the words "the textual probes read
+  all the files of `scripts/`" were false as a change — the probe of the file read all of them
+  since wave 91; what changed is what it looks for.]**  **The boundary of the probe is named, and it is not the
   boundary of wave 91**: the decoy sees a copy that resolves the instrument in the
   environment of the decoy, and it does not see a copy that resolves it in a place that
   the environment of the decoy does not provide.  The code of the pipeline is untouched
