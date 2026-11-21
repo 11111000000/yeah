@@ -30,7 +30,14 @@
 #   9. the comparison tells a cell that the table of the machine names twice
 #      from a cell that the diagram does not carry: a table that says the
 #      same thing twice is a machine that says one thing about one event
-#      twice, and not a generator that does not read the table.
+#      twice, and not a generator that does not read the table;
+#  10. the comparison tells the cases apart on small tables of its own: a
+#      cell that the diagram does not carry is an absent cell and not a cell
+#      that is led elsewhere, an arrow that leads a cell elsewhere is an
+#      arrow of the label of that cell, and an arrow that the table of the
+#      machine does not name is named as such.  A comparison that cannot
+#      say "absent" cannot prove that the diagram carries every cell, and
+#      the check says so.
 #
 # The search for the tools of this script is a search of its own: the check
 # must not lean on the code that it checks.
@@ -209,11 +216,15 @@ read_machine() {
 # the second file is the diagram of the state machine.  Every line of the
 # output is a defect, and its first field is the kind of it:
 #
-#   absent  — the cell is not in the diagram at all;
-#   leads   — the arrow of the cell is there and its ends are not the ends
-#             of the cell;
-#   label   — the arrow of the cell is there and its label is not the label
-#             of the cell;
+#   absent  — the cell is not in the diagram at all: no arrow of the diagram
+#             carries its label;
+#   label   — the arrow of the cell is there and its ends are not the ends of
+#             the cell: the generator reads the table and leads the cell
+#             elsewhere;
+#   wrong-label
+#           — the ends of the cell are there and the label of the arrow is not
+#             the label of the cell: the generator reads the table and writes
+#             the label of the cell wrong;
 #   count   — the diagram has another number of arrows than the table has
 #             cells;
 #   twice   — the table of the machine names the same cell more than once and
@@ -221,7 +232,16 @@ read_machine() {
 #             names cells;
 #   twice-arrow
 #           — the diagram carries the same arrow more than once and the cell
-#             of the table has no arrow of its own.
+#             of the table has no arrow of its own;
+#   extra-arrow
+#           — the diagram carries an arrow that the table of the machine does
+#             not name: the arrow is the second field of the line, and the
+#             cell of the table is not in the diagram.
+#
+# The kinds tell the cases apart, and every one of them names a subject that
+# is there: a cell that the diagram does not carry is an absent cell and not
+# a cell that is led elsewhere, and an arrow that leads a cell elsewhere is
+# an arrow of that label and not a guess by the order of the table.
 #
 # The identifier of a state is its letters, its digits and its underscore:
 # PlantUML reads no other name as an identifier, and a name with a dash in it
@@ -231,17 +251,25 @@ BEGIN { FS = "[ \t]+" }
 
 function ident(text) { gsub(/[^A-Za-z0-9_]/, "_", text); return text }
 
+# The cell of the table is not an arrow of the diagram: no arrow of the
+# diagram carries its label.
 function report_absent(i) {
   printf "absent\t%s\t%s\t%s\n", c_from[i], c_label[i], c_to[i]
 }
 
-function report_leads(i, j) {
-  printf "leads\t%s\t%s\t%s\t%s --> %s : %s\n",
+# The label of the cell is in the diagram and the ends of the arrow are not
+# the ends of the cell: the generator reads the table and leads the cell
+# elsewhere.
+function report_label(i, j) {
+  printf "label\t%s\t%s\t%s\t%s --> %s : %s\n",
     c_from[i], c_label[i], c_to[i], a_src[j], a_tgt[j], a_lbl[j]
 }
 
-function report_label(i, j) {
-  printf "label\t%s\t%s\t%s\t%s --> %s : %s\n",
+# The ends of the cell are in the diagram and the label of the arrow is not
+# the label of the cell: the generator reads the table and writes the label
+# of the cell wrong.
+function report_wrong_label(i, j) {
+  printf "wrong-label\t%s\t%s\t%s\t%s --> %s : %s\n",
     c_from[i], c_label[i], c_to[i], a_src[j], a_tgt[j], a_lbl[j]
 }
 
@@ -257,6 +285,13 @@ function report_twice(i) {
 function report_twice_arrow(i, j) {
   printf "twice-arrow\t%s\t%s\t%s\t%s --> %s : %s\t%d\n",
     c_from[i], c_label[i], c_to[i], a_src[j], a_tgt[j], a_lbl[j], a_same[j]
+}
+
+# The diagram carries an arrow that the table of the machine does not name.
+# The arrow is the second field of the line: it is the subject of the
+# defect, and the cell of the table is not in the diagram.
+function report_extra_arrow(j) {
+  printf "extra-arrow\t%s --> %s : %s\n", a_src[j], a_tgt[j], a_lbl[j]
 }
 
 FILENAME == cells_file {
@@ -290,7 +325,9 @@ END {
   # diagram that say the same thing.  A cell that the table names twice is
   # not a cell that the diagram does not carry: the table of the machine
   # says one thing about one event twice, and the diagram carries one
-  # arrow for one cell.
+  # arrow for one cell.  An arrow that the diagram carries more than once
+  # and that the table does not name as many times is an arrow that the
+  # diagram repeats.
   for (i = 1; i <= cells; i++) {
     c_same[i] = 1
     c_arrows[i] = 0
@@ -303,14 +340,21 @@ END {
   }
   for (j = 1; j <= arrows; j++) {
     a_same[j] = 1
+    a_cells[j] = 0
     for (k = 1; k <= arrows; k++)
       if (k != j && a_src[k] == a_src[j] && a_tgt[k] == a_tgt[j] && a_lbl[k] == a_lbl[j])
         a_same[j]++
+    for (i = 1; i <= cells; i++)
+      if (c_idfrom[i] == a_src[j] && c_idto[i] == a_tgt[j] && c_label[i] == a_lbl[j])
+        a_cells[j]++
   }
-  # The first arrow that the diagram carries more than once.
+  # The first arrow that the diagram carries more than once and that the
+  # table of the machine does not name as many times.  An arrow that the
+  # table names not at all is not a repeated arrow: it is an arrow that the
+  # table does not name.
   repeated = 0
   for (j = 1; j <= arrows; j++)
-    if (a_same[j] > 1) { repeated = j; break }
+    if (a_same[j] > 1 && a_same[j] > a_cells[j]) { repeated = j; break }
 
   # The cells that the diagram draws as they are.
   for (i = 1; i <= cells; i++)
@@ -323,49 +367,40 @@ END {
 
   for (i = 1; i <= cells; i++) {
     if (drawn[i]) continue
-    # The same source and the same label: the arrow is the arrow of the
-    # cell and it leads somewhere else.
-    j = 0
-    for (k = 1; k <= arrows; k++)
-      if (!taken[k] && a_src[k] == c_idfrom[i] && a_lbl[k] == c_label[i]) { j = k; break }
-    if (j) { taken[j] = 1; report_leads(i, j); continue }
-    # The same label: the cell is in the diagram and the ends of its arrow
-    # are not the ends of the cell.
+    # The label of the cell is in the diagram and the ends of the arrow are
+    # not the ends of the cell: the arrow of the cell is there and it leads
+    # somewhere else.
     j = 0
     for (k = 1; k <= arrows; k++)
       if (!taken[k] && a_lbl[k] == c_label[i]) { j = k; break }
-    if (j) { taken[j] = 1; report_leads(i, j); continue }
-    # The same source: the cell is in the diagram and the label of its
-    # arrow is not the label of the cell.  The diagram carries that arrow
-    # more than once: the cell has no arrow of its own, and the diagram
-    # repeats the arrow of another cell.
+    if (j) { taken[j] = 1; report_label(i, j); continue }
+    # The ends of the cell are in the diagram and the label of the arrow is
+    # not the label of the cell: the arrow of the cell is there and it
+    # carries another label.
     j = 0
     for (k = 1; k <= arrows; k++)
-      if (!taken[k] && a_src[k] == c_idfrom[i]) { j = k; break }
-    if (j) {
-      taken[j] = 1
-      if (a_same[j] > 1) report_twice_arrow(i, j)
-      else report_label(i, j)
-      continue
-    }
+      if (!taken[k] && a_src[k] == c_idfrom[i] && a_tgt[k] == c_idto[i]) { j = k; break }
+    if (j) { taken[j] = 1; report_wrong_label(i, j); continue }
     # The table of the machine names the same cell more than once, and the
     # diagram carries fewer arrows for that cell than the table names
     # cells: the cell is not an absent cell, it is a cell of a table that
     # says the same thing twice.
     if (c_same[i] > 1 && c_arrows[i] < c_same[i]) { report_twice(i); continue }
-    # The arrow of the cell in the order of the table: the cell is in the
-    # diagram and neither its ends nor its label are its own.
-    if (arrows == cells && !taken[i]) {
-      taken[i] = 1
-      if (a_same[i] > 1) report_twice_arrow(i, i)
-      else report_label(i, i)
-      continue
-    }
     # The diagram carries the same arrow more than once: the cell is not
     # in the diagram, and the diagram repeats the arrow of another cell.
     if (repeated) { report_twice_arrow(i, repeated); continue }
+    # The cell of the table is not an arrow of the diagram at all: no arrow
+    # of the diagram carries its label.  The order of the arrows is not
+    # measured, and a cell is not the cell that the table of the machine
+    # happens to name in its place.
     report_absent(i)
   }
+
+  # The arrows of the diagram that the table of the machine does not name:
+  # the arrow is the subject of the defect, and the cell of the table that
+  # is not in the diagram is named by the defect of its own.
+  for (j = 1; j <= arrows; j++)
+    if (!taken[j] && a_cells[j] == 0) report_extra_arrow(j)
 }
 AWK
 
@@ -374,11 +409,15 @@ AWK
 # the tree and the arrows out of the diagram of that tree.
 #
 # The kinds of the defect are told apart: a cell that is not in the diagram
-# at all (the generator does not read the table), a cell that is in the
-# diagram but leads somewhere else (the generator reads the table and writes
-# the cell wrong), a cell that the table of the machine names twice (the
-# machine says one thing about one event twice) and an arrow that the
-# diagram carries more than once (the diagram repeats an arrow).
+# at all (the generator does not read the table), a cell whose label is in
+# the diagram on other ends (the generator reads the table and leads the
+# cell elsewhere), a cell whose ends are in the diagram with another label
+# (the generator reads the table and writes the label of the cell wrong), a
+# cell that the table of the machine names twice (the machine says one
+# thing about one event twice), an arrow that the diagram carries more than
+# once (the diagram repeats an arrow) and an arrow that the table of the
+# machine does not name (the diagram carries an arrow that the table does
+# not carry).
 #
 # The mode is "fail": a defect is a failure of the check.  The mode is
 # "print": the defects are printed and the check decides what to do with
@@ -421,29 +460,34 @@ compare_cells() {
     fi
   done <"$stem.problems"
   if [ "$mode" = fail ] && [ "$reported" -gt 5 ]; then
-    fail "$tag: and $((reported - 5)) more cells of the table are not arrows of the diagram"
+    fail "$tag: and $((reported - 5)) more defects of the comparison of the cells and the arrows"
   fi
 }
 
 # The message of a defect of the comparison: the kind of the defect says
 # what is wrong, and the words say it in one sentence.  A cell that the
 # table of the machine names twice is not an absent cell: the generator
-# reads the table, and the table says the same thing twice.
+# reads the table, and the table says the same thing twice.  A cell that
+# the diagram does not carry is not a cell that is led elsewhere either:
+# the arrow that leads a cell elsewhere is an arrow of the label of that
+# cell, and the words of a defect name only what is there.
 problem_message() {
   local tag="$1" kind="$2" from="$3" label="$4" to="$5" actual="$6" extra="$7"
   case "$kind" in
     absent)
       printf '%s\n' "$tag: the generator does not read the table: the cell ($from $label $to) is not in the diagram";;
-    leads)
-      printf '%s\n' "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual)";;
     label)
-      printf '%s\n' "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual) and the label of the arrow is not the label of the cell";;
+      printf '%s\n' "$tag: the generator reads the table but leads the cell elsewhere: the cell ($from $label $to) is drawn as ($actual)";;
+    wrong-label)
+      printf '%s\n' "$tag: the generator reads the table but writes the label of the cell wrong: the ends of the cell ($from --> $to) are drawn as ($actual) and the label of the arrow is not the label of the cell";;
     count)
       printf '%s\n' "$tag: the diagram has $from arrows and the table of the transitions has $label cells";;
     twice)
       printf '%s\n' "$tag: the table of the machine names the same cell more than once: the cell ($from $label $to) is named $actual times and the diagram carries $(plural "$extra" arrow) for it, so the diagram does not carry every cell of the table";;
     twice-arrow)
       printf '%s\n' "$tag: the diagram carries the same arrow more than once: the arrow ($actual) is drawn $extra times and the cell ($from $label $to) is not in the diagram";;
+    extra-arrow)
+      printf '%s\n' "$tag: the diagram carries an arrow that the table of the machine does not name: ($from)";;
   esac
 }
 
@@ -653,6 +697,84 @@ else
     fi
   fi
 fi
+
+# --- 5c. the comparison tells the cases apart --------------------------------
+
+# The comparison of the cells of the table and the arrows of the diagram is a
+# program of its own, and the check proves on small tables what it says: a
+# cell that the diagram does not carry is an absent cell and not a cell that
+# is led elsewhere, an arrow with the label of the cell and with other ends is
+# a cell that is led elsewhere and not an absent cell, a cell that the table
+# names twice is a duplicate and not an absent cell, and an arrow that the
+# table does not name is named as an arrow that the table does not name.
+#
+# A comparison that cannot say "absent" is a comparison that cannot prove
+# that the diagram carries every cell of the table: the stands below are the
+# proof that the comparison can say it, and they are the proof that it says
+# it about a cell that is not there and not about a cell that is somewhere
+# else.
+#
+# The cells of a stand and the arrows of a stand are written here and not
+# read out of the kernel: the stands measure the comparison and not the
+# machine.
+stand_counter=0
+compare_stand() {
+  local tag="$1" want="$2" avoid="$3" cells="$4" diagram="$5"
+  stand_counter=$((stand_counter + 1))
+  local stem="$tmp/stand-$stand_counter" rc=0 kinds kind
+  printf '%s\n' "$cells" >"$stem.cells"
+  printf '%s\n' "$diagram" >"$stem.puml"
+  LC_ALL=C awk -v cells_file="$stem.cells" -f "$tmp/compare-cells.awk" \
+    "$stem.cells" "$stem.puml" >"$stem.problems"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    fail "$tag: the comparison of the cells of the stand did not finish (the answer is $rc): nothing was compared"
+    return 1
+  fi
+  kinds="$(cut -f1 "$stem.problems" | LC_ALL=C sort -u | tr '\n' ' ')"
+  for kind in $want; do
+    case " $kinds " in
+      *" $kind "*) ;;
+      *) fail "$tag: the comparison of the cells does not name the defect '$kind': the kinds it names are [$kinds]";;
+    esac
+  done
+  for kind in $avoid; do
+    case " $kinds " in
+      *" $kind "*) fail "$tag: the comparison of the cells names the defect '$kind' where the case is another one: the kinds it names are [$kinds]";;
+    esac
+  done
+}
+
+# The cell (post-decide nudge deciding) is not in the diagram at all: no
+# arrow of the diagram carries the label of that cell, and the arrow
+# (idle --> deciding : strange) is an arrow that the table does not name.
+compare_stand "the cell that the diagram does not carry" \
+  "absent extra-arrow" "label wrong-label twice" \
+  $'idle\tuser-prompt\tdeciding\npost-decide\tnudge\tdeciding' \
+  $'idle --> deciding : user-prompt\nidle --> deciding : strange'
+
+# The label of the cell is in the diagram and the ends of its arrow are not
+# the ends of the cell: the generator reads the table and leads the cell
+# elsewhere.
+compare_stand "the cell that the diagram leads elsewhere" \
+  "label" "absent wrong-label extra-arrow" \
+  $'idle\tuser-prompt\tdeciding' \
+  $'idle --> post_decide : user-prompt'
+
+# The ends of the cell are in the diagram and the label of its arrow is not
+# the label of the cell: the generator reads the table and writes the label
+# of the cell wrong.
+compare_stand "the cell whose label the diagram writes wrong" \
+  "wrong-label" "absent label" \
+  $'idle\tuser-prompt\tdeciding' \
+  $'idle --> deciding : user-input'
+
+# The table of the machine names the same cell twice and the diagram carries
+# one arrow for the two: the cell is a duplicate and not an absent cell.
+compare_stand "the cell that the table of the machine names twice" \
+  "twice" "absent label wrong-label" \
+  $'deciding\tstream-end\tpost-decide\ndeciding\tstream-end\tpost-decide' \
+  $'deciding --> post_decide : stream-end'
 
 # --- 6. the pipeline writes the source and draws both themes ------------------
 
