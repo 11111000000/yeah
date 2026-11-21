@@ -50,7 +50,7 @@
      :optional (:arguments))
     (:type "permission-decision"
      :required (:action :resource :effect)
-     :optional (:reply :reason))
+     :optional (:reply :reason :scope))
     (:type "tool-end"
      :required (:tool :ok :payload)
      :optional (:details :kind))

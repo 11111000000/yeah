@@ -217,23 +217,31 @@ so that the answer reaches the turn that asked and may be remembered."
                            :params params)))
     (list :defer request-id)))
 
+(defconst yeah-acp--carrier 'session
+  "The carrier of the rules an ACP session writes: the rules of this
+session.  The scope of that carrier is the scope of an answer of the
+session.")
+
 (defun yeah-acp--client-answerer (session-id output)
   "Return the answerer of SESSION-ID that asks the client over the wire.
 The rules decide first; what they do not name is asked of the client as a
 `session/request_permission', and the call waits for the answer.  A safe
-read needs no question: it is allowed, and it says why."
+read needs no question: it is allowed, and it says why.  Every answer
+carries the scope of the session."
   (lambda (request)
-    (let* ((action (plist-get request :action))
-           (resource (plist-get request :resource))
-           (effect (yeah-perm-effect action resource
-                                     (yeah-acp--session-rules session-id))))
-      (pcase effect
-        ('allow (list :effect :allow :reply :once))
-        ('deny (list :effect :deny :reply :reject
-                     :reason (format "the rules deny %s on %s"
-                                     action resource)))
-        (_ (or (yeah-approval-safe-read-decision request)
-               (yeah-acp--ask-client session-id output request)))))))
+    (yeah-approval-scope-decision
+     (let* ((action (plist-get request :action))
+            (resource (plist-get request :resource))
+            (effect (yeah-perm-effect action resource
+                                      (yeah-acp--session-rules session-id))))
+       (pcase effect
+         ('allow (list :effect :allow :reply :once))
+         ('deny (list :effect :deny :reply :reject
+                      :reason (format "the rules deny %s on %s"
+                                      action resource)))
+         (_ (or (yeah-approval-safe-read-decision request)
+                (yeah-acp--ask-client session-id output request)))))
+     yeah-acp--carrier)))
 
 (defvar yeah-acp--counter 0
   "Monotonic counter for generated identifiers.")
@@ -1102,26 +1110,25 @@ was recovered, not the turn that carries it."
 (defun yeah-acp--permission-decision (message)
   "Return the permission decision carried by client RESPONSE MESSAGE.
 Only an explicit `allow-once' permits the effect.  A rejection, a
-cancelled request, a protocol error, or an unknown option refuses it."
+cancelled request, a protocol error, or an unknown option refuses it.
+The decision is what the client answered; the scope of the session is
+named by the route that remembers it."
   (let* ((error (plist-get message :error))
          (result (plist-get message :result))
          (outcome (plist-get result :outcome))
          (state (plist-get outcome :outcome))
-         (option (plist-get outcome :optionId)))
+         (option (plist-get outcome :optionId))
+         (kind (yeah-approval-reply-from-wire option)))
     (cond
      (error
       (list :effect :deny
             :reason "the client could not answer the permission request"))
      ((equal state "cancelled")
       (list :effect :deny :reason "cancelled"))
-     ((equal option "allow-once")
-      (list :effect :allow :reply :once))
-     ((equal option "allow-always")
-      ;; the person says that this action on this resource is allowed from
-      ;; now on; the kernel remembers the decision
-      (list :effect :allow :reply :always))
-     ((equal option "reject-once")
+     ((eq kind :reject)
       (list :effect :deny :reason "the person refused"))
+     (kind
+      (list :effect :allow :reply kind))
      (t
       (list :effect :deny
             :reason "the client returned an unknown permission response")))))
@@ -1141,15 +1148,19 @@ permission question reaches the turn that asked it."
 (defun yeah-acp--remember-decision (question decision)
   "Remember an `always' DECISION for QUESTION in the rules of its session.
 The decision is remembered for this session only: the standing permissions
-of the service are not touched."
-  (let ((session-id (plist-get question :session-id)))
+of the service are not touched.  The rule carries the scope of the
+session, and an answer that names another scope is refused by name
+instead of being written into the rules of the session."
+  (let* ((scoped (yeah-approval-scope-decision decision yeah-acp--carrier))
+         (session-id (plist-get question :session-id)))
     (when-let ((rule (yeah-approval-remember-rule
                       (list :action (plist-get question :action)
                             :resource (plist-get question :resource))
-                      decision)))
+                      scoped)))
       (let ((state (yeah-acp--session-state session-id)))
         (plist-put state :rules
-                   (yeah-perm-rules-append (plist-get state :rules) rule))))))
+                   (yeah-perm-rules-append (plist-get state :rules) rule))))
+    scoped))
 
 (defun yeah-acp--route-response (message)
   "Route a client RESPONSE (a message with an id and no method) to the
@@ -1158,12 +1169,14 @@ permission it answers.  Return non-nil when it was a response."
     (when (and id (null (plist-get message :method)))
       (when-let ((question (gethash id yeah-acp--pending-permissions)))
         (remhash id yeah-acp--pending-permissions)
-        (let ((decision (yeah-acp--permission-decision message)))
-          (when (yeah-approval-always-p decision)
-            (yeah-acp--remember-decision question decision))
+        (let* ((decision (yeah-acp--permission-decision message))
+               (scoped (yeah-approval-scope-decision
+                        decision yeah-acp--carrier)))
+          (when (yeah-approval-always-p scoped)
+            (yeah-acp--remember-decision question scoped))
           (when-let ((turn (yeah-acp--turn-waiting-for
                             (plist-get question :session-id) id)))
-            (yeah-turn-resume-permission turn id decision)))
+            (yeah-turn-resume-permission turn id scoped)))
         t))))
 
 (defun yeah-acp--connection-closed (connection)

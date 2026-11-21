@@ -53,8 +53,111 @@
 (require 'cl-lib)
 (require 'yeah-perm)
 
-(defconst yeah-approval--replies '(once always reject)
-  "The answers a person may give to a request for permission.")
+(defconst yeah-approval--reply-kinds
+  '(:once :always :reject)
+  "The kinds of answer a person may give to a request for permission.
+This is the one canonical enumeration of the answers: every surface of
+the kernel converts its own names into these, and none of them writes
+the list again.")
+
+(defconst yeah-approval--carrier 'global
+  "The carrier of the rules a plain answer writes: the rules of the
+process.  The scope of that carrier is the scope of a plain answer.")
+
+(defun yeah-approval-reply-kinds ()
+  "Return the canonical kinds of answer a person may give."
+  yeah-approval--reply-kinds)
+
+(defun yeah-approval--kind-name (kind)
+  "Return the name of the canonical kind KIND, without its colon."
+  (let ((name (symbol-name kind)))
+    (if (string-prefix-p ":" name)
+        (substring name 1)
+      name)))
+
+(defun yeah-approval--kind-of-name (name)
+  "Return the canonical kind whose name is NAME, or nil.
+The dictionary is read here and written nowhere else."
+  (seq-find (lambda (kind) (equal name (yeah-approval--kind-name kind)))
+            yeah-approval--reply-kinds))
+
+(defun yeah-approval-reply-canonical (reply)
+  "Return the canonical kind of REPLY, or nil when it names no kind.
+REPLY may be spelled as a symbol or as a keyword; the canonical kind is
+the keyword.  The dictionary is read here and written nowhere else."
+  (when (symbolp reply)
+    (yeah-approval--kind-of-name (yeah-approval--kind-name reply))))
+
+(defun yeah-approval-reply-p (reply)
+  "Non-nil when REPLY is one of the answers a person may give."
+  (and (yeah-approval-reply-canonical reply) t))
+
+(defun yeah-approval-reply-on-wire (effect kind)
+  "Return the wire name of the answer EFFECT with the canonical kind KIND.
+EFFECT is `:allow' or `:deny' and KIND the canonical kind of the answer.
+The wire spells the kinds in its own words; the name is derived from the
+canonical kind, and no list of names is written here."
+  (if (eq effect :allow)
+      (concat "allow-" (yeah-approval--kind-name kind))
+    "reject-once"))
+
+(defun yeah-approval-reply-from-wire (name)
+  "Return the canonical kind the wire answer NAME spells, or nil.
+The wire names the kinds in its own words; the converter reads the
+canonical dictionary and writes no list of names of its own."
+  (when (stringp name)
+    (cond
+     ((string-prefix-p "allow-" name)
+      (yeah-approval--kind-of-name (substring name (length "allow-"))))
+     ((string-prefix-p "reject-" name) :reject)
+     (t nil))))
+
+(defun yeah-approval-scope-of (kind carrier)
+  "Return the scope an answer of the canonical kind KIND has in CARRIER.
+An answer that remembers nothing is the scope of this call, an answer
+that remembers a rule has the scope of the carrier that holds it, and
+an answer that refuses carries no scope at all.
+CARRIER is the name of a holder of rules: `run', `session' or `global'."
+  (pcase kind
+    (:always (yeah-perm-scope-of-carrier carrier))
+    (:reject nil)
+    (_ :once)))
+
+(defun yeah-approval-scope-decision (decision carrier)
+  "Return DECISION with the scope of the path of CARRIER named in it.
+CARRIER is the holder of the rules of the path: `run', `session' or
+`global'.  The scope of an answer that remembers a rule is the scope of
+that carrier, and an answer that remembers nothing is the scope of this
+call.  A question that waits is not an answer and carries no scope.  A
+decision that names a scope the path does not hold comes back as a
+refusal: the refusal names the scope and says why, and the scope is
+never routed silently into the carrier of another path."
+  (let* ((kind (yeah-approval-reply-canonical (plist-get decision :reply)))
+         (named (plist-get decision :scope))
+         (carrier-scope (yeah-perm-scope-of-carrier carrier))
+         (scope (cond
+                 ((plist-get decision :defer) nil)
+                 (named named)
+                 (kind (yeah-approval-scope-of kind carrier))
+                 (t nil))))
+    (cond
+     ;; A decision that is not an answer carries no scope.
+     ((and (null named) (null kind)) decision)
+     ;; `always' remembers a rule, and a rule lives in a carrier; a
+     ;; carrier that holds no rules is named in the refusal.
+     ((and (eq kind :always) (null carrier-scope))
+      (list :effect :deny :reply :reject
+            :reason (format "the carrier %s holds no rules" carrier)))
+     ((null scope) decision)
+     ((eq scope :once) (plist-put (copy-sequence decision) :scope :once))
+     ((eq scope carrier-scope)
+      (plist-put (copy-sequence decision) :scope scope))
+     (t
+      (list :effect :deny :reply :reject
+            :reason (format "the scope %s has no carrier here: %s"
+                             scope
+                             (or (yeah-perm-carrier-of-scope scope)
+                                 "nothing holds the rules of that scope")))))))
 
 (defun yeah-approval-request (action resource &optional args tool-call-id)
   "Return a request for permission to run ACTION on RESOURCE.
@@ -66,10 +169,6 @@ correlates the request with its journal events without changing the existing
             (list :args args))
           (when tool-call-id
             (list :tool-call-id tool-call-id))))
-
-(defun yeah-approval-reply-p (reply)
-  "Non-nil when REPLY is one of the answers a person may give."
-  (memq reply yeah-approval--replies))
 
 (defconst yeah-approval-safe-read-actions
   '("read" "glob" "grep" "introspect" "buffer-read" "elisp-check"
@@ -94,18 +193,23 @@ changes nothing, so there is nothing to ask about."
                           (plist-get request :action)))))
 
 (defun yeah-approval-always-p (decision)
-  "Return non-nil when DECISION is an answer that is to be remembered."
-  (memq (plist-get decision :reply) '(always :always)))
+  "Return non-nil when DECISION is an answer that is to be remembered.
+The kind is read from the one dictionary of the answers: this module
+writes no list of kinds of its own."
+  (eq (yeah-approval-reply-canonical (plist-get decision :reply)) :always))
 
-(defun yeah-approval-remember-rule (request decision)
+(defun yeah-approval-remember-rule (request decision &optional scope)
   "Return the rule that remembers DECISION for REQUEST, or nil.
 An `always' answer becomes an allow rule for the exact action and the
-exact resource of REQUEST; every other answer is forgotten."
+exact resource of REQUEST; every other answer is forgotten.  SCOPE, when
+given, is the canonical scope the rule belongs to; the scope of DECISION
+is used when it is not.  The rule says where it lives."
   (when (and (eq (plist-get decision :effect) :allow)
              (yeah-approval-always-p decision))
     (yeah-perm-rule-make (plist-get request :action)
                          (plist-get request :resource)
-                         'allow)))
+                         'allow
+                         (or scope (plist-get decision :scope)))))
 
 (defun yeah-approval-policy-decision (request)
   "Answer REQUEST from the rules.
@@ -126,21 +230,23 @@ refuse what they do not name."
 (defun yeah-approval-reply-decision (request reply)
   "Answer REQUEST with REPLY, which is `once', `always' or `reject'.
 ALWAYS is written into the rules, so that the answer outlives the
-question. Return the decision."
-  (unless (yeah-approval-reply-p reply)
-    (signal 'user-error
-            (list (format "yeah-approval: %S is not an answer" reply))))
-  (pcase reply
-    ('once
-     (list :effect :allow :reply :once))
-    ('reject
-     (list :effect :deny :reply :reject))
-    ('always
-     (yeah-perm-rules-add
-      (yeah-perm-rule-make (plist-get request :action)
-                           (plist-get request :resource)
-                           'allow))
-     (list :effect :allow :reply :always))))
+question.  The answer carries the scope of the process, and the rule it
+writes carries the same scope.  Return the decision."
+  (let ((kind (yeah-approval-reply-canonical reply)))
+    (unless kind
+      (signal 'user-error
+              (list (format "yeah-approval: %S is not an answer" reply))))
+    (let ((decision (pcase kind
+                      (:once (list :effect :allow :reply :once))
+                      (:reject (list :effect :deny :reply :reject))
+                      (:always (list :effect :allow :reply :always)))))
+      (when (eq kind :always)
+        (yeah-perm-rules-add
+         (yeah-perm-rule-make (plist-get request :action)
+                              (plist-get request :resource)
+                              'allow
+                              (yeah-approval-scope-of kind yeah-approval--carrier))))
+      (yeah-approval-scope-decision decision yeah-approval--carrier))))
 
 (defun yeah-approval-profile-decision (profile request &optional person)
   "Answer REQUEST under the permission profile PROFILE.

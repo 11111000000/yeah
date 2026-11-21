@@ -53,9 +53,62 @@ It receives `(:action ACT :resource RES :reply REPLY :save SAVE)'.  When nil,
 (defconst yeah-perm--effects '(allow deny ask)
   "The three effect symbols recognised by the permission system.")
 
+(defconst yeah-perm--scopes
+  '(:once :run :session :project :global)
+  "The scopes a permission answer may name.
+`once' is this call, `run' the rules of the run, `session' the rules of
+the session, `project' the rules of the project and `global' the rules
+of the process.  This is the one place the scopes are written: every
+other place asks for them here and never writes the list again.")
+
+(defconst yeah-perm--carriers
+  '((:run run "the rules of the run")
+    (:session session "the rules of the session")
+    (:global global "the rules of the process"))
+  "The scopes that have a carrier, the name of the carrier and what the
+carrier holds.
+
+`run' holds the rules of an attached run, `session' the rules of an ACP
+session and `global' the rules of the process.  The correspondence
+between a path and its scope lives here and nowhere else: a path asks
+for the scope of its carrier and never writes the table again.  A scope
+that has no carrier here -- `once' holds no rule and `project' has none
+yet -- is refused by name, and the refusal says why.")
+
 (defun yeah-perm--effect-p (x)
   "Non-nil if X is one of the three effect symbols."
   (memq x yeah-perm--effects))
+
+(defun yeah-perm-scopes ()
+  "Return the canonical scopes a permission answer may name."
+  yeah-perm--scopes)
+
+(defun yeah-perm-scope-p (scope)
+  "Return non-nil when SCOPE is one of the canonical scopes."
+  (and (memq scope yeah-perm--scopes) t))
+
+(defun yeah-perm-scope-name (scope)
+  "Return the plain name of SCOPE, without its colon.
+The name is the way a scope is written into a record: the journal and the
+interface spell the scope the same way, and the spelling is made here."
+  (if (symbolp scope)
+      (let ((name (symbol-name scope)))
+        (if (string-prefix-p ":" name) (substring name 1) name))
+    (format "%S" scope)))
+
+(defun yeah-perm-scope-of-carrier (carrier)
+  "Return the scope the rules of CARRIER hold, or nil.
+CARRIER is the name of a holder of rules: `run', `session' or `global'."
+  (let ((entry (seq-find (lambda (candidate) (eq (nth 1 candidate) carrier))
+                          yeah-perm--carriers)))
+    (and entry (nth 0 entry))))
+
+(defun yeah-perm-carrier-of-scope (scope)
+  "Return what holds the rules of SCOPE, or nil when nothing holds them.
+The answer says what the carrier is, so that a refusal can say why."
+  (let ((entry (seq-find (lambda (candidate) (eq (nth 0 candidate) scope))
+                          yeah-perm--carriers)))
+    (and entry (nth 2 entry))))
 
 (defun yeah-perm--rule-p (rule)
   "Non-nil if RULE looks like a valid rule plist."
@@ -65,12 +118,16 @@ It receives `(:action ACT :resource RES :reply REPLY :save SAVE)'.  When nil,
        (stringp (plist-get rule :resource))
        (yeah-perm--effect-p (plist-get rule :effect))))
 
-(defun yeah-perm-rule-make (action resource effect)
+(defun yeah-perm-rule-make (action resource effect &optional scope)
   "Build a permission rule plist.
 ACTION and RESOURCE are strings (RESOURCE may be `\"*\"' as a
 wildcard). EFFECT is one of the symbols `allow', `deny', `ask'.
+SCOPE, when given, is the canonical scope the rule belongs to: the scope
+says where the rule lives.  A rule without a scope keeps the meaning it
+had -- it holds where it is written.
 The returned plist has shape
-`(:action ACTION :resource RESOURCE :effect EFFECT)'.
+`(:action ACTION :resource RESOURCE :effect EFFECT)' and carries
+`:scope SCOPE' when a scope was given.
 Signals `user-error' on a malformed argument."
   (unless (stringp action)
     (signal 'user-error
@@ -84,7 +141,12 @@ Signals `user-error' on a malformed argument."
     (signal 'user-error
             (list (format "yeah-perm-rule-make: effect must be allow/deny/ask, got %S"
                           effect))))
-  (list :action action :resource resource :effect effect))
+  (unless (or (null scope) (yeah-perm-scope-p scope))
+    (signal 'user-error
+            (list (format "yeah-perm-rule-make: scope must be one of %S, got %S"
+                          yeah-perm--scopes scope))))
+  (append (list :action action :resource resource :effect effect)
+          (when scope (list :scope scope))))
 
 (defun yeah-perm-rules-add (rule)
   "Append RULE to the current agent's permission ruleset.
