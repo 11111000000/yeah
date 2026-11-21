@@ -1822,8 +1822,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   moved or is gone since that day is named by the record and is not a defect of the record.  The
   price is named: seven names in the records of the waves would become red defects if the rule were
   applied to them, and they are named and not repaired (the decision on the rule of the file for the
-  records is the owner's).  The cost of the reading is 702 ms -> 744 ms (108 records, 660 KB, read
-  whole).  **The claim of the documentation was narrower than its measurement** -- the scope did not
+  records is the owner's).  The cost of the reading is 702 ms -> 744 ms (a measurement of 2026-11-21 on a
+  tree of 108 records; the records are 110 today, 665 KB, and they are read whole).  **The claim of the documentation was narrower than its measurement** -- the scope did not
   hold `waves/' -- and the parent amended it on 2026-11-21: the text and the falsifier say that the
   guard reads the records and that the rule of the file does not apply to them, and the scope holds
   the directory of the records.  **F47 stays open in its part `a'**: the rule "the stat file of a
