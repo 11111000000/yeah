@@ -10,16 +10,21 @@
 #      and not only the step that this machine happens to carry; and the chain
 #      of the search lives in one place in `scripts/`: the pipeline reads it
 #      from `scripts/lib/tools.sh`, calls it, and writes no step of the
-#      search of a tool by itself; no other script of `scripts/` defines the
-#      chain or carries a copy of its body, and a copy of the body that is
-#      rewritten in other words is not seen — the searches of the checks
-#      themselves are their own, by design; and the instrument of the
+#      search of a tool by itself — and no other file of `scripts/` writes
+#      such a step, and no other file of `scripts/` defines a second chain of
+#      the search, whatever the name of that chain is; no other script of
+#      `scripts/` carries a copy of the body of the chain, and a copy of the
+#      body that is rewritten in other words is not seen — the searches of the
+#      checks themselves are their own, by design; and the instrument of the
 #      pipeline comes from that chain and from nowhere else: a copy of the
 #      tree in which the chain hands out a decoy instrument draws the pictures
 #      of the decoy, and a pipeline that searches for the instrument by itself
-#      leaves no mark of the decoy at all — a step of the search that is
-#      written in other words is not seen by a reading of the words, and the
-#      decoy is what sees it;
+#      leaves no mark of the decoy at all — the copy of the tree is drawn in
+#      an environment where every step of the chain of the search resolves
+#      (the variable of the environment, the command on the PATH, the binary of
+#      the profile of the user, the glob of the store of nix), so a copy that
+#      resolves the instrument by itself is seen and is not hidden by an
+#      environment in which nothing resolves;
 #   2. the pipeline answers 3 when the instrument is not there at all;
 #   3. every diagram of the tree is drawn in both themes: two pictures for
 #      every diagram, and every picture comes from the whole of its own
@@ -31,6 +36,16 @@
 #      not written here;
 #   5. the pipeline answers 1 when PlantUML fails, and answers 1 too when
 #      PlantUML writes no picture at all.
+#
+# The boundary of the behavioural probe is named, because a proof that hides
+# its boundary proves something else: the decoy sees a copy that **resolves**
+# the instrument in the environment of the decoy.  A copy that resolves the
+# instrument somewhere else — a path that the environment of the decoy does
+# not provide, a name that it does not set — is not seen by the decoy.  The
+# textual probes read every file of `scripts/` and see such a copy when it
+# writes a step of the search in the words of the code; a step that is
+# assembled on the fly is not seen by them either, and that is named in the
+# objection of the wave.
 #
 # The tree of the repository is never written: every run of the pipeline
 # happens in a temporary tree, and the trap of this script removes it.
@@ -69,6 +84,13 @@ blocked() {
   echo "diagrams: $1" >&2
   exit 2
 }
+
+# The path of this file, taken before the tree of the repository is entered:
+# the check reads its own words when it looks for its own teeth (the section
+# of the decoy), and a check that reads its own file needs the path of it.
+self_dir="$(cd "$(dirname "$0")" 2>/dev/null && pwd)" || blocked "cannot find the path of this check"
+self="$self_dir/$(basename "$0")"
+[ -f "$self" ] || blocked "cannot find the path of this check"
 
 cd "$(dirname "$0")/../.." || blocked "the tree of the repository is not where we think"
 [ -d lib ] || blocked "lib/ is not there: the tree of the repository is not where we think"
@@ -280,28 +302,95 @@ in_heredoc {
 }
 AWK
 
-pipeline_code="$tmp/pipeline-code"
-pipeline_code_whole="$tmp/pipeline-code-whole"
-awk -f "$tmp/code-of.awk" -v strip_calls=1 scripts/dev >"$pipeline_code" || blocked "cannot read the code of the pipeline"
-awk -f "$tmp/code-of.awk" -v strip_calls=0 scripts/dev >"$pipeline_code_whole" || blocked "cannot read the code of the pipeline"
+cat >"$tmp/funcs-of.awk" <<'AWK'
+# funcs-of.awk — the functions of a file of code, with the lines of their
+# bodies.
+#
+# The head of a function is a name, a pair of parentheses and a brace; the
+# body ends at the brace that closes it.  The output is one line for every
+# line of every body: the name of the function, a tab, and the line itself.
+# The lines that are outside of a function are not printed: the probe is
+# about the functions and not about the loose code of the file.
+{
+  line = $0
+  if (name == "") {
+    if (match(line, /^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(\)[[:space:]]*\{/)) {
+      head = substr(line, RSTART, RLENGTH)
+      sub(/^[[:space:]]*/, "", head)
+      sub(/[[:space:]]*\(\).*/, "", head)
+      name = head
+    }
+    next
+  }
+  if (line ~ /^[[:space:]]*\}[[:space:]]*$/) {
+    name = ""
+    next
+  }
+  print name "\t" line
+}
+AWK
 
-# The words of the steps: the command on the PATH, the type of the shell,
-# the binary of the user in the profile and the store of nix.
-steps_of_a_search='command[[:space:]]+-[vV]|type[[:space:]]+-[Pp]|which[[:space:]]+(emacs|plantuml|mathc)|\.nix-profile/bin|NIX_STORE_DIR|bin/(plantuml|emacs)'
+# The words of the steps of the chain of the search.  The chain has four
+# steps and every kind of step has its own words:
+#
+#   the environment — the variable of the person who runs the script;
+#   the PATH        — the command on the PATH;
+#   the profile     — the binary of the user in ~/.nix-profile/bin;
+#   the store       — the glob of the store of nix.
+#
+# The step of the PATH is counted when the command is looked up by a name the
+# caller gives (`command -v "$cmd"'), when the shell is asked for the place
+# of a command (`type -p'), or when it looks an instrument of the pipeline up
+# by its name (`command -v plantuml').  The lookup of the method by its own
+# name in `scripts/lib/method.sh' is a search of another tool: the chain of
+# the method is the chain of the method and not the chain of the instruments
+# of the pipeline.  That is named here, in the open.
+step_env='\$\{![A-Za-z_]|\$\{?(PLANTUML|EMACS)'
+step_path='command[[:space:]]+-[vV][[:space:]]+"?\$|command[[:space:]]+-[vV][[:space:]]+(plantuml|emacs)|type[[:space:]]+-[Pp]|which[[:space:]]+(plantuml|emacs)'
+step_profile='\.nix-profile'
+step_store='NIX_STORE_DIR|/nix/store'
+steps_of_a_search="$step_env|$step_path|$step_profile|$step_store"
 
-# The two steps that turn a search of a tool into a chain: the lookup of the
-# command on the PATH, and the binary of the user in the profile.  They are
-# looked for in the whole of a file and not in one line of it: a chain that
-# names the profile of the user in one line and tests it in another is a
-# chain, and a probe that reads one line at a time does not see it.
-step_on_the_path='command[[:space:]]+-[vV]|type[[:space:]]+-[Pp]|which[[:space:]]+(emacs|plantuml|mathc)'
-step_of_the_profile='\.nix-profile'
-own_steps="$(grep -oE "$steps_of_a_search" "$pipeline_code" 2>/dev/null | LC_ALL=C sort -u | tr '\n' ' ')"
-if [ -n "$own_steps" ]; then
-  own_line="$(grep -nE "$steps_of_a_search" "$pipeline_code" 2>/dev/null | head -n 1 | cut -d: -f1)"
-  own_where="$(sed -n "${own_line}p" "$pipeline_code_whole" | sed 's/^[[:space:]]*//')"
-  fail "scripts/dev writes a step of the search of a tool by itself [$own_steps] — the line: $own_where: the chain of the search lives in one place ($chain_file) and not in two"
-fi
+# The step of the PATH as it is counted when the kinds of the steps of a
+# function are counted: any lookup of a command on the PATH is a step of the
+# chain of the search, and the chain of the method in
+# `scripts/lib/method.sh' carries one step and not two.
+step_path_any='command[[:space:]]+-[vV]|type[[:space:]]+-[Pp]|which[[:space:]]'
+
+# Every file of the scripts, in the order of the names.
+script_files="$tmp/script-files"
+grep -rl '' scripts/ 2>/dev/null | LC_ALL=C sort >"$script_files"
+
+# The scratch of the probe of the second chain: the functions of a file, the
+# names of them, and the body of the one that is read.
+funcs="$tmp/funcs"
+func_names="$tmp/func-names"
+body="$tmp/func-body"
+
+# The pipeline writes no step of the search of a tool by itself, and no other
+# file of the scripts writes one either: the chain of the search lives in one
+# place, and a step of it that is written in a second place is a search of a
+# tool that the chain does not serve.  A copy of the search that drifts apart
+# is the copy that answers "the tool is not here" when the tool is.
+#
+# The probe reads the code of every file of the scripts and not the text of
+# it: a comment is a word about the code, and the help of the wrapper is a
+# text and not code.  The calls of the chain are taken out of the code: the
+# call is the chain itself and not a search of a second place.
+file_code="$tmp/code-of-file"
+while read -r file; do
+  [ -n "$file" ] || continue
+  [ "$file" = "$chain_file" ] && continue
+
+  awk -f "$tmp/code-of.awk" -v strip_calls=1 "$file" >"$file_code" || blocked "cannot read the code of $file"
+
+  own_steps="$(grep -oE "$steps_of_a_search" "$file_code" 2>/dev/null | LC_ALL=C sort -u | tr '\n' ' ')"
+  if [ -n "$own_steps" ]; then
+    own_line="$(grep -nE "$steps_of_a_search" "$file_code" 2>/dev/null | head -n 1 | cut -d: -f1)"
+    own_where="$(sed -n "${own_line}p" "$file_code" | sed 's/^[[:space:]]*//')"
+    fail "$file writes a step of the search of a tool by itself [$own_steps] — the line: $own_where: the chain of the search lives in one place ($chain_file) and not in two"
+  fi
+done <"$script_files"
 
 # The chain is defined in one place and under one name: no other file of the
 # scripts defines find_tool.  The head of the definition is read with a space
@@ -324,10 +413,6 @@ sed -n '/^[[:space:]]*find_tool[[:space:]]*()[[:space:]]*{/,/^[[:space:]]*}/p' "
 if [ ! -s "$chain_body" ]; then
   fail "the body of the chain of the search cannot be read in $chain_file: a copy of the chain cannot be looked for"
 fi
-
-# Every file of the scripts, in the order of the names.
-script_files="$tmp/script-files"
-grep -rl '' scripts/ 2>/dev/null | LC_ALL=C sort >"$script_files"
 
 while read -r file; do
   [ -n "$file" ] || continue
@@ -359,18 +444,31 @@ while read -r file; do
     continue
   fi
 
-  # The steps of the search are in this file: the lookup of the command on
-  # the PATH and the binary of the user in the profile are the steps of the
-  # search of a tool, and a file that carries them searches for a tool by
-  # itself.
+  # A second chain of the search is defined in this file: a chain is a
+  # function that tries more than one place for the tool, and the name of a
+  # chain is not a part of its promise — a copy of the chain under another
+  # name is a copy of the chain, and the name of the copy does not tell it
+  # apart from the chain.
   #
-  # The code of the file is read and not the text of it: a comment is a word
-  # about the code, and the help of a wrapper is a text and not a code.
-  file_code="$tmp/code-of-file"
-  awk -f "$tmp/code-of.awk" -v strip_calls=0 "$file" >"$file_code" || blocked "cannot read the code of $file"
-  if grep -qE "$step_on_the_path" "$file_code" && grep -qE "$step_of_the_profile" "$file_code"; then
-    fail "the steps of the chain of the search are in $file: the chain lives in one place ($chain_file) and not in two"
-  fi
+  # The functions of the file and the code of their bodies are read.  The
+  # calls of the chain are taken out of that code: the call is the chain
+  # itself and not a search of a second place.
+  awk -f "$tmp/code-of.awk" -v strip_calls=1 "$file" >"$file_code" || blocked "cannot read the code of $file"
+  awk -f "$tmp/funcs-of.awk" "$file_code" >"$funcs" || blocked "cannot read the functions of $file"
+  cut -f1 "$funcs" 2>/dev/null | LC_ALL=C sort -u >"$func_names"
+  while read -r fname; do
+    [ -n "$fname" ] || continue
+    awk -F'\t' -v n="$fname" '$1 == n { sub(/^[^\t]*\t/, ""); print }' "$funcs" >"$body"
+    kinds=0
+    for kind in "$step_env" "$step_path_any" "$step_profile" "$step_store"; do
+      if grep -qE "$kind" "$body" 2>/dev/null; then
+        kinds=$((kinds + 1))
+      fi
+    done
+    if [ "$kinds" -ge 2 ]; then
+      fail "the function $fname of $file is a second chain of the search of a tool: the chain of the search lives in one place ($chain_file) and not in two"
+    fi
+  done <"$func_names"
 done <"$script_files"
 
 # --- 2. the skins of the repository are bound to the tokens of the site --------
@@ -723,6 +821,20 @@ fi
 # of the machine.  The tree of the decoy is a copy of the tree of the
 # repository, so the chain that the pipeline reads is the chain of the copy,
 # and a change of the pipeline is a change of the copy.
+#
+# The environment of the decoy is the environment of a normal run: every step
+# of the chain of the search resolves in it — the variable of the environment,
+# the command on the PATH, the binary of the profile of the user and the glob
+# of the store of nix — and every step resolves to the instrument of the
+# machine and not to the decoy.  The chain of the copy is the only thing that
+# hands out the decoy.
+#
+# A hermetic environment would hide a copy that resolves the instrument by
+# itself: the step of the profile resolves nothing there, the copy falls back
+# to the chain of the repository, and the decoy sees nothing at all.  The
+# boundary of the probe is named: the decoy sees a copy that **resolves** the
+# instrument in the environment of the decoy, and it does not see a copy that
+# resolves it in a place that the environment of the decoy does not provide.
 decoy_mark="YeahWave91DecoyMark"
 decoy_tree="$tmp/decoy"
 chain_fixture "$decoy_tree"
@@ -796,18 +908,65 @@ else
   fail "the decoy of the instrument is not in the chain of $chain_file: the chain of the search cannot be measured"
 fi
 
+# The home of the decoy: the profile of the user holds the instrument of the
+# machine and not the decoy.  A copy that resolves the instrument in the
+# profile of the user draws the pictures of the machine, and the mark of the
+# decoy is in no picture of them.
+decoy_home="$tmp/decoy-home"
+mkdir -p "$decoy_home/.nix-profile/bin" || blocked "cannot make the tree of the check"
+ln -sf "$plantuml_bin" "$decoy_home/.nix-profile/bin/plantuml" || blocked "cannot make the tree of the check"
+ln -sf "$emacs_bin" "$decoy_home/.nix-profile/bin/emacs" || blocked "cannot make the tree of the check"
+
+# The store of the decoy: the glob of the store of nix resolves the instrument
+# of the machine there too.
+decoy_store="$tmp/decoy-store"
+mkdir -p "$decoy_store/plantuml-1.2025.10/bin" "$decoy_store/emacs-30.2/bin" || blocked "cannot make the tree of the check"
+ln -sf "$plantuml_bin" "$decoy_store/plantuml-1.2025.10/bin/plantuml" || blocked "cannot make the tree of the check"
+ln -sf "$emacs_bin" "$decoy_store/emacs-30.2/bin/emacs" || blocked "cannot make the tree of the check"
+
+# The requirement of the mark of the decoy: a picture of the tree of the
+# decoy carries the mark of the decoy.  The requirement is a function and
+# not a line, so that the check can ask it whether it can fail; it counts
+# the pictures it is asked about, so that the check can tell a measurement
+# from a question that was never asked.
+decoy_asked=0
+decoy_marked_picture() {
+  local picture="$1"
+  decoy_asked=$((decoy_asked + 1))
+  grep -qF "$decoy_mark" "$picture" 2>/dev/null
+}
+
+# The teeth of the requirement: the requirement must be able to fail.  The
+# check asks it about a picture that carries no mark, and a requirement that
+# answers "yes" to such a picture is a requirement that cannot fail — and a
+# probe that cannot fail is a comment.
+if ! declare -f decoy_marked_picture >/dev/null 2>&1; then
+  fail "the requirement of the mark of the decoy is not in this check: the decoy of the instrument cannot be measured"
+fi
+printf '<svg>a picture without the mark of the decoy</svg>\n' >"$tmp/picture-without-the-mark" || blocked "cannot make the tree of the check"
+if decoy_marked_picture "$tmp/picture-without-the-mark"; then
+  fail "the requirement of the mark of the decoy cannot fail: the decoy of the instrument cannot be measured"
+fi
+# The question of the teeth is not a question about the pictures of the tree
+# of the decoy: the count of the questions starts here.
+decoy_asked=0
+
 if [ "$decoy_placed" -eq 1 ]; then
-  # The instrument of the machine is on the PATH of the run: a pipeline that
-  # searches for the instrument by itself finds it and draws the pictures of
-  # the machine, and the mark of the decoy is in no picture of them.
+  # The instrument of the machine is on the PATH of the run, in the variable
+  # of the environment of the run, in the profile of the user and in the
+  # store of nix: a pipeline that searches for the instrument by itself finds
+  # it and draws the pictures of the machine, and the mark of the decoy is in
+  # no picture of them.
   decoy_path="$shim:$PATH"
   for dir in "${plantuml_dirs[@]+"${plantuml_dirs[@]}"}"; do
     decoy_path="$decoy_path:$dir"
   done
+  decoy_path="$decoy_path:$(dirname "$emacs_bin")"
   (
     cd "$decoy_tree" || blocked "cannot enter the tree of the decoy"
     env "EMACS=$emacs_bin" "PLANTUML=$plantuml_bin" \
-      "${base_env[@]}" \
+      "HOME=$decoy_home" \
+      "NIX_STORE_DIR=$decoy_store" \
       "PATH=$decoy_path" bash "$decoy_tree/scripts/dev" diagrams
   ) >"$tmp/decoy.log" 2>&1
   decoy_rc=$?
@@ -821,12 +980,19 @@ if [ "$decoy_placed" -eq 1 ]; then
     for picture in "$decoy_tree/site/assets/diagrams"/*.svg; do
       [ -f "$picture" ] || continue
       decoy_pictures=$((decoy_pictures + 1))
-      if ! grep -qF "$decoy_mark" "$picture"; then
+      if ! decoy_marked_picture "$picture"; then
         fail "the picture $(basename "$picture") of the tree of the decoy does not carry the mark of the decoy: the pipeline did not draw with the instrument of the chain ($chain_file)"
       fi
     done
     if [ "$decoy_pictures" -eq 0 ]; then
       fail "the tree of the decoy holds no picture: the instrument of the chain ($chain_file) was not used"
+    fi
+    # The requirement was asked about every picture of the tree of the
+    # decoy: a requirement that was asked about nothing has measured
+    # nothing, and a check that measured nothing says so instead of
+    # answering 0.
+    if [ "$decoy_asked" -ne "$decoy_pictures" ]; then
+      fail "the requirement of the mark of the decoy was asked about $decoy_asked pictures and not about the $decoy_pictures pictures of the tree of the decoy: the decoy of the instrument was not measured"
     fi
     # The Emacs of the decoy was called: the mark of the decoy is written by
     # the Emacs of the chain and by no other Emacs.
@@ -1159,6 +1325,16 @@ if [ "$error_rc" -ne 1 ]; then
 fi
 
 # --- the end -------------------------------------------------------------------
+
+# The teeth of the check itself: the decoy of the instrument must be in this
+# file, and a check that has lost it is a check that cannot measure the
+# instrument of the chain.  The needle is built in two pieces, so that this
+# line does not hold the needle itself: a check that reads its own needle
+# would always find it.
+needle="YeahWave91""DecoyMark"
+if ! grep -qF "$needle" "$self"; then
+  fail "the decoy of the instrument (the mark $needle) is not in this check: the instrument of the chain cannot be measured"
+fi
 
 cleanup
 trap - EXIT
