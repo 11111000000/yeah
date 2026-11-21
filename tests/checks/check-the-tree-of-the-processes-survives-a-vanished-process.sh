@@ -34,7 +34,24 @@
 #      and the group of a process that is gone is nothing;
 #   7. the group of the shell that reads the tree is never signalled, and
 #      the group of a process that leads a group of its own is;
-#   8. the tree of the repository is never written.
+#   8. the tree is read once for a list of the descendants and not once
+#      per level of it: the number of the readings of the stat file of a
+#      process of the tree is counted outside of the tree, in the trace
+#      of the shell that reads it;
+#   9. the tree is stopped as a whole: a tree of real processes is
+#      stopped by the tree under test, and every process of it catches
+#      the signal -- the branch that comes first and the branch that
+#      comes last, and the grandchild as well;
+#  10. the group that leads a group of its own is signalled as a whole:
+#      a member of that group catches the signal, and the pid of that
+#      member is never signalled by the tree under test;
+#  11. the tree of the repository is never written.
+#
+# The stands of the ninth and the tenth part measure the catch of the
+# signal and not the death of the process: every node of the tree of the
+# stand writes a marker of its own when the signal reaches it.  The
+# question whether a process lives has one reader in the kernel, and this
+# check is not it.
 #
 # The stands of the kinds of the defect are apart: the break of one kind
 # is caught by the stand of that kind, and the words of the refusal name
@@ -86,7 +103,17 @@ system_tool() {
 }
 
 system_rm="$(system_tool rm || true)"
+# The pids of the tree of real processes of the stand.  They are killed
+# when the check ends: a process of the stand that outlives the check is
+# a process that holds a group of its own for ever.
+stand_pids=""
 cleanup() {
+  local pid
+  if [ -n "$stand_pids" ]; then
+    for pid in $stand_pids; do
+      kill -KILL "$pid" 2>/dev/null || true
+    done
+  fi
   if [ -n "$system_rm" ]; then
     "$system_rm" -rf "$tmp" 2>/dev/null || true
   else
@@ -325,7 +352,218 @@ if kill -0 "$child" 2>/dev/null; then
   kill -KILL "$child" 2>/dev/null || true
 fi
 
-# --- 8. the tree of the repository is not written ----------------------------
+# --- 8. the tree is read once for a list of the descendants ------------------
+
+# The claim says that the tree is read once for a list of the descendants
+# and not once per level of it.  The count is taken outside of the tree
+# under test: the shell traces every command it runs, and one scan of the
+# tree reads the stat file of every process of the tree exactly once.  The
+# number of the traced readings of the stat file of one process is
+# therefore the number of the scans of the tree.
+#
+# The trace is not a change of the tree under test: it is the shell of the
+# stand that traces itself, and the tree under test is read by it as it
+# is.
+
+traced_runner="$tmp/run-descendants-traced.sh"
+cat > "$traced_runner" <<'RUNNER' || blocked "cannot make the tree of the check"
+#!/usr/bin/env bash
+set -u
+. "$1" || exit 2
+set -x
+descendants "$2"
+RUNNER
+
+trace="$tmp/trace.log"
+PROC_ROOT="$fixture" bash "$traced_runner" "$tree" 100 >/dev/null 2>"$trace" || true
+reads="$(grep -c "read_stat 101" "$trace" 2>/dev/null || true)"
+[ -n "$reads" ] || reads=0
+if [ "$reads" != "1" ]; then
+  fail "the tree of the processes was read $reads times for one list of the descendants: the tree is read once for a list of the descendants and not once per level of it"
+fi
+
+# --- 9. the tree is stopped as a whole --------------------------------------
+
+# The claim says that the tree is stopped as a whole.  The stand builds a
+# tree of real processes and asks the tree under test to stop it:
+#
+#   root
+#   |-- a          a leads a group of its own
+#   |   `-- b      b is in the group of a
+#   `-- c          c leads a group of its own
+#
+# The tree of the stand is a tree of the host: the scan of the tree under
+# test reads /proc, and the pids of the stand are the pids of the host.
+
+pids="$tmp/pids"
+mkdir -p "$pids" || blocked "cannot make the tree of the check"
+
+# The pipe of the stand: the check holds the write end of it open, so a
+# node that reads from it waits for ever.  The wait of a node is a
+# builtin of the shell, so a node has no child process that could
+# outlive it, and the signal of the stop reaches the node itself.
+pipe="$tmp/stand.pipe"
+mkfifo "$pipe" 2>/dev/null || blocked "cannot make the pipe of the stand: the tree is not measured"
+exec 9<>"$pipe" || blocked "cannot open the pipe of the stand: the tree is not measured"
+
+node="$tmp/node.sh"
+cat > "$node" <<'NODE' || blocked "cannot make the tree of the check"
+#!/usr/bin/env bash
+# node.sh DIR NAME FIFO EDGE...
+#
+# The node starts the children that name it and writes its own pid into
+# DIR/NAME.pid after that: a node whose pid is known has already
+# started its children.  An edge is parent:child:how: "own" starts the
+# child with the job control of the shell, so the child leads a group
+# of its own, and "same" starts the child plainly, so the child stays
+# in the group of its parent.  The edges of the whole tree are given to
+# every node, and every node starts the children that are its own.
+#
+# The node catches the signal of the stop and writes DIR/NAME.caught:
+# the stand measures that the signal reached the process, and not that
+# the process is gone.  The question whether a process lives has one
+# reader in the kernel, and this check is not it.
+set -u
+dir="$1"; name="$2"; fifo="$3"; shift 3
+trap 'printf "%s\n" "$$" > "$dir/$name.caught"; exit 0' TERM
+for edge in "$@"; do
+  [ "${edge%%:*}" = "$name" ] || continue
+  rest="${edge#*:}"
+  child="${rest%%:*}"
+  how="${rest#*:}"
+  if [ "$how" = "own" ]; then
+    { set -m; bash "$0" "$dir" "$child" "$fifo" "$@" >/dev/null 2>&1 & disown $! 2>/dev/null || true; set +m; }
+  else
+    bash "$0" "$dir" "$child" "$fifo" "$@" >/dev/null 2>&1 &
+  fi
+done
+printf '%s\n' "$$" > "$dir/$name.pid"
+while :; do
+  [ -p "$fifo" ] || exit 1
+  read -r _ < "$fifo" || true
+done
+NODE
+
+# Wait until the nodes of the stand have written their pids.
+wait_nodes() {
+  local name waited=0 all
+  while [ "$waited" -lt 200 ]; do
+    all=1
+    for name in "$@"; do
+      if [ ! -s "$pids/$name.pid" ]; then
+        all=0
+        break
+      fi
+    done
+    [ "$all" -eq 1 ] && return 0
+    sleep 0.05
+    waited=$((waited + 1))
+  done
+  return 1
+}
+
+# Wait until the node NAME of the stand has caught the signal of the
+# stop, at most ten seconds.  The marker holds the pid of the node that
+# caught the signal, and the pid of the node must be the pid of that
+# marker: the signal reached this node and not another one.
+wait_caught() {
+  local name="$1" waited=0 pid
+  while [ ! -s "$pids/$name.caught" ]; do
+    sleep 0.05
+    waited=$((waited + 1))
+    [ "$waited" -lt 200 ] || return 1
+  done
+  pid="$(cat "$pids/$name.caught" 2>/dev/null)"
+  [ "$pid" = "$(pid_of "$name")" ]
+}
+
+pid_of() {
+  cat "$pids/$1.pid" 2>/dev/null
+}
+
+# The tree of the stand: a and c lead a group of their own, and b is in
+# the group of a.
+{ set -m; bash "$node" "$pids" root "$pipe" root:a:own root:c:own a:b:same >/dev/null 2>&1 & disown $! 2>/dev/null || true; set +m; }
+if wait_nodes root a c b; then
+  root_pid="$(pid_of root)"
+  a_pid="$(pid_of a)"
+  b_pid="$(pid_of b)"
+  c_pid="$(pid_of c)"
+  stand_pids="$root_pid $a_pid $b_pid $c_pid"
+  # the preconditions of the stand: a leads a group of its own, c
+  # leads a group of its own, and b is in the group of a
+  if [ "$(process_group "$a_pid")" != "$a_pid" ]; then
+    fail "the process $a_pid of the tree of the stand does not lead a group of its own: the tree is not measured"
+  elif [ "$(process_group "$c_pid")" != "$c_pid" ]; then
+    fail "the process $c_pid of the tree of the stand does not lead a group of its own: the tree is not measured"
+  elif [ "$(process_group "$b_pid")" != "$a_pid" ]; then
+    fail "the process $b_pid of the tree of the stand is not in the group of $a_pid: the tree is not measured"
+  else
+    # the tree under test stops the tree of the stand
+    stop_tree "$root_pid" TERM
+    for name in b a c root; do
+      if ! wait_caught "$name"; then
+        fail "the node $name of the tree of the stand did not catch the signal of the stop: the tree is not stopped as a whole"
+      fi
+    done
+  fi
+else
+  fail "the tree of real processes of the stand did not come up: the tree is not stopped as a whole"
+fi
+
+# --- 10. the group that leads a group of its own is signalled as a whole -----
+
+# The group of a process that leads a group of its own is signalled as a
+# whole: the member of that group catches the signal, and the tree under
+# test never signals the pid of that member -- it signals the group.
+#
+# The tree of the stand for this part is a pair: solo leads a group of its
+# own, and member is in that group.
+#
+# The tree under test is traced while it signals the group: the trace
+# holds the signal of the group and not the signal of the pid of the
+# member.  The trace is not a change of the tree under test: it is the
+# shell of the stand that traces itself.
+
+group_traced_runner="$tmp/run-group-traced.sh"
+cat > "$group_traced_runner" <<'RUNNER' || blocked "cannot make the tree of the check"
+#!/usr/bin/env bash
+set -u
+. "$1" || exit 2
+set -x
+kill_group "$2" "$3"
+RUNNER
+
+{ set -m; bash "$node" "$pids" solo "$pipe" solo:member:same >/dev/null 2>&1 & disown $! 2>/dev/null || true; set +m; }
+if wait_nodes solo member; then
+  solo_pid="$(pid_of solo)"
+  member_pid="$(pid_of member)"
+  stand_pids="$stand_pids $solo_pid $member_pid"
+  if [ "$(process_group "$solo_pid")" != "$solo_pid" ]; then
+    fail "the process $solo_pid of the tree of the stand does not lead a group of its own: the group is not measured"
+  elif [ "$(process_group "$member_pid")" != "$solo_pid" ]; then
+    fail "the process $member_pid of the tree of the stand is not in the group of $solo_pid: the group is not measured"
+  else
+    group_trace="$tmp/group.trace"
+    bash "$group_traced_runner" "$tree" "$solo_pid" TERM >/dev/null 2>"$group_trace" || true
+    if ! grep -q -F -- "-TERM -$solo_pid" "$group_trace"; then
+      fail "the group that leads a group of its own was not signalled as a whole: the trace of the tree under test does not hold the signal of the group -$solo_pid"
+    fi
+    if grep -q -F -- "-TERM $member_pid" "$group_trace"; then
+      fail "the pid of the member of the group was signalled by the tree under test and not the group of it: the trace holds the signal of the pid $member_pid"
+    fi
+    if ! wait_caught solo; then
+      fail "the node solo of the tree of the stand did not catch the signal of the group: the group that leads a group of its own is not signalled"
+    fi
+    if ! wait_caught member; then
+      fail "the node member of the group of $solo_pid did not catch the signal of the group: the group that leads a group of its own is not signalled as a whole"
+    fi
+  fi
+else
+  fail "the group of real processes of the stand did not come up: the group is not measured"
+fi
+
+# --- 11. the tree of the repository is not written ----------------------------
 
 repo_after="$(cd "$REPO" && find . -path ./.git -prune -o -print | LC_ALL=C sort | md5sum)"
 if [ "$repo_after" != "$repo_before" ]; then
