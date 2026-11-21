@@ -52,7 +52,13 @@
 ;;      state as well;
 ;;   4. the readings of the kernel still decide: the state of a living
 ;;      process is a letter, the state of a process that is gone is nil,
-;;      and neither reading raises an error.
+;;      and neither reading raises an error;
+;;   5. the kernel asks the rule in both of its places: the socket of a
+;;      zombie owner is swept away, a zombie owner is not adopted as if
+;;      it lived, and the socket of a living owner is refused and still
+;;      there.  The stand answers for the pids of its own -- the state of
+;;      the zombie is the letter `Z' and the state of the living process
+;;      is the letter `S' -- and the host is never asked about them.
 ;;
 ;; The third part names the file that breaks the rule.  A check that
 ;; cannot say who breaks the rule is a check that says "somebody".
@@ -70,6 +76,17 @@
 ;; back to the directory of the process makes the third part fail, by
 ;; the name of the file that does it.
 ;;
+;; The fifth part is the bite of the promise about the socket.  The
+;; promise of the claim names two consequences of the rule: the socket
+;; of a zombie owner is swept away, and a zombie owner is not adopted
+;; as if it lived.  A stand that reads the code is not a stand of those
+;; consequences: the stand of the fifth part asks the kernel itself, and
+;; the kernel answers with what it does to a socket.  The reader of the
+;; state of the process is the only thing the stand replaces, and it
+;; replaces it with the letter of a zombie and with the letter of a
+;; process that runs -- the rule of the kernel is the one under the
+;; proof, and it is asked for its own verdict.
+;;
 ;; Exit codes: 0 -- a dead process is dead everywhere; 1 -- it is not.
 
 ;;; Code:
@@ -78,6 +95,7 @@
 
 ;; The rule under the proof is the one of the kernel.
 (require 'yeah-proc)
+(require 'yeah-life)
 
 (defvar yeah-dead--failures nil
   "The failures this check found.")
@@ -126,6 +144,51 @@ measured on the letter alone.")
 The probe asks the tree of the processes whether the path of a process
 is there, and the answer is wrong for a zombie: the directory of a
 zombie is there as well.")
+
+(defconst yeah-dead--zombie-pid 999999999
+  "The process id of the zombie of the stand.
+The stand answers for this id and the host is never asked about it: the
+id is above the limit of the kernel, so no process of the host has it,
+and the letter the stand gives it is the letter of a zombie.")
+
+(defconst yeah-dead--living-pid 999999998
+  "The process id of the living process of the stand.
+The stand answers for this id with the letter of a process that runs.")
+
+(defun yeah-dead--stand-state (pid)
+  "Return the state of the process PID of the stand.
+The zombie is `Z' and the living process is `S', and every other pid is
+a process that is not there at all.  The host is never asked: the stand
+is a table and not a measurement of the host."
+  (cond ((eq pid yeah-dead--zombie-pid) "Z")
+        ((eq pid yeah-dead--living-pid) "S")
+        (t nil)))
+
+(defun yeah-dead--life-socket (directory tag pid)
+  "Return the path of the life socket of the owner PID in DIRECTORY.
+The name of the socket of the kernel carries the pid of its owner, and
+the stand uses the same shape: the sweep and the adoption read the pid
+of the owner out of the name of the file."
+  (expand-file-name (format "yeah-life-%s-%d.sock" tag pid) directory))
+
+(defun yeah-dead--life-directory ()
+  "Return a fresh directory for the sockets of the stand.
+The stand writes nothing into the tree of the repository: the sockets
+of the stand are files of a directory of its own.  The directory is
+private: `make-temp-file' with the flag of a directory gives one."
+  (make-temp-file "yeah-dead-life" t))
+
+(defun yeah-dead--processes-named (name)
+  "Return the live processes whose name is NAME.
+The stand takes a socket and leaves a server behind: the servers it
+started are found and stopped again, and the server of the check itself
+is not among them."
+  (delq nil
+        (mapcar (lambda (process)
+                  (and (process-live-p process)
+                       (equal name (process-name process))
+                       process))
+                (process-list))))
 
 (defconst yeah-dead--stat-file
   "\"/proc/[^\"]*stat\""
@@ -287,6 +350,69 @@ second answer to the same question."
      ((not (null (cdr result)))
       (push (format "the state of a process that is gone is %S and not nil" (cdr result))
             yeah-dead--failures))))
+  ;; 5. the kernel asks the rule in both of its places
+  ;;
+  ;; The stand replaces the reader of the state of the process and nothing
+  ;; else: the rule of the kernel is asked for its own verdict, and the
+  ;; two places of the kernel are asked with a zombie and with a process
+  ;; that runs.
+  (let* ((directory (yeah-dead--life-directory))
+         (owned yeah-life--owned)
+         (servers (yeah-dead--processes-named "yeah-life")))
+    (unwind-protect
+        (cl-letf (((symbol-function 'yeah-proc-state) #'yeah-dead--stand-state))
+          ;; 5a. the sweep takes the socket of a zombie and keeps the
+          ;;     socket of a living owner
+          (let ((zombie (yeah-dead--life-socket directory "sweep" yeah-dead--zombie-pid))
+                (living (yeah-dead--life-socket directory "sweep" yeah-dead--living-pid)))
+            (with-temp-file zombie (insert ""))
+            (with-temp-file living (insert ""))
+            (yeah-life-socket-sweep directory)
+            (when (file-exists-p zombie)
+              (push (format "the socket %s of a zombie owner was not swept away: a zombie owner is dead, and the socket of a dead owner is taken away"
+                            (file-name-nondirectory zombie))
+                    yeah-dead--failures))
+            (unless (file-exists-p living)
+              (push (format "the socket %s of a living owner was swept away: the life of a socket is not worth the risk of killing a living owner"
+                            (file-name-nondirectory living))
+                    yeah-dead--failures)))
+          ;; 5b. the adoption takes the socket of a zombie owner
+          (let ((zombie (yeah-dead--life-socket directory "adopt" yeah-dead--zombie-pid))
+                (living (yeah-dead--life-socket directory "adopt" yeah-dead--living-pid))
+                (result nil))
+            (with-temp-file zombie (insert ""))
+            (with-temp-file living (insert ""))
+            (setq result (yeah-dead--call #'yeah-life-adopt zombie))
+            (unless (eq 'ok (car result))
+              (push (format "the socket %s of a zombie owner was refused: %S, and a zombie owner is not adopted as if it lived"
+                            (file-name-nondirectory zombie) (cdr result))
+                    yeah-dead--failures))
+            (unless (file-exists-p zombie)
+              (push (format "the socket %s of a zombie owner was not taken by the adoption" (file-name-nondirectory zombie))
+                    yeah-dead--failures))
+            ;; 5c. the adoption refuses the socket of a living owner, and
+            ;;     the socket of a living owner is still there
+            (setq result (yeah-dead--call #'yeah-life-adopt living))
+            (if (eq 'ok (car result))
+                (push (format "the socket %s of a living owner was adopted: the life of a socket is not worth the risk of killing a living owner"
+                              (file-name-nondirectory living))
+                      yeah-dead--failures)
+              (unless (string-match-p "belongs to a living process"
+                                      (error-message-string (cdr result)))
+                (push (format "the socket %s of a living owner was refused with the words %S and not with the words of the rule"
+                              (file-name-nondirectory living)
+                              (error-message-string (cdr result)))
+                      yeah-dead--failures)))
+            (unless (file-exists-p living)
+              (push (format "the socket %s of a living owner was taken away by the adoption that refused it"
+                            (file-name-nondirectory living))
+                    yeah-dead--failures))))
+      ;; the stand leaves the check as it found it: the socket of the
+      ;; check is still owned, and the servers of the stand are stopped
+      (setq yeah-life--owned owned)
+      (dolist (process (delete-dups (delete servers (yeah-dead--processes-named "yeah-life"))))
+        (ignore-errors (delete-process process)))
+      (ignore-errors (delete-directory directory t))))
   (dolist (failure yeah-dead--failures)
     (message "dead-process: %s" failure))
   (if yeah-dead--failures
