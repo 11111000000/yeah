@@ -1766,6 +1766,31 @@ work item. Never resolve it by silently making documentation more optimistic.
   rewriting the measured string by hand makes it a new, unmeasured one.  The findings F43 and
   F44 wait for the wave 106, and F47, F48, F51 and F52 for the wave 107 (docs/PLAN.md §16.101).
 
+- The discriminator of the package of the waves C1, 104 and 105: **PASS** and three findings
+  (F56--F58) (2026-11-21, the tree of the commit `ff3c1e1`, the repository unchanged): all five
+  registered controls of the claims of the package bite by their own refusal (the code 1) and none
+  of them dies with the code 255, the honest tree is green, the stands of the wave 104 are alive
+  and tell each other apart (the stand A falls, the stand B passes silently), and the repair of
+  F55 is proved and not only written -- the broken control `93eeb6e` reproduces the death of the
+  check (255) and the corrected one bites (1).  **F56** -- the number of lines of the check of the
+  wave 97 was wrong already when the record was written: the record said 253, the file has 251
+  lines and has had 251 since the commit `ca321c8` (03:30:51 UTC), while the record was written
+  by the commit `09d306b` (03:36:17 UTC), so the number 253 was not right at any moment; it is 251
+  now.  **F57** -- the package had no live run and no record of the package said so; the run was
+  made (the decision of the owner of 2026-11-21) and it is recorded in `docs/LIVE-EVIDENCE.md`,
+  "The live run of the package of the waves C1, 104 and 105": the person answered "Allow always"
+  over the wire of ACP, the decision carries the reply `:always` and the scope `session`, and the
+  second identical call was allowed by the rule of the session **without** a new question.  **F58**
+  -- the numbers that were named as the present and had grown old without being marked as a
+  snapshot: the picture carries 66 names and `lib/` holds 68 modules today, 2 of them are excluded
+  with a reason, and none is unnamed.  **A rule of the parent (2026-11-21; a rule outside §17.2,
+  the owner may cancel it): a live run must compare the time the service started with the time of
+  the commit.**  The first run of the package measured an old tree -- the ACP service had been
+  started at 05:34:24 UTC and the wave C1 was merged at 13:13:31 UTC -- and its decisions carried
+  no scope at all; the socket of the life of the service on the disk says when that instance
+  started, and the plugin of the orchestrator keeps a cache of the service that `paseo reload`
+  does not drop (docs/PLAN.md §16.102).
+
 ## The commands
 
 ```sh
