@@ -17,18 +17,28 @@
 ;;
 ;; The bound of the claim is one per cent of a core over ten seconds, and
 ;; the check measures the subject the way the defect itself was measured:
-;; the ticks of `/proc/<pid>/stat', not the percentage of the CPU that
-;; `top' prints.
+;; the ticks of the stat file of the process, not the percentage of the
+;; CPU that `top' prints.
 ;;
 ;; The control of the claim brings the busy loop back -- the pump of the
 ;; wire stops waiting -- and the measured ticks must then exceed the bound.
 ;; The check fails by its own assertion and not by a crash.
+;;
+;; The ticks are read by the reader of the support
+;; (tests/support/yeah-proc.el), and the reader decides: a server that is
+;; gone has no ticks, and that is not the number zero.  A check that read
+;; the ticks of a server that is gone as zero would prove nothing, so the
+;; check names the server that is not running and fails by that name.
 
 ;;; Code:
 
-(require 'cl-lib)
 (require 'json)
 (require 'seq)
+
+;; The reader of the ticks of a process is the one of the support: the
+;; process of the server may die while the check reads it, and a reader
+;; that dies on the filesystem does not decide on its own assertion.
+(load (expand-file-name "tests/support/yeah-proc.el") nil t)
 
 (defvar yeah-check--emacs
   (or (and (getenv "EMACS") (file-executable-p (getenv "EMACS"))
@@ -56,24 +66,6 @@
 
 (defvar yeah-check--bound-percent 1
   "Per cent of a core the server may cost over the window of the check.")
-
-(defun yeah-check--ticks (pid)
-  "Return the ticks of CPU that the process PID has used.
-The ticks of `/proc/<pid>/stat' are the user time and the system time of
-the process, in the units of the clock of the kernel."
-  (let ((stat (expand-file-name (format "/proc/%d/stat" pid))))
-    (with-temp-buffer
-      (insert-file-contents stat)
-      (goto-char (point-min))
-      (let* ((text (buffer-string))
-             ;; The name of the process is in parentheses and may hold spaces,
-             ;; so the times are read after the last parenthesis of the line.
-             (tail (substring text (1+ (cl-position ?\) text :from-end t))))
-             (fields (split-string tail " " t)))
-        ;; The fields after the name: state, ppid, pgrp, session, tty_nr,
-        ;; tpgid, flags, minflt, cminflt, majflt, cmajflt, utime, stime.
-        (+ (string-to-number (nth 11 fields))
-           (string-to-number (nth 12 fields)))))))
 
 (defun yeah-check--clock-ticks ()
   "Return the number of the clock ticks of the kernel in one second.
@@ -162,18 +154,29 @@ of the model goes out and nothing comes back."
             ;; the turn starts and the provider keeps silent
             (sleep-for 2)
             (let* ((clock (yeah-check--clock-ticks))
-                   (before (yeah-check--ticks (process-id yeah-check--server)))
+                   (pid (process-id yeah-check--server))
+                   (before (yeah-proc--ticks pid))
                    (wall (+ (float-time) yeah-check--window)))
-              (while (< (float-time) wall)
-                (accept-process-output yeah-check--server 0.05)
-                (sleep-for 0.05))
-              (let* ((after (yeah-check--ticks (process-id yeah-check--server)))
-                     (spent (/ (- after before) clock))
-                     (bound (/ (* yeah-check--window yeah-check--bound-percent) 100.0)))
-                (when (> spent bound)
-                  (push (format "the silent server spun: it cost %.3f seconds of CPU in %d seconds, the bound is %.3f"
-                                spent yeah-check--window bound)
-                        failures)))))))
+              (if (null before)
+                  ;; the server is gone: it has no ticks, and the ticks of a
+                  ;; server that is not there are not zero -- they are
+                  ;; nothing to measure, and the claim is not shown
+                  (push "the server of the check is not running: it has no ticks to measure"
+                        failures)
+                (progn
+                  (while (< (float-time) wall)
+                    (accept-process-output yeah-check--server 0.05)
+                    (sleep-for 0.05))
+                  (let* ((after (yeah-proc--ticks pid))
+                         (bound (/ (* yeah-check--window yeah-check--bound-percent) 100.0)))
+                    (cond
+                     ((null after)
+                      (push "the server of the check is not running: it is gone before the window of the check ended"
+                            failures))
+                     ((> (/ (- after before) clock) bound)
+                      (push (format "the silent server spun: it cost %.3f seconds of CPU in %d seconds, the bound is %.3f"
+                                    (/ (- after before) clock) yeah-check--window bound)
+                            failures))))))))))
     (when (and yeah-check--server (process-live-p yeah-check--server))
       (ignore-errors (kill-process yeah-check--server)))
     (ignore-errors (delete-directory home t)))

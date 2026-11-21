@@ -28,13 +28,13 @@
 ;; of the limit, and the runner answered 3.
 ;;
 ;; The check measures the subject the way the defect was measured: the
-;; process of the server, by its pid, in `/proc'.  It does not ask the
-;; server whether it is alive: a server that answers is a server that
-;; lives.
+;; process of the server, by its pid, in the tree of the processes of the
+;; system.  It does not ask the server whether it is alive: a server that
+;; answers is a server that lives.
 ;;
 ;; "Dead" is read from the STATE of the process, not from the clock.
-;; The state of a process in `/proc/<pid>/stat' is the letter that
-;; follows the name of the process: `S' and `R' for a process that runs,
+;; The state of a process in its stat file is the letter that follows
+;; the name of the process: `S' and `R' for a process that runs,
 ;; and `Z' for a zombie -- a process that has already died and waits to
 ;; be reaped.  A zombie burns no CPU, answers nobody and holds no
 ;; client: the server of the pilot is gone the moment it becomes one.
@@ -62,24 +62,13 @@
 
 (require 'cl-lib)
 
+;; The reader of the state of a process is the one of the support: the
+;; process of the server dies while the check reads it, and a reader that
+;; dies on the filesystem does not decide on its own assertion.
+(load (expand-file-name "tests/support/yeah-proc.el") nil t)
+
 (defvar yeah-limit--failures nil
   "The failures this check found.")
-
-(defun yeah-limit--state (pid)
-  "Return the state field of the process PID, or nil when the process is gone.
-The state is the letter that follows the name of the process in
-`/proc/<pid>/stat': `S' and `R' for a process that runs, `Z' for a
-zombie -- a process that is dead and waits to be reaped -- and so on.
-The name of the process is in parentheses and may hold spaces and
-parentheses of its own, so the state is read after the LAST closing
-parenthesis of the line."
-  (let ((path (format "/proc/%d/stat" pid)))
-    (when (file-exists-p path)
-      (with-temp-buffer
-        (insert-file-contents path)
-        (let ((text (buffer-string)))
-          (when (string-match ".*) \\([A-Za-z]\\)" text)
-            (match-string 1 text)))))))
 
 (defun yeah-limit--alive-p (pid)
   "Return non-nil when the process PID is alive.
@@ -87,7 +76,7 @@ A zombie is not alive: it has died already and waits to be reaped, it
 burns no CPU and answers nobody.  The answer comes from the state of
 the process, so it does not depend on the speed of the host."
   (and pid (integerp pid) (> pid 0)
-       (let ((state (yeah-limit--state pid)))
+       (let ((state (yeah-proc--state pid)))
          (and state (not (string= state "Z"))))))
 
 (defun yeah-limit--await (predicate &optional timeout)
@@ -110,13 +99,14 @@ the process, so it does not depend on the speed of the host."
 
 (defun yeah-limit--emacs ()
   "Return the Emacs program that runs the pilot of this check.
-The path must mean the same thing in another process: `/proc/self/exe'
-is the reader of it, and the reader is the runner, not the Emacs.  The
-path of the binary is read once and is a name by itself."
+The path must mean the same thing in another process: the directory the
+Emacs of this check was started from holds the program itself, and the
+reader is the runner, not the Emacs.  The path of the binary is read
+once and is a name by itself."
   (or (and (getenv "EMACS") (file-executable-p (getenv "EMACS")) (getenv "EMACS"))
       (executable-find "emacs")
-      (let ((self (car (file-attributes "/proc/self/exe"))))
-        (and (stringp self) (file-executable-p self) self))
+      (let ((self (expand-file-name "emacs" invocation-directory)))
+        (and (file-executable-p self) self))
       (and (file-executable-p (expand-file-name "~/.nix-profile/bin/emacs"))
            (expand-file-name "~/.nix-profile/bin/emacs"))))
 
@@ -200,7 +190,7 @@ the pid of the server and the path of the socket of the server."
               (unless (yeah-limit--await-dead server 15)
                 (push (format "the server of the pilot was still alive fifteen seconds after the limit passed (pid %d, state %S)"
                               server
-                              (or (yeah-limit--state server) "gone"))
+                              (or (yeah-proc--state server) "gone"))
                       yeah-limit--failures))))))
     ;; the check leaves nothing behind
     (yeah-limit--kill server)
