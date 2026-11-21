@@ -96,7 +96,7 @@ of a socket is not worth the risk of killing a living owner."
       ;; zombie owner is dead, and the socket of a dead owner is taken
       ;; away: a socket of a zombie must not keep a service from
       ;; starting.
-      (if (and owner (yeah-proc--alive-p (yeah-proc--state owner)))
+      (if (and owner (yeah-proc-alive-p (yeah-proc-state owner)))
           (error "yeah-life-adopt: the life socket %s belongs to a living process"
                  path)
         (ignore-errors (delete-file path)))))
@@ -136,7 +136,7 @@ owner."
     (dolist (file (file-expand-wildcards
                    (expand-file-name "yeah-life-*.sock" directory)))
       (let ((pid (yeah-life--pid-of file)))
-        (when (and pid (not (yeah-proc--alive-p (yeah-proc--state pid))))
+        (when (and pid (not (yeah-proc-alive-p (yeah-proc-state pid))))
           (ignore-errors (delete-file file)))))))
 
 ;;;###autoload

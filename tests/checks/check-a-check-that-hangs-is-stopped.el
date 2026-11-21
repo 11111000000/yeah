@@ -60,7 +60,7 @@
 The process is gone when the state of it says so: a zombie is gone, it
 has died already and waits to be reaped."
   (yeah-check--await
-   (lambda () (not (yeah-proc--alive-p (yeah-proc--state pid))))
+   (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
    timeout))
 
 (defun yeah-check--kill-group (pid signal)
@@ -139,11 +139,11 @@ and the pid of the child of the fixture."
                 (setq fixture-pid pid
                       child-pid child)
                 ;; the fixture is alive while the gate waits for it
-                (unless (yeah-proc--alive-p (yeah-proc--state pid))
+                (unless (yeah-proc-alive-p (yeah-proc-state pid))
                   (push (format "the fixture was not alive (pid %d)" pid)
                         yeah-check--failures))
                 ;; and the child it started is alive as well
-                (unless (yeah-proc--alive-p (yeah-proc--state child))
+                (unless (yeah-proc-alive-p (yeah-proc-state child))
                   (push (format "the fixture started no live child (pid %d)" child)
                         yeah-check--failures))
                 ;; the gate waits for the limit, and then stops the check
@@ -185,12 +185,12 @@ and the pid of the child of the fixture."
         (yeah-check--kill-group (process-id gate) "KILL")))
     ;; a check that fails must not leave the check that hangs behind either
     (dolist (pid (nreverse (delq nil (list child-pid fixture-pid))))
-      (when (yeah-proc--alive-p (yeah-proc--state pid))
+      (when (yeah-proc-alive-p (yeah-proc-state pid))
         (yeah-check--kill-group pid "TERM")
         (yeah-check--await
-         (lambda () (not (yeah-proc--alive-p (yeah-proc--state pid))))
+         (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
          3)
-        (when (yeah-proc--alive-p (yeah-proc--state pid))
+        (when (yeah-proc-alive-p (yeah-proc-state pid))
           (yeah-check--kill-group pid "KILL"))))
     (ignore-errors (delete-file report)))
   (dolist (failure yeah-check--failures)

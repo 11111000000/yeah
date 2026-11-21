@@ -64,7 +64,7 @@
 The process is gone when the state of it says so: a zombie is gone, it
 has died already and waits to be reaped."
   (yeah-check--await
-   (lambda () (not (yeah-proc--alive-p (yeah-proc--state pid))))
+   (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
    timeout))
 
 (defun yeah-check--kill (pid)
@@ -130,7 +130,7 @@ the pid of the server and the path of the socket of the server."
                       yeah-check--failures))
               (when (and owner (> owner 0) server (> server 0) socket)
                 ;; the server of the fixture serves while its owner lives
-                (unless (yeah-proc--alive-p (yeah-proc--state server))
+                (unless (yeah-proc-alive-p (yeah-proc-state server))
                   (push (format "the server of the check was not alive (pid %d)" server)
                         yeah-check--failures))
                 ;; the gate kills the owner of the server

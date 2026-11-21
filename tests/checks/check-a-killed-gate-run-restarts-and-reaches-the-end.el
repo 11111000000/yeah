@@ -74,7 +74,7 @@
 The process is gone when the state of it says so: a zombie is gone, it
 has died already and waits to be reaped."
   (yeah-gate--await
-   (lambda () (not (yeah-proc--alive-p (yeah-proc--state pid))))
+   (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
    timeout))
 
 (defun yeah-gate--kill (pid)

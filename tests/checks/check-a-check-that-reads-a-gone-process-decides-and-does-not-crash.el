@@ -76,8 +76,8 @@
   "The failures this check found.")
 
 (defconst yeah-check--readers
-  '(("check-a-pilot-that-runs-out-of-time-leaves-no-server.el" . "yeah-proc--state")
-    ("check-the-server-does-not-spin-when-the-provider-is-silent.el" . "yeah-proc--ticks"))
+  '(("check-a-pilot-that-runs-out-of-time-leaves-no-server.el" . "yeah-proc-state")
+    ("check-the-server-does-not-spin-when-the-provider-is-silent.el" . "yeah-proc-ticks"))
   "The checks that read a process, and the reader of the kernel each of them uses.")
 
 (defconst yeah-check--gone-pid 999999999
@@ -155,7 +155,7 @@ the check and not a pass."
   ;; process: a process that the kernel has not reaped yet has a state
   ;; as well.  The reader must answer here without an error, and the
   ;; check says so by name when it does not.
-  (let ((result (yeah-check--call #'yeah-proc--state gone)))
+  (let ((result (yeah-check--call #'yeah-proc-state gone)))
     (cond
      ((not (eq 'ok (car result)))
       (push (format "the reader raised an error for the process id %d of the test: %S"
@@ -164,7 +164,7 @@ the check and not a pass."
      ((not (null (cdr result)))
       (push (format "the process id %d of the test is not free" gone) yeah-check--failures))))
   ;; 1. the state of a process that is gone
-  (let ((result (yeah-check--call #'yeah-proc--state gone)))
+  (let ((result (yeah-check--call #'yeah-proc-state gone)))
     (cond
      ((not (eq 'ok (car result)))
       (push (format "the state of a process that is gone raised an error: %S" (cdr result))
@@ -173,7 +173,7 @@ the check and not a pass."
       (push (format "the state of a process that is gone is %S and not nil" (cdr result))
             yeah-check--failures))))
   ;; 2. the ticks of a process that is gone
-  (let ((result (yeah-check--call #'yeah-proc--ticks gone)))
+  (let ((result (yeah-check--call #'yeah-proc-ticks gone)))
     (cond
      ((not (eq 'ok (car result)))
       (push (format "the ticks of a process that is gone raised an error: %S" (cdr result))
@@ -182,7 +182,7 @@ the check and not a pass."
       (push (format "the ticks of a process that is gone are %S and not nil" (cdr result))
             yeah-check--failures))))
   ;; 3. the state of a living process
-  (let* ((result (yeah-check--call #'yeah-proc--state self))
+  (let* ((result (yeah-check--call #'yeah-proc-state self))
          (state (and (eq 'ok (car result)) (cdr result))))
     (cond
      ((not (eq 'ok (car result)))
@@ -195,7 +195,7 @@ the check and not a pass."
       (push (format "the state of this process is %S and not one letter" state)
             yeah-check--failures))))
   ;; 4. the ticks of a living process
-  (let* ((result (yeah-check--call #'yeah-proc--ticks self))
+  (let* ((result (yeah-check--call #'yeah-proc-ticks self))
          (ticks (and (eq 'ok (car result)) (cdr result))))
     (cond
      ((not (eq 'ok (car result)))
@@ -210,7 +210,7 @@ the check and not a pass."
     (push "the process of the check has no tick of CPU: the comparison of the ticks proves nothing"
           yeah-check--failures))
   (let* ((before (yeah-check--own-ticks self))
-         (result (yeah-check--call #'yeah-proc--ticks self))
+         (result (yeah-check--call #'yeah-proc-ticks self))
          (answer (and (eq 'ok (car result)) (cdr result)))
          (after (yeah-check--own-ticks self)))
     (cond
@@ -227,7 +227,7 @@ the check and not a pass."
   ;; 6. the reader answers nil for a PID that names no process, and it
   ;;    raises no error for it
   (dolist (pid yeah-check--no-pids)
-    (let ((result (yeah-check--call #'yeah-proc--state pid)))
+    (let ((result (yeah-check--call #'yeah-proc-state pid)))
       (cond
        ((not (eq 'ok (car result)))
         (push (format "the state of the process %S raised an error: %S" pid (cdr result))
@@ -235,7 +235,7 @@ the check and not a pass."
        ((not (null (cdr result)))
         (push (format "the state of the process %S is %S and not nil" pid (cdr result))
               yeah-check--failures))))
-    (let ((result (yeah-check--call #'yeah-proc--ticks pid)))
+    (let ((result (yeah-check--call #'yeah-proc-ticks pid)))
       (cond
        ((not (eq 'ok (car result)))
         (push (format "the ticks of the process %S raised an error: %S" pid (cdr result))

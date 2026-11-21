@@ -86,7 +86,7 @@
 The process is gone when the state of it says so: a zombie is gone, it
 has died already and waits to be reaped."
   (yeah-limit--await
-   (lambda () (not (yeah-proc--alive-p (yeah-proc--state pid))))
+   (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
    timeout))
 
 (defun yeah-limit--kill (pid)
@@ -169,7 +169,7 @@ the pid of the server and the path of the socket of the server."
                     yeah-limit--failures))
             (when (and (> pilot 0) (> server 0) socket)
               ;; the server serves while the pilot lives
-              (unless (yeah-proc--alive-p (yeah-proc--state server))
+              (unless (yeah-proc-alive-p (yeah-proc-state server))
                 (push (format "the server of the pilot was not alive (pid %d)" server)
                       yeah-limit--failures))
               ;; the limit of the pilot passes, and the pilot ends
@@ -189,7 +189,7 @@ the pid of the server and the path of the socket of the server."
               (unless (yeah-limit--await-dead server 15)
                 (push (format "the server of the pilot was still alive fifteen seconds after the limit passed (pid %d, state %S)"
                               server
-                              (or (yeah-proc--state server) "gone"))
+                              (or (yeah-proc-state server) "gone"))
                       yeah-limit--failures))))))
     ;; the check leaves nothing behind
     (yeah-limit--kill server)

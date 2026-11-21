@@ -43,7 +43,7 @@
 ;; calls a zombie alive.  A service whose owner is a zombie then holds a
 ;; socket that nobody may take, and the service cannot start.  A caller
 ;; that repeats the rule repeats the mistake with it, so the rule is
-;; asked here: `(yeah-proc--alive-p (yeah-proc--state pid))'.
+;; asked here: `(yeah-proc-alive-p (yeah-proc-state pid))'.
 
 ;;; Code:
 
@@ -66,7 +66,7 @@ dies.  The reader decides on every PID it is given."
           (buffer-string))
       (file-error nil))))
 
-(defun yeah-proc--state (pid)
+(defun yeah-proc-state (pid)
   "Return the state field of the process PID, or nil when the process is gone.
 The state is the letter that follows the name of the process in the stat
 file: `S' and `R' for a process that runs, `Z' for a zombie -- a process
@@ -77,7 +77,7 @@ so the state is read after the LAST closing parenthesis of the line."
     (when (and text (string-match ".*) \\([A-Za-z]\\)" text))
       (match-string 1 text))))
 
-(defun yeah-proc--alive-p (state)
+(defun yeah-proc-alive-p (state)
   "Return non-nil when a process in STATE lives.
 The state is the letter of the state field of the stat file of a
 process.  `S' and `R' are a process that runs, and every other letter
@@ -104,7 +104,7 @@ a zero decides about a process it knows nothing about."
   (when (and (stringp field) (string-match-p "\\`[0-9]+\\'" field))
     (string-to-number field)))
 
-(defun yeah-proc--ticks (pid)
+(defun yeah-proc-ticks (pid)
   "Return the ticks of CPU that the process PID has used, or nil.
 The ticks of the stat file are the user time and the system time of the
 process, in the units of the clock of the kernel.  The answer is nil

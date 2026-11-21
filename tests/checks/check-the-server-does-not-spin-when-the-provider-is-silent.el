@@ -155,7 +155,7 @@ of the model goes out and nothing comes back."
             (sleep-for 2)
             (let* ((clock (yeah-check--clock-ticks))
                    (pid (process-id yeah-check--server))
-                   (before (yeah-proc--ticks pid))
+                   (before (yeah-proc-ticks pid))
                    (wall (+ (float-time) yeah-check--window)))
               (if (null before)
                   ;; the server is gone: it has no ticks, and the ticks of a
@@ -167,7 +167,7 @@ of the model goes out and nothing comes back."
                   (while (< (float-time) wall)
                     (accept-process-output yeah-check--server 0.05)
                     (sleep-for 0.05))
-                  (let* ((after (yeah-proc--ticks pid))
+                  (let* ((after (yeah-proc-ticks pid))
                          (bound (/ (* yeah-check--window yeah-check--bound-percent) 100.0)))
                     (cond
                      ((null after)

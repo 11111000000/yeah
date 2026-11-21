@@ -183,7 +183,7 @@ stands for the root of the tree of the processes."
   "Return non-nil when the rule of the kernel calls the process PID alive.
 The state of the process of the stand is the state of the stand: the
 rule of the kernel is a function of that letter alone."
-  (yeah-proc--alive-p (cdr (assq pid yeah-dead--stand))))
+  (yeah-proc-alive-p (cdr (assq pid yeah-dead--stand))))
 
 (defun yeah-dead--local-rule (text)
   "Return the names of the functions of TEXT that decide the life of a pid.
@@ -207,12 +207,12 @@ second answer to the same question."
   (dolist (entry yeah-dead--states)
     (let* ((state (car entry))
            (lives (cdr entry))
-           (answer (yeah-proc--alive-p state)))
+           (answer (yeah-proc-alive-p state)))
       (unless (eq (if answer t nil) lives)
         (push (format "the rule says %s for the state %S, and it must say %s"
                       (if answer "alive" "dead") state (if lives "alive" "dead"))
               yeah-dead--failures))))
-  (unless (null (yeah-proc--alive-p nil))
+  (unless (null (yeah-proc-alive-p nil))
     (push "the rule says alive for the state nil, and a process that is not there is dead"
           yeah-dead--failures))
   ;; 2. the stand: the repair changes the verdict and not only the wording
@@ -254,7 +254,7 @@ second answer to the same question."
         ;; no file defines a second rule of the life of a process
         (dolist (rule (yeah-dead--local-rule text))
           (push (format "the file %s defines the rule %s: the rule of the life of a process is one function of the kernel (%s)"
-                        name rule "yeah-proc--alive-p")
+                        name rule "yeah-proc-alive-p")
                 yeah-dead--failures))
         ;; the reader of the stat file of a process lives in one module
         ;; of the kernel
@@ -265,13 +265,13 @@ second answer to the same question."
                         name)
                 yeah-dead--failures))
         ;; a file that asks the rule asks the state as well
-        (when (and (string-match-p "yeah-proc--alive-p" text)
-                   (not (string-match-p "yeah-proc--state" text)))
+        (when (and (string-match-p "yeah-proc-alive-p" text)
+                   (not (string-match-p "yeah-proc-state" text)))
           (push (format "the file %s asks the rule of the life of a process without asking the state of that process"
                         name)
                 yeah-dead--failures))))))
   ;; 4. the readings of the kernel still decide
-  (let ((result (yeah-dead--call #'yeah-proc--state (emacs-pid))))
+  (let ((result (yeah-dead--call #'yeah-proc-state (emacs-pid))))
     (cond
      ((not (eq 'ok (car result)))
       (push (format "the state of this process raised an error: %S" (cdr result))
@@ -279,7 +279,7 @@ second answer to the same question."
      ((not (and (stringp (cdr result)) (= 1 (length (cdr result)))))
       (push (format "the state of this process is %S and not one letter" (cdr result))
             yeah-dead--failures))))
-  (let ((result (yeah-dead--call #'yeah-proc--state yeah-dead--gone-pid)))
+  (let ((result (yeah-dead--call #'yeah-proc-state yeah-dead--gone-pid)))
     (cond
      ((not (eq 'ok (car result)))
       (push (format "the state of a process that is gone raised an error: %S" (cdr result))

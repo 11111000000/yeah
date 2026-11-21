@@ -109,7 +109,7 @@ kills, and the service is the thing that must not stay behind."
 The process is gone when the state of it says so: a zombie is gone, it
 has died already and waits to be reaped."
   (yeah-check--await
-   (lambda () (not (yeah-proc--alive-p (yeah-proc--state pid))))
+   (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
    timeout))
 
 (defun yeah-check--kill (pid)
@@ -152,7 +152,7 @@ defect is about.  Return non-nil when the signal was sent."
               (push (format "the service never bound its socket: %s" socket)
                     yeah-check--failures))
             ;; and the process of the service is alive
-            (unless (yeah-proc--alive-p (yeah-proc--state service))
+            (unless (yeah-proc-alive-p (yeah-proc-state service))
               (push (format "the service was not alive before its owner was killed (pid %d)"
                             service)
                     yeah-check--failures))
@@ -170,7 +170,7 @@ defect is about.  Return non-nil when the signal was sent."
               (push (format "the socket of the service stayed behind: %s" socket)
                     yeah-check--failures)))))
     ;; the check leaves nothing behind
-    (when (and service (yeah-proc--alive-p (yeah-proc--state service)))
+    (when (and service (yeah-proc-alive-p (yeah-proc-state service)))
       (yeah-check--kill service))
     (when (and owner (process-live-p owner))
       (yeah-check--kill (process-id owner)))
