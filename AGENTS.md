@@ -1319,6 +1319,25 @@ work item. Never resolve it by silently making documentation more optimistic.
   duplicate is measured and not a comment.  The duplicate itself is forbidden where it
   belongs: the machine has a unit test of its own.  The kernel and the generator are
   untouched (docs/PLAN.md §16.84).
+- Wave 93 repaired the proof of the table of the machine of the states, the fifth time.  The
+  kernel is honest; the proof was not.  **The walk read a name in a position where a name
+  stands as a call, and the class was not closed**: the objection of wave 90 said that the
+  kernel holds no such position today, and that was false — the kernel holds 55
+  `when-let`/`if-let`/`*when-let` and 3 `cl-labels` that the closed list of five positions
+  did not name; on a tree where the runtime takes the move `idle --user-prompt--> deciding`
+  no more, the check answered 0.  Now the walk knows the position of **every** form it
+  meets: the special forms of Emacs are read out of Emacs itself (22), the macros of the
+  kernel out of the files of the kernel (3), and the forms the walk meets out of the walk
+  itself (55) — and a macro or a special form that the table of the positions does not know
+  is a defect of the check, named by its file and its line.  **The body of a local function
+  that nobody calls is not code the runtime runs**: the walk goes into the body of a local
+  function whose name stands in the code of the form — a call, a call from a neighbouring
+  local function, or the name as a value the runtime calls.  **A name in data is data**: the
+  rule asks the same question the global walk asks — does the runtime call this name? — and
+  a name in a quoted form that nobody calls is data.  The numbers of the report are
+  unchanged and were not tuned: 23 places of a tick, 23 of them live, 14 name the state of
+  the run and 9 do not, 15 cells rest on a place that says nothing about the state, 2 fans,
+  55 forms met and 55 known.  The kernel is untouched (docs/PLAN.md §16.85).
 - Wave 94 repaired the proof of the pipeline of the diagrams, the fifth time.  The code of
   the pipeline is honest; the proof was blind.  **The decoy was blind to a copy of the
   chain that resolves the instrument by the profile**: the decoy ran in a hermetic
