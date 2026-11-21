@@ -1440,7 +1440,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   with `file-missing`.  The method reads a crashed verifier as an error and not as a proven
   control, so the gate named a refutation where there was none.  **A false refusal with a false
   subject is worse than no refusal at all.**  The reading of a process now lives in one place,
-  `tests/support/yeah-proc.el`: it looks for no file before it reads one (the existence of a file
+  the module `yeah-proc.el` of the support of the checks (`tests/support/`, moved into the
+  kernel by wave 101): it looks for no file before it reads one (the existence of a file
   is not a promise that it is still there), it catches the error of the file and nothing else (a
   reader that swallows every error decides nothing), a process that is gone answers nil -- and nil
   is not the number zero -- and a PID that names no process answers nil and raises no error.  The
@@ -1520,7 +1521,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   of the defect (2026-11-21) found six checks that read "the process is alive" by the existence of
   the directory of the process -- and a zombie answers that too, so those checks could refute a
   claim that holds.  The reading of the state and of the ticks now lives in the kernel, in
-  `lib/yeah-proc.el` (127 lines), and `tests/support/yeah-proc.el` is gone.  The new function
+  `lib/yeah-proc.el` (127 lines), and the support of the checks no longer holds a module
+  `yeah-proc.el` (`tests/support/`).  The new function
   `yeah-proc-alive-p` answers the question by the **state**: `S` and `R` live, **`Z` is a zombie
   and a zombie is dead**, every other letter does not run, and the state `nil` is a process that
   is not there at all.  The question whether a process lives has its answer in the state of the
@@ -1537,7 +1539,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   race is a proof that cannot fail; the stand compares the new rule with the old one on one subject
   (the old rule says "alive" for a zombie, the new rule says "dead", and for a living process both
   say "alive").  **The name follows the convention and not the prescription of the wave**:
-  `ELISP_BEST_PRACTICES.md` §2.1 asks a single dash for a symbol that another module calls, so
+  `ELISP_BEST_PRACTICES.md` §2 (the rule §2.1 of that section) asks a single dash for a symbol
+  that another module calls, so
   `yeah-proc--state`, `yeah-proc--ticks` and `yeah-proc--alive-p` are renamed to `yeah-proc-state`,
   `yeah-proc-ticks` and `yeah-proc-alive-p` (commit `8a22cf3`), while `yeah-proc--stat-text` and
   `yeah-proc--number` stay internal.  The writer of the wave reported the contradiction instead of
