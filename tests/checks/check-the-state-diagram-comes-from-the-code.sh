@@ -519,14 +519,21 @@ compare_cells() {
 # of a generator that read the table carries the other cells of the table,
 # and the cell that it does not carry is named as such and not as a
 # generator that did not read the table.
+#
+# The numbers of the message of an absent cell are the numbers of the line
+# that the comparison writes: the first is the number of the cells that the
+# diagram draws and the second is the number of the cells of the table.  The
+# first number is zero only when the diagram carries no cell of the table at
+# all, and that is the only case where the words about a generator that did
+# not read the table hold.
 problem_message() {
   local tag="$1" kind="$2" from="$3" label="$4" to="$5" actual="$6" extra="$7" extra2="$8" extra3="$9"
   case "$kind" in
     absent)
-      if [ "$extra" -eq 0 ]; then
+      if [ "$actual" -eq 0 ]; then
         printf '%s\n' "$tag: the generator does not read the table: the diagram carries no cell of the table and the cell ($from $label $to) is not in it"
       else
-        printf '%s\n' "$tag: the generator reads the table and does not write this cell: the cell ($from $label $to) is not in the diagram, which carries $extra of the $extra2 cells of the table"
+        printf '%s\n' "$tag: the generator reads the table and does not write this cell: the cell ($from $label $to) is not in the diagram, which carries $actual of the $extra cells of the table"
       fi;;
     label)
       if [ "$extra" -eq 1 ] && [ "$extra2" -eq 1 ] && [ "$extra3" -eq 0 ]; then
@@ -747,9 +754,25 @@ tree_rows="$(grep -cE '\(deciding[[:space:]]+stream-end[[:space:]]+\. post-decid
 
 # The arrow of the cell as the diagram writes it: the state names of the
 # diagram are the names of the states with the dashes turned into
-# underscores, and the label of the arrow is the label of the cell.
+# underscores, the label of the arrow is the label of the cell, and the ends
+# of the arrow are the state the cell leads from and the state it leads to.
+# The order of the fields of the arrow of the diagram is from, to, label:
+# "deciding --> post_decide : stream-end".
 stand_arrow="$(printf 'deciding\tstream-end\tpost-decide\n' | LC_ALL=C awk 'BEGIN { FS = "[ \t]+" }
-  { gsub(/[^A-Za-z0-9_]/, "_", $1); gsub(/[^A-Za-z0-9_]/, "_", $3); print $1 " --> " $2 " : " $3 }')"
+  { gsub(/[^A-Za-z0-9_]/, "_", $1); gsub(/[^A-Za-z0-9_]/, "_", $3); print $1 " --> " $3 " : " $2 }')"
+
+# The diagram of the stand with one copy of the arrow of the cell less: the
+# stand of the duplicate compares a table that names the cell twice with a
+# diagram that carries the arrow once, and a diagram that carries it more than
+# once is used with one copy less.  The reduction is a function of its own,
+# and it is measured below and not only promised.
+reduce_arrow() {
+  local src="$1" dest="$2"
+  LC_ALL=C awk -v arrow="$stand_arrow" '
+    $0 == arrow && !dropped { dropped = 1; next }
+    { print }
+  ' "$src" >"$dest" || blocked "cannot make the diagram of the stand"
+}
 
 # The diagram that the copy of the kernel is compared with: the diagram of
 # the repository carries the arrow of the cell once for a table that names
@@ -759,14 +782,30 @@ stand_diagram="$REPO/site/diagrams/state-machine.puml"
 stand_arrow_rows="$(grep -c "^$stand_arrow\$" "$stand_diagram" || true)"
 if [ "$stand_arrow_rows" -gt 1 ]; then
   stand_diagram="$tmp/stand-diagram.puml"
-  LC_ALL=C awk -v arrow="$stand_arrow" '
-    $0 == arrow && !dropped { dropped = 1; next }
-    { print }
-  ' "$REPO/site/diagrams/state-machine.puml" >"$stand_diagram" || blocked "cannot make the diagram of the stand"
+  reduce_arrow "$REPO/site/diagrams/state-machine.puml" "$stand_diagram"
   stand_arrow_rows="$(grep -c "^$stand_arrow\$" "$stand_diagram" || true)"
   if [ "$stand_arrow_rows" -ne 1 ]; then
     fail "the diagram of the stand carries the arrow of the cell ($stand_arrow) $stand_arrow_rows times and the stand compares a table that names the cell more than once with a diagram that carries the arrow once"
   fi
+fi
+
+# The reduction is measured: a diagram that carries the arrow of the cell
+# twice is reduced to a diagram that carries it once, and the stand of the
+# duplicate compares its table with such a diagram.
+stand_twice="$tmp/stand-diagram-twice.puml"
+stand_once="$tmp/stand-diagram-once.puml"
+LC_ALL=C awk -v arrow="$stand_arrow" '
+  $0 == arrow && !seen { seen = 1; print; print; next }
+  { print }
+' "$REPO/site/diagrams/state-machine.puml" >"$stand_twice" || blocked "cannot make the diagram of the stand"
+stand_twice_rows="$(grep -c -x -F "$stand_arrow" "$stand_twice" || true)"
+reduce_arrow "$stand_twice" "$stand_once"
+stand_once_rows="$(grep -c -x -F "$stand_arrow" "$stand_once" || true)"
+if [ "$stand_twice_rows" -lt 2 ]; then
+  fail "the diagram of the stand with one copy of the arrow of the cell ($stand_arrow) more carries it $stand_twice_rows times and the stand of the reduction needs a diagram that carries it twice"
+fi
+if [ "$stand_once_rows" -ne $((stand_twice_rows - 1)) ]; then
+  fail "the reduction of the diagram of the stand does not take one copy of the arrow of the cell ($stand_arrow) less: the diagram with $stand_twice_rows copies of it carried $stand_once_rows copies after the reduction"
 fi
 
 dup_count="$(sed -n 's/^(unless (= \([0-9][0-9]*\) (length yeah-loop--raw-transitions)).*/\1/p' "$dup_file")"
@@ -886,6 +925,26 @@ compare_stand "the cell that the diagram does not carry" \
   $'idle\tuser-prompt\tdeciding\npost-decide\tnudge\tdeciding' \
   $'idle --> deciding : user-prompt\nidle --> deciding : strange' \
   "the generator reads the table and does not write this cell" \
+  "the generator does not read the table"
+
+# The message of an absent cell names how many cells the diagram carries and
+# how many cells the table of the machine has: a message that names the wrong
+# number says the wrong thing about the diagram.  The fields of the table of a
+# stand are separated by spaces here; the comparison reads them the same way.
+compare_stand "the number of the cells that the diagram carries" \
+  "absent count" "label wrong-label twice twice-arrow extra-arrow" \
+  "idle user-prompt deciding
+post-decide nudge deciding" \
+  "idle --> deciding : user-prompt" \
+  "carries 1 of the 2 cells of the table"
+
+# The diagram carries no cell of the table at all: the generator did not read
+# the table, and the message says that instead of saying that the generator
+# read it and left one cell out.
+compare_stand "the diagram that carries no cell of the table" \
+  "absent count" "label wrong-label twice twice-arrow extra-arrow" \
+  "idle user-prompt deciding" \
+  "" \
   "the generator does not read the table"
 
 # The label of the cell is in the diagram and the ends of its arrow are not
