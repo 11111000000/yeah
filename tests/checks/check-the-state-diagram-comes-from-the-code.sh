@@ -615,10 +615,10 @@ else
   else
     # Every cell of the changed table is an arrow of its diagram, and the
     # arrow of the new cell says what the new cell says.  The two kinds of
-    # the defect are told apart: the new cell is not in the diagram at all
-    # (the generator does not read the table), or it is there and it leads
-    # somewhere else (the generator reads the table and writes the cell
-    # wrong).
+    # the defect are told apart: the label of the new cell is nowhere in the
+    # diagram (the diagram carries no arrow of the new cell), or it is there
+    # and it leads somewhere else (the generator reads the table and writes
+    # the cell wrong).
     compare_cells "$cell_dir/lib" "$cell_dir/site/diagrams/state-machine.puml" \
       "the diagram of the changed table"
   fi
