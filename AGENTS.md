@@ -1623,6 +1623,40 @@ work item. Never resolve it by silently making documentation more optimistic.
   places the survey of 2026-11-21 named; the other places of the class are named in the waves
   100 and 101, and the survey counted 42 places of the class and named 19 of them dangerous.
 
+- The discriminator of the package of the waves 97 to 100 (2026-11-21, the tree of the commit
+  `1175f91`) returned **PASS**: all four registered controls of the claims of the package fail
+  by their own refusal (code 1) with a truthful text, the honest tree is green on all four
+  checks, the map of the method is green and uncovered 0, and the repair of the proof of the
+  wave 99 is **proved**, not only written (19 controls; the report is
+  `/tmp/discriminator-97-99-report.md`).  **Five findings are open and are not hidden.**
+  **F40 (medium)**: the claim of the wave 98 promises that the profiles name exactly the tools
+  the measurement found, and its falsifier names a profile that misses a tool the measurement
+  found -- and the measurement finds `bridge__eval` (one of ten tools that change the world)
+  while the profile `plan` names nine, because `bridge__eval` is registered only by
+  `yeah-bridge-register` and the check filters the comparison by the registry.  The clause of
+  the falsifier is literally fulfilled and the check does not see it.  The safety of the kernel
+  is measured without the narrowing (a `bridge__eval` that declares the risk `read` fails the
+  check) and a tool that the profile does not name is asked, but the promise is stronger than
+  the measurement -- the wave 104 amends the claim (text and falsifier) and the header of the
+  check.  **F41 and F42 (low)**: the numbers of the wave 97 and of the record of the
+  reconciliation of the references describe the past as the present (66 modules and 64 named
+  where there are 67 and 65, 52 `defun' where there are 53; "59 did not move, 2 moved ... the
+  signature changed" where 61 did not move and 3 moved and were re-bound with a byte-wise
+  identical text) -- the wave 104 corrects the records.  **F43 (low)**: the falsifier of the
+  claim of the wave 100 says that no check of `tests/checks/' reads the stat file of a process
+  by itself, and the check that proves the claim reads it itself (the exception is named in its
+  own comment), while the sentinel of that assertion watches two named files and not the tree
+  of the checks -- the wave 105 extends the sentinel.  **F44 (low)**: the refusal branch of
+  `yeah-perm--mutating-tools' swallows the cause of the refusal (a deliberately broken
+  `lib/yeah-result.el' is reported as "the registry of the tools is not loaded") -- the wave
+  105 keeps the cause.  The findings do not cancel a single wave of the package: the promises
+  of the waves 97 to 100 hold, and the findings are about the wording of the records and about
+  two defects of the code outside the package.  What the discriminator could not verify is
+  named in the record and not counted as a success: the full gate of the package (the log of
+  the gate that has already run, the map and the re-evaluation were checked instead), the full
+  suite of the unit tests, `byte-compile-all' on its own, and the live route through a real
+  provider (docs/PLAN.md §16.96).
+
 ## The commands
 
 ```sh
