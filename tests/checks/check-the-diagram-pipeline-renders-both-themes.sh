@@ -1325,6 +1325,16 @@ fi
 
 # --- the end -------------------------------------------------------------------
 
+# The teeth of the check itself: the decoy of the instrument must be in this
+# file, and a check that has lost it is a check that cannot measure the
+# instrument of the chain.  The needle is built in two pieces, so that this
+# line does not hold the needle itself: a check that reads its own needle
+# would always find it.
+needle="YeahWave91""DecoyMark"
+if ! grep -qF "$needle" "$self"; then
+  fail "the decoy of the instrument (the mark $needle) is not in this check: the instrument of the chain cannot be measured"
+fi
+
 cleanup
 trap - EXIT
 exit "$failures"
