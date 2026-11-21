@@ -1649,10 +1649,10 @@ work item. Never resolve it by silently making documentation more optimistic.
   claim of the wave 100 says that no check of `tests/checks/' reads the stat file of a process
   by itself, and the check that proves the claim reads it itself (the exception is named in its
   own comment), while the sentinel of that assertion watches two named files and not the tree
-  of the checks -- the wave 105 extends the sentinel.  **F44 (low)**: the refusal branch of
+  of the checks -- the wave 106 extends the sentinel.  **F44 (low)**: the refusal branch of
   `yeah-perm--mutating-tools' swallows the cause of the refusal (a deliberately broken
   `lib/yeah-result.el' is reported as "the registry of the tools is not loaded") -- the wave
-  105 keeps the cause.  The findings do not cancel a single wave of the package: the promises
+  106 keeps the cause.  The findings do not cancel a single wave of the package: the promises
   of the waves 97 to 100 hold, and the findings are about the wording of the records and about
   two defects of the code outside the package.  What the discriminator could not verify is
   named in the record and not counted as a success: the full gate of the package (the log of
@@ -1764,7 +1764,74 @@ work item. Never resolve it by silently making documentation more optimistic.
   changed file is checked before the verifier runs, and "the file changed" is checked over the
   whole tree.  The rule: a control is measured by the string that lies in `spec.json`, and
   rewriting the measured string by hand makes it a new, unmeasured one.  The findings F43 and
-  F44 wait for the wave 106, and F47, F48, F51 and F52 for the wave 107 (docs/PLAN.md §16.101).
+  F44 are closed by the wave 106, and F47, F48, F51, F52 and F53 by the wave 107
+  (docs/PLAN.md §16.101, §16.103, §16.104).
+
+- Wave 106 repaired the evidence of the package of the waves 97 to 100 (2026-11-21).  **F43**: the
+  falsifier of the claim of the wave 100 says that no check of `tests/checks/' reads the stat file of
+  a process by itself, and the check that proves the claim reads it itself -- the exception was named
+  in the comment of that check and in no other place -- while the sentinel of that assertion watched
+  two named files and not the tree of the checks.  The sentinel now walks the tree of the checks and
+  the tree of the support, and the exception is named by name in the code of the guard, in the
+  falsifier and in the text of the claim.  **F44**: the refusal branch of `yeah-perm--mutating-tools'
+  swallowed the cause of the refusal -- a deliberately broken `lib/yeah-result.el' was reported as
+  "the registry of the tools is not loaded", and the person who reads that refusal cannot act on it,
+  because the cause may be a syntax error in a module of the kernel -- and now it does not: the error
+  of the load of the registry is kept (`lib/yeah-risk.el') and the refusal names it
+  (`lib/yeah-perm.el').  The wording, measured: "yeah-perm: the risks of the tools are not known: the
+  registry of the tools is not loaded: end-of-file: End of file during parsing: <copy>/yeah-result.el".
+  That promise is a new claim of its own, `a-refusal-names-its-cause', with a check of its own
+  (`tests/checks/check-a-refusal-names-its-cause.el') and a control of its own: the honest tree is
+  green (the code 0), and the control taken out of `spec.json' and applied to a copy of the tree --
+  `sed -i 's|(error (setq yeah-risk--failure err))|(error nil)|' lib/yeah-risk.el' -- makes the check
+  fail by its own assertion (the code 1).  The check copies only `lib/' (the copy of the whole tree
+  would carry the seventy-four megabytes of the plugin of the orchestrator into every run of the gate)
+  and asks the rule in a child Emacs, because a module that is already loaded cannot be loaded again
+  from the copy.  **The numbering was refined, and the contradiction of the two sources was not
+  resolved silently**: the bullet of the package of the waves 97 to 100 above promised F43 and F44 to
+  the wave 105, while the section 16.101 named the wave 106; the promise is corrected to "the wave
+  106" (docs/PLAN.md §16.103).
+
+- Wave 107 repaired the evidence of the package of the waves 101 to 103 (2026-11-21).  Four findings,
+  and none of them is a defect of the kernel -- all four are defects of the measurement.  **F48**: the
+  promise of the claim of the wave 101 -- "the socket of a zombie owner is swept away and a zombie
+  owner is not adopted as if it lived" -- was a consequence and not a form of code, and no stand
+  measured it; the check of the wave 101 now carries a stand of the behaviour of `lib/yeah-life.el',
+  which replaces the reader of the state of a process with a table of the stand (the zombie 999999999
+  answers "Z", the living process 999999998 answers "S") and asks the kernel itself -- the host is
+  not asked, because the pid of the stand is above the limit of the kernel.  **F51**: the two
+  promises of the claim of the wave 102 -- "the tree is read once for a list of the descendants" and
+  "the tree is stopped as a whole" -- were not measured either; three stands were added to the shell
+  check of the wave 102, and `scripts/lib/tree.sh' was not touched: both values are measured from
+  outside, through the existing seam `PROC_ROOT'.  The counter of the stand is made outside the tree
+  under test (the shell of the stand traces itself with `set -x'), so one scan of the tree reads the
+  stat file of every process of the tree exactly once -- the number of the traced lines
+  `read_stat <pid>' is 1 -- and the stand that stops a real tree of the processes of the host
+  requires that *every* process of the tree catches the signal, with the preconditions checked
+  explicitly: if the group is not the one, the stand says "the tree is not measured" instead of
+  being silent.  **F52**: the falsifier of the claim of the wave 101 says that another file of the
+  repository defines the rule of the life of a process beside it, and the sentinel of that assertion
+  read two directories and knew the rule only by the form of its name; it now reads the code of the
+  whole tree of the repository -- and the directories the repository ignores (the installed
+  dependencies of the plugin, the output of the runs) are not walked, because they are not a part of
+  it -- and knows a rule by two signs -- the form of the name and the sign of a file that reads
+  the state of a process and holds the letters of life -- and the documents are not read, because a
+  document names the rule and a program defines it.  On the honest tree the sign fires on exactly two
+  files: the rule itself and the stand of the rule.  **F53**: the guard of the documentation read
+  `docs/*.md', `AGENTS.md', `README.md' and `ELISP_BEST_PRACTICES.md' -- and not `waves/*.json', where
+  the records of the waves live; it reads them now, and the rule of the file does not apply to them:
+  a record is a document of the past, it names the files of the day of its wave, and a file that has
+  moved or is gone since that day is named by the record and is not a defect of the record.  The
+  price is named: seven names in the records of the waves would become red defects if the rule were
+  applied to them, and they are named and not repaired (the decision on the rule of the file for the
+  records is the owner's).  The cost of the reading is 702 ms -> 744 ms (a measurement of 2026-11-21 on a
+  tree of 108 records; the records are 110 today, 665 KB, and they are read whole).  **The claim of the documentation was narrower than its measurement** -- the scope did not
+  hold `waves/' -- and the parent amended it on 2026-11-21: the text and the falsifier say that the
+  guard reads the records and that the rule of the file does not apply to them, and the scope holds
+  the directory of the records.  **F47 stays open in its part `a'**: the rule "the stat file of a
+  process is read by one module of the kernel" stays in `lib/', because the check of the wave 100 that
+  reads the stat file is F47 and not F52; the text of the claim of the wave 101 names the exception
+  instead of denying it (docs/PLAN.md §16.104).
 
 - The discriminator of the package of the waves C1, 104 and 105: **PASS** and three findings
   (F56--F58) (2026-11-21, the tree of the commit `ff3c1e1`, the repository unchanged): all five

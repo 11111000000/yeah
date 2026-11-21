@@ -77,12 +77,12 @@
 ;;
 ;; The guard of the third part is wider now, on both sides:
 ;;
-;;   * it reads the code of the whole tree and not of two directories of
-;;     it.  The files that are not code are left alone, and the reason
-;;     is named: a document NAMES the rule of the life of a process --
-;;     `spec.json', the records of the waves and the documents of
-;;     `docs/' talk about it -- and a program DEFINES it.  A guard that
-;;     reads a document for a rule of its own cries wolf;
+;;   * it reads the code of the whole tree of the repository and not of
+;;     two directories of it.  The files that are not code are left alone,
+;;     and the reason is named: a document NAMES the rule of the life of
+;;     a process -- `spec.json', the records of the waves and the
+;;     documents of `docs/' talk about it -- and a program DEFINES it.  A
+;;     guard that reads a document for a rule of its own cries wolf;
 ;;   * it knows a rule of the life of a process by two shapes and not by
 ;;     one: by the name of a function (`-alive-p' and a process in its
 ;;     arguments), and by the trait of a file that decides the life of a
@@ -97,6 +97,26 @@
 ;;   * the check that proves the rule holds the letters of the stand of
 ;;     the rule on purpose -- the stand is a table of the states of the
 ;;     rule, and a table of the letters that live is not a second rule.
+;;
+;; The walk of the third part has a boundary, and the boundary is the
+;; answer of the repository about itself.  The tree of a developer holds
+;; the installed dependencies of the plugin (`plugin/yeah-provider/
+;; node_modules') and the output of the runs (`bench/results/',
+;; `tests/artifacts/'), and the repository ignores them: they are not a
+;; part of it.  The guard asks git which directories the repository
+;; ignores and does not walk them.
+;;
+;; The price of the boundary is named: a rule of the life of a process
+;; that hides in an installed dependency is not seen by this guard.  That
+;; is the price of the promise, and the promise is about a file OF THE
+;; REPOSITORY: the code of a dependency is not the code of the project,
+;; and a guard that reads it cries wolf over a subject that is not the
+;; subject of the claim.
+;;
+;; The boundary is asked and not guessed.  When git cannot answer -- the
+;; tree is not a repository, or git is not there -- the check refuses and
+;; names the reason: a guard that cannot tell the code of the repository
+;; from the installed dependencies does not pass in silence.
 ;;
 ;; The rule about the stat file of a process keeps its old scope: it
 ;; holds for the kernel and not for the checks, because one check of
@@ -256,11 +276,96 @@ stand is a table of the states of the rule, and a table of the letters
 that live is not a second rule.  The file is named here and not left to
 a guess.")
 
+(defconst yeah-dead--the-git-question
+  '("ls-files" "--others" "--ignored" "--exclude-standard" "--directory")
+  "The question that the repository is asked about the directories it ignores.
+Git is asked which directories of the tree the repository ignores, and
+it is asked with the standard rules of the excludes of git
+(`--exclude-standard'), so the answer is the answer of the `.gitignore'
+of the repository and not a guess of the guard.
+
+In the tree of the project the answer is `.math/', `bench/results/',
+`plugin/yeah-provider/node_modules/' and `tests/artifacts/': the state of
+the method, the output of the runs, the installed dependencies of the
+plugin and the artifacts of the checks.  None of them is a part of the
+repository, and the code of an installed dependency is not the code of
+the project.")
+
 (defun yeah-dead--root ()
   "Return the root of the repository: the directory that holds `spec.json'."
   (expand-file-name
    (or (locate-dominating-file default-directory "spec.json")
        default-directory)))
+
+(defun yeah-dead--git (root args)
+  "Run git with ARGS in the root ROOT and return (EXIT . OUTPUT).
+The process is started with `make-process': the check waits for git
+without a shell and without spinning the event loop.  The answer is
+nil when git could not be started at all."
+  (condition-case nil
+      (let ((buffer (generate-new-buffer " *yeah-dead-git*"))
+            (exit nil))
+        (with-current-buffer buffer
+          (let ((process
+                 (let ((default-directory root))
+                   (make-process
+                    :name "yeah-dead-git"
+                    :buffer buffer
+                    :command (cons "git" args)
+                    :coding '(utf-8 . utf-8)
+                    :connection-type 'pipe
+                    :noquery t
+                    :sentinel
+                    (lambda (proc _event)
+                      (when (memq (process-status proc) '(exit signal))
+                        (setq exit (process-exit-status proc))))))))
+            (while (and (null exit) (process-live-p process))
+              (accept-process-output process 0.05))
+            ;; The sentinel may run just before the final output filter callback.
+            (accept-process-output nil 0.05)
+            (let ((output (buffer-substring-no-properties (point-min) (point-max))))
+              (kill-buffer buffer)
+              (cons exit output)))))
+    (error nil)))
+
+(defun yeah-dead--ignored-directories (root)
+  "Return the directories of ROOT that the repository ignores.
+The answer is a cons: the car is `ok' and the cdr is the list of the
+names of the directories, relative to ROOT and with no slash at their
+end.  The list is empty when the repository ignores nothing.
+
+The answer is nil when git cannot say, and the check refuses then: a
+guard that cannot tell the code of the repository from the installed
+dependencies must not pass in silence."
+  (let* ((result (yeah-dead--git root yeah-dead--the-git-question))
+         (exit (and result (car result)))
+         (output (and result (cdr result))))
+    (if (eq exit 0)
+        (cons 'ok (mapcar (lambda (line)
+                            (if (string-suffix-p "/" line)
+                                (substring line 0 -1)
+                              line))
+                          (split-string output "\n" t)))
+      (let ((reason (if output (string-trim output) "")))
+        (push (format "the guard cannot tell the code of the repository from the installed dependencies: git could not answer which directories the repository ignores: %s"
+                      (if (string-empty-p reason) "git could not be run" reason))
+                yeah-dead--failures)
+        nil))))
+
+(defun yeah-dead--ignored-directory-p (directory root ignored)
+  "Return non-nil when DIRECTORY is a directory that the repository ignores.
+DIRECTORY is a path in the tree of ROOT, and IGNORED is the list of the
+directories that the repository ignores, with their names relative to
+ROOT.  A directory under an ignored directory is ignored as well: the
+walk does not enter it, and the code under it is not the code of the
+repository."
+  (let ((name (file-relative-name directory root))
+        (found nil))
+    (dolist (ignored-directory ignored)
+      (when (or (string= name ignored-directory)
+                (string-prefix-p (concat ignored-directory "/") name))
+        (setq found t)))
+    found))
 
 (defun yeah-dead--text (path)
   "Return the text of the file PATH, or nil when it cannot be read."
@@ -278,7 +383,7 @@ the error is kept, so a reader that dies is named and not hidden."
       (cons 'ok (funcall reader pid))
     (error (cons 'error err))))
 
-(defun yeah-dead--code-files (root)
+(defun yeah-dead--code-files (root ignored)
   "Return the files of the tree that hold code, with their names.
 The rule of the life of a process must not be spread over the tree: a
 second rule in `scripts/' or in `tests/support/' is a second rule as
@@ -288,13 +393,19 @@ The walk is the walk of Emacs (`directory-files-recursively') and not a
 walk of our own: a walk of our own calls a function of Elisp for every
 file of the tree, the interpreter counts the nesting of every one of
 those calls, and a directory of a hundred files is enough to reach the
-limit of the nesting."
+limit of the nesting.
+
+The walk does not enter the directories that the repository ignores:
+IGNORED names them, and the predicate of the walk refuses them.  The
+installed dependencies and the output of the runs are not the code of
+the project, and the claim is about a file of the repository."
   (let (files)
     (dolist (extension yeah-dead--code-extensions)
       (dolist (path (directory-files-recursively
                      root (concat "\\." extension "\\'") nil
                      (lambda (directory)
-                       (not (string-prefix-p "." (file-name-nondirectory directory))))))
+                       (and (not (string-prefix-p "." (file-name-nondirectory directory)))
+                            (not (yeah-dead--ignored-directory-p directory root ignored))))))
         (push (cons (file-relative-name path root) path) files)))
     (sort files (lambda (one other) (string< (car one) (car other))))))
 
@@ -384,7 +495,12 @@ second answer to the same question."
     (nreverse names)))
 
 (let* ((root (yeah-dead--root))
-       (files (yeah-dead--code-files root)))
+       (answer (yeah-dead--ignored-directories root))
+       ;; When git cannot say which directories the repository ignores,
+       ;; the walk measures nothing: a guard that cannot tell the code of
+       ;; the repository from the installed dependencies refuses with the
+       ;; name of the reason and does not walk the tree of a developer.
+       (files (if answer (yeah-dead--code-files root (cdr answer)) nil)))
   ;; 1. the rule of the life of a process is a function of one letter
   (dolist (entry yeah-dead--states)
     (let* ((state (car entry))

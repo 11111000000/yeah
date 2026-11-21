@@ -3313,12 +3313,13 @@
     },
     {
       "id": "the-documentation-points-at-files-that-exist",
-      "text": "The documentation points at what is there: every name of a file of this repository that a document mentions leads to a file that is on disk, and every section it names is a heading of that file.",
+      "text": "The documentation points at what is there: every name of a file of this repository that a document mentions leads to a file that is on disk, and every section it names is a heading of that file. The records of the waves are documents as well, the guard reads them as well, and the rule of the file does not apply to them: a record is a document of the past, it names the files of the day of its wave, and a file that has moved or is gone since that day is named by the record and is not a defect of the record.",
       "scope": [
         "docs",
         "AGENTS.md",
         "README.md",
         "ELISP_BEST_PRACTICES.md",
+        "waves",
         "tests/checks/check-the-documentation-points-at-files-that-exist.el"
       ],
       "source": null,
@@ -3332,7 +3333,7 @@
           "spec": "./scripts/dev check tests/checks/check-the-documentation-points-at-files-that-exist.el"
         }
       ],
-      "falsifier": "a document names a file of the repository that is not on disk, or names a section that the file does not have, or the check follows no name at all and cannot tell a good name from a bad one",
+      "falsifier": "a document names a file of the repository that is not on disk, or names a section that the file does not have, or the check follows no name at all and cannot tell a good name from a bad one, or the guard does not read the records of the waves, or the guard applies the rule of the file to the records of the waves",
       "register": "fact",
       "control": "sed -i '$a The name of a file that is not there: `docs/there-is-no-such-file.md`.' docs/PLAN.md",
       "waiver": null
@@ -3796,10 +3797,35 @@
       "waiver": null
     },
     {
+      "id": "a-refusal-names-its-cause",
+      "text": "A refusal of the rule names the cause of the refusal: the rule refuses when the declarations of the tools are not known, and the refusal says why they are not known -- the error of the load of the registry of the tools, with the name of the file that failed to load -- so that the person can act on the cause and not only on the fact that the registry is absent.",
+      "scope": [
+        "lib/yeah-risk.el",
+        "lib/yeah-perm.el",
+        "tests/checks/check-a-refusal-names-its-cause.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-refusal-names-its-cause.el"
+        }
+      ],
+      "falsifier": "the refusal names no cause: the refusal says that the registry of the tools is not loaded and does not say why, or the cause of the refusal is thrown away before the refusal is made, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(error (setq yeah-risk--failure err))|(error nil)|' lib/yeah-risk.el",
+      "waiver": null
+    },
+    {
       "id": "a-check-that-reads-a-gone-process-decides-and-does-not-crash",
-      "text": "A check that reads the state of a process decides and does not die on the filesystem: the reader of the tree of the processes lives in one place in the kernel (`lib/yeah-proc.el`), it catches the error of the file and nothing else, a process that is gone answers nil and not an error and not the number zero, a PID that names no process answers nil, a process that lives is read -- its state is a letter and its ticks are the ticks of the kernel --, the answer of the reader of the ticks is the ticks of the process and not the number zero, the checks that read a process read it through that reader and not by a path of their own, and a server that is gone is a failure that the check names and not a measurement of zero ticks.",
+      "text": "A check that reads the state of a process decides and does not die on the filesystem: the reader of the tree of the processes lives in one place in the kernel (`lib/yeah-proc.el`), it catches the error of the file and nothing else, a process that is gone answers nil and not an error and not the number zero, a PID that names no process answers nil, a process that lives is read -- its state is a letter and its ticks are the ticks of the kernel --, the answer of the reader of the ticks is the ticks of the process and not the number zero, the checks that read a process read it through that reader and not by a path of their own -- the check that proves this claim is the one exception, and it reads the stat file of its own process to compare the answer of the reader with the truth --, and a server that is gone is a failure that the check names and not a measurement of zero ticks.",
       "scope": [
         "lib/yeah-proc.el",
+        "tests/support",
         "tests/checks/check-a-check-that-reads-a-gone-process-decides-and-does-not-crash.el",
         "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
         "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el"
@@ -3815,14 +3841,14 @@
           "spec": "./scripts/dev check tests/checks/check-a-check-that-reads-a-gone-process-decides-and-does-not-crash.el"
         }
       ],
-      "falsifier": "the reader of a process raises an error where the process is gone, or the reader answers the number zero for a process that is gone, or the reader answers nil for a process that lives, or the reader answers the same ticks for every process, or the reader raises an error for a PID that names no process, or a check of tests/checks/ reads the stat file of a process by itself, or the server that is gone is measured as a process that burns no CPU, or the control of the claim does not make the check fail by its own assertion",
+      "falsifier": "the reader of a process raises an error where the process is gone, or the reader answers the number zero for a process that is gone, or the reader answers nil for a process that lives, or the reader answers the same ticks for every process, or the reader raises an error for a PID that names no process, or a file of tests/checks/ or of tests/support/ reads the stat file of a process by itself, except the file that proves the claim (tests/checks/check-a-check-that-reads-a-gone-process-decides-and-does-not-crash.el), which reads the stat file of its own process to compare the answer of the reader with the truth, or the server that is gone is measured as a process that burns no CPU, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|(file-error nil)|(file-error (error \"the reader does not hide the failure of the read\"))|' lib/yeah-proc.el",
       "waiver": null
     },
     {
       "id": "a-process-that-is-dead-is-dead-everywhere",
-      "text": "A process that is dead is dead everywhere: the rule of the life of a process lives in the kernel, in one place (`lib/yeah-proc.el'), and it answers by the state of the process -- `S' and `R' live, `Z' is a zombie and a zombie is dead, every other letter does not run, and the state `nil' is a process that is not there at all.  The existence of the directory of the process tells nothing, because the directory of a zombie is there as well, and a check that reads \"the process is alive\" by that existence can refute a claim that holds.  The kernel asks the rule in both of its places (`lib/yeah-life.el'), so the socket of a zombie owner is swept away and a zombie owner is not adopted as if it lived, and the checks of `tests/checks/' read the process through the one reader and not by a path of their own.",
+      "text": "A process that is dead is dead everywhere: the rule of the life of a process lives in the kernel, in one place (`lib/yeah-proc.el'), and it answers by the state of the process -- `S' and `R' live, `Z' is a zombie and a zombie is dead, every other letter does not run, and the state `nil' is a process that is not there at all.  The existence of the directory of the process tells nothing, because the directory of a zombie is there as well, and a check that reads \"the process is alive\" by that existence can refute a claim that holds.  The kernel asks the rule in both of its places (`lib/yeah-life.el'), so the socket of a zombie owner is swept away and a zombie owner is not adopted as if it lived, and the checks of `tests/checks/' read the process through the one reader and not by a path of their own -- the check that proves the claim of the wave 100 is the one exception, and it reads the stat file of its own process to compare the answer of the reader with the truth --.",
       "scope": [
         "lib/yeah-proc.el",
         "lib/yeah-life.el",

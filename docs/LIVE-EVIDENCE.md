@@ -2901,6 +2901,79 @@ that is not there any more.
   (`input: 12968`) — and the journal holds no record of a compaction; the fact is
   recorded here, not explained.
 
+## The live run of the package of the waves 106 and 107 (2026-11-21, 16:53 UTC)
+
+**What was run.**  One live run through the orchestrator Paseo on the tree of the
+package — the commit `6b6f484` (the artifacts of the package).  The prompt asked
+for one word and the tool `finish`:
+
+```
+Ответь только словом OK и вызови finish. Больше ничего не делай.
+```
+
+The model was `MiniMax-M3.1-Flash`, the mode was `build`, and the journal of the
+session is `session-1-29e138.jsonl`.  The run began at 16:53:53 UTC and came to
+an end at 16:53:57 UTC — four seconds.  The tree of the repository was not
+changed by the run.
+
+**The service measured the tree of the package.**  The service was restarted by
+hand before the run, because the plugin of the orchestrator keeps the service in
+a cache (`plugin/yeah-provider/index.server.ts`) and `paseo reload` does not
+drop that cache.  The unit `yeah-acp-service` started at **16:53:33 UTC**, the
+socket `/tmp/yeah-1001/yeah-service-paseo.sock` has the time of its creation
+**16:53:34 UTC**, and the last commit of the tree before the run is `6b6f484`
+at **16:51:45 UTC**.  The service therefore held the tree of the package and
+not an older one — the rule of the run that measured an old tree (§16.102).
+
+**What the journal holds.**
+
+| Record | What it says |
+|---|---|
+| `header` | `session-1-29e138`, `2026-11-21T16:53:53+0000` |
+| `session-model` | `MiniMax-M3.1-Flash` |
+| `session-mode` | `build` |
+| `input-queued` / `input-taken` / `user-message` | the prompt of the run, carried through the wire of the orchestrator |
+| `usage` | `input: 13055, output: 129` |
+| `tool-request` | `finish`, named argument `{"summary": "OK"}` |
+| `permission-request` | `finish` on `OK`, arguments `["OK"]` |
+| `permission-decision` | `allow` — **without a reply and without a scope** |
+| `tool-end` | `finish`, `ok: true`, payload `OK` |
+| `finish` | the summary of the run, `OK` |
+
+**The decision without a reply is the rule of the kernel and not a defect.**  The
+tool `finish` asks nobody: the turn decides it before the answerer is called
+(`lib/yeah-turn.el:388`), and the decision carries no reply, no reason and no
+scope because there is no answer of a person to carry.  The fields of the
+decision are written only when there is something to write
+(`lib/yeah-turn.el:573`).  The run of the package of the waves C1, 104 and 105
+showed the same shape for its own `finish` call, and this run confirms it on the
+tree of this package.  The source is the kernel and not the plugin: the plugin
+of the orchestrator has no mention of `permission` at all.
+
+**What it proves.**  The tree of the package loads and works on the real route:
+the orchestrator starts a session, the model answers, the tool is called, the
+permission of the tool is decided by the kernel, the tool runs and the run ends
+with the summary of the model.  Four seconds and twelve records.
+
+**What it does not prove.**
+
+* It proves nothing about the promises of the package.  The claims of the waves
+  106 and 107 are about the guards of the tree and the stands that measure the
+  claims of the tree; they are measured by their own checks and by their
+  controls, and the run of the orchestrator is not one of them.
+* **It was run on the tree of the artifacts (`6b6f484`), and not on the tree
+  after the two repairs the gate of the package asked for.**  The repairs
+  (`da8f6ea` and `6b0f43b`) came after the run, and the run says nothing about
+  them.  The gate of the package is what covers the repaired tree.
+* It is one run, one prompt and one model.  Nothing here says that another model
+  answers the same way, and the model was `MiniMax-M3.1-Flash`.
+* The mode was `build`.  The run says nothing about the profile `plan`, which
+  denies the same tools instead of asking.
+* The prompt asked for one word, and the model called one tool.  The run says
+  nothing about the extra calls of the model, and nothing about the stands of the
+  wave 107 — a stand is not on the route of a run of the orchestrator.
+* The numbers of the usage are the ones the provider reported.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
