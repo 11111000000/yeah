@@ -1515,6 +1515,46 @@ work item. Never resolve it by silently making documentation more optimistic.
   (`lib/yeah-approval.el:74-94`) is still a list of names, and that is the next step of B1
   (docs/PLAN.md §16.90).
 
+- Wave 101 moved the reader of the tree of the processes from the support of the checks into
+  the kernel and gave the kernel the **rule of the life of a process**.  The survey of the class
+  of the defect (2026-11-21) found six checks that read "the process is alive" by the existence of
+  the directory of the process -- and a zombie answers that too, so those checks could refute a
+  claim that holds.  The reading of the state and of the ticks now lives in the kernel, in
+  `lib/yeah-proc.el` (127 lines), and `tests/support/yeah-proc.el` is gone.  The new function
+  `yeah-proc-alive-p` answers the question by the **state**: `S` and `R` live, **`Z` is a zombie
+  and a zombie is dead**, every other letter does not run, and the state `nil` is a process that
+  is not there at all.  The question whether a process lives has its answer in the state of the
+  process, and the tree of the processes cannot answer it: the directory of a zombie is there as
+  well.  **The kernel asks the rule now**: `lib/yeah-life.el` lost its own
+  `yeah-life--owner-alive-p` and asks `(yeah-proc-alive-p (yeah-proc-state pid))` in both of its
+  places, so the socket of a zombie owner is swept away (a socket of a zombie must not keep a
+  service from starting) and `yeah-life-adopt` no longer refuses a zombie owner as if it lived.
+  Six checks ask the state instead of the directory, the three checks of the waves 100 and 101 read
+  the process through the module of the kernel, and the picture `site/diagrams/core-layers.puml`
+  names `lib/yeah-proc.el:69` -- the completeness of the picture is part of its promise.  **The
+  proof is a stand, and the zombie of the stand is the letter `Z`, not a living zombie**: a child
+  that ends at once is reaped before the window of the check opens, and a proof that waits for that
+  race is a proof that cannot fail; the stand compares the new rule with the old one on one subject
+  (the old rule says "alive" for a zombie, the new rule says "dead", and for a living process both
+  say "alive").  **The name follows the convention and not the prescription of the wave**:
+  `ELISP_BEST_PRACTICES.md` §2.1 asks a single dash for a symbol that another module calls, so
+  `yeah-proc--state`, `yeah-proc--ticks` and `yeah-proc--alive-p` are renamed to `yeah-proc-state`,
+  `yeah-proc-ticks` and `yeah-proc-alive-p` (commit `8a22cf3`), while `yeah-proc--stat-text` and
+  `yeah-proc--number` stay internal.  The writer of the wave reported the contradiction instead of
+  resolving it silently, and the parent resolved it on 2026-11-21 (a decision outside §17.2; the
+  owner may cancel it).  **The claim of the wave is new**
+  (`a-process-that-is-dead-is-dead-everywhere`), and the claim of the wave 100 is amended and not
+  rewritten: its id, falsifier, requirements and kind are the same, its text names the new place of
+  the reader, its scope names the new file, and its control follows the file that moved (the
+  precedent of wave 61: the scope grows with the code).  Nine controls of the parent on copies of
+  the tree (2026-11-21): 0 failures (docs/PLAN.md §16.93).
+- The class of that defect is **still not** closed.  This wave closes seven of the nineteen
+  dangerous places the survey named.  `scripts/lib/tree.sh:46-50` -- the awk over the glob of the
+  stat files dies on a file that vanishes and cuts the list of the descendants short, so
+  `stop_tree` leaves part of the tree standing -- is the wave 102; `lib/yeah-client.el:62-64` --
+  the port file that the stop of the service deletes, where the docstring promises nil -- is the
+  wave 103.
+
 ## The commands
 
 ```sh

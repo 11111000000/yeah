@@ -3018,7 +3018,7 @@
         "lib/yeah-wire.el",
         "lib/yeah-acp.el",
         "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el",
-        "tests/support/yeah-proc.el"
+        "lib/yeah-proc.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -3148,7 +3148,7 @@
         "scripts/lib/tree.sh",
         "tests/support/yeah-pilot-fixture.el",
         "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
-        "tests/support/yeah-proc.el"
+        "lib/yeah-proc.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -3797,9 +3797,9 @@
     },
     {
       "id": "a-check-that-reads-a-gone-process-decides-and-does-not-crash",
-      "text": "A check that reads the state of a process decides and does not die on the filesystem: the reader of the tree of the processes lives in one place (`tests/support/yeah-proc.el`), it catches the error of the file and nothing else, a process that is gone answers nil and not an error and not the number zero, a PID that names no process answers nil, a process that lives is read -- its state is a letter and its ticks are the ticks of the kernel --, the answer of the reader of the ticks is the ticks of the process and not the number zero, the checks that read a process read it through that reader and not by a path of their own, and a server that is gone is a failure that the check names and not a measurement of zero ticks.",
+      "text": "A check that reads the state of a process decides and does not die on the filesystem: the reader of the tree of the processes lives in one place in the kernel (`lib/yeah-proc.el`), it catches the error of the file and nothing else, a process that is gone answers nil and not an error and not the number zero, a PID that names no process answers nil, a process that lives is read -- its state is a letter and its ticks are the ticks of the kernel --, the answer of the reader of the ticks is the ticks of the process and not the number zero, the checks that read a process read it through that reader and not by a path of their own, and a server that is gone is a failure that the check names and not a measurement of zero ticks.",
       "scope": [
-        "tests/support/yeah-proc.el",
+        "lib/yeah-proc.el",
         "tests/checks/check-a-check-that-reads-a-gone-process-decides-and-does-not-crash.el",
         "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
         "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el"
@@ -3817,7 +3817,31 @@
       ],
       "falsifier": "the reader of a process raises an error where the process is gone, or the reader answers the number zero for a process that is gone, or the reader answers nil for a process that lives, or the reader answers the same ticks for every process, or the reader raises an error for a PID that names no process, or a check of tests/checks/ reads the stat file of a process by itself, or the server that is gone is measured as a process that burns no CPU, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
-      "control": "sed -i 's|(file-error nil)|(file-error (error \"the reader does not hide the failure of the read\"))|' tests/support/yeah-proc.el",
+      "control": "sed -i 's|(file-error nil)|(file-error (error \"the reader does not hide the failure of the read\"))|' lib/yeah-proc.el",
+      "waiver": null
+    },
+    {
+      "id": "a-process-that-is-dead-is-dead-everywhere",
+      "text": "A process that is dead is dead everywhere: the rule of the life of a process lives in the kernel, in one place (`lib/yeah-proc.el'), and it answers by the state of the process -- `S' and `R' live, `Z' is a zombie and a zombie is dead, every other letter does not run, and the state `nil' is a process that is not there at all.  The existence of the directory of the process tells nothing, because the directory of a zombie is there as well, and a check that reads \"the process is alive\" by that existence can refute a claim that holds.  The kernel asks the rule in both of its places (`lib/yeah-life.el'), so the socket of a zombie owner is swept away and a zombie owner is not adopted as if it lived, and the checks of `tests/checks/' read the process through the one reader and not by a path of their own.",
+      "scope": [
+        "lib/yeah-proc.el",
+        "lib/yeah-life.el",
+        "tests/checks/check-a-process-that-is-dead-is-dead-everywhere.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-process-that-is-dead-is-dead-everywhere.el"
+        }
+      ],
+      "falsifier": "the rule of the life of a process answers alive for a zombie, or it answers dead for a process that lives, or it answers the state nil as a process that lives, or the rule of the life of a process lives outside the kernel, or another file of the repository defines the rule of the life of a process beside it, or the kernel asks the existence of the directory of the process instead of the state of the process, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(or (string= state \"S\")|(or t|' lib/yeah-proc.el",
       "waiver": null
     }
   ]
