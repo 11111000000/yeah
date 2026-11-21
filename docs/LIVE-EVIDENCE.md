@@ -2786,6 +2786,121 @@ of ACP: one nudge out of a budget of three.
   does not measure the context of the run: the fact is recorded here, not
   explained.
 
+## The live run of the package of the waves C1, 104 and 105 (2026-11-21, 16:05 UTC)
+
+**What was run.**  One live run through the orchestrator Paseo on the tree of the
+package — the commit `ff3c1e1`.  The package carries the wave C1, which gave the
+answer of a person the scope of its rule, so the run had to show a question, an
+answer that names a scope, and a rule that answers the next call by itself.
+
+```
+Вызови инструмент todo_add с текстом «проверка области ответа». Потом вызови
+todo_add ещё раз с тем же самым текстом. Потом вызови finish. Больше ничего не делай.
+```
+
+The model was `MiniMax-M3.1-Flash`, the mode was `build`, and the journal of the
+session is `session-1-ed8a9.jsonl`.  The run began at 16:05:56 UTC and came to an
+end at 16:06:55 UTC — fifty-nine seconds.  The tree of the repository was not
+changed by the run (`git status` was empty afterwards).
+
+**The question and the answer.**  The first `todo_add` asked the person: the
+client received a `session/request_permission` with the three options
+`allow-once`, `allow-always` and `reject-once`.  The answer was **Allow always**
+(`selectedActionId: "allow-always"`), and the journal holds the decision that the
+answer produced:
+
+| Record | What it says |
+|---|---|
+| `header` | `session-1-ed8a9`, `2026-11-21T16:05:56+0000` |
+| `session-model` | `MiniMax-M3.1-Flash` |
+| `input-queued` / `input-taken` / `user-message` | the prompt of the run, carried through the wire of the orchestrator |
+| `usage` | `input: 12968, output: 42` |
+| `assistant-message` | "I'll add the todo items as requested." — words, and no call |
+| `nudge` and `user-message` | the supervision of the run asked for the tools it still needed |
+| `usage` | `input: 12968, output: 42` |
+| `tool-request` | `todo_add`, named argument `{"text": "проверка области ответа"}` |
+| `permission-request` | `todo_add` on `проверка области ответа` |
+| `permission-decision` | `defer` — the question waits for the person |
+| `usage` | `input: 13916, output: 370` |
+| `permission-decision` | `allow`, `reply: ":always"`, **`scope: "session"`** — the person answered |
+| `todo` | `{"id": "1", "text": "проверка области ответа", "status": "pending"}` |
+| `tool-end` | `todo_add`, `ok: true` |
+| `usage` | `input: 107, output: 34` |
+| `tool-request` | `todo_add` again, the same text |
+| `permission-request` | `todo_add` |
+| `permission-decision` | `allow`, `reply: ":once"`, `scope: "once"` — **no `defer`**: nobody was asked |
+| `todo` | `{"id": "2", "text": "проверка области ответа", "status": "pending"}` |
+| `tool-end` | `todo_add`, `ok: true` |
+| `usage` | `input: 38, output: 63` |
+| `tool-request` | `finish` |
+| `permission-request` / `permission-decision` | `finish` → `allow`, without a reason and without a reply |
+| `tool-end` | `finish`, `ok: true` |
+| `finish` | the summary of the run |
+
+**What it proves.**  The answer of the person carries the scope of the carrier of
+its path: the answer came over the wire as a name of an option, the wire name was
+read by the one dictionary of the answers (`lib/yeah-acp.el:1110`), the scope of
+the answer was named by the scope of the carrier of the session
+(`lib/yeah-acp.el:220`, `lib/yeah-approval.el:115`), and the journal holds it —
+`reply: ":always"`, `scope: "session"`.  That is the promise of the claim of the
+wave C1, measured on a live route.
+
+The second identical call was allowed **without a question**: the record of a
+deferral is absent and the decision came in the same second as the request.  The
+rule that the answer wrote fired — it lives in the rules of the session
+(`lib/yeah-acp.el:1148`) and the answerer asks the client only about what the
+rules do not name (`lib/yeah-acp.el:225`).  The task was created twice (the ids
+`1` and `2`) and `finish` closed the run with the summary of the model.
+
+**The residue, named and not hidden.**  The decision that came from the rules
+carries `reply: ":once"` and `scope: "once"`, and not the scope of the rule that
+matched (`session`).  The path that answers from the rules writes an answer that
+remembers nothing (`lib/yeah-acp.el:238`), and the scope of that answer is
+the scope of this call — the scope of the rule that matched is not read back.
+§16.98 named this residue ("nobody reads the scope of the journal back yet"); the
+run measures it, and it does not close it.
+
+**The first run of this package measured an old tree, and this is how it was
+found.**  The first run (15:49:51–15:51:02 UTC, agent `2346411c`, journal
+`session-20-3f22fe.jsonl`) took the whole route — the question, the answer "Allow
+always", the tool, the second call allowed by the rules, `finish` — but its
+decisions carried the reply `:always` and **no scope at all**.  The cause is not
+the model and not the wire: the ACP service of the orchestrator had been started
+at **05:34:24 UTC**, while the wave C1 was merged at **13:13:31 UTC**, so the
+service held the old tree in memory and the run measured a code that was not the
+package.  The evidence is on the disk and independent of the memory of the run:
+the socket of the life of the service `/tmp/yeah-1001/yeah-life-paseo-2282.sock`
+has the time of its creation **05:34:24 UTC**, and the socket of the service
+`/tmp/yeah-1001/yeah-service-paseo.sock` — **16:05:44 UTC**, the restart on the
+tree of the package.  The service was therefore started by hand on a unit
+(`systemd-run --unit=yeah-acp-service`), because the plugin of the orchestrator
+keeps the service in a cache (`plugin/yeah-provider/index.server.ts`) and
+`paseo reload` does not drop that cache: after the process dies, the service
+stays down until it is raised by hand.
+
+**The rule that follows (the parent, 2026-11-21; a rule outside §17.2, the owner
+may cancel it).**  A live run must compare the time the service started with the
+time of the commit it claims to measure.  A run that does not say which tree it
+measured measures nothing: the route can be perfectly green and be about a tree
+that is not there any more.
+
+**What it does not prove.**
+
+* It is one run, one prompt and one model.  Nothing here says that another model
+  answers the same way, and the model was `MiniMax-M3.1-Flash`.
+* The mode was `build`.  The run says nothing about the profile `plan`, which
+  denies the same tools instead of asking, and nothing about `auto`.
+* The carrier of the rules was `session`.  The run says nothing about the
+  carriers `run` and `global`, and nothing about the scope `project`, which has
+  no carrier at all.
+* The model did **exactly** what the prompt told it to do — two `todo_add` and
+  `finish`, and no other call — so this run says nothing about the extra calls
+  of the run of the package of the waves 97 to 99.
+* The numbers of the usage are the ones the provider reported.  The last
+  request of the run reports `input: 38` — less than the first one
+  (`input: 12968`) — and the journal holds no record of a compaction; the fact is
+  recorded here, not explained.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
@@ -2938,3 +3053,15 @@ of ACP: one nudge out of a budget of three.
   for the nudges that no effect answered, and a model that acts and then says
   nothing is not charged for the silence.  The deadline of the run and the
   deadline of the request still bound it.
+- A live run can measure a tree that is not the repository.  The ACP service of
+  the orchestrator is long-lived: it holds the code it was started with in
+  memory, and the plugin keeps the service in a cache that `paseo reload` does
+  not drop.  The first run of the package of the waves C1, 104 and 105
+  (15:49 UTC) measured the code of 05:34 UTC -- the wave C1 was merged at
+  13:13 UTC -- and its decisions carried no scope at all, because the tree it
+  ran was the tree before the wave.  The route was green and the run was about
+  nothing.  The rule of the parent of 2026-11-21 asks a live run to compare the
+  time the service started with the time of the commit, and the socket of the
+  life of the service on the disk says when that instance started; but nothing in
+  the harness says it, and the plugin still starts the service once and keeps
+  it.
