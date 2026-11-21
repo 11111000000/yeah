@@ -1555,6 +1555,42 @@ work item. Never resolve it by silently making documentation more optimistic.
   the port file that the stop of the service deletes, where the docstring promises nil -- is the
   wave 103.
 
+- Wave 102 made the tree of the processes survive a vanished process.  The scan of the tree was
+  one awk over the glob `/proc/[0-9]*/stat`, and awk stops at a file it cannot open: one process
+  that exited in the middle of the scan cut the list of the descendants short, and `stop_tree`
+  killed the part of the tree it was given and left the rest of it standing -- a server that
+  keeps living after the runner has stopped it.  The message of awk was hidden (`2>/dev/null')
+  and the list was cut all the same.  The same code read the fields of the stat file after the
+  **first** closing parenthesis, so a process whose name holds a parenthesis was read as a
+  process whose parent is a letter and its children were not found -- the comment of the file
+  promised the last parenthesis, and the code read the first.  **The scan decides now**: it
+  reads the stat file of every process of the tree and goes on at the file that is gone (a
+  process that exited is not an error and is not complained about), it names the file that is
+  there and holds no line (the reader does not know and says so), it reads the fields after
+  the **last** closing parenthesis, and it reads the tree once and not once per level of it.
+  `process_group` reads the same fields with the same reader, so the group of a process whose
+  name holds a parenthesis is its group, and the answer for a process that is gone stays
+  nothing.  **The seam is named**: the root of the tree of the processes is the variable
+  `PROC_ROOT`, read at every call, so the scan can be given a tree of its own and the defect
+  can be reproduced deterministically instead of waited for.  The proof is a new check of 340
+  lines with eight stands, made against a tree of fake stat files that the check builds
+  itself.  **Three controls of the parent on copies of the tree** (2026-11-21): 0 failures --
+  the honest tree passes, the old code refuses with the words of the defect, and the scan that
+  stops at the file that is gone refuses with the name of that file (docs/PLAN.md §16.94).
+  **The defect of the old code was measured, not guessed**: the old awk was run against a
+  fixture of four stat files, the third of them a dangling link -- the child before the file
+  that was gone was printed, the child after it was lost, and the answer of awk was 2; and the
+  pid of the old awk was `parts[3]` of the path, which is the pid only when the root is
+  exactly `/proc` (measured: `pid seen by the old code: w102old3-3168`).  The claim of the wave
+  is new (`the-tree-of-the-processes-survives-a-vanished-process`) and it amends no claim of the
+  package; the writer proposed two more claims out of the same check and they are not
+  registered -- a claim that was not asked for is not a claim, and the falsifier of this one
+  names both cases anyway.
+- The class of that defect is **still not** closed.  This wave closes the second of the three
+  main places the survey of 2026-11-21 named; the other places of the class are named in the
+  waves 100 and 101, and the survey counted 42 places of the class and named 19 of them
+  dangerous.
+
 ## The commands
 
 ```sh

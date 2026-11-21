@@ -3843,6 +3843,29 @@
       "register": "fact",
       "control": "sed -i 's|(or (string= state \"S\")|(or t|' lib/yeah-proc.el",
       "waiver": null
+    },
+    {
+      "id": "the-tree-of-the-processes-survives-a-vanished-process",
+      "text": "The scan of the tree of the processes goes on at a stat file that is gone: a process that exits while the tree is read does not cut the list of the descendants short, the children that are still alive are found and the tree is stopped as a whole; a stat file that is there and holds no line is another thing and is named, because the reader does not know and says so, and a stat file that is gone is not complained about; the fields of the stat file are read after the last closing parenthesis, so a process whose name holds a parenthesis is found by its parent and its group is its group; the root of the tree of the processes is the variable PROC_ROOT, so the scan can be given a tree of its own; and the tree is read once for a list of the descendants and not once per level of it.",
+      "scope": [
+        "scripts/lib/tree.sh",
+        "tests/checks/check-the-tree-of-the-processes-survives-a-vanished-process.sh"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-tree-of-the-processes-survives-a-vanished-process.sh"
+        }
+      ],
+      "falsifier": "the scan of the tree of the processes stops at a stat file that is gone, or the list of the descendants is cut short by a process that exited while the tree was read, or a stat file that is there and holds no line is not named, or a stat file that is gone is complained about, or the fields of the stat file are read after the first closing parenthesis, or a process whose name holds a parenthesis is not found by its parent, or the group of a process whose name holds a parenthesis is not the group of the process, or the group of a process that is gone is not nothing, or the descendants of a process are not the deepest first, or the group of the shell that reads the tree is signalled, or the group of a process that leads a group of its own is not signalled, or the scan reads a root that is not the one it was given, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's@read_stat \"\\$pid\" || continue@read_stat \"\\$pid\" || break@' scripts/lib/tree.sh",
+      "waiver": null
     }
   ]
 }
