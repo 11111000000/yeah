@@ -38,12 +38,18 @@
   "Return the text of the stat file of the process PID, or nil.
 The answer is nil when the file is gone: the process died while it was
 read.  Only the error of the file is caught -- `file-missing' is a kind
-of `file-error' -- and nothing else is."
-  (condition-case nil
-      (with-temp-buffer
-        (insert-file-contents (format "/proc/%d/stat" pid))
-        (buffer-string))
-    (file-error nil)))
+of `file-error' -- and nothing else is.
+
+A PID that is not a positive whole number names no process, and the
+answer is nil for it too.  The error of the format of the path is not
+the error of the file: a reader that raises it does not decide, it
+dies.  The reader decides on every PID it is given."
+  (when (and (integerp pid) (> pid 0))
+    (condition-case nil
+        (with-temp-buffer
+          (insert-file-contents (format "/proc/%d/stat" pid))
+          (buffer-string))
+      (file-error nil))))
 
 (defun yeah-proc--state (pid)
   "Return the state field of the process PID, or nil when the process is gone.
