@@ -1553,7 +1553,7 @@
       ],
       "falsifier": "the decision is allowed but forgotten, so the person is asked the same question twice",
       "register": "fact",
-      "control": "sed -i \"/yeah-approval-remember-rule/,+3s/scoped)))/nil))/\" lib/yeah-acp.el",
+      "control": "sed -i \"/yeah-approval-remember-rule/,+3s/scoped)))/nil)))/\" lib/yeah-acp.el",
       "waiver": null
     },
     {
