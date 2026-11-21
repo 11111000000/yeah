@@ -1943,8 +1943,8 @@ and a check of a kernel of forty files would take minutes instead of seconds."
           (when (and (yeah-check--a-delimiter-p (char-after end))
                      (not (nth 3 state))
                      (not (nth 4 state)))
-            (push (line-number-at-pos start) lines)))
-        (setq pos (1+ start)))
+            (push (line-number-at-pos start) lines))
+          (setq pos (1+ start))))
       (nreverse lines))))
 
 (defun yeah-check--places-of-an-unknown-form (head)
