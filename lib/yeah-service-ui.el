@@ -19,6 +19,7 @@
 (require 'cl-lib)
 (require 'project)
 (require 'yeah-acp-vocabulary)
+(require 'yeah-approval)
 (require 'yeah-approval-ui)
 (require 'yeah-perm)
 (require 'yeah-service)
@@ -83,23 +84,42 @@ grants everything: there is nobody to ask."
 (defvar yeah-service-ui-permission-prompter
   #'yeah-service-ui--approval-prompter
   "Function answering a permission request of the service.
-Called with (TITLE RAW-INPUT) and returns \"allow-once\", \"allow-always\"
-or \"reject-once\".  The default asks the person in the shared approval
-view; a check binds its own.")
+Called with (TITLE RAW-INPUT) and returns the option id of the answer;
+the converter of the kernel spells it the way the wire wants it.  The
+default asks the person in the shared approval view; a check binds its
+own.")
 
 (defun yeah-service-ui--approval-prompter (title raw-input)
   "Ask the person about TITLE with RAW-INPUT in the shared approval view.
-Returns the option id of the answer: \"allow-once\", \"allow-always\" or
-\"reject-once\"."
-  (let ((decision (yeah-approval-answer
-                   (list :action (yeah-service-ui--permission-action title)
-                         :resource (yeah-service-ui--permission-resource title)
-                         :arguments raw-input))))
-    (if (eq (plist-get decision :effect) :allow)
-        (if (eq (plist-get decision :reply) :always)
-            "allow-always"
-          "allow-once")
-      "reject-once")))
+Returns the option id of the answer, spelled by the converter of the
+kernel."
+  (let* ((decision (yeah-approval-answer
+                    (list :action (yeah-service-ui--permission-action title)
+                          :resource (yeah-service-ui--permission-resource title)
+                          :arguments raw-input)))
+         (effect (plist-get decision :effect))
+         (kind (or (yeah-approval-reply-canonical (plist-get decision :reply))
+                   :reject)))
+    (yeah-approval-reply-on-wire effect kind)))
+
+(defun yeah-service-ui--answer-effect (answer)
+  "Return the effect the wire answer ANSWER has: \"allow\" or \"deny\".
+The person may allow this call alone or allow it for the session; both
+are an allowance, and a refusal is a denial.  The record of the answer
+must name the effect that really happened."
+  (if (and (stringp answer) (string-prefix-p "allow-" answer))
+      "allow"
+    "deny"))
+
+(defun yeah-service-ui--answer-scope (answer)
+  "Return the scope the wire answer ANSWER names, or nil.
+An answer that allows this call alone is the scope of this call, an
+answer that allows it for the session is the scope of the session, and a
+refusal carries no scope."
+  (let ((kind (yeah-approval-reply-from-wire answer)))
+    (when (and kind
+               (equal "allow" (yeah-service-ui--answer-effect answer)))
+      (yeah-perm-scope-name (yeah-approval-scope-of kind 'session)))))
 
 (defun yeah-service-ui--next-id (prefix)
   "Return a fresh local id beginning with PREFIX."
@@ -298,14 +318,17 @@ running while the person decides."
                                        title raw-input)))
             (when (buffer-live-p buffer)
               (with-current-buffer buffer
-                (yeah-service-ui--append-record
-                 (list :type "permission-decision"
-                       :id (yeah-service-ui--next-id "permission")
-                       :action (yeah-service-ui--permission-action title)
-                       :resource (yeah-service-ui--permission-resource title)
-                       :tool_call_id tool-call-id
-                       :effect (if (equal answer "allow-once") "allow" "deny")))
-                (yeah-service-ui--update-journal)))
+                (let ((record
+                       (list :type "permission-decision"
+                             :id (yeah-service-ui--next-id "permission")
+                             :action (yeah-service-ui--permission-action title)
+                             :resource (yeah-service-ui--permission-resource title)
+                             :tool_call_id tool-call-id
+                             :effect (yeah-service-ui--answer-effect answer))))
+                  (when-let ((scope (yeah-service-ui--answer-scope answer)))
+                    (plist-put record :scope scope))
+                  (yeah-service-ui--append-record record)
+                  (yeah-service-ui--update-journal))))
             (funcall respond
                      (if (equal answer "cancelled")
                          (list :outcome "cancelled")

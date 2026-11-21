@@ -106,6 +106,10 @@ rest of what the run needs."
                             placement))))
     context))
 
+(defconst yeah-run--carrier 'run
+  "The carrier of the rules a run writes: the rules of this run.
+The scope of that carrier is the scope of an answer of the run.")
+
 (defun yeah-run-context-add-rule (context rule)
   "Add RULE to the rules of CONTEXT and return CONTEXT.
 The persistent rules of the person are not touched: a run may widen its
@@ -117,9 +121,13 @@ own reach for the length of the run."
 (defun yeah-run-context--answer (context request person)
   "Ask PERSON about REQUEST and remember an `always' answer in CONTEXT.
 The rules of the context are the run's own: a remembered decision stays
-in this run and in no other."
-  (let ((decision (funcall person request)))
-    (when-let ((rule (yeah-approval-remember-rule request decision)))
+in this run and in no other.  The answer carries the scope of the run,
+and the rule it writes carries the same scope.  An answer that names a
+scope the run does not hold is refused by name."
+  (let* ((decision (yeah-approval-scope-decision
+                    (funcall person request) yeah-run--carrier))
+         (rule (yeah-approval-remember-rule request decision)))
+    (when rule
       (yeah-run-context-add-rule context rule))
     decision))
 
@@ -134,23 +142,25 @@ there is a person to ask, the read answers itself and says why.  An
 context, so the same question is not asked twice."
   (let ((person (yeah-run-context-answerer context)))
     (lambda (request)
-      (let* ((action (plist-get request :action))
-             (resource (plist-get request :resource))
-             (effect (yeah-perm-effect action resource
-                                       (yeah-run-context-rules context))))
-        (pcase effect
-          ('allow
-           (list :effect :allow :reply :once))
-          ('deny
-           (list :effect :deny :reply :reject
-                 :reason (format "the rules deny %s on %s" action resource)))
-          (_
-           (if person
-               (or (yeah-approval-safe-read-decision request)
-                   (yeah-run-context--answer context request person))
-             (list :effect :deny :reply :reject
-                   :reason (format "the rules ask about %s on %s and nobody answers"
-                                   action resource)))))))))
+      (yeah-approval-scope-decision
+       (let* ((action (plist-get request :action))
+              (resource (plist-get request :resource))
+              (effect (yeah-perm-effect action resource
+                                        (yeah-run-context-rules context))))
+         (pcase effect
+           ('allow
+            (list :effect :allow :reply :once))
+           ('deny
+            (list :effect :deny :reply :reject
+                  :reason (format "the rules deny %s on %s" action resource)))
+           (_
+            (if person
+                (or (yeah-approval-safe-read-decision request)
+                    (yeah-run-context--answer context request person))
+              (list :effect :deny :reply :reject
+                    :reason (format "the rules ask about %s on %s and nobody answers"
+                                    action resource))))))
+       yeah-run--carrier))))
 
 (defun yeah-run-context-start (context prompt)
   "Start the run of CONTEXT with PROMPT and return the turn.

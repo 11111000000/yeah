@@ -357,24 +357,26 @@ The first answer wins; a cancelled turn ignores a late answer."
   (format "%s-perm-%d" (yeah-turn-id turn) (yeah-turn-permissions turn)))
 
 (defun yeah-turn--decision-of (decision name)
-  "Return the (EFFECT DETAIL REPLY) of DECISION about the tool NAME.
+  "Return the (EFFECT DETAIL REPLY SCOPE) of DECISION about the tool NAME.
 A decision that defers is a deferral; a decision that allows says why it
-needed no question; every other decision is a refusal that says why."
+needed no question; every other decision is a refusal that says why.
+SCOPE is the scope the answer named, or nil when it named none."
   (if (plist-get decision :defer)
-      (list "defer" (plist-get decision :defer) nil)
+      (list "defer" (plist-get decision :defer) nil nil)
     (if (eq (plist-get decision :effect) :allow)
         (list "allow" (plist-get decision :reason)
-              (plist-get decision :reply))
+              (plist-get decision :reply)
+              (plist-get decision :scope))
       (list "deny" (or (plist-get decision :reason)
                        (format "the rules say %s" name))
-            nil))))
+            nil nil))))
 
 (defun yeah-turn--decide (turn slot answerer)
   "Ask ANSWERER whether the tool of SLOT may run.
-Return (EFFECT DETAIL REPLY): EFFECT is allow, deny or defer, DETAIL is the
-reason of the decision (the question that waits for the person when the
-effect is defer), and REPLY is what the person answered (`:once' or
-`:always').
+Return (EFFECT DETAIL REPLY SCOPE): EFFECT is allow, deny or defer,
+DETAIL is the reason of the decision (the question that waits for the
+person when the effect is defer), REPLY is what the person answered
+(`:once' or `:always') and SCOPE the scope the answer named.
 
 An answerer marked by `yeah-approval-async' answers later: the effect is
 defer and the detail is the id of the question that waits."
@@ -382,9 +384,9 @@ defer and the detail is the id of the question that waits."
         (spec (plist-get slot :spec)))
     (cond
      ((null spec)
-      (list "deny" (format "there is no tool named %s" name) nil))
+      (list "deny" (format "there is no tool named %s" name) nil nil))
      ((equal name "finish")
-      (list "allow" nil nil))
+      (list "allow" nil nil nil))
      ((yeah-approval-async-answerer-p answerer)
       (yeah-turn--ask-later turn slot answerer))
      (t
@@ -396,10 +398,11 @@ defer and the detail is the id of the question that waits."
                  (plist-get slot :tool-call-id)))
        name)))))
 
-(defun yeah-turn--write-decision (turn slot effect reply reason &optional parent)
+(defun yeah-turn--write-decision (turn slot effect reply reason &optional parent scope)
   "Write the permission decision of SLOT into the log and return its id.
-EFFECT is allow, deny or defer; REPLY is what the person answered and
-REASON the reason of the decision.  PARENT is the event the decision
+EFFECT is allow, deny or defer; REPLY is what the person answered,
+REASON the reason of the decision and SCOPE the scope the answer named.
+PARENT is the event the decision
 belongs to; it is the permission request unless the decision answers an
 earlier deferral."
   (apply #'yeah-turn--write
@@ -410,7 +413,7 @@ earlier deferral."
          (yeah-turn--decision-fields
           (plist-get slot :name)
           (plist-get slot :resource)
-          effect reply reason)))
+          effect reply reason scope)))
 
 (defun yeah-turn--ask-later (turn slot answerer)
   "Ask the ANSWERER that answers later whether the tool of SLOT may run.
@@ -439,7 +442,7 @@ id and the tool waits with it.  Return the deferral of the question."
         (setq resume
               (lambda (decision)
                 (yeah-turn-resume-permission turn request-id decision)))
-        (list "defer" request-id nil)))))
+        (list "defer" request-id nil nil)))))
 
 (defun yeah-turn--answer-permission (turn slot decision)
   "Answer the deferred question of SLOT with DECISION.
@@ -462,7 +465,8 @@ ended is ignored, and an answer that is not a decision is a refusal."
      (if (eq (plist-get decision :effect) :allow) "allow" "deny")
      (plist-get decision :reply)
      (plist-get decision :reason)
-     (plist-get slot :decision-event-id))
+     (plist-get slot :decision-event-id)
+     (plist-get decision :scope))
     (when-let ((done (plist-get slot :continuation)))
       (yeah-turn--run-or-refuse turn slot done decision))))
 
@@ -531,7 +535,8 @@ slot owns stable ids shared by request, permission and tool-end."
          (decision (yeah-turn--decide turn slot answerer))
          (effect (nth 0 decision))
          (detail (nth 1 decision))
-         (reply (nth 2 decision)))
+         (reply (nth 2 decision))
+         (scope (nth 3 decision)))
     (when (equal "defer" effect)
       ;; The question waits for an answer.  It is registered before the
       ;; tool starts, so that the answer finds it whenever it arrives.
@@ -546,7 +551,8 @@ slot owns stable ids shared by request, permission and tool-end."
     (let ((decision-event-id
            (yeah-turn--write-decision
             turn slot effect reply
-            (and (not (equal "defer" effect)) detail))))
+            (and (not (equal "defer" effect)) detail)
+            nil scope)))
       (plist-put slot :decision-event-id decision-event-id)
       (plist-put slot :refused (and (equal "deny" effect) detail))
       (plist-put slot :deferred (and (equal "defer" effect) detail))
@@ -564,13 +570,15 @@ The journal is JSON: a keyword or a symbol becomes its name."
         ((symbolp reply) (symbol-name reply))
         (t (format "%S" reply))))
 
-(defun yeah-turn--decision-fields (name resource effect reply reason)
+(defun yeah-turn--decision-fields (name resource effect reply reason &optional scope)
   "Return the fields of the permission decision of a call.
-REPLY is the answer of the person and REASON the reason of the decision;
-both are left out when there is nothing to say."
+REPLY is the answer of the person, REASON the reason of the decision and
+SCOPE the scope the answer named; the last two are left out when there
+is nothing to say."
   (let ((fields (list :action name :resource resource :effect effect)))
     (when reply (plist-put fields :reply (yeah-turn--reply-name reply)))
     (when reason (plist-put fields :reason reason))
+    (when scope (plist-put fields :scope (yeah-perm-scope-name scope)))
     fields))
 
 (defun yeah-turn--call-key (call)

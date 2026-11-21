@@ -14,6 +14,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-approval)
 (require 'yeah-diff)
 (require 'yeah-faces)
 
@@ -63,7 +64,7 @@
     (user-error "Not in a Yeah approval"))
   (when yeah-approval--decided
     (user-error "This request has already been answered"))
-  (unless (memq reply '(:once :always :reject))
+  (unless (memq reply (yeah-approval-reply-kinds))
     (user-error "Unknown approval reply: %S" reply))
   (let ((callback yeah-approval--callback))
     (setf yeah-approval--decided t)
@@ -113,7 +114,9 @@
 ;;;###autoload
 (defun yeah-approval-open (request callback)
   "Open an approval for REQUEST.
-CALLBACK is called with :once, :always or :reject."
+CALLBACK is called with the kind of the answer; the kinds are the ones
+`yeah-approval-reply-kinds' returns, and this module writes none of
+them again."
   (unless (listp request)
     (signal 'user-error (list "yeah-approval-open: REQUEST must be a plist")))
   (unless (functionp callback)
