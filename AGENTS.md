@@ -1310,13 +1310,52 @@ work item. Never resolve it by silently making documentation more optimistic.
   for them and the arrows the diagram repeats, and the defect has a subject of its own:
   `twice` (the table names the same cell more than once) and `twice-arrow` (the diagram
   carries the same arrow more than once).  The subjects of wave 87 stay where they are
-  true.  **The check proves this on itself**: a copy of the kernel whose table names the
+  true.  **[Amended 2026-11-21, wave 95:]** their *names* are not the same any more:
+  `leads` is now `label` and `label` is now `wrong-label` — the cases are the cases, the
+  words are other.  **The check proves this on itself**: a copy of the kernel whose table names the
   same cell twice is compared with the diagram of the repository, and the comparison
   must name the duplicate and must not call the cell absent — and the old comparison of
   wave 87, put back into the new check, fails with two refusals, so the path of the
   duplicate is measured and not a comment.  The duplicate itself is forbidden where it
   belongs: the machine has a unit test of its own.  The kernel and the generator are
   untouched (docs/PLAN.md §16.84).
+- Wave 94 repaired the proof of the pipeline of the diagrams, the fifth time.  The code of
+  the pipeline is honest; the proof was blind.  **The decoy was blind to a copy of the
+  chain that resolves the instrument by the profile**: the decoy ran in a hermetic
+  environment (the home of the user empty, the store of nix empty), so only the step of
+  the environment and the step of the PATH resolved there; a copy of the chain that looks
+  the instrument up in the profile of the user fell back to the chain of the repository
+  silently, the pipeline took the instrument from that copy, and the check answered 0 — a
+  proof that is green on a tree whose pipeline does not do what the claim says.  Now the
+  decoy runs in an alive environment (the home with the profile, the store with the store,
+  `PLANTUML` and `EMACS`, the `PATH`): all four steps of the chain resolve there, and every
+  one of them resolves to the instrument of the machine and not to the decoy; the chain of
+  the copy is the only thing that hands out the decoy.  The textual probes read all the
+  files of `scripts/` and look for the second chain under any name, and the requirement of
+  the mark counts how many times it was asked — a requirement that was asked about nothing
+  is noticed and not silently met.  **The boundary of the probe is named, and it is not the
+  boundary of wave 91**: the decoy sees a copy that resolves the instrument in the
+  environment of the decoy, and it does not see a copy that resolves it in a place that
+  the environment of the decoy does not provide.  The code of the pipeline is untouched
+  (docs/PLAN.md §16.86).
+- Wave 95 repaired the proof of the diagram of the machine of the states, the fourth time.
+  The kernel and the generator are honest; the proof named a subject that is not there.
+  **The comparison reported an absent cell as a cell that is led elsewhere**: the cell
+  `(post-decide nudge . deciding)` is not in the diagram at all — no arrow of the diagram
+  carries its label — and the comparison fell out of its branches into a guess by the order
+  of the table: it answered "the generator reads the table but leads the cell elsewhere:
+  the cell (post-decide nudge deciding) is drawn as (idle --> deciding : weird)".  A
+  refusal with a subject that is not there sends the reader to the generator, and the
+  defect is in the diagram.  Now the comparison tells the cases apart **by content and not
+  by order**, and every kind of the defect has a subject that is there: `absent` (no arrow
+  of the diagram carries the label of the cell), `label` (the label of the cell is in the
+  diagram and the ends of its arrow are not the ends of the cell), `wrong-label` (the ends
+  of the cell are in the diagram and the label of its arrow is not the label of the cell),
+  `twice`, `twice-arrow`, `count` and the new `extra-arrow` (the diagram carries an arrow
+  that the table of the machine does not name).  **The check proves this on stands of its
+  own**: four small tables of cells and four small diagrams, written in the file of the
+  check and not read out of the kernel.  The kernel and the generator are untouched
+  (docs/PLAN.md §16.87).
 
 ## The commands
 
