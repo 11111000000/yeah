@@ -748,18 +748,89 @@ A local function is a name, a list of parameters and a body."
         (push definition definitions)))
     (nreverse definitions)))
 
+(defun yeah-check--calls-the-name-p (name form)
+  "Return non-nil when the runtime calls the function NAME in FORM.
+FORM is code: the runtime runs it.
+
+A call of it is a form whose head is its name.  A value of it that the runtime
+calls is a name in the first argument of `funcall' or of `apply', and a function
+designator that stands for it.  A name in data -- in a quote that nobody calls
+-- is a name and not a call: the runtime does not run the data, and a name that
+only the data holds is a name that the runtime never calls."
+  (cond
+   ;; A call of it: the name stands in the head of a form.
+   ((and (consp form) (eq (car form) name)) t)
+   ;; A value of it that the runtime calls: the first argument of `funcall' or
+   ;; of `apply' is a value the runtime calls.
+   ((and (consp form) (memq (car form) yeah-check--callers-of-a-value))
+    (let ((argument (cadr form)))
+      (or (eq (yeah-check--called-value argument) name)
+          ;; The name stands somewhere in the value that the runtime calls.
+          (yeah-check--mentions name argument))))
+   ;; A function designator that stands for it: the runtime may call the value.
+   ((and (consp form) (eq (car form) 'function))
+    (or (eq (yeah-check--called-value form) name)
+        ;; The body of a lambda under a `function' is code.
+        (yeah-check--calls-the-name-p name (yeah-check--code-of-a-function form))))
+   ;; A backquoted form is data, and the parts that are unquoted in it are the
+   ;; code that the runtime runs.
+   ((and (consp form) (memq (car form) yeah-check--backquote-symbols))
+    (yeah-check--calls-the-name-in-data-p name (cdr form)))
+   ;; A quoted form is data: the runtime does not run it, and a name in it calls
+   ;; nothing.
+   ((and (consp form) (eq (car form) 'quote)) nil)
+   ((consp form)
+    (let ((hit nil) (tail form))
+      (while (and (consp tail) (not hit))
+        (setq hit (yeah-check--calls-the-name-p name (car tail)))
+        (setq tail (cdr tail)))
+      hit))
+   ((vectorp form)
+    (let ((hit nil) (index 0))
+      (while (and (< index (length form)) (not hit))
+        (setq hit (yeah-check--calls-the-name-p name (aref form index)))
+        (setq index (1+ index)))
+      hit))
+   (t nil)))
+
+(defun yeah-check--calls-the-name-in-data-p (name form)
+  "Return non-nil when the data FORM holds a call of NAME.
+The parts that are unquoted in a backquote are the code that the runtime runs,
+and the walk goes into them.  The rest of the data is names and not calls."
+  (cond
+   ((consp form)
+    (let ((head (car form)))
+      (if (memq head yeah-check--unquote-symbols)
+          (yeah-check--calls-the-name-p name (cadr form))
+        (let ((hit nil) (tail form))
+          (while (and (consp tail) (not hit))
+            (setq hit (yeah-check--calls-the-name-in-data-p name (car tail)))
+            (setq tail (cdr tail)))
+          hit))))
+   ((vectorp form)
+    (let ((hit nil) (index 0))
+      (while (and (< index (length form)) (not hit))
+        (setq hit (yeah-check--calls-the-name-in-data-p name (aref form index)))
+        (setq index (1+ index)))
+      hit))
+   (t nil)))
+
 (defun yeah-check--local-function-is-called-p (definition definitions form)
   "Return non-nil when the runtime calls the local function DEFINITION.
 The runtime calls it when its name stands in the code of the form: a call of
 it, a call of it from a neighbouring local function, or its name as a value
 that the runtime calls.  A name that stands nowhere is the name of a function
 that the runtime never calls, and the body of it is not code the runtime runs.
-The name of a local function that a neighbouring one takes as a parameter is
-a value that the runtime may call, and the walk reads it as a call."
+A name in data -- in a quote that nobody calls -- is a name and not a call:
+the runtime does not run the data.  The name of a local function that a
+neighbouring one takes as a parameter is a value that the runtime may call,
+and the walk reads it as a call."
   (let ((name (car definition)))
-    (or (yeah-check--mentions name (cddr form))
+    (or (yeah-check--calls-the-name-p name (cddr form))
         (cl-some (lambda (other)
-                   (or (yeah-check--mentions name (cddr other))
+                   (or (yeah-check--calls-the-name-p name (cddr other))
+                       ;; A name that a neighbouring local function takes as a
+                       ;; parameter is a value that the runtime may call.
                        (yeah-check--mentions name (cadr other))))
                  definitions))))
 
@@ -2099,6 +2170,8 @@ walk to naming a form whose positions it does not know."
                  (probe-other (probe-dead) (probe-live2)))
      (probe-other))
      (cl-labels probe-live probe-live2 probe-other))
+    ((cl-labels ((probe-dead (a) (probe-live))) (list 'probe-dead))
+     (cl-labels list))
     ((condition-case probe-dead (probe-live) (error (probe-live2)))
      (condition-case probe-live probe-live2))
     ((destructuring-bind (probe-dead) (probe-live) (probe-live2))
@@ -2169,7 +2242,11 @@ walk finds in a position of a name is a defect, and the probe names it.")
        (funcall 'witness)) . 1)
     ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label))
                  (other (witness) nil))
-       (other)) . 1))
+       (other)) . 1)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
+       (list 'witness)) . 0)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
+       (function witness)) . 1))
   "The forms the probe of the places of the walk holds the walk to.
 Every form of the list stands a tick in the code of it, and the number on the
 right is the number of the places of the runtime the walk has to find in it.
