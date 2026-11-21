@@ -280,6 +280,7 @@ rules must allow the commit before anything is written."
          :description
          "Show the status of the project: the branch, and the files that are changed, staged or untracked. The directory is the project directory; the command runs there."
          :input (list (list :name "directory" :type 'string))
+         :risk "read"
          :async t
          :handler #'yeah-git--status)
    (list :name "git_diff"
@@ -288,6 +289,7 @@ rules must allow the commit before anything is written."
          :input (list (list :name "directory" :type 'string)
                       (list :name "path" :type 'string :optional t)
                       (list :name "staged" :type 'boolean :optional t))
+         :risk "read"
          :async t
          :handler #'yeah-git--diff)
    (list :name "git_commit"
@@ -296,6 +298,7 @@ rules must allow the commit before anything is written."
          :input (list (list :name "directory" :type 'string)
                       (list :name "message" :type 'string)
                       (list :name "files" :type 'string :optional t))
+         :risk "write"
          :async t
          :concurrency 'exclusive
          :handler #'yeah-git--commit)))

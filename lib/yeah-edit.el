@@ -267,6 +267,7 @@ read."
                       (list :name "replace_all" :type 'boolean :optional t)
                       (list :name "version" :type 'string :optional t))
          :kind "edit"
+         :risk "write"
          :handler #'yeah-edit--edit
          :concurrency 'exclusive)
    (list :name "write"
@@ -277,6 +278,7 @@ read."
                       (list :name "overwrite" :type 'boolean :optional t)
                       (list :name "version" :type 'string :optional t))
          :kind "edit"
+         :risk "write"
          :handler #'yeah-edit--write
          :concurrency 'exclusive)))
 

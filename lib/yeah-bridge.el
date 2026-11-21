@@ -242,11 +242,13 @@ happened."
          :description
          "Evaluate an Elisp expression in the attached Emacs and return the printed value."
          :input (list (list :name "expression" :type 'string))
+         :risk "execute"
          :handler #'yeah-bridge-eval)
    (list :name "bridge__buffer_read"
          :description
          "Return the contents of a live buffer of the attached Emacs."
          :input (list (list :name "name" :type 'string))
+         :risk "read"
          :handler #'yeah-bridge-buffer-read)))
 
 (defun yeah-bridge-register ()
