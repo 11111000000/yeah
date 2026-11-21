@@ -1812,7 +1812,9 @@ work item. Never resolve it by silently making documentation more optimistic.
   being silent.  **F52**: the falsifier of the claim of the wave 101 says that another file of the
   repository defines the rule of the life of a process beside it, and the sentinel of that assertion
   read two directories and knew the rule only by the form of its name; it now reads the code of the
-  whole tree and knows a rule by two signs -- the form of the name and the sign of a file that reads
+  whole tree of the repository -- and the directories the repository ignores (the installed
+  dependencies of the plugin, the output of the runs) are not walked, because they are not a part of
+  it -- and knows a rule by two signs -- the form of the name and the sign of a file that reads
   the state of a process and holds the letters of life -- and the documents are not read, because a
   document names the rule and a program defines it.  On the honest tree the sign fires on exactly two
   files: the rule itself and the stand of the rule.  **F53**: the guard of the documentation read
