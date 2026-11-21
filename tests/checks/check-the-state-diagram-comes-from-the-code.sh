@@ -460,7 +460,7 @@ compare_cells() {
     fi
   done <"$stem.problems"
   if [ "$mode" = fail ] && [ "$reported" -gt 5 ]; then
-    fail "$tag: and $((reported - 5)) more cells of the table are not arrows of the diagram"
+    fail "$tag: and $((reported - 5)) more defects of the comparison of the cells and the arrows"
   fi
 }
 
