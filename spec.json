@@ -3733,6 +3733,30 @@
       "register": "fact",
       "control": "sed -i \"s|(deciding       stream-end      . post-decide)|(deciding       stream-end      . accumulating)|\" lib/yeah-loop.el",
       "waiver": null
+    },
+    {
+      "id": "the-layer-diagram-points-at-files-that-exist",
+      "text": "The picture of the layers of the core names the code that implements it, and every name it gives points at what is there: every reference of the form `file:line' of `site/diagrams/core-layers.puml' names a file of this repository, a line of that file and a line that carries a definition -- an empty line names no code, a line that holds nothing but a comment names no code either, and a line that holds code and no definition names no definition -- a reference to a path that leaves the repository names nothing of this repository, every module of `lib/' is named by the picture or listed in the note of the modules the picture does not name with the reason why it is not there, the note names no module that is not there, names no module without a reason and names no module that the picture names as well, every block of the picture names at least one file, and the four layers of the picture -- the drivers, the core, the journal and the projections -- are there.",
+      "scope": [
+        "site/diagrams/core-layers.puml",
+        "lib",
+        "tests/checks/check-the-layer-diagram-points-at-files-that-exist.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-layer-diagram-points-at-files-that-exist.el"
+        }
+      ],
+      "falsifier": "the diagram names a file, a line or a module that is not there, or it drops a module of `lib/' silently: a reference to a file that does not exist, a reference to a line the file does not have, a reference to a line that carries no definition, a reference to a path that leaves the repository, a module of `lib/' that the diagram neither names nor lists in its note, a module that the note names without a reason, a module that the note names and the diagram names as well, a block of the picture that names no file, or a package of the picture that is not there, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|lib/yeah-trash.el:220||' site/diagrams/core-layers.puml",
+      "waiver": null
     }
   ]
 }
