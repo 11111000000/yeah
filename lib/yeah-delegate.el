@@ -418,11 +418,13 @@ of the child."
               "Start a child agent and give it a task. The child is an agent of your own: it runs in a session of its own, with the model and the tools that the agent names, and it works while you keep working. Give the name of the agent and the task; the tool answers with the short id of the child, and you ask for what became of it with delegate-result and that id."
               :input (list (list :name "agent" :type 'string)
                            (list :name "task" :type 'string))
+              :risk "write"
               :handler #'yeah-delegate--delegate)
         (list :name "delegate-result"
               :description
               "Report what became of a child agent: whether it still works, and the summary it ended with. Give the short id that the delegate tool returned, such as sub-1."
               :input (list (list :name "child" :type 'string))
+              :risk "read"
               :handler #'yeah-delegate--result)))
 
 (defun yeah-delegate-register ()

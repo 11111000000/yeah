@@ -14,6 +14,7 @@
 
 (require 'ert)
 (require 'yeah-perm)
+(require 'yeah-tools)
 
 (ert-deftest yeah-perm-rule-make-returns-plist ()
   "`yeah-perm-rule-make' returns a plist with the three keys."
@@ -168,6 +169,52 @@ always there."
   (yeah-perm-rules-reset-for-test)
   (yeah-perm-profile "plan")
   (should (null (yeah-perm-rules-list))))
+
+(ert-deftest yeah-perm-profile-asks-by-the-declaration-of-the-tool ()
+  "The profile asks by the risk the tool declares and not by the name of the
+tool: a tool that declares that it only looks is not named, a tool that
+declares that it changes the world is named, and a tool that declares no
+risk is named too, because a risk that is not known changes the world."
+  (let (actions)
+    (yeah-tools-register
+     (list :name "tmp-only-looks"
+           :description "A throwaway tool that declares that it only looks."
+           :input nil
+           :handler (lambda (&rest _args) nil)
+           :risk "read"))
+    (yeah-tools-register
+     (list :name "tmp-changes-the-world"
+           :description "A throwaway tool that declares that it changes the world."
+           :input nil
+           :handler (lambda (&rest _args) nil)
+           :risk "write"))
+    (yeah-tools-register
+     (list :name "tmp-says-nothing"
+           :description "A throwaway tool that declares no risk."
+           :input nil
+           :handler (lambda (&rest _args) nil)))
+    (unwind-protect
+        (setq actions (mapcar (lambda (rule) (plist-get rule :action))
+                              (yeah-perm-profile "plan")))
+      (yeah-tools-unregister "tmp-only-looks")
+      (yeah-tools-unregister "tmp-changes-the-world")
+      (yeah-tools-unregister "tmp-says-nothing"))
+    (should-not (member "tmp-only-looks" actions))
+    (should (member "tmp-changes-the-world" actions))
+    (should (member "tmp-says-nothing" actions))))
+
+(ert-deftest yeah-perm-asks-about-an-action-that-no-rule-names ()
+  "A rule that names no action asks about it: the default of the rule is
+`ask' and not `allow', and the refusal of the rule says so."
+  (let ((rules (yeah-perm-profile "plan"))
+        (err nil))
+    (should (eq 'ask (yeah-perm-effect "tmp-no-such-tool" "*" rules)))
+    (condition-case e
+        (yeah-perm-evaluate "tmp-no-such-tool" "*" rules)
+      (user-error (setq err e)))
+    (should err)
+    (should (string-prefix-p "ask: " (error-message-string err)))
+    (should (eq 'ask (yeah-perm-effect "tmp-no-such-tool" "*" '())))))
 
 (provide 'test-yeah-perm)
 ;;; test-yeah-perm.el ends here

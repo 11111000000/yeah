@@ -26,10 +26,16 @@
 ;; carry its own rules — `yeah-run-context' in `lib/yeah-run.el' does — and
 ;; `yeah-perm-effect' and `yeah-perm-evaluate' accept them as an argument,
 ;; so two runs in one Emacs do not share one truth.
+;;
+;; The profiles ask by the declaration of the tool and not by a list of
+;; names: the tools that change the world are the tools that declare a
+;; risk other than `read' (`lib/yeah-risk.el'), and a tool that declares
+;; no risk changes the world as far as the rule knows.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-risk)
 
 (defgroup yeah-perm nil
   "The Yeah permission rule system."
@@ -93,15 +99,20 @@ Returns RULE. Signals `user-error' if RULE is malformed."
   "Return all current permission rules in registration order."
   yeah-perm--rules)
 
-(defconst yeah-perm--mutating-tools '("edit" "write" "bash" "job-cancel" "delegate"
-                                       "git_commit" "delete")
-  "The tools that change the world.
-They are the tools a permission profile has an opinion about; every
-other tool is read-only or harmless.  A delegation is one of them: a
-child of a plan would change the world behind the plan.  A commit is one
-of them too: it writes history that nobody asked to be written.  A
-deletion is one of them: it takes a path away, even when it only moves
-it into the trash.")
+(defun yeah-perm--mutating-tools ()
+  "Return the names of the tools that change the world.
+The set is computed from the declarations of the tools (`lib/yeah-risk.el')
+and not from a list of names: a tool that says that it changes the world
+is in the set, and a tool that declares no risk at all is in the set too,
+because a risk that is not known changes the world.
+
+The declarations must be known.  A profile that cannot name the tools that
+change the world would allow all of them, and a rule that allows what it
+does not know is not a rule."
+  (unless (yeah-risk--known-p)
+    (signal 'user-error
+            (list "yeah-perm: the risks of the tools are not known: the registry of the tools is not loaded")))
+  (yeah-risk-mutating-tools))
 
 (defun yeah-perm-profiles ()
   "Return the names of the permission profiles."
@@ -115,12 +126,16 @@ not touch.  `build' asks for them: the person decides each one, and
 the profile decides nothing else.  `auto' allows them: there is nobody
 to ask, and the mode says so before anybody is asked.  A profile is a
 mode of work, not a policy of the person, so its rules are not added to
-the persistent ruleset."
+the persistent ruleset.
+
+The rule asks by the declaration of the tool and not by a list of names:
+the tools that change the world are the tools that declare a risk other
+than `read', and a tool that declares no risk is one of them."
   (pcase name
     ("plan" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'deny))
-                    yeah-perm--mutating-tools))
+                    (yeah-perm--mutating-tools)))
     ("build" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'ask))
-                     yeah-perm--mutating-tools))
+                     (yeah-perm--mutating-tools)))
     ("auto" (list (yeah-perm-rule-make "*" "*" 'allow)))
     (_ nil)))
 

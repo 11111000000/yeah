@@ -30,6 +30,7 @@
 (require 'cl-lib)
 (require 'yeah-builtins)
 (require 'yeah-result)
+(require 'yeah-risk)
 
 (defgroup yeah-tools nil
   "The Yeah in-process tool registry."
@@ -139,6 +140,18 @@ Three more fields are optional and say what the tool is and how it runs:
                declares no kind has the kind `other'; a tool that declares
                a kind outside this vocabulary is refused by name.
 
+  :risk        the risk the tool carries: `read', `write', `execute' or
+               `destroy'.  The risk says whether the tool changes the
+               world, and the permission rule asks by that declaration and
+               not by the name of the tool: a tool that declares the risk
+               `read' changes nothing, and a tool that declares one of
+               the other three may change the world.  A tool that declares
+               no risk has a risk that is not known, and a risk that is
+               not known changes the world: the rule asks about it, and
+               the absence of a declaration never makes the rule softer.
+               A tool that declares a risk outside this vocabulary is
+               refused by name.
+
   :concurrency  `shared' (the default) or `exclusive'. A shared tool
                 may run alongside the other shared tools of the same
                 answer; an exclusive tool runs alone, and everything
@@ -149,17 +162,23 @@ Three more fields are optional and say what the tool is and how it runs:
                 says so, and the scheduler does not block on it.
 
 Signals `user-error' if SPEC is malformed, if SPEC declares a kind
-outside the vocabulary of the protocol, or if a tool with the same
-`:name' is already registered."
+outside the vocabulary of the protocol, if SPEC declares a risk outside
+the vocabulary of the kernel, or if a tool with the same `:name' is
+already registered."
   (unless (yeah-tools--spec-p spec)
     (signal 'user-error
             (list (format "yeah-tools-register: malformed spec %S" spec))))
   (let ((name (plist-get spec :name))
-        (kind (plist-get spec :kind)))
+        (kind (plist-get spec :kind))
+        (risk (plist-get spec :risk)))
     (when (and kind (not (yeah-tools-kind-known-p kind)))
       (signal 'user-error
               (list (format "yeah-tools-register: the tool %S declares the kind %S, which is not in the vocabulary of the protocol"
                              name kind))))
+    (when (and risk (not (yeah-risk-known-p risk)))
+      (signal 'user-error
+              (list (format "yeah-tools-register: the tool %S declares the risk %S, which is not in the vocabulary of the kernel"
+                             name risk))))
     (when (gethash name (yeah-tools--active-registry))
       (signal 'user-error
               (list (format "yeah-tools-register: %S already registered" name))))
@@ -209,6 +228,14 @@ registry does not know."
     (if (yeah-tools-kind-known-p kind)
         kind
       "other")))
+
+(defun yeah-tools-risk (name)
+  "Return the risk the tool NAME declares, or nil when it declares none.
+The risk says whether the tool changes the world, and the permission rule
+asks by that declaration and not by the name of the tool.  A tool that
+declares no risk has a risk that is not known, and a risk that is not
+known changes the world."
+  (plist-get (yeah-tools-get name) :risk))
 
 (defun yeah-tools-named-args (name args)
   "Return the arguments ARGS of the tool NAME under the names it declared.
@@ -377,6 +404,22 @@ registry is in the same state as after fresh `require'."
   (setq yeah-tools--order nil
         yeah-tools--built-in-p nil)
   (yeah-tools--ensure-built-ins))
+
+(defun yeah-tools--declarations ()
+  "Return the declarations of the tools of the registry of the current run.
+The value is the alist of (NAME . RISK); the risk of a tool that declares
+none is nil.  The registry of the current run is the one that answers, so
+a run asks about the tools it has and not about the tools of another run.
+The order is the order of the registration, so that the rule of a profile
+names the tools the way the registry does."
+  (let (declarations)
+    (dolist (name (yeah-tools--active-order))
+      (let ((spec (yeah-tools-get name)))
+        (when spec
+          (push (cons name (plist-get spec :risk)) declarations))))
+    (nreverse declarations)))
+
+(yeah-risk--install-source #'yeah-tools--declarations)
 
 (yeah-tools--ensure-built-ins)
 

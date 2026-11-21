@@ -208,5 +208,49 @@ refused by the dispatch, and the names of its arguments are not read."
   (should (equal nil (yeah-tools-named-args "read" "not-a-list")))
   (should (equal nil (yeah-tools-named-args "read" 42))))
 
+(ert-deftest yeah-tools-risk-is-declared-by-the-tool ()
+  "The risk of a tool is a fact of the tool: it is the risk the tool declares."
+  (yeah-tools-reset-for-test)
+  (yeah-tools-register
+   (list :name "tmp-with-a-risk"
+         :description "A throwaway tool that declares a risk."
+         :input nil
+         :handler (lambda (&rest _args) nil)
+         :risk "destroy"))
+  (should (equal "destroy" (yeah-tools-risk "tmp-with-a-risk")))
+  (yeah-tools-reset-for-test))
+
+(ert-deftest yeah-tools-register-refuses-a-risk-outside-the-vocabulary ()
+  "A tool that declares a risk outside the vocabulary of the kernel is refused
+by name: the risk says whether the tool changes the world, and a risk that
+does not exist says nothing."
+  (yeah-tools-reset-for-test)
+  (let ((err nil))
+    (condition-case nil
+        (yeah-tools-register
+         (list :name "tmp-bad-risk"
+               :description "A throwaway tool with a risk that does not exist."
+               :input nil
+               :handler (lambda (&rest _args) nil)
+               :risk "source"))
+      (user-error (setq err t)))
+    (should err)
+    (should-not (yeah-tools-get "tmp-bad-risk")))
+  (yeah-tools-reset-for-test))
+
+(ert-deftest yeah-tools-register-accepts-a-tool-that-declares-no-risk ()
+  "A tool that declares no risk is accepted: the tools of a server of MCP come
+from outside and declare nothing, and the absence of a declaration is not a
+malformed specification."
+  (yeah-tools-reset-for-test)
+  (yeah-tools-register
+   (list :name "tmp-without-a-risk"
+         :description "A throwaway tool that declares no risk."
+         :input nil
+         :handler (lambda (&rest _args) nil)))
+  (should (yeah-tools-get "tmp-without-a-risk"))
+  (should-not (yeah-tools-risk "tmp-without-a-risk"))
+  (yeah-tools-reset-for-test))
+
 (provide 'test-yeah-tools)
 ;;; test-yeah-tools.el ends here
