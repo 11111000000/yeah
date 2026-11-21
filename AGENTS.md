@@ -1678,6 +1678,35 @@ work item. Never resolve it by silently making documentation more optimistic.
   167 labels, all of them of the form 2 (the bite), none of the form 1 and none of the form 3;
   the map is green, uncovered 0 (docs/PLAN.md §16.97).
 
+- Wave C1 gave an answer **the scope of its rule** (2026-11-21): the answer names the scope its
+  rule lives in, the rule that the answer writes carries the same scope, and the journal records
+  it.  The canonical dictionary of the scopes is `once`, `run`, `session`, `project`, `global`;
+  the kind of the answer stays what it was (`once`/`always`/`reject`) and the scope is a field of
+  its own.  The correspondence between a carrier and a scope is written in one place
+  (`yeah-perm--carriers` in `lib/yeah-perm.el`), the dictionary of the kinds is written in one
+  place (`yeah-approval--reply-kinds` in `lib/yeah-approval.el`), and the surfaces ask the
+  dictionary instead of naming the kinds one by one.  A scope that has no carrier is refused by
+  name with a reason and is never routed silently into the rules of another path.  **The lie of
+  the interface is repaired**: the projection wrote the answer `allow-always` as a refusal, and
+  it now writes the true effect `allow` and the scope `session` -- the repair of the finding F39.
+  The proof is a new check of 392 lines with seven stands
+  (`tests/checks/check-an-answer-carries-a-scope.el`), and the claim of the wave is new
+  (`an-answer-carries-a-scope`).  **Nine decisions of the parent are named and dated** (a rule
+  outside §17.2, the owner may cancel it): the scope is a field of its own and the kind stays the
+  kind; `run` is added to the four scopes the documents named, because the code has had the scope
+  of a run all along and the documents did not name it -- that difference between the code and the
+  document is the finding **F46**, and the repair of `docs/ARCHITECTURE.md` is a decision of the
+  owner; `always` is not renamed and does not become a synonym of `global`, it keeps the
+  behaviour of every path that writes it; the scope is written into the journal; on ACP there are
+  new `optionId` and the old `kind`; the names of the kinds are written in one place and the
+  surfaces come to it through a converter; `reject` carries no scope; a scope without a carrier
+  is refused by name with a reason; the control of the claim is a deterministic `sed` that breaks
+  the writing of the scope into the rule and not the timing.  **What stays open is named and not
+  hidden**: `always` still means three different things (wave C2), the plain answerer is the
+  global path and not the person of the attached path (a decision of the owner), the scope
+  `:project` has no carrier, nobody reads the scope of the journal back yet, the dead hook
+  `yeah-perm-record-decision` stays dead, and no live run was made (docs/PLAN.md §16.98).
+
 ## The commands
 
 ```sh

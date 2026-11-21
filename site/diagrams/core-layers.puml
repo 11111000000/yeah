@@ -13,8 +13,8 @@
 ' at the end of this file, with the reason why they are not there.
 
 package "drivers" as drivers {
-  component "Human (M-x yeah)\nlib/yeah.el:37\nlib/yeah-compose.el:83\nlib/yeah-shell.el:78\nlib/yeah-doctor-ui.el:148\nlib/yeah-approval-ui.el:114" as human
-  component "ACP clients\nlib/yeah-acp.el:375\nlib/yeah-acp-vocabulary.el:15\nlib/yeah-client.el:172\nlib/yeah-service-ui.el:413" as acp
+  component "Human (M-x yeah)\nlib/yeah.el:37\nlib/yeah-compose.el:83\nlib/yeah-shell.el:78\nlib/yeah-doctor-ui.el:148\nlib/yeah-approval-ui.el:115" as human
+  component "ACP clients\nlib/yeah-acp.el:375\nlib/yeah-acp-vocabulary.el:15\nlib/yeah-client.el:172\nlib/yeah-service-ui.el:436" as acp
   component "MCP clients\nlib/yeah-mcp.el:28\nlib/yeah-mcp-client.el:90\nlib/yeah-mcp-http.el:38\nlib/yeah-session-mcp.el:149\nlib/yeah-emcp.el:244" as mcp
   component "Batch\nlib/yeah-placement.el:199" as batch
   component "Wire\nlib/yeah-wire.el:23\nlib/yeah-wire-socket.el:57" as wire
@@ -24,7 +24,7 @@ package "core" as core {
   component "Session API / Run Controller\nlib/yeah-control.el:39\nlib/yeah-run.el:40\nlib/yeah-turn.el:60\nlib/yeah-loop.el:26\nlib/yeah-state.el:26\nlib/yeah-input.el:220\nlib/yeah-delegate.el:430\nlib/yeah-subagent.el:156\nlib/yeah-agent.el:167" as controller
   component "Model adapter\nprivate gptel\nlib/yeah-gptel.el:191\nlib/yeah-model.el:58\nlib/yeah-answer.el:33" as model_adapter
   component "Tool registry\ntyped, validated\nlib/yeah-tools.el:119\nlib/yeah-builtins.el:23\nlib/yeah-files.el:231\nlib/yeah-edit.el:257\nlib/yeah-git.el:276\nlib/yeah-process.el:328\nlib/yeah-emacs.el:186\nlib/yeah-trash.el:220\nlib/yeah-undo.el:48\nlib/yeah-untrusted.el:35\nlib/yeah-version.el:43\nlib/yeah-shell-guard.el:72\nlib/yeah-bridge.el:177\nlib/yeah-result.el:34\nlib/yeah-text.el:116" as registry
-  component "Policy / approvals\nrules as data\nlib/yeah-perm.el:68\nlib/yeah-risk.el:94\nlib/yeah-approval.el:59\nlib/yeah-diff.el:64" as policy
+  component "Policy / approvals\nrules as data\nlib/yeah-perm.el:121\nlib/yeah-risk.el:94\nlib/yeah-approval.el:162\nlib/yeah-diff.el:64" as policy
   component "Execution scheduler\nonce-only, bounded, shared/exclusive\nlib/yeah-scheduler.el:150\nlib/yeah-runtime.el:113\nlib/yeah-life.el:86\nlib/yeah-proc.el:69" as scheduler
 }
 

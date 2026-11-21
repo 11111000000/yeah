@@ -3889,6 +3889,36 @@
       "register": "fact",
       "control": "sed -i '0,/(file-error nil)/{s|(file-error nil)|(file-error (error \"the reader does not hide the failure of the read\"))|}' lib/yeah-client.el",
       "waiver": null
+    },
+    {
+      "id": "an-answer-carries-a-scope",
+      "text": "An answer of a person names the scope its rule lives in, the rule that the answer writes carries that same scope, and the journal records it.",
+      "scope": [
+        "lib/yeah-perm.el",
+        "lib/yeah-approval.el",
+        "lib/yeah-run.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-turn.el",
+        "lib/yeah-events.el",
+        "lib/yeah-service-ui.el",
+        "lib/yeah-approval-ui.el",
+        "tests/checks/check-an-answer-carries-a-scope.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-an-answer-carries-a-scope.el"
+        }
+      ],
+      "falsifier": "An answer carries no scope, or a scope that is not one of the canonical scopes, or the rule the answer writes carries another scope than the answer, or the journal record of the decision carries no scope, or a scope without a carrier is written into the rules of another path instead of being refused by name, or the dictionary of the answers or of the scopes is written in more than one place.",
+      "register": "fact",
+      "control": "sed -i 's/(or scope (plist-get decision :scope))/nil/' lib/yeah-approval.el",
+      "waiver": null
     }
   ]
 }
