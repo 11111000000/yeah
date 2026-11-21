@@ -153,9 +153,16 @@ the check and not a pass."
   ;; nothing: a reader that answers nil for a living process would pass
   ;; them.  The reader of the kernel says whether the id names a
   ;; process: a process that the kernel has not reaped yet has a state
-  ;; as well.
-  (unless (null (yeah-proc--state gone))
-    (push (format "the process id %d of the test is not free" gone) yeah-check--failures))
+  ;; as well.  The reader must answer here without an error, and the
+  ;; check says so by name when it does not.
+  (let ((result (yeah-check--call #'yeah-proc--state gone)))
+    (cond
+     ((not (eq 'ok (car result)))
+      (push (format "the reader raised an error for the process id %d of the test: %S"
+                    gone (cdr result))
+            yeah-check--failures))
+     ((not (null (cdr result)))
+      (push (format "the process id %d of the test is not free" gone) yeah-check--failures))))
   ;; 1. the state of a process that is gone
   (let ((result (yeah-check--call #'yeah-proc--state gone)))
     (cond
