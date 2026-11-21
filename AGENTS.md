@@ -1411,6 +1411,27 @@ work item. Never resolve it by silently making documentation more optimistic.
   refusal is the defect of wave 95 itself: the label `error` is on 8 cells of the table of the
   machine and on 8 arrows of the diagram.  The kernel and the generator are untouched
   (docs/PLAN.md §16.88).
+- Wave 99 repaired the proof of the diagram of the machine of the states, the sixth time.
+  The kernel and the generator are honest; the proof reported the wrong numbers and kept a
+  guard that never ran.  **The refusal named the wrong numbers (F37)**: the line of the kind
+  `absent` is written as `absent\tfrom\tlabel\tto\tdrawn_count\tcells` -- six fields -- and the
+  reader took the fifth field for the number of the cells of the table and the sixth for a
+  spare, so the message of the defect said "which carries 31 of the  cells of the table" with
+  the count of the drawn cells in the place of the number of the cells of the table, and the
+  branch "the generator does not read the table" asked a field that is never zero to be zero,
+  so its guard stood in the file and was never run.  **The stand of the arrow could not fire
+  (F38)**: the function that prints the arrow of the stand wrote the label in the place of the
+  end and the end in the place of the label (`deciding --> stream-end : post_decide` instead of
+  `deciding --> post_decide : stream-end`), so the count of the arrows with that label was
+  always zero, the condition that asks for more than one was never true, and the block that
+  removes the copy of the arrow and its guard were never reached.  **The repair is proved and
+  not only written**: two new stands hold the two ways of the absent cell -- one where the
+  diagram carries a part of the table and one where it carries none of it -- and the reduction
+  of the arrow has a measurement of its own: the stand builds a diagram with two copies of the
+  arrow, runs the reduction and holds that the result carries one copy less.  The claim is not
+  amended and not rewritten: the text, the falsifier, the scope, the requirements and the
+  control are the same, because the repair gives back to the proof what wave 96 already
+  promised.  The kernel and the generator are untouched (docs/PLAN.md §16.91).
 
 ## The commands
 
