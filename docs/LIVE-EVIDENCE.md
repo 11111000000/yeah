@@ -2974,6 +2974,69 @@ with the summary of the model.  Four seconds and twelve records.
   wave 107 — a stand is not on the route of a run of the orchestrator.
 * The numbers of the usage are the ones the provider reported.
 
+## The gate of the package of the waves 106 and 107 (2026-11-21, 16:58–18:14 UTC)
+
+**Three gates, and the question each of them answered.**  The package was gated
+three times.  The logs are `/tmp/w106-107-gate.log`, `/tmp/w106-107-gate2.log`
+and `/tmp/w106-107-gate3.log`.
+
+| gate | unit | start (UTC) | exit | form 1 (red) | form 2 (bite) | form 3 |
+|---|---|---|---|---|---|---|
+| 1 | `yeah-gate-106-107` | 16:58:32 | 1 | **2** | 167 | 0 |
+| 2 | `yeah-gate-106-107-b` | 17:34:39 | 3 | 0 | 169 | 0 |
+| 3 | `yeah-gate-106-107-c` | 17:56:41 | 3 | 0 | 169 | 0 |
+
+The three forms are the reading of §19.1 п. 7: form 1 is a positive run that
+failed (red), form 2 is a negative control that bit (green), form 3 is a
+control that was set up wrongly.  Each log holds 169 lines `mathc:` — one per
+requirement that has a check and a control.  The one requirement that has
+neither is the human judgment of the owner.
+
+**The first gate was red, and it found two defects.**  Both were real and both
+were repaired: the picture of the layers named a line of `lib/yeah-risk.el`
+that the wave 106 had moved (94 → 90), and the widened guard of the wave 107
+walked the installed dependencies of the plugin (74 MB under
+`plugin/yeah-provider/node_modules`) and refused three files of a foreign
+code.  The promise of the claim was not changed by either repair; the
+measurement was narrowed to it.
+
+**The second and the third gate were green by all three forms.**  Both claims
+that had fallen now bite: line 4838 of the log is
+`check-the-layer-diagram-points-at-files-that-exist`, line 4885 is
+`check-a-process-that-is-dead-is-dead-everywhere`.  The controls that did not
+run at all in the first gate now run and bite.
+
+**The exit code 3 is the method's `unknown`, and its cause is not in the
+code.**  The scale of the method (`scripts/dev`, A13/A14): 0 is green, 1 is
+red, 2 is blocked, 3 is `unknown` — the method could not tell.  The reason is
+named in the log of the gate itself: the evidence of the claim
+`the-owner-decided-the-order-of-the-next-waves` was stale, because the
+materials changed — `docs/PLAN.md` was changed by the records of the package.
+It is the same subject as §16.68: a claim that waits for a person (the
+requirement is `kind: review, spec: owner`) honestly makes the verdict
+not-green, and the method distinguishes `pass` from not-`pass` and does not
+distinguish "everything is proved" from "everything is proved except the one
+point a person decides".
+
+**The order of §16.68 was kept.**  The recount of the package ended at
+18:14:13 UTC (`/tmp/w106-107-gate3.exit`), the record of the owner was made at
+18:14:35, and the merge into `main` at 18:15:29 — documentation, recount,
+record, map.
+
+**The map is green.**  `mathc --root . map` → `verdict: green`,
+`uncovered: 0 file(s)`, `next: nothing to do - declared evidence is current
+and the tree is covered`; `mathc --root . re-evaluate` →
+`{"needs_re_evaluation": []}`.  The merge did not make the evidence stale: the
+tree of the merge commit (`ca163860…`) is **bitwise the same** as the tree of
+the recount (`9c08266`), and the method measures the materials, not the name
+of the commit.
+
+**What this gate does not prove.**  It proves that the checks of the package
+pass and that their controls bite.  It says nothing about the promises of the
+package beyond what those checks measure, and it says nothing about the live
+route — the live run of the package is the section above, and it was made on
+the tree of the artifacts, before the two repairs.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
