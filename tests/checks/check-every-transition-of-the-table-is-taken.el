@@ -649,17 +649,6 @@ The type of a handler is data, and the rest of it is code."
           (push form bodies))))
     (nreverse bodies)))
 
-(defun yeah-check--bodies-of-local-functions (definitions)
-  "Return the bodies of the local functions of DEFINITIONS.
-The name of a local function and its parameters are names, and its body is
-code."
-  (let (bodies)
-    (dolist (definition definitions)
-      (when (consp definition)
-        (dolist (form (cddr definition))
-          (push form bodies))))
-    (nreverse bodies)))
-
 (defun yeah-check--values-of-slots (form)
   "Return the values of the slots of the `cl-defstruct' FORM.
 The name of the type, the names of its options and the names of its slots are
@@ -750,6 +739,42 @@ both cases: the name of a function calls nothing, and the first form of a body
 is a form of the code that the runtime runs."
   (cons (car form) (yeah-check--arguments-of form)))
 
+(defun yeah-check--local-functions-of (form)
+  "Return the local functions of the `cl-labels' or of the `cl-flet' FORM.
+A local function is a name, a list of parameters and a body."
+  (let (definitions)
+    (dolist (definition (cadr form))
+      (when (consp definition)
+        (push definition definitions)))
+    (nreverse definitions)))
+
+(defun yeah-check--local-function-is-called-p (definition definitions form)
+  "Return non-nil when the runtime calls the local function DEFINITION.
+The runtime calls it when its name stands in the code of the form: a call of
+it, a call of it from a neighbouring local function, or its name as a value
+that the runtime calls.  A name that stands nowhere is the name of a function
+that the runtime never calls, and the body of it is not code the runtime runs."
+  (let ((name (car definition)))
+    (or (yeah-check--mentions name (cddr form))
+        (cl-some (lambda (other)
+                   (yeah-check--mentions name (cddr other)))
+                 definitions))))
+
+(defun yeah-check--bodies-of-the-called-local-functions (form)
+  "Return the bodies of the local functions of FORM that the runtime calls.
+A local function that nothing calls is not code the runtime runs, and the walk
+does not go into its body: a tick that stands in it is no place of the runtime,
+and a definition that only such a body calls is not called by the runtime.
+The name of a local function that the runtime calls is a name in the code of
+the form, and the walk reads it there and not here."
+  (let ((definitions (yeah-check--local-functions-of form))
+        (bodies nil))
+    (dolist (definition definitions)
+      (when (yeah-check--local-function-is-called-p definition definitions form)
+        (dolist (body (cddr definition))
+          (push body bodies))))
+    (nreverse bodies)))
+
 (defun yeah-check--code-parts (kind form)
   "Return the parts of FORM that are code, by the kind KIND of its positions.
 Every part of the answer is code, and the parts of the form that are not in
@@ -778,7 +803,7 @@ the answer are names or data."
     (append (yeah-check--values-of-bindings (cadr form))
             (cddr form)))
    ((eq kind :local-functions)
-    (append (yeah-check--bodies-of-local-functions (cadr form))
+    (append (yeah-check--bodies-of-the-called-local-functions form)
             (cddr form)))
    ((eq kind :handlers)
     (append (list (caddr form))
@@ -2061,9 +2086,12 @@ walk to naming a form whose positions it does not know."
     ((pcase-let* ((probe-dead (probe-live))) (probe-live2))
      (pcase-let* probe-live probe-live2))
     ((cl-flet ((probe-dead (a) (probe-live))) (probe-live2))
-     (cl-flet probe-live probe-live2))
+     (cl-flet probe-live2))
+    ((cl-labels ((probe-dead (a) (probe-live))) nil) (cl-labels))
+    ((cl-labels ((probe-dead (a) (probe-live))) (probe-dead))
+     (cl-labels probe-dead probe-live))
     ((cl-labels ((probe-dead (a) (probe-live))) (probe-live2))
-     (cl-labels probe-live probe-live2))
+     (cl-labels probe-live2))
     ((condition-case probe-dead (probe-live) (error (probe-live2)))
      (condition-case probe-live probe-live2))
     ((destructuring-bind (probe-dead) (probe-live) (probe-live2))
@@ -2123,10 +2151,21 @@ walk finds in a position of a name is a defect, and the probe names it.")
     ((pcase-let ((probe-dead (yeah-turn--tick probe-turn 'probe-label)))
        (probe-live)) . 1)
     ((defun probe-dead (probe-dead2)
-          (yeah-turn--tick probe-turn 'probe-label)) . 1))
+          (yeah-turn--tick probe-turn 'probe-label)) . 1)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label))) nil) . 0)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
+       (witness)) . 1)
+    ((cl-labels ((witness () (other))
+                 (other () (yeah-turn--tick probe-turn 'probe-label)))
+       (witness)) . 1)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
+       (funcall 'witness)) . 1))
   "The forms the probe of the places of the walk holds the walk to.
 Every form of the list stands a tick in the code of it, and the number on the
-right is the number of the places of the runtime the walk has to find in it.")
+right is the number of the places of the runtime the walk has to find in it.
+A tick in the body of a local function that the runtime calls is a place, and a
+tick in the body of a local function that nobody calls is no place at all: the
+runtime does not run the body of a function it never calls.")
 
 (defun yeah-check--sorted-names (names)
   "Return NAMES as a sorted list of the names in it, without the nils.
