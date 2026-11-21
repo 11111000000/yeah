@@ -1660,6 +1660,24 @@ work item. Never resolve it by silently making documentation more optimistic.
   suite of the unit tests, `byte-compile-all' on its own, and the live route through a real
   provider (docs/PLAN.md §16.96).
 
+- The gate of the package of the waves 101 to 103 (2026-11-21) read one red line: the check
+  `tests/checks/check-the-documentation-points-at-files-that-exist.el` refused nine names of the
+  documentation.  **F45 (medium)**: seven of them named the module of the support by its old path
+  -- the directory `tests/support/` is there and the module `yeah-proc.el` is not in it any more --
+  the module that wave 101 deleted when it moved the reader of a process into the kernel
+  (`lib/yeah-proc.el`), and two named section §2.1 of the file `ELISP_BEST_PRACTICES.md`: §2.1 is
+  a paragraph inside the heading `## §2. Naming` and not a heading, and the check promises that a
+  named section is a heading.  The check was right and the wave was wrong: a wave that moves a
+  file must fix the documents that name it.  The nine places now name what is there -- the module `yeah-proc.el`
+  and the directory `tests/support/`, and the heading `§2` with the rule §2.1 named in the words
+  of the text -- and the promise of the check is not weakened.  **The rule for the future (the
+  parent decided it on 2026-11-21; a rule outside §17.2, the owner may cancel it):** a wave that
+  moves or deletes a file runs the check of the documentation before the gate of its package and
+  fixes every place that names the old name.  The check is the sentinel, the gate is where the
+  sentinel bites.  The gate of the package, run again after the repair, has **no red line**:
+  167 labels, all of them of the form 2 (the bite), none of the form 1 and none of the form 3;
+  the map is green, uncovered 0 (docs/PLAN.md §16.97).
+
 ## The commands
 
 ```sh
