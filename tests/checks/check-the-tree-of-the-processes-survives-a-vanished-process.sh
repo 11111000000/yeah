@@ -293,8 +293,11 @@ if command -v setsid >/dev/null 2>&1; then
   ' _ "$tree" 2>"$group_err")"
   group_rc=$?
   group_words="$(words "$group_answer")"
-  if [ "$group_rc" -ne 0 ] || [ -z "$group_words" ]; then
-    fail "the group of the shell that reads the tree was signalled: the shell did not survive the signal of its own group: [$(words "$(cat "$group_err")")]"
+  group_noise="$(words "$(cat "$group_err" 2>/dev/null)")"
+  if [ "$group_rc" -eq 2 ]; then
+    fail "the tree under test could not be read by the shell of the stand of the groups: [$group_noise]"
+  elif [ "$group_rc" -ne 0 ] || [ -z "$group_words" ]; then
+    fail "the group of the shell that reads the tree was signalled: the shell did not survive the signal of its own group: [$group_noise]"
   else
     set -- $group_words
     if [ "$1" != "$2" ] || [ "$2" != "$3" ]; then
