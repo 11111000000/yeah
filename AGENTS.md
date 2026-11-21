@@ -1468,7 +1468,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   the projections), 15 blocks, 64 names of the form `file:line` (65 after wave 98), every one of them a
   definition of the kernel.  The picture is the picture of the ASCII figure of the site
   (`site/index.html:482-506`) and of `docs/ARCHITECTURE.md` §5.  **The completeness is part
-  of the promise**: `lib/` holds 66 modules, 64 are named by the picture and 2 are in the
+  of the promise**: `lib/` holds 66 modules (the snapshot of wave 97), 64 are named by the picture and 2 are in the
   note of the modules the picture does not name, with the reason.  The new check
   `tests/checks/check-the-layer-diagram-points-at-files-that-exist.el` follows every name:
   a name must be a file of the repository, a line of that file and a definition on that line,
@@ -1510,8 +1510,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   claim are the same.  **The picture of the wave 97 had to be re-anchored and the strengthened
   check said so**: the wave moved the lines of `lib/`, three names of
   `site/diagrams/core-layers.puml` left their definitions and the new module was not named;
-  the parent compared all 64 names with a snapshot of the state before the wave (59 did not
-  move, 2 moved on the same definition, 3 left) and the picture now carries 65.  **The
+  the parent compared all 64 names with a snapshot of the state before the wave (61 did not
+  move, 3 left and were re-anchored, and no signature changed) and the picture now carries 65.  **The
   remainder of B1 is named**: the list of the safe reads of the approval path
   (`lib/yeah-approval.el:74-94`) is still a list of names, and that is the next step of B1
   (docs/PLAN.md §16.90).
@@ -1575,7 +1575,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   name holds a parenthesis is its group, and the answer for a process that is gone stays
   nothing.  **The seam is named**: the root of the tree of the processes is the variable
   `PROC_ROOT`, read at every call, so the scan can be given a tree of its own and the defect
-  can be reproduced deterministically instead of waited for.  The proof is a new check of 340
+  can be reproduced deterministically instead of waited for.  The proof is a new check of 343
   lines with eight stands, made against a tree of fake stat files that the check builds
   itself.  **Three controls of the parent on copies of the tree** (2026-11-21): 0 failures --
   the honest tree passes, the old code refuses with the words of the defect, and the scan that
@@ -1706,6 +1706,41 @@ work item. Never resolve it by silently making documentation more optimistic.
   global path and not the person of the attached path (a decision of the owner), the scope
   `:project` has no carrier, nobody reads the scope of the journal back yet, the dead hook
   `yeah-perm-record-decision` stays dead, and no live run was made (docs/PLAN.md §16.98).
+
+- Wave 104 repaired **the truth of the records** (2026-11-21): the promise of the claim of the
+  wave 98 was narrowed to what its measurement measures -- the profiles name exactly the tools the
+  measurement found **among the tools the registry holds** -- and the text, the falsifier, the
+  `id`, the `requirements` and the `control` of that claim are the same otherwise.  **The header
+  of the check says the same now**: the comparison of the fifth measurement is over the tools the
+  registry holds, and the check says why (the rule asks by the declarations of the registry, and
+  the tool of the bridge is not named by the profile while the bridge has not registered it).
+  **A stand says that the comparison bites**: the comparison moved into
+  `yeah-check--profile-mismatch`, and two stands forge a profile that names a tool the measurement
+  does not find and a measurement that does not hold a tool that changes the world -- both must be
+  refused.  The check of the wave is 1 183 lines and 52 744 bytes.  **The numbers of the wave 97
+  are a snapshot** (the commit `5c12b65`) and not the present (F41); the numbers of the comparison
+  of the 64 names are the measured ones -- 61 did not move, 3 left and were re-anchored, and no
+  signature changed (F42); and the numbers of the waves 101 and 102 are the measured ones as well
+  -- 5 961 bytes, 14 035 bytes, 343 lines (F50).  **A finding of the parent** (F53): the record of
+  the wave 101 named a section of `ELISP_BEST_PRACTICES.md` that is not there -- the headings of the
+  file are `§1` to `§11` -- and the guard of the documentation does not read `waves/*.json` at all,
+  so it could not see the name (docs/PLAN.md §16.99).
+
+- The discriminator of the package of the waves 101 to 103: **PASS** and six findings (F47--F52)
+  (2026-11-21): all four registered controls bite by their own refusal, the honest tree is green
+  over seven checks, the old code falls on the new checks by their own assertions, and the map of
+  the method is green without uncovered material.  **F47** -- the promise of the claim of the wave
+  101 is wider than its measurement, and the check that proves it reads the stat file of a process
+  by itself (one file of about 120).  **F48** -- the two consequences the claim promises (the
+  socket of a zombie owner) are measured by no line of the repository.  **F49** -- the package has
+  no live run and no record names that; the order of the work asks for one live run per package,
+  and the decision whether the package touches the live route is the owner's.  **F50** -- three
+  numbers of the waves 101 and 102 were stale already when they were written; they are the measured
+  ones now (wave 104).  **F51** and **F52** -- two parts of the promise of the claim of the wave
+  102 are measured by nothing, and the guard of the one rule of the life of a process is narrower
+  than the falsifier that names it.  The agent was cut by the provider (`429`) **after** the report
+  was written: that is a block of the provider and not a failure of the package
+  (docs/PLAN.md §16.100).
 
 ## The commands
 
