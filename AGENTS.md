@@ -1591,6 +1591,38 @@ work item. Never resolve it by silently making documentation more optimistic.
   waves 100 and 101, and the survey counted 42 places of the class and named 19 of them
   dangerous.
 
+- Wave 103 made the client read the port of a service that is gone.  The service publishes the
+  number of its port in a file next to its socket and removes that file when it stops, so the
+  file of the port can be gone by the time the client reads it -- and it can be gone between the
+  moment the reader looks for it and the moment it reads it.  The reader of the file of the port
+  asked `file-readable-p' and read the file afterwards, so the read died with `file-missing',
+  and the death left the reader and with it the client: the client of the editor fell on the
+  filesystem where its docstring promised to wait for a service that is not there yet.  **The
+  reader of the port decides now**: it catches the error of the file and nothing else and
+  answers `nil` -- exactly what the docstring promises and what the caller waits for.  The four
+  kinds of the absence of the port are all `file-error` (measured on Emacs 30.2: `file-missing'
+  and `permission-denied' are its kinds, and the reading of a directory gives `file-error' as
+  well), so one handler covers them and no handler of `error' is needed, and **the reader is not
+  blind**: an error that is not an error of the file is raised and not swallowed.  The proof is
+  a new check of 295 lines with eleven stands, among them the stand that reads the file of the
+  port of a service that stops while the client reads it -- the vanishing is made by the check
+  and not waited for -- and the stand that reads a published port and gets that port, so a reader
+  that answered `nil` for everything would not pass the repair.  The pre-check of
+  `file-readable-p' stayed, and that is named: the client polls the file every 50 ms while it
+  waits for a service, and the promise of the check is not used any more -- the reading is under
+  the `condition-case'.  **Three controls of the parent on copies of the tree** (2026-11-21): 0
+  failures -- the honest tree passes, the old code refuses with three of its own assertions, and
+  the reader that hides the failure of the read refuses with three named assertions (docs/PLAN.md
+  §16.95).  The first mutation of that last control bit for the wrong reason -- it was one
+  closing parenthesis short, the file did not parse, and the check failed with a parse error and
+  not by its own assertion; a false refusal with a false subject is worse than no refusal at all,
+  so the mutation was balanced and run again, and the registered control is the one that refuses
+  by its own assertions.  The claim of the wave is new
+  (`the-client-reads-the-port-of-a-service-that-is-gone`) and it amends no claim of the package.
+- The class of that defect is **still not** closed.  This wave closes the third of the three main
+  places the survey of 2026-11-21 named; the other places of the class are named in the waves
+  100 and 101, and the survey counted 42 places of the class and named 19 of them dangerous.
+
 ## The commands
 
 ```sh
