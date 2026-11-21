@@ -19,10 +19,10 @@
 ;; where there was none.
 ;;
 ;; The reader of the processes of the system now lives in one place
-;; (tests/support/yeah-proc.el) and it decides instead of dying: it
-;; answers nil when the process is gone, and it catches the error of the
-;; file and nothing else.  A reader that swallows every error is a reader
-;; that is blind, and a blind reader decides nothing.
+;; (lib/yeah-proc.el) and it decides instead of dying: it answers nil
+;; when the process is gone, and it catches the error of the file and
+;; nothing else.  A reader that swallows every error is a reader that
+;; is blind, and a blind reader decides nothing.
 ;;
 ;; This check is the proof of that repair, and it must be able to fail:
 ;;
@@ -37,7 +37,7 @@
 ;;   6. the reader answers nil for a PID that names no process -- nil, a
 ;;      string, zero, a negative number -- and it raises no error for it;
 ;;   7. the checks that read a process hold no path of the tree of the
-;;      processes: the reader of the support is the only one that names
+;;      processes: the reader of the kernel is the only one that names
 ;;      one, and each of them names the reader it must use.
 ;;
 ;; The first two assertions are the ones that fail on the code before the
@@ -69,8 +69,8 @@
 
 (require 'cl-lib)
 
-;; The reader under the proof is the one of the support.
-(load (expand-file-name "tests/support/yeah-proc.el") nil t)
+;; The reader under the proof is the one of the kernel.
+(require 'yeah-proc)
 
 (defvar yeah-check--failures nil
   "The failures this check found.")
@@ -78,7 +78,7 @@
 (defconst yeah-check--readers
   '(("check-a-pilot-that-runs-out-of-time-leaves-no-server.el" . "yeah-proc--state")
     ("check-the-server-does-not-spin-when-the-provider-is-silent.el" . "yeah-proc--ticks"))
-  "The checks that read a process, and the reader of the support each of them uses.")
+  "The checks that read a process, and the reader of the kernel each of them uses.")
 
 (defconst yeah-check--gone-pid 999999999
   "A process id that names no process.
@@ -116,8 +116,8 @@ the error is kept, so a reader that dies is named and not hidden."
 (defun yeah-check--own-ticks (pid)
   "Return the ticks of CPU that the process PID has used, read here.
 This is the reading of the check itself and not the reading of the
-support: the file of the process is read directly, and the answer of
-the reader of the support is compared with it.  The process of the
+reader of the kernel: the file of the process is read directly, and the answer of
+the reader of the kernel is compared with it.  The process of the
 check does not die while it reads its own file, so this reading is
 safe.  The answer is nil when the file cannot be read."
   (condition-case nil
@@ -134,7 +134,7 @@ safe.  The answer is nil when the file cannot be read."
 
 (defun yeah-check--ticks-ready (pid)
   "Return non-nil when the process PID has at least one tick of CPU.
-The check compares the reader of the support with its own reading, and a
+The check compares the reader of the kernel with its own reading, and a
 comparison against the ticks of a process that has none proves nothing:
 a reader that answers zero for every process would pass it.  The wait
 is bounded, and a process that burns no tick at all is a failure of
@@ -151,8 +151,10 @@ the check and not a pass."
        (self (emacs-pid)))
   ;; The id of the test must be free, or the first two assertions prove
   ;; nothing: a reader that answers nil for a living process would pass
-  ;; them.
-  (when (file-exists-p (format "/proc/%d" gone))
+  ;; them.  The reader of the kernel says whether the id names a
+  ;; process: a process that the kernel has not reaped yet has a state
+  ;; as well.
+  (unless (null (yeah-proc--state gone))
     (push (format "the process id %d of the test is not free" gone) yeah-check--failures))
   ;; 1. the state of a process that is gone
   (let ((result (yeah-check--call #'yeah-proc--state gone)))
@@ -235,7 +237,7 @@ the check and not a pass."
         (push (format "the ticks of the process %S are %S and not nil" pid (cdr result))
               yeah-check--failures)))))
   ;; 7. the checks that read a process read it through the reader of the
-  ;;    support and not through a path of their own
+  ;;    kernel and not through a path of their own
   (dolist (entry yeah-check--readers)
     (let* ((name (car entry))
            (reader (cdr entry))
@@ -248,7 +250,7 @@ the check and not a pass."
         (push (format "the check %s names a path of the tree of the processes itself" name)
               yeah-check--failures))
        ((not (string-match-p (regexp-quote reader) text))
-        (push (format "the check %s does not go through the reader of the support (%s)"
+        (push (format "the check %s does not go through the reader of the kernel (%s)"
                       name reader)
               yeah-check--failures)))))
   (dolist (failure yeah-check--failures)

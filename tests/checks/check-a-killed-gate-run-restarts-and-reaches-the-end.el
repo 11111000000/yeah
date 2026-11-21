@@ -40,9 +40,13 @@
 ;; the other of its assertions.
 ;;
 ;; The check measures the subject the way the defect was measured: the
-;; processes of the run, by their command line, in `/proc'.  It does not
-;; ask the gate whether it is alive: a gate that answers is a gate that
-;; lives.
+;; processes of the run, by their command line, in the tree of the
+;; processes of the system.  It does not ask the gate whether it is
+;; alive: a gate that answers is a gate that lives.  The state of the
+;; process decides whether it lives: `S' and `R' are a process that
+;; runs, and `Z' is a zombie -- a process that has died already and
+;; waits to be reaped.  The rule is the one of the kernel
+;; (`lib/yeah-proc.el').
 ;;
 ;; No network is involved: the method is a stand-in and the files of the
 ;; run live in a private temporary directory.
@@ -53,14 +57,10 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-proc)
 
 (defvar yeah-gate--failures nil
   "The failures this check found.")
-
-(defun yeah-gate--alive-p (pid)
-  "Return non-nil when the process PID is alive."
-  (and pid (integerp pid) (> pid 0)
-       (file-directory-p (format "/proc/%d" pid))))
 
 (defun yeah-gate--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
@@ -70,8 +70,12 @@
     (funcall predicate)))
 
 (defun yeah-gate--await-dead (pid timeout)
-  "Return non-nil when the process PID is gone, at most TIMEOUT seconds."
-  (yeah-gate--await (lambda () (not (yeah-gate--alive-p pid))) timeout))
+  "Return non-nil when the process PID is gone, at most TIMEOUT seconds.
+The process is gone when the state of it says so: a zombie is gone, it
+has died already and waits to be reaped."
+  (yeah-gate--await
+   (lambda () (not (yeah-proc--alive-p (yeah-proc--state pid))))
+   timeout))
 
 (defun yeah-gate--kill (pid)
   "Kill the process PID with SIGKILL and return non-nil when the signal was sent."

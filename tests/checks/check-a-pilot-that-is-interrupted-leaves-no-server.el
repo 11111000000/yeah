@@ -25,9 +25,14 @@
 ;; the interruption.
 ;;
 ;; The check measures the subject the way the defect was measured: the
-;; process of the server, by its pid, in `/proc'.  It does not ask the
-;; server whether it is alive: a server that answers is a server that
-;; lives.
+;; process of the server, by its pid, in the tree of the processes of the
+;; system.  It does not ask the server whether it is alive: a server that
+;; answers is a server that lives.  The state of the process decides it:
+;; `S' and `R' are a process that runs, and `Z' is a zombie -- a process
+;; that has died already and waits to be reaped, it burns no CPU and it
+;; holds no client.  The rule is the one of the kernel
+;; (`lib/yeah-proc.el'), and the tree of the processes cannot answer the
+;; question: the directory of a zombie is there as well.
 ;;
 ;; The file of the socket of the server is not a claim of this check: a
 ;; server that is killed by a signal does not run the clean-up that
@@ -50,14 +55,10 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-proc)
 
 (defvar yeah-pilot--failures nil
   "The failures this check found.")
-
-(defun yeah-pilot--alive-p (pid)
-  "Return non-nil when the process PID is alive."
-  (and pid (integerp pid) (> pid 0)
-       (file-directory-p (format "/proc/%d" pid))))
 
 (defun yeah-pilot--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
@@ -67,8 +68,12 @@
     (funcall predicate)))
 
 (defun yeah-pilot--await-dead (pid timeout)
-  "Return non-nil when the process PID is gone, at most TIMEOUT seconds."
-  (yeah-pilot--await (lambda () (not (yeah-pilot--alive-p pid))) timeout))
+  "Return non-nil when the process PID is gone, at most TIMEOUT seconds.
+The process is gone when the state of it says so: a zombie is gone, it
+has died already and waits to be reaped."
+  (yeah-pilot--await
+   (lambda () (not (yeah-proc--alive-p (yeah-proc--state pid))))
+   timeout))
 
 (defun yeah-pilot--kill (pid)
   "Kill the process PID with SIGKILL and return non-nil when the signal was sent."
@@ -156,7 +161,7 @@ the pid of the server and the path of the socket of the server."
                     yeah-pilot--failures))
             (when (and (> pilot 0) (> server 0) socket)
               ;; the server serves while the pilot lives
-              (unless (yeah-pilot--alive-p server)
+              (unless (yeah-proc--alive-p (yeah-proc--state server))
                 (push (format "the server of the pilot was not alive (pid %d)" server)
                       yeah-pilot--failures))
               ;; the person stops the pilot
