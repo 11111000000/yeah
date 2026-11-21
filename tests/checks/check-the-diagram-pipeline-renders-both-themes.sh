@@ -339,11 +339,12 @@ AWK
 #   the store       — the glob of the store of nix.
 #
 # The step of the PATH is counted when the command is looked up by a name the
-# caller gives (`command -v "$cmd"') or when it looks an instrument of the
-# pipeline up by its name (`command -v plantuml').  The lookup of the method
-# by its own name in `scripts/lib/method.sh' is a search of another tool: the
-# chain of the method is the chain of the method and not the chain of the
-# instruments of the pipeline.  That is named here, in the open.
+# caller gives (`command -v "$cmd"'), when the shell is asked for the place
+# of a command (`type -p'), or when it looks an instrument of the pipeline up
+# by its name (`command -v plantuml').  The lookup of the method by its own
+# name in `scripts/lib/method.sh' is a search of another tool: the chain of
+# the method is the chain of the method and not the chain of the instruments
+# of the pipeline.  That is named here, in the open.
 step_env='\$\{![A-Za-z_]|\$\{?(PLANTUML|EMACS)'
 step_path='command[[:space:]]+-[vV][[:space:]]+"?\$|command[[:space:]]+-[vV][[:space:]]+(plantuml|emacs)|type[[:space:]]+-[Pp]|which[[:space:]]+(plantuml|emacs)'
 step_profile='\.nix-profile'
