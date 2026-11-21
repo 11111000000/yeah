@@ -27,8 +27,9 @@
 ;;
 ;; Public operations: `yeah-risk-known-p' answers whether a value is in the
 ;; vocabulary, `yeah-risk-of' answers the risk of a tool,
-;; `yeah-risk-mutating-p' answers whether a risk changes the world, and
-;; `yeah-risk-mutating-tools' answers which tools change the world.
+;; `yeah-risk-mutating-p' answers whether a risk changes the world,
+;; `yeah-risk-mutating-tools' answers which tools change the world, and
+;; `yeah-risk-failure' answers why the registry of the tools is not there.
 
 ;;; Code:
 
@@ -50,6 +51,13 @@ The value is an alist of (NAME . RISK); the risk of a tool that declares
 none is nil.  The registry of `lib/yeah-tools.el' installs this function,
 so that this module does not have to know the registry.")
 
+(defvar yeah-risk--failure nil
+  "The error of the last load of the registry of the tools, or nil.
+The registry of the tools is loaded on demand, and a registry that
+cannot be loaded leaves the declarations unknown.  The error of that load
+is kept here and not thrown away: a refusal that does not name its cause
+is a refusal that the person cannot act on.")
+
 (defun yeah-risk-known-p (risk)
   "Return non-nil when RISK is a risk of the vocabulary of the kernel.
 RISK is a string; a value that is not a string is not known, and neither
@@ -69,12 +77,23 @@ SOURCE is a function of no arguments that returns the alist of
 The registry of the tools is loaded on demand: the modules of the kernel
 require this one, so the load cannot happen at the top level of this file.
 A registry that cannot be loaded leaves the declarations unknown, and an
-unknown declaration is a risk that changes the world."
+unknown declaration is a risk that changes the world.  The error of that
+load is kept, and `yeah-risk-failure' names it."
   (unless yeah-risk--source
-    (condition-case nil
-        (require 'yeah-tools)
-      (error nil)))
+    (condition-case err
+        (progn
+          (require 'yeah-tools)
+          (setq yeah-risk--failure nil))
+      (error (setq yeah-risk--failure err))))
   (and yeah-risk--source t))
+
+(defun yeah-risk-failure ()
+  "Return the error of the last load of the registry of the tools, or nil.
+The error is the one that the load of `lib/yeah-tools.el' raised, and it is
+nil when the registry loaded or when it was never loaded.  The rule names it
+in its refusal, so that the cause of the refusal is not hidden behind a
+sentence about the registry."
+  yeah-risk--failure)
 
 (defun yeah-risk--declarations ()
   "Return the declarations of the tools: the alist of (NAME . RISK).

@@ -161,6 +161,17 @@ Returns RULE. Signals `user-error' if RULE is malformed."
   "Return all current permission rules in registration order."
   yeah-perm--rules)
 
+(defun yeah-perm--refusal-cause ()
+  "Return the cause of the refusal of the rule, as a string.
+The cause is the error of the load of the registry of the tools, and it is
+named here: a refusal that does not name its cause is a refusal that the
+person cannot act on.  The answer is the empty string when there is no cause
+to name."
+  (let ((failure (yeah-risk-failure)))
+    (if failure
+        (format ": %s: %s" (car-safe failure) (error-message-string failure))
+      "")))
+
 (defun yeah-perm--mutating-tools ()
   "Return the names of the tools that change the world.
 The set is computed from the declarations of the tools (`lib/yeah-risk.el')
@@ -170,10 +181,13 @@ because a risk that is not known changes the world.
 
 The declarations must be known.  A profile that cannot name the tools that
 change the world would allow all of them, and a rule that allows what it
-does not know is not a rule."
+does not know is not a rule.  The refusal names the cause of the missing
+declarations, so that the person can act on the cause and not only on the
+refusal."
   (unless (yeah-risk--known-p)
     (signal 'user-error
-            (list "yeah-perm: the risks of the tools are not known: the registry of the tools is not loaded")))
+            (list (format "yeah-perm: the risks of the tools are not known: the registry of the tools is not loaded%s"
+                          (yeah-perm--refusal-cause)))))
   (yeah-risk-mutating-tools))
 
 (defun yeah-perm-profiles ()
