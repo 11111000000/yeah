@@ -506,7 +506,7 @@
       ],
       "falsifier": "the tool runs although the client refused, or is denied although the client allowed",
       "register": "fact",
-      "control": "sed -i 's|(equal option \"allow-once\")|(not (equal option \"allow-once\"))|' lib/yeah-acp.el",
+      "control": "sed -i 's|(list :effect :allow :reply kind))|(list :effect :deny :reply kind))|' lib/yeah-acp.el",
       "waiver": null
     },
     {
@@ -783,7 +783,7 @@
       ],
       "falsifier": "A reply of once/always/reject does not produce its documented decision, always does not persist into the rules, an invalid reply is accepted, or the policy answers contrary to the rules.",
       "register": "fact",
-      "control": "sed -i \"s/'allow))/'deny))/\" lib/yeah-approval.el",
+      "control": "sed -i 's|(when (eq kind :always)|(when (eq kind :never)|' lib/yeah-approval.el",
       "waiver": null
     },
     {
@@ -1553,7 +1553,7 @@
       ],
       "falsifier": "the decision is allowed but forgotten, so the person is asked the same question twice",
       "register": "fact",
-      "control": "sed -i 's|(let ((session-id (plist-get question :session-id)))|(let ((session-id nil))|' lib/yeah-acp.el",
+      "control": "sed -i \"/yeah-approval-remember-rule/,+3s/scoped)))/nil))/\" lib/yeah-acp.el",
       "waiver": null
     },
     {
