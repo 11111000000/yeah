@@ -133,6 +133,42 @@
 ;; would need the walk to learn it, and the objection of the wave names that
 ;; gap.
 ;;
+;; The version of wave 93 closed the last hole of the walk of the calls (the
+;; finding F27 of the discriminator of the waves 90 to 92).  The code of the
+;; kernel did not change: the hole was in the proof again.
+;;
+;; 1. The walk read every symbol in the head of a form as a call of the
+;;    runtime, whatever the head was.  A head that is a macro or a special
+;;    form is not a call of an ordinary function: the arguments of such a form
+;;    are the positions of a name and of a code, and the walk has to know them.
+;;    The walk asked no one and walked every argument of every form as code, so
+;;    a name in the position of a name was read as a call: the name of a
+;;    binding of a `when-let', the name of a local function of a `cl-labels',
+;;    the name of a parameter of a `defun', the pattern of a `pcase-let' and the
+;;    name of a variable of a `setq'.  A definition that only such a name
+;;    reached was live for the runtime, and a move that stood in it was a move
+;;    of the runtime.
+;; 2. The walk asks Emacs now what the head of a form is.  Emacs 30 has no
+;;    variable `special-forms' and no function `macro-function-p' any more:
+;;    `special-form-p' says whether a head is a special form and `macrop' says
+;;    whether it is a macro.  The files of the kernel are not loaded when the
+;;    check runs, and a macro the kernel defines is a macro all the same, so
+;;    the check reads the macros of the kernel out of the files themselves.
+;; 3. The positions of the forms are declared in one table, and the table is
+;;    measured and not asserted: the list of the special forms of Emacs is read
+;;    out of the obarray of Emacs, every macro the kernel defines is read out of
+;;    the files of the kernel, and every form the walk met in the code of the
+;;    kernel is read out of the walk itself.  Every one of them stands in the
+;;    table, and a head that does not stand in it is a defect of its own, which
+;;    the check names by its file and its line.  A kernel that grows a macro the
+;;    table does not know makes the check fail and says what it does not know.
+;; 4. The probe of the positions of the walk is a check of its own, and it lies
+;;    in the tree: it holds the walk to the answer of every form of the family,
+;;    and the answers are written down and not computed by the walk, for a
+;;    probe that computes its own expectation proves nothing.  The probe fails
+;;    with the error of the defect when the defect is put back, which is the
+;;    promise of wave 90 that the tree did not keep.
+;;
 ;; The report is compared with the numbers the check measured on the kernel
 ;; of 2026-11-20 as well: a measurement that got smaller is a proof that got
 ;; weaker, and a weaker proof must not pass as if it were the same one.
@@ -249,6 +285,143 @@ The walk goes into the value of such a keyword, for the form of an
 `:after-hook' is run by the mode.  A name that stands in the value of a
 keyword is a name and not a call.")
 
+(defconst yeah-check--positions-of-the-known-forms
+  (append
+   '((and . :code)
+    (atomic-change-group . :code)
+    (catch . :code)
+    (cl-decf . :code)
+    (cl-defgeneric . :defgeneric)
+    (cl-defmethod . :defmethod)
+    (cl-defstruct . :slots)
+    (cl-defun . :definition)
+    (cl-flet . :local-functions)
+    (cl-incf . :code)
+    (cl-labels . :local-functions)
+    (cl-loop . :code)
+    (cond . :code)
+    (condition-case . :handlers)
+    (declare . :data)
+    (declare-function . :data)
+    (defconst . :variable)
+    (defcustom . :variable)
+    (defface . :data)
+    (defgroup . :data)
+    (define-derived-mode . :derived-mode)
+    (define-minor-mode . :minor-mode)
+    (defmacro . :definition)
+    (defstruct . :slots)
+    (defsubst . :definition)
+    (defun . :definition)
+    (defvar . :variable)
+    (defvar-local . :variable)
+    (destructuring-bind . :destructuring)
+    (dolist . :loop)
+    (dotimes . :loop)
+    (easy-menu-define . :data)
+    (function . :function)
+    (if . :code)
+    (if-let . :bindings)
+    (ignore-errors . :code)
+    (inline . :code)
+    (interactive . :code)
+    (lambda . :lambda)
+    (let . :bindings)
+    (let* . :bindings)
+    (multiple-value-bind . :destructuring)
+    (or . :code)
+    (pcase . :clauses)
+    (pcase-let . :pcase-bindings)
+    (pcase-let* . :pcase-bindings)
+    (pop . :code)
+    (prog1 . :code)
+    (progn . :code)
+    (push . :code)
+    (quote . :data)
+    (save-excursion . :code)
+    (save-match-data . :code)
+    (save-current-buffer . :code)
+    (save-restriction . :code)
+    (setf . :code)
+    (setq . :setq)
+    (setq-local . :setq)
+    (unless . :code)
+    (unwind-protect . :code)
+    (when . :code)
+    (when-let . :bindings)
+    (while . :code)
+    (with-current-buffer . :code)
+    (with-silent-modifications . :code)
+    (with-temp-buffer . :code)
+    (with-temp-file . :code)
+    (*when-let . :bindings)
+    (case . :clauses)
+    (yeah-session-with . :code)
+    (yeah-todo-with-session . :code)
+    (yeah-tools-with-registry . :code))
+   ;; The reader of Emacs gives a backquote the symbol whose name is a
+   ;; backquote, and the reader of a macro of the kernel gives the name of
+   ;; the macro.  A backquote is a macro of Emacs, and the table knows it.
+   (list (cons (intern "`") :backquote)
+         (cons 'backquote :backquote)))
+  "The positions of the forms of the kernel that the walk of the code knows.
+
+The car of a pair is the head of a form and the cdr is the kind of its
+positions.  Every macro and every special form that the kernel uses stands in
+this table, and a macro or a special form that does not stand in it is a
+defect of its own: the walk cannot say which of the arguments of such a form
+is code and which is a name, and the check names the form by its file and its
+line instead of reading a name as a call.
+
+The kinds are these.
+
+  :code            -- every argument of the form is code.
+  :data            -- every argument of the form is data.
+  :name            -- the first argument is a name and the rest is code.
+  :setq            -- the arguments are pairs of a name and a value: the names
+                      are names and the values are code.
+  :variable        -- the first argument is a name, the second is code, and
+                      the rest of the arguments are data.
+  :definition      -- the first argument is a name, the second is a list of
+                      names, and the rest of the arguments are code.
+  :minor-mode      -- the first argument is a name, the second is a string,
+                      and the rest of the arguments are code.
+  :bindings        -- the first argument is a list of bindings, and each of
+                      them is a name and a value: the names are names and the
+                      values are code.  The rest of the arguments are code.
+  :loop            -- the first argument is the spec of a loop: a name, a
+                      collection and a result.  The collection and the result
+                      are code, and the rest of the arguments are code.
+  :clauses         -- the first argument is code, and the rest of the
+                      arguments are clauses: the first element of a clause is
+                      a pattern (data) and the rest of it is code.
+  :pcase-bindings  -- the first argument is a list of bindings, and each of
+                      them is a pattern and a value: the patterns are data and
+                      the values are code.  The rest of the arguments are code.
+  :local-functions -- the first argument is a list of definitions of local
+                      functions: the name of a function and its parameters
+                      are names, and its body is code.  The rest of the
+                      arguments are code.
+  :handlers        -- the first argument is a name, the second is code, and
+                      the rest of the arguments are handlers: the type of a
+                      handler is data and the rest of it is code.
+  :destructuring   -- the first argument is a pattern (data), the second is
+                      code, and the rest of the arguments are code.
+  :defmethod       -- the first argument is a name, the second is a
+                      specializer (data), and the rest of the arguments are
+                      code.
+  :defgeneric      -- every argument of the form is data.
+  :slots           -- the name of the type, the names of its options and the
+                      names of its slots are names, and the values of the
+                      slots are code.
+  :derived-mode    -- the name of the mode, the name of its parent, the name
+                      of its mode line and its doc string are data, the value
+                      of a keyword is code, and the body of the mode is code.
+  :function        -- the designator of a `function' is a name, and the body
+                      of a `lambda' under it is code.
+  :lambda          -- the parameters of a `lambda' are names, and its body is
+                      code.")
+
 (defconst yeah-check--expected-measurement
   '((:cells . 31)
     (:labels . 17)
@@ -270,6 +443,70 @@ got smaller cannot pass as if it were the same one: a proof that rests on
 less is a weaker proof, and the check says so instead of staying quiet.
 A number changes when the kernel changes on purpose, and the constant is
 changed then and not before.")
+
+(defvar yeah-check--macros-of-the-kernel nil
+  "The names of the macros the kernel defines.
+The files of the kernel are not loaded when the check runs, and the check reads
+them all the same: a macro that the kernel defines is a macro all the same,
+and the walk of the code must know the positions of it.")
+
+(defvar yeah-check--unknown-forms (make-hash-table :test #'eq)
+  "The heads of the forms of the kernel whose positions the walk does not know.
+A form the walk cannot read is a defect of its own, and the check names it by
+its file and its line.")
+
+(defvar yeah-check--known-forms (make-hash-table :test #'eq)
+  "The heads of the macros and of the special forms that the walk met.
+This is the measurement of the table of the positions: the walk met every one
+of these heads in the code of the kernel, and the table of the positions knows
+the positions of each of them.")
+
+(defun yeah-check--definitions-of-the-macros ()
+  "Return the definitions of the macros of the kernel, with their file and line."
+  (let (definitions)
+    (dolist (file (yeah-check--sources-of-the-kernel))
+      (dolist (entry (yeah-check--forms-of file))
+        (let ((form (plist-get entry :form)))
+          (when (eq (car-safe form) 'defmacro)
+            (push (list :name (cadr form)
+                        :file file
+                        :line (plist-get entry :line))
+                  definitions)))))
+    definitions))
+
+(defun yeah-check--macros-defined-by-the-kernel ()
+  "Return the names of the macros the kernel defines."
+  (mapcar (lambda (definition) (plist-get definition :name))
+          (yeah-check--definitions-of-the-macros)))
+
+(defun yeah-check--macro-p (symbol)
+  "Return non-nil when SYMBOL is a macro.
+A macro of Emacs is a function that carries the marker of a macro, and a macro
+of the kernel is a macro the kernel defines: the files of the kernel are not
+loaded when the check runs, and the check reads them all the same."
+  (or (and (fboundp symbol) (macrop (symbol-function symbol)))
+      (memq symbol yeah-check--macros-of-the-kernel)))
+
+(defun yeah-check--kind-of-a-head (head)
+  "Return the kind of the positions of the form whose head is HEAD.
+The kind is nil when HEAD is an ordinary function: every argument of such a
+form is code.  The kind is :unknown when HEAD is a macro or a special form
+that the table of the positions does not know."
+  (and (symbolp head)
+       (or (cdr (assq head yeah-check--positions-of-the-known-forms))
+           (and (or (yeah-check--macro-p head) (special-form-p head))
+                :unknown))))
+
+(defun yeah-check--note-a-head (head)
+  "Note the head HEAD of a form the walk met in the code of the kernel.
+A head that is a macro or a special form is a position the walk must know, and
+the check measures the table of the positions against the kernel: a head the
+table does not know is a defect of its own."
+  (when (and (symbolp head)
+             (or (yeah-check--macro-p head) (special-form-p head)))
+    (puthash head t yeah-check--known-forms)
+    (when (eq (yeah-check--kind-of-a-head head) :unknown)
+      (puthash head t yeah-check--unknown-forms))))
 
 (defun yeah-check--root ()
   "Return the root of the project."
@@ -371,24 +608,53 @@ not the head of a call."
     (yeah-check--calls-in-1 form table))
   table)
 
-(defun yeah-check--calls-in-bindings (bindings table)
-  "Add to TABLE the symbols the values of BINDINGS call.
-BINDINGS is a list of bindings, and the name of a binding is a name and not a
-call: the runtime reads the value of the binding and not its name.  The value
-of a binding is code, and the walk goes into it."
-  (dolist (binding bindings)
-    (when (consp binding)
-      (yeah-check--calls-in-1 (cadr binding) table)))
-  table)
+(defun yeah-check--values-of-bindings (bindings)
+  "Return the values of BINDINGS: the parts of them that are code.
+A binding is a name and a value: the name is a name and the value is code."
+  (let (values)
+    (dolist (binding bindings)
+      (when (consp binding)
+        (push (cadr binding) values)))
+    (nreverse values)))
 
-(defun yeah-check--calls-in-a-defstruct (form table)
-  "Add to TABLE the symbols the values of the slots of FORM call.
-FORM is a `cl-defstruct': the name of the type, the names of the options and
-the names of the slots are names and not calls, for the runtime reads them
-and it does not run them.  The value of a slot is code, and the walk goes
-into it.  The obsolete `defstruct' is the same position."
+(defun yeah-check--code-of-a-loop (spec)
+  "Return the parts of the spec of a loop that are code.
+The spec of a loop is a name, a collection and a result: the collection and the
+result are code, and the name is a name."
+  (if (consp spec)
+      (let (parts)
+        (push (cadr spec) parts)
+        (when (caddr spec)
+          (push (caddr spec) parts))
+        (nreverse parts))
+    nil))
+
+(defun yeah-check--bodies-of-clauses (clauses)
+  "Return the bodies of CLAUSES: the parts of them that are code.
+The first element of a clause is a pattern, and a pattern is data."
+  (let (bodies)
+    (dolist (clause clauses)
+      (when (consp clause)
+        (dolist (form (cdr clause))
+          (push form bodies))))
+    (nreverse bodies)))
+
+(defun yeah-check--bodies-of-handlers (handlers)
+  "Return the bodies of HANDLERS: the parts of them that are code.
+The type of a handler is data, and the rest of it is code."
+  (let (bodies)
+    (dolist (handler handlers)
+      (when (consp handler)
+        (dolist (form (cdr handler))
+          (push form bodies))))
+    (nreverse bodies)))
+
+(defun yeah-check--values-of-slots (form)
+  "Return the values of the slots of the `cl-defstruct' FORM.
+The name of the type, the names of its options and the names of its slots are
+names, and the value of a slot is code."
   (let ((tail (cdr form))
-        (out table))
+        (values))
     ;; The name of the type and the names of its options stand in the first
     ;; element of the form, and they are names.
     (when (and (consp tail) (consp (car tail)))
@@ -398,20 +664,36 @@ into it.  The obsolete `defstruct' is the same position."
       (setq tail (cdr tail)))
     (while (consp tail)
       (let ((slot (car tail)))
-        ;; A slot is a name and a value: the value of the slot is code and
-        ;; the name of it is a name.
         (when (consp slot)
-          (setq out (yeah-check--calls-in-1 (cadr slot) out))))
+          (push (cadr slot) values)))
       (setq tail (cdr tail)))
-    out))
+    (nreverse values)))
 
-(defun yeah-check--calls-in-a-derived-mode (form table)
-  "Add to TABLE the symbols the code of the `define-derived-mode' FORM calls.
-The name of the mode and the name of its parent are names and not calls: the
-runtime reads them and it does not run them.  The name of the mode line, the
-doc string, the values of the keywords and the body of the mode are code."
+(defun yeah-check--code-of-a-defmethod (form)
+  "Return the parts of the `cl-defmethod' FORM that are code.
+The name of the method and its specializer are data, and the body of the
+method is code.  The qualifiers of a method stand between its name and its
+specializer, and they are data as well."
+  (let ((tail (cddr form))
+        (parts))
+    ;; The qualifiers of the method stand between its name and its specializer.
+    (while (and (consp tail) (keywordp (car tail)))
+      (setq tail (cdr tail)))
+    ;; The specializer of the method is data.
+    (when (consp tail)
+      (setq tail (cdr tail)))
+    ;; The body of the method is code.
+    (dolist (form tail)
+      (push form parts))
+    (nreverse parts)))
+
+(defun yeah-check--code-of-a-derived-mode (form)
+  "Return the parts of the `define-derived-mode' FORM that are code.
+The name of the mode, the name of its parent, the name of its mode line and its
+doc string are data, the value of a keyword is code, and the body of the mode
+is code."
   (let ((tail (cdddr form))
-        (out table))
+        (parts))
     ;; The name of the mode line and the doc string are strings: they are data
     ;; and not code.
     (while (and (consp tail) (stringp (car tail)))
@@ -420,10 +702,199 @@ doc string, the values of the keywords and the body of the mode are code."
     (while (and (consp tail)
                 (consp (car tail))
                 (memq (caar tail) yeah-check--derived-mode-keywords))
-      (setq out (yeah-check--calls-in-1 (cadr (car tail)) out))
+      (push (cadr (car tail)) parts)
       (setq tail (cddr tail)))
     ;; The body of the mode is code.
-    (yeah-check--calls-in-body tail out)))
+    (dolist (form tail)
+      (push form parts))
+    (nreverse parts)))
+
+(defun yeah-check--code-of-a-function (form)
+  "Return the parts of the `function' FORM that are code.
+The designator of a `function' is a name, and the body of a `lambda' under it
+is code."
+  (let ((designator (cadr form)))
+    (if (and (consp designator) (eq (car designator) 'lambda))
+        (cddr designator)
+      nil)))
+
+(defun yeah-check--arguments-of (form)
+  "Return the arguments of FORM as a list of parts.
+A form with a dotted tail has a symbol in the place of its last argument, and
+the tail is a part of the form like any other."
+  (let ((parts nil)
+        (tail (cdr form)))
+    (while (consp tail)
+      (push (car tail) parts)
+      (setq tail (cdr tail)))
+    (when tail
+      (push tail parts))
+    (nreverse parts)))
+
+(defun yeah-check--parts-of-a-form (form)
+  "Return the parts of FORM: its head and its arguments.
+A form that calls a function has a head that names it, and a list of forms has a
+head that is the first of them.  The walk of the head as a form does the same in
+both cases: the name of a function calls nothing, and the first form of a body
+is a form of the code that the runtime runs."
+  (cons (car form) (yeah-check--arguments-of form)))
+
+(defun yeah-check--local-functions-of (form)
+  "Return the local functions of the `cl-labels' or of the `cl-flet' FORM.
+A local function is a name, a list of parameters and a body."
+  (let (definitions)
+    (dolist (definition (cadr form))
+      (when (consp definition)
+        (push definition definitions)))
+    (nreverse definitions)))
+
+(defun yeah-check--calls-the-name-p (name form)
+  "Return non-nil when the runtime calls the function NAME in FORM.
+FORM is code: the runtime runs it.
+
+A call of it is a form whose head is its name.  A value of it that the runtime
+calls is a name in the first argument of `funcall' or of `apply', and a function
+designator that stands for it.  A name in data -- in a quote that nobody calls
+-- is a name and not a call: the runtime does not run the data, and a name that
+only the data holds is a name that the runtime never calls."
+  (cond
+   ;; A call of it: the name stands in the head of a form.
+   ((and (consp form) (eq (car form) name)) t)
+   ;; A value of it that the runtime calls: the first argument of `funcall' or
+   ;; of `apply' is a value the runtime calls.
+   ((and (consp form) (memq (car form) yeah-check--callers-of-a-value))
+    (let ((argument (cadr form)))
+      (or (eq (yeah-check--called-value argument) name)
+          ;; The name stands somewhere in the value that the runtime calls.
+          (yeah-check--mentions name argument))))
+   ;; A function designator that stands for it: the runtime may call the value.
+   ((and (consp form) (eq (car form) 'function))
+    (or (eq (yeah-check--called-value form) name)
+        ;; The body of a lambda under a `function' is code.
+        (yeah-check--calls-the-name-p name (yeah-check--code-of-a-function form))))
+   ;; A backquoted form is data, and the parts that are unquoted in it are the
+   ;; code that the runtime runs.
+   ((and (consp form) (memq (car form) yeah-check--backquote-symbols))
+    (yeah-check--calls-the-name-in-data-p name (cdr form)))
+   ;; A quoted form is data: the runtime does not run it, and a name in it calls
+   ;; nothing.
+   ((and (consp form) (eq (car form) 'quote)) nil)
+   ((consp form)
+    (let ((hit nil) (tail form))
+      (while (and (consp tail) (not hit))
+        (setq hit (yeah-check--calls-the-name-p name (car tail)))
+        (setq tail (cdr tail)))
+      hit))
+   ((vectorp form)
+    (let ((hit nil) (index 0))
+      (while (and (< index (length form)) (not hit))
+        (setq hit (yeah-check--calls-the-name-p name (aref form index)))
+        (setq index (1+ index)))
+      hit))
+   (t nil)))
+
+(defun yeah-check--calls-the-name-in-data-p (name form)
+  "Return non-nil when the data FORM holds a call of NAME.
+The parts that are unquoted in a backquote are the code that the runtime runs,
+and the walk goes into them.  The rest of the data is names and not calls."
+  (cond
+   ((consp form)
+    (let ((head (car form)))
+      (if (memq head yeah-check--unquote-symbols)
+          (yeah-check--calls-the-name-p name (cadr form))
+        (let ((hit nil) (tail form))
+          (while (and (consp tail) (not hit))
+            (setq hit (yeah-check--calls-the-name-in-data-p name (car tail)))
+            (setq tail (cdr tail)))
+          hit))))
+   ((vectorp form)
+    (let ((hit nil) (index 0))
+      (while (and (< index (length form)) (not hit))
+        (setq hit (yeah-check--calls-the-name-in-data-p name (aref form index)))
+        (setq index (1+ index)))
+      hit))
+   (t nil)))
+
+(defun yeah-check--local-function-is-called-p (definition definitions form)
+  "Return non-nil when the runtime calls the local function DEFINITION.
+The runtime calls it when its name stands in the code of the form: a call of
+it, a call of it from a neighbouring local function, or its name as a value
+that the runtime calls.  A name that stands nowhere is the name of a function
+that the runtime never calls, and the body of it is not code the runtime runs.
+A name in data -- in a quote that nobody calls -- is a name and not a call:
+the runtime does not run the data.  The name of a local function that a
+neighbouring one takes as a parameter is a value that the runtime may call,
+and the walk reads it as a call."
+  (let ((name (car definition)))
+    (or (yeah-check--calls-the-name-p name (cddr form))
+        (cl-some (lambda (other)
+                   (or (yeah-check--calls-the-name-p name (cddr other))
+                       ;; A name that a neighbouring local function takes as a
+                       ;; parameter is a value that the runtime may call.
+                       (yeah-check--mentions name (cadr other))))
+                 definitions))))
+
+(defun yeah-check--bodies-of-the-called-local-functions (form)
+  "Return the bodies of the local functions of FORM that the runtime calls.
+A local function that nothing calls is not code the runtime runs, and the walk
+does not go into its body: a tick that stands in it is no place of the runtime,
+and a definition that only such a body calls is not called by the runtime.
+The name of a local function that the runtime calls is a name in the code of
+the form, and the walk reads it there and not here."
+  (let ((definitions (yeah-check--local-functions-of form))
+        (bodies nil))
+    (dolist (definition definitions)
+      (when (yeah-check--local-function-is-called-p definition definitions form)
+        (dolist (body (cddr definition))
+          (push body bodies))))
+    (nreverse bodies)))
+
+(defun yeah-check--code-parts (kind form)
+  "Return the parts of FORM that are code, by the kind KIND of its positions.
+Every part of the answer is code, and the parts of the form that are not in
+the answer are names or data."
+  (cond
+   ((eq kind :code) (yeah-check--arguments-of form))
+   ((eq kind :data) nil)
+   ((eq kind :setq)
+    (let (parts)
+      (let ((tail (cdr form)))
+        (while (consp tail)
+          (push (cadr tail) parts)
+          (setq tail (cddr tail)))
+        (nreverse parts))))
+   ((eq kind :variable) (list (caddr form)))
+   ((eq kind :definition) (cddr (cdr form)))
+   ((eq kind :minor-mode) (cddr form))
+   ((eq kind :bindings)
+    (append (yeah-check--values-of-bindings (cadr form)) (cddr form)))
+   ((eq kind :loop)
+    (append (yeah-check--code-of-a-loop (cadr form)) (cddr form)))
+   ((eq kind :clauses)
+    (append (list (cadr form))
+            (yeah-check--bodies-of-clauses (cddr form))))
+   ((eq kind :pcase-bindings)
+    (append (yeah-check--values-of-bindings (cadr form))
+            (cddr form)))
+   ((eq kind :local-functions)
+    (append (yeah-check--bodies-of-the-called-local-functions form)
+            (cddr form)))
+   ((eq kind :handlers)
+    (append (list (caddr form))
+            (yeah-check--bodies-of-handlers (cdddr form))))
+   ((eq kind :destructuring)
+    (append (list (caddr form)) (cdddr form)))
+   ((eq kind :defmethod) (yeah-check--code-of-a-defmethod form))
+   ((eq kind :defgeneric) nil)
+   ((eq kind :slots) (yeah-check--values-of-slots form))
+   ((eq kind :derived-mode) (yeah-check--code-of-a-derived-mode form))
+   ((eq kind :function) (yeah-check--code-of-a-function form))
+   ((eq kind :lambda) (cddr form))
+   ;; The operands of a backquote are data, and the parts that are unquoted
+   ;; in them are code: the walk of the data finds them, and the walk of the
+   ;; code does not go into a backquote at all.
+   ((eq kind :backquote) nil)
+   (t (yeah-check--arguments-of form))))
 
 (defun yeah-check--calls-in-data (form table)
   "Add to TABLE the symbols the unquoted parts of FORM call.
@@ -487,6 +958,17 @@ position.  The name of a derived mode and the name of its parent are names
 too, and the value of a keyword of a `define-derived-mode' and the body of the
 mode are code.
 
+The walk asks Emacs what the head of a form is (the finding F27 of the
+discriminator of the waves 90 to 92).  A head that is an ordinary function is a
+call, and every argument of such a form is code.  A head that is a macro or a
+special form is not a call in that sense: the positions of such a form are the
+positions of a name and of a code, and the walk has to know them.  The table
+`yeah-check--positions-of-the-known-forms' declares the positions of every
+macro and every special form that the kernel uses, and a macro or a special
+form that does not stand in it is a defect of its own: the walk cannot say
+which of the arguments of the form is a name, and the check names the form by
+its file and its line instead of reading a name as a call.
+
 The names go into a table and not into a list: a list that the walk passes
 down would lose the names that the walk adds, because the caller keeps the
 head of the list and not the new cell."
@@ -499,78 +981,28 @@ head of the list and not the new cell."
         (when (memq head yeah-check--callers-of-a-value)
           (let ((called (yeah-check--called-value (cadr form))))
             (when called
-              (puthash called t table)))))
+              (puthash called t table))))
+        (yeah-check--note-a-head head))
       (cond
-       ;; A quoted form is data and not code: the walk does not go into it.
-       ((eq head 'quote) nil)
        ;; A backquoted form is data as well, and the parts that are unquoted
        ;; in it are the code that the runtime runs.
        ((memq head yeah-check--backquote-symbols)
         (yeah-check--calls-in-data (cdr form) table))
-       ;; The designator of a `function' is a name and not code.  The body of
-       ;; a `lambda' is code wherever it stands, and it is walked.
-       ((eq head 'function)
-        (let ((designator (cadr form)))
-          (when (and (consp designator) (eq (car designator) 'lambda))
-            (yeah-check--calls-in-1 designator table))))
-       ;; The parameters of a `lambda' are names and not code, and its body
-       ;; is code.
-       ((eq head 'lambda)
-        (yeah-check--calls-in-body (cdr (cdr form)) table))
-       ;; The names of the bindings of a `let' are names and not code, and
-       ;; their values and the body of the `let' are code.
-       ((memq head '(let let* cl-letf))
-        (yeah-check--calls-in-bindings (cadr form) table)
-        (yeah-check--calls-in-body (cddr form) table))
-       ;; The variable of the spec of a `dolist' or of a `dotimes' is a name,
-       ;; and the collection of the spec and the body are code.  The result
-       ;; variable of the spec is a name as well, and the runtime writes the
-       ;; result of the loop into it.
-       ((memq head '(dolist dotimes))
-        (let ((spec (cadr form)))
-          (when (consp spec)
-            (yeah-check--calls-in-1 (cadr spec) table)))
-        (yeah-check--calls-in-body (cddr form) table))
-       ;; The pattern of a `pcase' is data, the subject is code, and the body
-       ;; of the clause is code.  The pattern of a clause is its first element
-       ;; and its body is the rest of it: a keyword clause of a `pcase' names
-       ;; the branch in its first element and its body is the rest of it.
-       ((memq head '(pcase cl-case))
-        (yeah-check--calls-in-1 (cadr form) table)
-        (let ((tail (cddr form)))
-          (while (consp tail)
-            (let ((clause (car tail)))
-              (when (consp clause)
-                (yeah-check--calls-in-body (cdr clause) table)))
-            (setq tail (cdr tail)))))
-       ;; The variable of a `condition-case' is a name, the types of the
-       ;; handlers are data, and the bodies of the handlers are code.
-       ((eq head 'condition-case)
-        (yeah-check--calls-in-1 (caddr form) table)
-        (let ((tail (cdddr form)))
-          (while (consp tail)
-            (let ((clause (car tail)))
-              (when (consp clause)
-                (yeah-check--calls-in-body (cdr clause) table)))
-            (setq tail (cdr tail)))))
-       ;; The description of the slots of a `cl-defstruct' is a list of names:
-       ;; the name of the type, the names of the options and the names of the
-       ;; slots are names and not calls.  The value of a slot is code.  The
-       ;; obsolete `defstruct' is the same position: it expands into a
-       ;; `cl-defstruct' and the walk reads it the same way.
-       ((memq head '(cl-defstruct defstruct))
-        (yeah-check--calls-in-a-defstruct form table))
-       ;; The name of a derived mode and the name of its parent are names and
-       ;; not calls, and the rest of the form is code.
-       ((eq head 'define-derived-mode)
-        (yeah-check--calls-in-a-derived-mode form table))
        (t
-        (let ((tail form))
-          (while (consp tail)
-            (yeah-check--calls-in-1 (car tail) table)
-            (setq tail (cdr tail)))
-          (when tail
-            (yeah-check--calls-in-1 tail table)))))))
+        (let ((kind (yeah-check--kind-of-a-head head)))
+          (cond
+           ;; An ordinary function: every argument of the form is code.
+           ((null kind)
+            (yeah-check--calls-in-body (yeah-check--parts-of-a-form form) table))
+           ;; A macro or a special form that the table of the positions does
+           ;; not know: the walk cannot say which of the arguments is code and
+           ;; which is a name, and the check names the form by its file and its
+           ;; line instead of reading a name as a call.
+           ((eq kind :unknown)
+            (yeah-check--calls-in-body (yeah-check--parts-of-a-form form) table))
+           (t
+            (dolist (part (yeah-check--code-parts kind form))
+              (yeah-check--calls-in-1 part table)))))))))
    ((vectorp form)
     (let ((index 0))
       (while (< index (length form))
@@ -983,22 +1415,12 @@ a `lambda' is code wherever it stands, also under a `function'."
     acc)
    ((consp form)
     (let ((head (car form)))
+      (yeah-check--note-a-head head)
       (cond
-       ((eq head 'quote)
-        ;; A quoted form is data and not code: the runtime does not run it,
-        ;; and a tick that stands in a quoted form is no place of the runtime.
-        acc)
        ((memq head yeah-check--backquote-symbols)
         ;; A backquoted form is data as well, and the parts that are unquoted
         ;; in it are the code that the runtime runs.
         (yeah-check--ticks-in-data (cdr form) definition acc guard before aliases))
-       ((eq head 'function)
-        ;; The designator of a `function' is a name and not code.  The body of
-        ;; a `lambda' is code wherever it stands, and it is walked.
-        (let ((designator (cadr form)))
-          (if (and (consp designator) (eq (car designator) 'lambda))
-              (yeah-check--ticks-in designator definition acc guard before aliases)
-            acc)))
        ((eq head 'if)
         (let* ((test (cadr form))
                (out (yeah-check--ticks-in-body (list (nth 2 form)) definition acc
@@ -1061,11 +1483,28 @@ a `lambda' is code wherever it stands, also under a `function'."
         (yeah-check--ticks-in-body (cddr form) definition acc guard before
                                    aliases))
        (t
-        ;; A form of the runtime is walked by its elements: the head of the
-        ;; form and every argument of it.  The tail of a form may be a dotted
-        ;; pair, and a walk that went on after the last cell of it would read
-        ;; a symbol as a list.
-        (yeah-check--ticks-in-body form definition acc guard before aliases)))))
+        ;; A form of the runtime is walked by the table of the positions.
+        ;; An ordinary function is walked by its arguments, and every argument
+        ;; of it is code.  A macro or a special form is walked by the
+        ;; positions the table declares, and a form the table does not know is
+        ;; a defect of its own: the check names it by its file and its line.
+        (let ((kind (yeah-check--kind-of-a-head head)))
+          (cond
+           ((null kind)
+            (yeah-check--ticks-in-body (yeah-check--arguments-of form) definition
+                                       acc guard before aliases))
+           ((eq kind :unknown)
+            (yeah-check--ticks-in-body (yeah-check--arguments-of form) definition
+                                       acc guard before aliases))
+           (t
+            ;; The parts of the form are walked one after the other, and the
+            ;; places they hold are collected into the list the walk gives
+            ;; back: the list is the state of the walk, and a walk that threw
+            ;; it away would find no place at all.
+            (let ((out acc))
+              (dolist (part (yeah-check--code-parts kind form))
+                (setq out (yeah-check--ticks-in part definition out guard before aliases)))
+              out))))))))
    (t acc)))
 
 (defun yeah-check--tick-lines (file)
@@ -1564,12 +2003,318 @@ the ticks of the kernel, and LIVE are the definitions the runtime runs."
              (length dead)
              (mapcar #'yeah-check--name-of-a-place dead))))
 
+(defun yeah-check--a-delimiter-p (char)
+  "Return non-nil when CHAR ends a name.
+A name in the head of a form ends at a delimiter, and a `(' that a longer name
+follows is not the head of a form."
+  (or (null char)
+      (memq char '(?\s ?\t ?\n ?\r ?\f ?\( ?\) ?\' ?\` ?\, ?\; ?\" ?\[ ?\]))))
+
+(defun yeah-check--lines-of-a-head (file head)
+  "Return the lines of FILE where a form with the head HEAD stands.
+A form with the head HEAD is a list whose first element is HEAD, and the line
+is the line where the list stands.  A `(' that stands in a string or in a
+comment is not a form, and the check does not name it.
+
+The file is read once, from its beginning to its end, and the walk of the text
+does not go back: a walk that went back would read the file again and again,
+and a check of a kernel of forty files would take minutes instead of seconds."
+  (with-temp-buffer
+    (insert-file-contents file)
+    (goto-char (point-min))
+    (let ((lines nil)
+          (pos (point-min))
+          (needle (concat "(" (symbol-name head))))
+      (while (progn (goto-char pos)
+                    (search-forward needle nil t))
+        (let ((start (match-beginning 0))
+              (end (match-end 0))
+              (state (syntax-ppss (match-beginning 0))))
+          ;; The name of the head ends where the match ends, and the form
+          ;; stands in code and not in a string or in a comment.
+          (when (and (yeah-check--a-delimiter-p (char-after end))
+                     (not (nth 3 state))
+                     (not (nth 4 state)))
+            (push (line-number-at-pos start) lines))
+          (setq pos (1+ start))))
+      (nreverse lines))))
+
+(defun yeah-check--places-of-an-unknown-form (head)
+  "Return the places of the kernel where a form with the head HEAD stands.
+A place is the file of the kernel and the line of the form, and the check
+names a form whose positions it does not know by its file and its line."
+  (let (places)
+    (dolist (file (yeah-check--sources-of-the-kernel))
+      (dolist (line (yeah-check--lines-of-a-head file head))
+        (push (list :head head
+                    :at (format "%s:%s"
+                                (file-relative-name file (yeah-check--root))
+                                line))
+              places)))
+    places))
+
+(defun yeah-check--special-forms-of-emacs ()
+  "Return the special forms of Emacs.
+Emacs 30 has no variable `special-forms' any more: the list of the special
+forms is the list `special-form-p' answers for, and the check reads that list
+out of the obarray of Emacs instead of writing it down.  A list that the check
+wrote down would be the list of the special forms of the day it wrote it, and
+a special form that Emacs added after that would not be in it, and the table of
+the positions would not know it."
+  (let (forms)
+    (mapatoms (lambda (symbol)
+                (when (special-form-p symbol)
+                  (push symbol forms))))
+    (sort forms #'string<)))
+
+(defun yeah-check--every-special-form-of-emacs-is-known ()
+  "Every special form of Emacs stands in the table of the positions.
+Emacs 30 has no variable `special-forms' any more: the list of the special
+forms is the list `special-form-p' answers for, and the check reads that list
+out of the obarray of Emacs instead of writing it down.  A list that the check
+wrote down would be the list of the special forms of the day it wrote it, and
+a special form that Emacs added after that would not be in it, and the table of
+the positions would not know it."
+  (let (broken)
+    (dolist (name (yeah-check--special-forms-of-emacs))
+      (unless (assq name yeah-check--positions-of-the-known-forms)
+        (push (list name :the-table-does-not-know-this-special-form) broken)))
+    (yeah-check--fail
+     (null broken)
+     (format "the table of the positions does not know %d special form(s) of Emacs: %S"
+             (length broken) broken))))
+
+(defun yeah-check--every-macro-of-the-kernel-is-known ()
+  "Every macro the kernel defines stands in the table of the positions.
+A macro the kernel defines and the table does not know is a defect of its own:
+the walk cannot say which of the arguments of a call of it is a name, and the
+check names the macro by the file and the line where the kernel defines it."
+  (let (broken)
+    (dolist (entry (yeah-check--definitions-of-the-macros))
+      (unless (assq (plist-get entry :name) yeah-check--positions-of-the-known-forms)
+        (push (list :the-table-does-not-know-this-macro
+                    :macro (plist-get entry :name)
+                    :at (format "%s:%s"
+                                (file-relative-name (plist-get entry :file)
+                                                    (yeah-check--root))
+                                (plist-get entry :line)))
+              broken)))
+    (yeah-check--fail
+     (null broken)
+     (format "the table of the positions does not know %d macro(s) of the kernel: %S"
+             (length broken) broken))))
+
+(defun yeah-check--every-form-the-walk-met-is-known ()
+  "Every macro and every special form the walk met stands in the table.
+This is the measurement of the table of the positions: the walk of the code met
+every one of these heads in the code of the kernel, and a head the table does
+not know is a defect of its own, which the check names by its file and its
+line."
+  (let (broken)
+    (maphash
+     (lambda (head _value)
+       (unless (assq head yeah-check--positions-of-the-known-forms)
+         (push (list :the-walk-met-a-form-the-table-does-not-know
+                     :head head
+                     :at (mapcar (lambda (place) (plist-get place :at))
+                                 (yeah-check--places-of-an-unknown-form head)))
+               broken)))
+     yeah-check--known-forms)
+    (yeah-check--fail
+     (null broken)
+     (format "the walk met %d form(s) whose positions the table does not know: %S"
+             (length broken) broken))))
+
+(defun yeah-check--report-the-table-of-the-positions ()
+  "Say how many forms the walk met and how many of them the table knows."
+  (message "table: the walk met %d macro(s) and special form(s) in the kernel, and the table of the positions knows %d of them"
+           (hash-table-count yeah-check--known-forms)
+           (- (hash-table-count yeah-check--known-forms)
+              (hash-table-count yeah-check--unknown-forms))))
+
+(defmacro yeah-check--probe-macro (&rest body)
+  "A macro that the table of the positions does not know.
+The probe needs a macro that the table does not know, so that it can hold the
+walk to naming a form whose positions it does not know."
+  (cons 'progn body))
+
+(defconst yeah-check--probe-cases
+  '(((quote probe-dead) nil)
+    ((function probe-dead) nil)
+    ((function (lambda (probe-dead) (probe-live))) (probe-live))
+    ((defvar probe-dead (probe-live)) (defvar probe-live))
+    ((define-minor-mode probe-dead "the doc string" (probe-live))
+     (define-minor-mode probe-live))
+    ((lambda (probe-dead) (probe-live)) (lambda probe-live))
+    ((let ((probe-dead 1)) (probe-live)) (let probe-live))
+    ((let* ((probe-dead 1)) (probe-live)) (let* probe-live))
+    ((when-let ((probe-dead 1)) (probe-live)) (when-let probe-live))
+    ((if-let ((probe-dead 1)) (probe-live)) (if-let probe-live))
+    ((*when-let ((probe-dead 1)) (probe-live)) (*when-let probe-live))
+    ((dolist (probe-dead (probe-live)) (probe-live2)) (dolist probe-live probe-live2))
+    ((dotimes (probe-dead (probe-live)) (probe-live2)) (dotimes probe-live probe-live2))
+    ((pcase probe-live ((probe-dead) (probe-live2))) (pcase probe-live2))
+    ((case probe-live (probe-dead (probe-live2))) (case probe-live2))
+    ((pcase-let ((probe-dead (probe-live))) (probe-live2))
+     (pcase-let probe-live probe-live2))
+    ((pcase-let* ((probe-dead (probe-live))) (probe-live2))
+     (pcase-let* probe-live probe-live2))
+    ((cl-flet ((probe-dead (a) (probe-live))) (probe-live2))
+     (cl-flet probe-live2))
+    ((cl-labels ((probe-dead (a) (probe-live))) nil) (cl-labels))
+    ((cl-labels ((probe-dead (a) (probe-live))) (probe-dead))
+     (cl-labels probe-dead probe-live))
+    ((cl-labels ((probe-dead (a) (probe-live))) (probe-live2))
+     (cl-labels probe-live2))
+    ((cl-labels ((probe-dead (a) (probe-live))
+                 (probe-other (probe-dead) (probe-live2)))
+     (probe-other))
+     (cl-labels probe-live probe-live2 probe-other))
+    ((cl-labels ((probe-dead (a) (probe-live))) (list 'probe-dead))
+     (cl-labels list))
+    ((condition-case probe-dead (probe-live) (error (probe-live2)))
+     (condition-case probe-live probe-live2))
+    ((destructuring-bind (probe-dead) (probe-live) (probe-live2))
+     (destructuring-bind probe-live probe-live2))
+    ((multiple-value-bind (probe-dead) (probe-live) (probe-live2))
+     (multiple-value-bind probe-live probe-live2))
+    ((cl-defmethod probe-dead ((probe-dead2)) (probe-live)) (cl-defmethod probe-live))
+    ((cl-defgeneric probe-dead (probe-dead2) "the doc string") (cl-defgeneric))
+    ((cl-defstruct (probe-dead (:constructor probe-live))
+                   (probe-slot (probe-live2)))
+     (cl-defstruct probe-live2))
+    ((defstruct (probe-dead) (probe-slot (probe-live))) (defstruct probe-live))
+    ((define-derived-mode probe-dead parent "the doc string"
+       :group 'probe-group
+       (probe-live))
+     (define-derived-mode probe-live))
+    ((defun probe-dead (probe-dead2) (probe-live)) (defun probe-live))
+    ((defmacro probe-dead (probe-dead2) (probe-live)) (defmacro probe-live))
+    ((setq probe-dead (probe-live)) (setq probe-live))
+    ((setq-local probe-dead (probe-live)) (setq-local probe-live))
+    ((declare (indent 1)) (declare))
+    ((with-temp-buffer (probe-live)) (with-temp-buffer probe-live))
+    ((inline (probe-live)) (inline probe-live))
+    ((and (probe-live) (probe-live2)) (and probe-live probe-live2))
+    ((if (probe-live) (probe-live2) (probe-live)) (if probe-live probe-live2))
+    ((when (probe-live) (probe-live2)) (when probe-live probe-live2))
+    ((unless (probe-live) (probe-live2)) (unless probe-live probe-live2))
+    ((cond ((probe-live) (probe-live2))) (cond probe-live probe-live2))
+    ((while (probe-live) (probe-live2)) (while probe-live probe-live2))
+    ((progn (probe-live)) (progn probe-live))
+    ((funcall 'probe-dead) (funcall probe-dead))
+    ((yeah-session-with (probe-live) (probe-live2))
+     (yeah-session-with probe-live probe-live2))
+    ((yeah-tools-with-registry (probe-live) (probe-live2))
+     (yeah-tools-with-registry probe-live probe-live2))
+    ((yeah-todo-with-session (probe-live) (probe-live2))
+     (yeah-todo-with-session probe-live probe-live2))
+    ((`(probe-live ,(probe-live2))) (probe-live2)))
+  "The forms the probe of the positions of the walk holds the walk to.
+Every form of the list stands a name in the position of a name, and the walk
+must not call it: `probe-dead' is a name in every one of them, and the walk
+calls nothing but the names of the forms that are code.  The second element of
+a pair is the answer the walk has to give, and it is written down here and not
+computed by the walk: a probe that computes its own expectation proves
+nothing.
+
+The answer is a set of names and not a list: the walk collects the names in a
+table, and the order of a table is not the order of the code.  A name that the
+walk finds in a position of a name is a defect, and the probe names it.")
+
+(defconst yeah-check--probe-tick-cases
+  '(((let ((probe-dead 1)) (yeah-turn--tick probe-turn 'probe-label)) . 1)
+    ((when-let ((probe-dead 1)) (yeah-turn--tick probe-turn 'probe-label)) . 1)
+    ((quote (yeah-turn--tick probe-turn 'probe-label)) . 0)
+    ((cl-defmethod probe-dead ((probe-dead2))
+                  (yeah-turn--tick probe-turn 'probe-label)) . 1)
+    ((pcase-let ((probe-dead (yeah-turn--tick probe-turn 'probe-label)))
+       (probe-live)) . 1)
+    ((defun probe-dead (probe-dead2)
+          (yeah-turn--tick probe-turn 'probe-label)) . 1)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label))) nil) . 0)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
+       (witness)) . 1)
+    ((cl-labels ((witness () (other))
+                 (other () (yeah-turn--tick probe-turn 'probe-label)))
+       (witness)) . 1)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
+       (funcall 'witness)) . 1)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label))
+                 (other (witness) nil))
+       (other)) . 1)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
+       (list 'witness)) . 0)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
+       (function witness)) . 1))
+  "The forms the probe of the places of the walk holds the walk to.
+Every form of the list stands a tick in the code of it, and the number on the
+right is the number of the places of the runtime the walk has to find in it.
+A tick in the body of a local function that the runtime calls is a place, and a
+tick in the body of a local function that nobody calls is no place at all: the
+runtime does not run the body of a function it never calls.")
+
+(defun yeah-check--sorted-names (names)
+  "Return NAMES as a sorted list of the names in it, without the nils.
+The sort is destructive, and the names of the probe stand in a constant: the
+sort gets a copy of the list and not the list itself."
+  (sort (copy-sequence (delq nil names)) #'string<))
+
+(defun yeah-check--the-probe-passes ()
+  "The probe of the positions of the walk passes.
+The probe is a real check and not a comment: it feeds the walk the positions of
+the family and it holds the walk to the answer of each of them.  A defect that
+is put back -- a name in the position of a name read as a call, or a form whose
+positions the walk does not know -- makes the probe fail with the error of the
+defect."
+  (let (failures
+        (yeah-check--unknown-forms (make-hash-table :test #'eq))
+        (yeah-check--known-forms (make-hash-table :test #'eq)))
+    ;; The walk of the calls: a name in the position of a name calls nothing.
+    (dolist (entry yeah-check--probe-cases)
+      (let* ((form (car entry))
+             (expected (car (cdr entry)))
+             (got (yeah-check--calls-in form)))
+        (unless (equal (yeah-check--sorted-names got)
+                       (yeah-check--sorted-names expected))
+          (push (list :the-probe-of-the-positions-failed
+                      :form form
+                      :expected expected
+                      :measured got)
+                failures))))
+    ;; The walk of the places: a tick in the code of a form is a place of the
+    ;; runtime, and a tick in a name is no place at all.
+    (dolist (entry yeah-check--probe-tick-cases)
+      (let* ((form (car entry))
+             (expected (cdr entry))
+             (places (yeah-check--ticks-in form 'probe-definition nil nil nil nil)))
+        (unless (= expected (length places))
+          (push (list :the-probe-of-the-places-failed
+                      :form form
+                      :expected expected
+                      :measured (length places))
+                failures))))
+    ;; A form whose positions the walk does not know is a defect of its own,
+    ;; and the walk has to name it.
+    ;; The form is quoted and not expanded: the probe macro is a macro the
+    ;; table does not know, and the walk has to meet it as a form of the code.
+    (yeah-check--calls-in '(yeah-check--probe-macro (probe-live)))
+    (unless (gethash 'yeah-check--probe-macro yeah-check--unknown-forms)
+      (push (list :the-probe-did-not-name-the-form-the-walk-does-not-know
+                  :head 'yeah-check--probe-macro)
+            failures))
+    (yeah-check--fail
+     (null failures)
+     (format "the probe of the positions of the walk failed: %S" failures))))
+
 (defun yeah-check--verdict ()
   "Return the failures of the check, or nil when the check passes.
 An error of the check is a failure of the check and not the death of the
 process: a check that dies has not bitten."
   (condition-case err
-      (let* ((definitions (yeah-check--definitions-of-the-kernel))
+      (let* ((yeah-check--macros-of-the-kernel
+              (yeah-check--macros-defined-by-the-kernel))
+             (definitions (yeah-check--definitions-of-the-kernel))
              (live (yeah-check--live-definitions definitions))
              (all (yeah-check--tick-sites))
              (places (yeah-check--live-sites live all))
@@ -1586,9 +2331,26 @@ process: a check that dies has not bitten."
                                     places)
                                    (yeah-check--every-state-of-the-machine-is-reachable)
                                    (yeah-check--the-measurement-is-the-expected-one
-                                    measured)))))
+                                    measured)
+                                   ;; The table of the positions of the forms is
+                                   ;; measured against the kernel and not
+                                   ;; asserted: a macro of the kernel that the
+                                   ;; table does not know is a defect of its
+                                   ;; own, and a form the walk met in the code
+                                   ;; and the table does not know is a defect
+                                   ;; of its own.
+                                   (yeah-check--every-special-form-of-emacs-is-known)
+                                   (yeah-check--every-macro-of-the-kernel-is-known)
+                                   (yeah-check--every-form-the-walk-met-is-known)
+                                   ;; The probe of the positions of the walk is
+                                   ;; a check of its own: it holds the walk to
+                                   ;; the answer of every form of the family,
+                                   ;; and it fails with the error of the defect
+                                   ;; when the defect is put back.
+                                   (yeah-check--the-probe-passes)))))
         (unless failures
-          (yeah-check--report live places all))
+          (yeah-check--report live places all)
+          (yeah-check--report-the-table-of-the-positions))
         failures)
     (error
      (list (format "the check could not read the kernel: %s"
