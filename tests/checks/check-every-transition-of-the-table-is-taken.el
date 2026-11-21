@@ -753,11 +753,14 @@ A local function is a name, a list of parameters and a body."
 The runtime calls it when its name stands in the code of the form: a call of
 it, a call of it from a neighbouring local function, or its name as a value
 that the runtime calls.  A name that stands nowhere is the name of a function
-that the runtime never calls, and the body of it is not code the runtime runs."
+that the runtime never calls, and the body of it is not code the runtime runs.
+The name of a local function that a neighbouring one takes as a parameter is
+a value that the runtime may call, and the walk reads it as a call."
   (let ((name (car definition)))
     (or (yeah-check--mentions name (cddr form))
         (cl-some (lambda (other)
-                   (yeah-check--mentions name (cddr other)))
+                   (or (yeah-check--mentions name (cddr other))
+                       (yeah-check--mentions name (cadr other))))
                  definitions))))
 
 (defun yeah-check--bodies-of-the-called-local-functions (form)
@@ -2092,6 +2095,10 @@ walk to naming a form whose positions it does not know."
      (cl-labels probe-dead probe-live))
     ((cl-labels ((probe-dead (a) (probe-live))) (probe-live2))
      (cl-labels probe-live2))
+    ((cl-labels ((probe-dead (a) (probe-live))
+                 (probe-other (probe-dead) (probe-live2)))
+     (probe-other))
+     (cl-labels probe-live probe-live2 probe-other))
     ((condition-case probe-dead (probe-live) (error (probe-live2)))
      (condition-case probe-live probe-live2))
     ((destructuring-bind (probe-dead) (probe-live) (probe-live2))
@@ -2159,7 +2166,10 @@ walk finds in a position of a name is a defect, and the probe names it.")
                  (other () (yeah-turn--tick probe-turn 'probe-label)))
        (witness)) . 1)
     ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label)))
-       (funcall 'witness)) . 1))
+       (funcall 'witness)) . 1)
+    ((cl-labels ((witness () (yeah-turn--tick probe-turn 'probe-label))
+                 (other (witness) nil))
+       (other)) . 1))
   "The forms the probe of the places of the walk holds the walk to.
 Every form of the list stands a tick in the code of it, and the number on the
 right is the number of the places of the runtime the walk has to find in it.
