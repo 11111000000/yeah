@@ -2639,6 +2639,60 @@ works without it.
   tree of the commit `3a3d0fd`, which carries the artifacts of the package and the
   code of the three waves merged before it (`1ecb5e6`, `eb0f9a1`, `ab0d3a9`).
 
+## The live run of the package of the waves 93 to 96 (2026-11-21, 01:47 UTC)
+
+**What was run.**  One live run through the orchestrator Paseo on the tree of the
+package, with the short prompt of the rule 5 of `docs/PLAN.md` §19.1:
+
+```
+$ paseo run --provider yeah --cwd /home/az/Projects/yeah \
+    --title "Живой маршрут пакета 93-96" \
+    "Ответь только словом OK и вызови finish. Больше ничего не делай."
+AGENT ID                              STATUS      PROVIDER    CWD                             TITLE
+f72b0c1b-ecd0-4a1a-b98a-6c2208145d15  completed   yeah        /home/az/Projects/yeah          Живой маршрут пакета 93-96
+```
+
+The run began at 01:47:21 UTC and came to an end at 01:47:37 UTC — sixteen seconds.
+The model was `MiniMax-M3.1-Flash`, the mode was `build`, and the agent came to
+`idle` with `LastUsage` `InputTokens: 13056, OutputTokens: 27, CachedTokens: 0`.
+
+**What the journal says.**  The journal of the session (`session-18-d7142a.jsonl`)
+holds the whole run:
+
+| Record | What it says |
+|---|---|
+| `header` | `session-18-d7142a`, `2026-11-21T01:47:21+0000` |
+| `session-model` | `MiniMax-M3.1-Flash` |
+| `input-queued` / `input-taken` | the prompt of the run, carried through the wire of the orchestrator |
+| `user-message` | the prompt of the run |
+| `usage` | `input: 13056, output: 27` |
+| `tool-request` | `finish`, kind `other`, named argument `{"summary": "OK"}` |
+| `permission-request` / `permission-decision` | the request of the permission and the decision that allowed it |
+| `tool-end` | `finish`, `ok: true`, payload `OK` |
+| `finish` | the summary `OK` |
+
+**What this proves.**  The route of the orchestrator reaches the model on the tree
+of the package, and the model **acts** on it: the tool `finish` was called with the
+summary `OK`, and the run ended.  The tree of the repository was not changed by the
+run (`git status` was empty afterwards).
+
+**The shape of the answer is measured, not hidden.**  As in the run of the package of
+the waves 90 to 92, the journal holds no record of a nudge and no answer that
+described a next step: the model called the tool of the first answer.
+
+**What it does not prove.**
+
+* It is one run with a prompt of two sentences, and not a run of the agent over a
+  task: nothing was written, nothing was checked, and no code of the repository was
+  read by the model.
+* It says nothing about the four proofs of the package.  Those are the business of
+  the gate that follows this record and of the discriminator that follows the gate
+  (`docs/PLAN.md` §16.85, §16.86, §16.87, §16.88).
+* It says nothing about the tree of the waves themselves: the run was made on the
+  tree of the commit `a274742`, which carries the artifacts of the waves 93 and 96
+  and the code of the four waves merged before it (`98b4e2a`, `530105d`, `f364982`,
+  `9d3d1ea`).
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
