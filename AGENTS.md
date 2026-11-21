@@ -1432,6 +1432,27 @@ work item. Never resolve it by silently making documentation more optimistic.
   amended and not rewritten: the text, the falsifier, the scope, the requirements and the
   control are the same, because the repair gives back to the proof what wave 96 already
   promised.  The kernel and the generator are untouched (docs/PLAN.md §16.91).
+- Wave 97 drew the picture of the layers of the core in the notation of components, instead
+  of in ASCII.  The source is written by hand -- `docs/SITE-DIAGRAMS-PLAN.md` names only the
+  diagram of the state machine as generated out of the code -- and it is
+  `site/diagrams/core-layers.puml`: four packages (the drivers, the core, the journal and
+  the projections), 15 blocks, 64 names of the form `file:line`, every one of them a
+  definition of the kernel.  The picture is the picture of the ASCII figure of the site
+  (`site/index.html:482-506`) and of `docs/ARCHITECTURE.md` §5.  **The completeness is part
+  of the promise**: `lib/` holds 66 modules, 64 are named by the picture and 2 are in the
+  note of the modules the picture does not name, with the reason.  The new check
+  `tests/checks/check-the-layer-diagram-points-at-files-that-exist.el` follows every name:
+  a name must be a file of the repository, a line of that file and a definition on that line,
+  every module of `lib/` must be named or excluded with a reason, the note must not name a
+  module that is not there or one that the picture names as well, and every block must name
+  at least one file.  **The parent strengthened the check on 2026-11-21 and found the hole
+  while doing it**: the check of the writer held a line that carries code, and the body of a
+  function carries code, so a wave that moves a line of the kernel would leave the picture
+  pointing at the wrong place and the check would say nothing; a reference must name a
+  definition now.  **Nothing in the gate draws the picture**: the check of the render draws
+  the fixture trees of its own, and the render of this picture was proved by a direct run of
+  the pipeline.  The insertion into the site is the wave D3 and the check that the picture of
+  the site is current is the wave D4 (docs/PLAN.md §16.89).
 
 ## The commands
 
