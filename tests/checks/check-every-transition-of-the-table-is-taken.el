@@ -155,12 +155,13 @@
 ;;    check runs, and a macro the kernel defines is a macro all the same, so
 ;;    the check reads the macros of the kernel out of the files themselves.
 ;; 3. The positions of the forms are declared in one table, and the table is
-;;    measured and not asserted: every special form of Emacs, every macro the
-;;    kernel defines and every form the walk met in the code of the kernel
-;;    stands in it, and a head that does not stand in it is a defect of its own,
-;;    which the check names by its file and its line.  A kernel that grows a
-;;    macro the table does not know makes the check fail and says what it does
-;;    not know.
+;;    measured and not asserted: the list of the special forms of Emacs is read
+;;    out of the obarray of Emacs, every macro the kernel defines is read out of
+;;    the files of the kernel, and every form the walk met in the code of the
+;;    kernel is read out of the walk itself.  Every one of them stands in the
+;;    table, and a head that does not stand in it is a defect of its own, which
+;;    the check names by its file and its line.  A kernel that grows a macro the
+;;    table does not know makes the check fail and says what it does not know.
 ;; 4. The probe of the positions of the walk is a check of its own, and it lies
 ;;    in the tree: it holds the walk to the answer of every form of the family,
 ;;    and the answers are written down and not computed by the walk, for a
@@ -283,16 +284,6 @@ reader, so it has to know both of the symbols.")
 The walk goes into the value of such a keyword, for the form of an
 `:after-hook' is run by the mode.  A name that stands in the value of a
 keyword is a name and not a call.")
-
-(defconst yeah-check--special-forms-of-emacs
-  '(and catch cond condition-case defconst defvar function interactive let let*
-    or prog1 progn quote save-current-buffer save-excursion save-restriction
-    setq unwind-protect while)
-  "The special forms of Emacs.
-Emacs 30 has no variable `special-forms' any more: the list of the special
-forms is the list `special-form-p' answers for.  The check declares the list
-here, and a name of it that Emacs does not accept as a special form is a
-defect of the check itself.")
 
 (defconst yeah-check--positions-of-the-known-forms
   (append
@@ -1961,16 +1952,30 @@ names a form whose positions it does not know by its file and its line."
               places)))
     places))
 
+(defun yeah-check--special-forms-of-emacs ()
+  "Return the special forms of Emacs.
+Emacs 30 has no variable `special-forms' any more: the list of the special
+forms is the list `special-form-p' answers for, and the check reads that list
+out of the obarray of Emacs instead of writing it down.  A list that the check
+wrote down would be the list of the special forms of the day it wrote it, and
+a special form that Emacs added after that would not be in it, and the table of
+the positions would not know it."
+  (let (forms)
+    (mapatoms (lambda (symbol)
+                (when (special-form-p symbol)
+                  (push symbol forms))))
+    (sort forms #'string<)))
+
 (defun yeah-check--every-special-form-of-emacs-is-known ()
   "Every special form of Emacs stands in the table of the positions.
-Emacs 30 has no variable `special-forms' any more, and the check declares the
-list of the special forms itself: a name of the list that Emacs does not
-accept as a special form is a defect of the check, and a special form that
-does not stand in the table of the positions is a defect of the table."
+Emacs 30 has no variable `special-forms' any more: the list of the special
+forms is the list `special-form-p' answers for, and the check reads that list
+out of the obarray of Emacs instead of writing it down.  A list that the check
+wrote down would be the list of the special forms of the day it wrote it, and
+a special form that Emacs added after that would not be in it, and the table of
+the positions would not know it."
   (let (broken)
-    (dolist (name yeah-check--special-forms-of-emacs)
-      (unless (special-form-p name)
-        (push (list name :emacs-does-not-know-this-special-form) broken))
+    (dolist (name (yeah-check--special-forms-of-emacs))
       (unless (assq name yeah-check--positions-of-the-known-forms)
         (push (list name :the-table-does-not-know-this-special-form) broken))
     (yeah-check--fail
