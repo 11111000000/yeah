@@ -64,14 +64,23 @@
 ;; machine it runs on: the processes of the run are the processes that
 ;; hold the directory of the run in their environment -- every process
 ;; the run starts inherits it -- and the pids the check knows, the pid
-;; of the gate and the pid of every attempt of the run.  A process that
-;; only mentions the stand-in of the method is not a process of this
-;; run, and a check that names it names a process that is not the run
-;; of the check.  It does not ask the gate whether it is alive: a gate
-;; that answers is a gate that lives.  The state of the process decides
-;; whether it lives: `S' and `R' are a process that runs, and `Z' is a
-;; zombie -- a process that has died already and waits to be reaped.
-;; The rule is the one of the kernel (`lib/yeah-proc.el').
+;; of every attempt of the run.  A process that only mentions the
+;; stand-in of the method is not a process of this run, and a check
+;; that names it names a process that is not the run of the check.
+;;
+;; The gate is not measured by a number.  The gate is a child of the
+;; check, and Emacs knows its own child: the process object says that
+;; the child is gone when the child is gone.  A number does not say
+;; that: the number of a process that is gone belongs to whoever takes
+;; it next, and the machine gives the number away again in tens of
+;; milliseconds.  A check that asks the tree of the processes whether
+;; the gate is alive asks about the gate and about whoever holds its
+;; number now, and it cannot tell the two apart.
+;;
+;; The processes of the run are measured by the state of the process:
+;; `S' and `R' are a process that runs, and `Z' is a zombie -- a
+;; process that has died already and waits to be reaped.  The rule is
+;; the one of the kernel (`lib/yeah-proc.el').
 ;;
 ;; The processes of the run get a moment to go before the check calls them
 ;; leftovers: what the pilot of the run removes when it ends is not a
@@ -108,18 +117,59 @@ the death of the process reads a tail that has not come yet.")
   "The seconds the output of the gate must be quiet to be called settled.")
 
 (defun yeah-gate--await (predicate &optional timeout)
-  "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
-  (let ((deadline (+ (float-time) (or timeout 20))))
-    (while (and (< (float-time) deadline) (not (funcall predicate)))
-      (accept-process-output nil 0.05))
-    (funcall predicate)))
+  "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds.
+
+The answer of the wait is the answer the loop found.  The predicate is
+asked once more when the loop ends, and a second answer is a second
+question: a reader that asks twice can get two answers, and a wait
+that reports the second one reports an answer to a question that
+nobody asked.  The subject of a reading is a moment, and a measure
+that reads it twice reads two moments.
+
+The question is asked at least once, even when the time is over before
+the wait begins: a wait of no time is a question asked once, and a
+question that is not asked has no answer -- a reader that reports
+nothing where the caller asked \"is it gone\" hears that it is there.
+
+The wait answers nil when the time is over and the predicate was never
+true: a subject that did not come in the time is a subject that is not
+there, and the caller refuses it by its own assertion."
+  (let ((deadline (+ (float-time) (or timeout 20)))
+        (answer nil))
+    ;; the question is asked once before the loop: a wait that has no
+    ;; time still asks
+    (setq answer (funcall predicate))
+    (while (and (not answer) (< (float-time) deadline))
+      (accept-process-output nil 0.05)
+      (setq answer (funcall predicate)))
+    answer))
 
 (defun yeah-gate--await-dead (pid timeout)
   "Return non-nil when the process PID is gone, at most TIMEOUT seconds.
 The process is gone when the state of it says so: a zombie is gone, it
-has died already and waits to be reaped."
+has died already and waits to be reaped.
+
+The number names the process only while the process holds it: the
+machine gives the number of a process that is gone to whoever takes it
+next, and it does that in tens of milliseconds.  A reader that asks
+about a number alone asks about the holder of the number now.  The
+gate is not read this way -- it is a child of the check, and Emacs
+knows its child (see `yeah-gate--await-answer')."
   (yeah-gate--await
    (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
+   timeout))
+
+(defun yeah-gate--await-answer (process timeout)
+  "Return non-nil when the gate PROCESS has answered, at most TIMEOUT seconds.
+
+The gate is a child of the check, and Emacs knows its own child: the
+process object says that the child is gone when the child is gone, and
+it says it without a race -- Emacs reaps the child itself and knows the
+code of the answer.  The number of the child does not say that: the
+number of a process that is gone belongs to whoever takes it next, and
+a check that waits for the number waits for whoever holds it now."
+  (yeah-gate--await
+   (lambda () (not (process-live-p process)))
    timeout))
 
 (defun yeah-gate--kill (pid)
@@ -401,14 +451,19 @@ second run of the method of its own: two gates are two verdicts."
                             killed)
                     yeah-gate--failures)))
           ;; the gate answers
-          (unless (yeah-gate--await-dead gate-pid 60)
+          (if (yeah-gate--await-answer gate-process 60)
+              ;; the gate has answered: the answer of the gate is the code
+              ;; it left.  The code of a process that is still running is
+              ;; zero as well, and a check that reads it there reads
+              ;; nothing: the gate has to be gone before its code means
+              ;; something.
+              (let ((status (and gate-process (process-exit-status gate-process))))
+                (unless (and status (= status 0))
+                  (push (format "the gate answered %s, the answer of a run that held is 0"
+                                (or status "nothing"))
+                        yeah-gate--failures)))
             (push (format "the gate did not answer (pid %d)" gate-pid)
                   yeah-gate--failures))
-          (let ((status (and gate-process (process-exit-status gate-process))))
-            (unless (and status (= status 0))
-              (push (format "the gate answered %s, the answer of a run that held is 0"
-                            (or status "nothing"))
-                    yeah-gate--failures)))
           ;; the words of the gate come before the check reads them: the
           ;; output of the gate is a pipe, and Emacs drains the pipe after
           ;; the process of the gate is reaped, so a reader that reads the

@@ -2123,6 +2123,25 @@ work item. Never resolve it by silently making documentation more optimistic.
   seconds, and a refusal with a false subject is worse than no subject at all -- the promise
   did not change, the measure did (docs/PLAN.md §16.118).
 
+* **The re-gate of wave F answered red once, and the red mark was on the measure, not on the promise** --
+  the only red mark of that run lay on the claim `a-gate-run-needs-no-watchdog`: "the gate did not answer
+  (pid 6359)".  What is measured: the check took about 7 seconds while the limit of its wait was 60
+  seconds, so the wait did not run out of time -- the refusal came from a reading nobody asked for; the
+  old wait asked the same question twice and reported the second answer; the old measure read the gate by
+  its number, and the number of a process that is gone belongs to whoever takes it next; and
+  `process-exit-status` of a *live* process is 0, so the old assertion "the gate answered 0" could not
+  fail -- it was a comment.  What is *not* confirmed: the letter of the state of the gate was never
+  anything but `S`/`R` in 3257 samples over its life, and the number of a dead process stays free on
+  this host (it was still not taken after 60 seconds under a load that forks thousands of processes a
+  second), and 240 runs of the instrumented copy plus another 240 under that load reproduced the race
+  never.  **The cause is not established and is therefore not named.**  The measure now asks the gate by
+  the object of the process -- the gate is a child of the check and Emacs knows its own child, and the
+  object says the child is gone without a race -- the wait answers what it found and asks at least once
+  (a wait of no time is one question), and the code of the gate is read only after the gate has gone, so
+  "the gate answered something else" is a refusal that can fail.  The rule of the kernel is unchanged.
+  The first version of the repair broke the path of the wait without time -- it asked nothing, and every
+  number of the run read as alive -- and the honest run caught it (docs/PLAN.md §16.119).
+
 ## The commands
 
 ```sh
