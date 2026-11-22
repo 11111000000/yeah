@@ -16,6 +16,14 @@ JavaScript only adds the behaviour of the frame: the menus, the tab bar, the
 minibuffer, the incremental search, the live mode line and the theme. It does
 not reveal or generate content.
 
+## The diagrams
+
+The eight pictures of the architecture are diagrams, not ASCII. Their sources
+are in `diagrams/` (PlantUML), the pictures are in `assets/diagrams/`, and the
+pipeline that draws them is `scripts/dev diagrams`. The page shows the light
+picture by default and the dark one when the frame is in the dark theme; with
+JavaScript disabled the light picture is shown and the page is readable.
+
 ## Publication
 
 `.github/workflows/pages.yml` deploys `site/` on every push to `main` that
@@ -82,8 +90,9 @@ Every colour is a face of Emacs 30.2; the reasoning and the measurements are in
 [`../docs/SITE-DESIGN.md`](../docs/SITE-DESIGN.md).
 
 Sections use hard rules and fixed-pitch rhythm rather than cards, shadows,
-rounded pills or gradients. The architecture is ASCII; the roadmap uses Org
-status markers; status is presented through the language of `yeah-doctor`.
+rounded pills or gradients. The architecture, the loop of a run and the
+placements are diagrams; the roadmap uses Org status markers; status is
+presented through the language of `yeah-doctor`.
 
 The session on the first screen is explicitly labelled **illustrative**. It is
 not represented as a live connection or a browser-based Emacs.
@@ -137,6 +146,14 @@ theme is `modus-vivendi`.
 | Warnings | `warning` | `#ff8c00` | `#fec43f` |
 | Success | `success` | `#228b22` | `#44bc44` |
 
+The diagrams of the site are drawn in the same tokens. The background of a
+node is the background of a buffer, the arrow is the colour of the prose, and
+the accents are the colours of the syntax: a keyword, a builtin, a type, an
+error, a success. A picture is shipped for the light theme and for the dark
+theme of the frame, and the page picks the one that matches the theme it is
+in. Colour never carries the meaning alone: the shape, the line and the name
+carry it as well, and every diagram has a caption and a text alternative.
+
 Status never depends on colour alone: `PASS`/`OPEN`, `DONE`/`NEXT` and `+`/`!`
 carry the same information in text. Focus indicators remain visible, the text
 of the page keeps a contrast of at least 4.5:1 against its background, and
@@ -154,6 +171,12 @@ reduced-motion users get a static cursor.
 - `assets/og.png` — the rendered preview used by the metadata. It is rendered
   from `og.svg`, so the two are the same picture; render it again whenever the
   SVG changes. No SVG renderer is needed to publish the site.
+- `assets/diagrams/` — the pictures of the site, one per diagram and per theme
+  of the frame. They are drawn from the sources in `diagrams/` and are checked
+  in, so the page needs neither the tool nor a network.
+- `../diagrams/` — the sources of the pictures, in PlantUML. They are the
+  tool of the author, not a dependency of the site; the rule that keeps them
+  and the pictures together lives in the repository.
 
 ## Content discipline
 
