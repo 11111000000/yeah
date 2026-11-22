@@ -3099,7 +3099,7 @@
     },
     {
       "id": "the-gate-stops-a-check-that-hangs",
-      "text": "A check that hangs does not eat the gate: the gate stops the check at its limit of time, stops the children of the check as well, and answers with the third answer (unknown) and not with a refutation.",
+      "text": "A check that hangs does not eat the gate: the gate stops the check at its limit of time, stops the children of the check as well, answers with the third answer (unknown) and not with a refutation, and says that the check passed its limit.",
       "scope": [
         "scripts/dev-timeout",
         "scripts/lib/tree.sh",
@@ -3118,7 +3118,7 @@
           "spec": "./scripts/dev check tests/checks/check-a-check-that-hangs-is-stopped.el"
         }
       ],
-      "falsifier": "the check that hangs is still alive fifteen seconds after the limit of the gate passed, or the child of that check is still alive, or the gate answers the run of a stopped check with a code other than three",
+      "falsifier": "the check that hangs is still alive fifteen seconds after the limit of the gate passed, or the child of that check is still alive, or the gate answers the run of a stopped check with a code other than three, or the gate does not say that the check passed its limit",
       "register": "fact",
       "control": "sed -i 's|^  stop_tree \"$pid\" TERM$|  : control|; s|^  stop_tree \"$pid\" KILL$|  : control|' scripts/dev-timeout",
       "waiver": null
