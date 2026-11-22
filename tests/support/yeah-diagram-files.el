@@ -73,10 +73,6 @@ The number of the line is a shy group: in the regexp of Emacs a parenthesis
 without a backslash in front of it is a literal character and not a group,
 and a group of a literal parenthesis matches no name of a file at all.")
 
-(defun yeah-diagram--root ()
-  "Return the root of the project."
-  (expand-file-name default-directory))
-
 (defun yeah-diagram--text (path)
   "Return the text of the file at PATH."
   (with-temp-buffer
@@ -273,11 +269,12 @@ that is a word of the picture and not a path."
 (defun yeah-diagram--place-defect (root place)
   "Return the defect of the place PLACE in the tree at ROOT, or nil.
 A place of the repository must be there: a name that nobody wrote any more
-is a dead end for the reader of the picture."
+is a dead end for the reader of the picture.
+
+A place never begins with a slash: the pattern of a place begins with a
+letter, a digit, a dot or a dash, and a name that begins elsewhere is not
+a name of a place."
   (cond
-   ((string-prefix-p "/" place)
-    (format "the diagram names the place %s, and a name of the diagram must be a path of this repository"
-            place))
    ((not (yeah-diagram--place-p root place))
     nil)
    ((not (file-exists-p (expand-file-name place root)))
@@ -387,11 +384,12 @@ of their names."
 A reference of a `.el' file must point at a line that carries a
 definition: a name of the picture is a name of the code, and a line
 that carries no definition names no code.  A reference of any other
-file must point at a line that is there."
+file must point at a line that is there.
+
+A reference never begins with a slash: the pattern of a reference begins
+with a letter, a digit, a dot or a dash, and a name that begins
+elsewhere is not a name of a file of this repository."
   (cond
-   ((string-prefix-p "/" file)
-    (format "the diagram names %s:%d, and a name of the diagram must be a path of this repository"
-            file line))
    ((not (file-exists-p (expand-file-name file root)))
     (format "the diagram names %s:%d, and there is no such file" file line))
    ((not (file-readable-p (expand-file-name file root)))
