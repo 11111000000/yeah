@@ -1,0 +1,24 @@
+{
+  "id": "wave-f1",
+  "title": "the measure of the hanging check waits for the pipe of the run to drain",
+  "intent": "The first half of wave F.  The check that proves the gate stops a check that hangs read the output of the inner gate at the moment it learned that the gate had died.  The death of a process is known before the tail of its output has reached the buffer that the filter of the process fills: the machine reaps the child, the pipe of the child leaves the set of the descriptors that Emacs watches -- the handler of SIGCHLD calls delete_read_fd on the read descriptor of the dead process (src/process.c of Emacs 30.2) -- and the bytes the child wrote before it died stay in the pipe.  The check therefore refused a gate that had said exactly what it had to say, the sentence about the limit of five seconds, and that refusal was the red mark of the second gate of the package of the waves D3, D4, E1, E2 and E3 (docs/PLAN.md §16.116).  The measure now drains the pipe before it reads the buffer: it pumps the event loop, naming the gate, until the output stops growing.  The wait is bounded (5 s), and the judgement does not soften -- a gate that never said the sentence still fails the check with the same subject of refusal, and the registered control of the claim still makes the check fail.",
+  "touches": [
+    "tests/checks/check-a-check-that-hangs-is-stopped.el",
+    "spec.json",
+    "waves/wave-f1.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev check tests/checks/check-a-check-that-hangs-is-stopped.el",
+    "./scripts/dev check tests/checks/*"
+  ],
+  "claims": [
+    "the-gate-stops-a-check-that-hangs"
+  ],
+  "commitment": [],
+  "objection": "The race itself was not reproduced in the real check: in 25 honest runs of the final check, 18 runs of the instrumented copy under a load of six and 3 runs of the probe of the order, the window did not open once.  The fix is therefore prophylactic against a window that was measured once, in the gate, and never measured here; this agrees with the record of §16.116, where the probe of the order did not catch it either (6 of 6).  The mechanism was established, not the frequency: the probe of the order (/tmp/strand-probe2.el, a copy outside the repository) strands the tail of a dead process in 3 runs of 3 when the event loop is not pumped after the death, and sees it in 3 runs of 3 when it is.  The interleaving of the loss inside the wait loop of Emacs was not traced to the instruction -- the measure of the cause is the source of Emacs 30.2 and the probe of the order.  The cause of the flake of the wave 59 is a different defect and is not named here.",
+  "refuted_by": "the check that hangs is still alive fifteen seconds after the limit of the gate passed, or the child of that check is still alive, or the gate answers the run of a stopped check with a code other than three, or the gate does not say that the check passed its limit",
+  "note": "Measurements (all the mutations were made on copies of the tree in /tmp; the repository was not mutated).  Honest tree: 20 sequential runs, all exit 0, min 5283 ms, max 5752 ms, mean 5371 ms; 5 concurrent runs (the load), all exit 0, 5461-5602 ms.  Registered control of the claim (sed on scripts/dev-timeout: the stop of the tree of the command becomes a no-op), applied verbatim to a copy: the check fails with its own refusals and the code 1 in 45625 ms -- 'hang: the gate did not say that the check passed its limit', 'hang: the gate did not finish the run of the check that hangs', 'hang: the child of the check that hangs stayed behind', 'hang: the check that hangs was not stopped'.  The wait does not turn the check into a comment: the mutation that removes the printing of the sentence (scripts/dev:336) makes the check fail with the same refusal and the code 1 in 5330 ms, and the diagnostic of the refusal shows the whole output of the inner run with the sentence missing.  The cost of the drain is about 40 ms (two or three pumps of 0.05 s): 5329 ms mean before the fix, 5371 ms mean after it.  The instrumented copy shows the whole output of the inner run at the moment of the judgement.  The promise was amended, not rewritten: the text of the claim and its falsifier now name the sentence that the measure reads, and the id, the scope, the requirements and the control of the claim are the ones they were."
+}

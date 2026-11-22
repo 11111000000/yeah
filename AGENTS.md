@@ -2097,6 +2097,29 @@ work item. Never resolve it by silently making documentation more optimistic.
 
 * **The second gate of the package of the waves D3, D4, E1, E2 and E3 was red as well, and the red mark had moved to another check of the same family** -- the claim `the-gate-stops-a-check-that-hangs` (the check `tests/checks/check-a-check-that-hangs-is-stopped.el`) refused: "the gate did not say that the check passed its limit", and the buffer of the check held the first line of the output of the inner run and not its tail.  The mechanism follows from the refusal itself: the inner run answered 3 (the assertion of the check did not fire), the code 3 comes in the branch `check` of `scripts/dev` from one line only, and that line prints exactly the sentence the check did not find -- so the sentence was written into the pipe of the check and had not reached its buffer yet.  **The defect is in the read of the check**: it waits for the death of the process and reads the buffer, and it does not wait for the pipe to empty.  The journal of the method holds 62 entries on that claim, 61 pass and 1 fail -- the first refusal of that claim in the whole history of the journal.  Measured: the inner run on its own is right 10 times of 10, the check on its own is green 15 times of 15, a probe of the order (an experiment in /tmp) saw the tail in the buffer 6 times of 6 -- the window is narrow and the probe did not catch it.  The leftovers of the check of the wave 59 are the direct witness of the same shape: 14 directories of the run are left in /tmp, three of them empty, one with the attempts and no map -- the check removes the directory of the run at the end of its work and the removal did not finish in those runs, so the state of the directory of the run was not a settled thing at the moment the check read it.  **The cause of the flake of the wave 59 is still not established and is not named**; the defects of both marks are the next wave: a read of the state of an inner run has to wait until the run has settled (docs/PLAN.md §16.116).
 
+* **A measure that reads the state of an inner run must wait for that state to settle** -- wave F, two
+  measures, one rule.  The writer of the state is the run, and the reader of it is the check, and the
+  two are not one process: a reader that judges the state before the writer has finished it judges a
+  state that is not there yet.  Two carriers of that rule are measured now.  **The pipe of a dead
+  process**: the handler of `SIGCHLD` in Emacs takes the read descriptor of the dead child away
+  (`delete_read_fd`, `src/process.c` of Emacs 30.2), and the bytes the child wrote before it died stay
+  in the pipe and are never delivered to the filter -- the probe of the order strands the tail in 3
+  runs of 3 when the event loop is not pumped after the death, and sees it in 3 runs of 3 when it is
+  (the measure of `the-gate-stops-a-check-that-hangs` now pumps the loop, naming the gate, until the
+  output stops growing; the wait is bounded by 5 s and the judgement did not soften).  **The files of
+  the state of a run**: the file of the attempts and the file of the map are written by the run and
+  read by the check, and the check now waits for the restart to show and for the map to hold its
+  marker before it judges them (the measure of `a-gate-run-needs-no-watchdog`; the wait is bounded by
+  5 s, and a state that does not settle is a refusal with the same subject as before and not a
+  comment).  A refusal about the map now names the words of the gate as well, so that it says what the
+  gate said about the map.  **The promise of the first of the two was amended, not rewritten**: the
+  text and the falsifier of `the-gate-stops-a-check-that-hangs` name the sentence that the measure
+  reads ("the gate does not say that the check passed its limit"), because a refusal whose subject the
+  promise does not name is a refusal with a false subject; the id, the scope, the requirements and the
+  control of the claim are the ones they were.  **The cause of the flake of the wave 59 is still not
+  established and is not named**: what wave F removes is the class of the defect, not its cause
+  (docs/PLAN.md §16.118).
+
 ## The commands
 
 ```sh
