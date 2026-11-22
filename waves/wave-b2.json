@@ -1,0 +1,37 @@
+{
+  "id": "wave-b2",
+  "title": "the resource a tool declares and the lock that resource holds",
+  "intent": "The wave is the second of the track B of the catch-up plan (the contract of a tool).  The registry of the tools knew the risk of a tool and the number of the calls that may run at the same time, and it knew nothing about *what* a tool touches: two calls of the same tool on the same file ran at the same time and interleaved their writes, and nothing in the kernel could say that they must not.  The repair makes the resource a field of the declaration of a tool -- a non-empty string, optional -- and makes the scheduler hold a lock of that resource from the start of a call until it settles: the second call of the same resource waits for the first and the model reads the wait, not a race.  A tool that declares no resource is not serialized, because a lock of nothing is a lock of everything.  The key of the resource in the path of the call is `:tool-resource' and not `:resource', because the word `resource' in the domain of the permissions already means the resource *of the call*; the lock of the scheduler is taken on the declared resource itself, so the thing that is locked and the thing that is declared are one thing.  The lock does not replace `:concurrency': the number of the calls that may run at the same time still bounds how many of them wait for the same resource.  The claim of the wave is new (`two-calls-on-one-resource-do-not-overlap').",
+  "touches": [
+    "lib/yeah-scheduler.el",
+    "lib/yeah-tools.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-bridge.el",
+    "lib/yeah-delegate.el",
+    "lib/yeah-edit.el",
+    "lib/yeah-git.el",
+    "lib/yeah-mcp-client.el",
+    "lib/yeah-process.el",
+    "lib/yeah-todo.el",
+    "lib/yeah-trash.el",
+    "tests/checks/check-two-calls-on-one-resource-do-not-overlap.el",
+    "waves/wave-b2.json",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-two-calls-on-one-resource-do-not-overlap.el",
+    "./scripts/dev check tests/checks/check-tools-run-in-parallel.el",
+    "./scripts/dev check tests/checks/check-a-tool-declares-its-own-risk.el",
+    "./scripts/dev check tests/checks/check-a-tool-declares-its-own-limits.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "two-calls-on-one-resource-do-not-overlap"
+  ],
+  "commitment": [],
+  "objection": "What the wave does not prove, and its price is named.  (a) **The lock is a lock of the kernel and not a lock of the file system**: two processes that do not come from this harness are not held by it, and a tool that writes a file outside of its own declaration is not caught by it.  The declaration is the promise of the tool, and the lock keeps that promise inside the harness.  (b) **The resource is declared by hand and not derived**: the registry refuses a declaration that is not a non-empty string, but it cannot tell that two tools declare the same file under two different spellings, and a tool that declares the wrong resource is serialized against nothing.  (c) **The wait is a wait and not a refusal**: the model reads that the call waited and that the lock was taken; nothing measures how long the wait may last, and a call that waits behind a call that never settles waits for the limit of the turn and not for the lock.  (d) **A tool that declares no resource is not serialized at all**, and the read-only tools declare none: two reads of the same file still run at the same time, and the wave says so instead of pretending otherwise.  (e) **The lock is taken from the start of the call until it settles**, and a call that fails between those two moments releases the lock with the failure: the window between the decision to call and the arm of the lock is not measured.  (f) **The reference of the layer picture moved**: `lib/yeah-scheduler.el:150' no longer names a definition after the wave, and the picture of the layers is a file of the owner; the wave names the new line instead of touching the picture.",
+  "refuted_by": "Two calls on one resource overlap, a call waits for a resource that no call holds, a tool that declares no resource is serialized anyway, or the lock is taken on another resource than the one the tool declared.",
+  "note": "The wave is the second of the track B (the contract of a tool): the resource (B2), the limits (B3) and the description that the model reads.  (1) **The decisions of the parent are named and dated** (2026-11-22): the field is `:resource' and it is an optional non-empty string; the key in the path of the call is `:tool-resource' and not `:resource', because the word `resource' in the domain of the permissions already means the resource *of the call*; the key of the lock is the declared resource itself; the lock is held from the start of the call until it settles; a tool that declares no resource has no lock; the registration refuses a declaration that is not a string, by name; every tool that changes the world declares a resource and every tool that only reads declares none; the lock does not replace `:concurrency'.  (2) **The measurement is a real run**: the check of the wave plays two calls of one tool on one resource with a false model and reads the order of the real moves of the harness -- the first call starts, the second waits, the first settles, the second starts; the order of the calls of the tree is the order of `main' (A, B, C), and the suspicion of an inversion of the order was measured and was false.  (3) **The control bites on the merged tree** (measured by the parent on `90c1bbd'): `sed -i \"s/:tool-resource (yeah-tools-resource spec)/:tool-resource nil/\" lib/yeah-turn.el' makes the check fail with its own assertions -- `the two calls on one resource overlapped' and `the call of the scheduler carries the resource nil' -- and the check is green again after `git checkout --'.  (4) **The wave moved a reference of the picture of the layers**: `lib/yeah-scheduler.el:150' is red after the wave (it was red after wave B2 already) and the picture belongs to the owner; the owner re-binds the anchors of the picture when the track B and the track C are in the tree."
+}

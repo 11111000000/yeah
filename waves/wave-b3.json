@@ -1,0 +1,35 @@
+{
+  "id": "wave-b3",
+  "title": "the timeout and the output limit a tool declares",
+  "intent": "The wave is the third of the track B of the catch-up plan (the contract of a tool).  The kernel bounded the output of a tool by one global number and the time of a process by a constant inside the handler of the tool; the model could neither see the bound nor raise it, and the declaration of a tool said nothing about either.  The repair makes the limits fields of the declaration of a tool: `:timeout' is the upper bound of the work one call of the tool may start, in seconds, and `:output-limit' is the upper bound of the output one call of the tool may hand to the model, in characters.  The registry refuses a limit that is not a positive integer and refuses the timeout of a synchronous tool, both by name -- the kernel can only wait for an asynchronous call, and a timeout that nothing measures is a promise to nobody.  A call that asks for a duration longer than the timeout its tool declares is refused by name before the work starts.  The bound of the output that applies is the *smaller* of the declared one and the global one (`yeah-result-output-limit', 32768): the global limit is a ceiling, and a declaration never raises it.  The text that does not fit lies in a private artifact and the model reads the tail of it, so the model reads the end of the output and not its head.  A call that crossed the timeout of its tool is closed by a failure that names the bound, and the model reads that failure.  The claim of the wave is new (`a-tool-declares-its-own-limits').",
+  "touches": [
+    "lib/yeah-tools.el",
+    "lib/yeah-result.el",
+    "lib/yeah-scheduler.el",
+    "lib/yeah-turn.el",
+    "lib/yeah-process.el",
+    "lib/yeah-files.el",
+    "lib/yeah-git.el",
+    "tests/checks/check-a-tool-declares-its-own-limits.el",
+    "waves/wave-b3.json",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-a-tool-declares-its-own-limits.el",
+    "./scripts/dev check tests/checks/check-tools-run-in-parallel.el",
+    "./scripts/dev check tests/checks/check-two-calls-on-one-resource-do-not-overlap.el",
+    "./scripts/dev check tests/checks/check-a-tool-declares-its-own-risk.el",
+    "./scripts/dev check tests/checks/check-tool-output-is-valid-text.el",
+    "./scripts/dev ert tests/unit/test-yeah-*.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "a-tool-declares-its-own-limits"
+  ],
+  "commitment": [],
+  "objection": "What the wave does not prove, and its price is named.  (a) **The timeout closes the waiting of the kernel and not the work of the handler**: the timer ends the wait of the core with a failure that names the bound, and a handler that already runs keeps running -- the kernel cannot interrupt an Elisp handler.  The wave proves that a call that did not answer is closed and that the model reads that failure, and it says that the work behind it may go on.  (b) **The bound of the output is measured on the whole result** and not on the intermediate output of the tool and not on the output that a tool hands in parts.  (c) **The model reads the content of the result and not the whole text of the answer**: the text of the model carries the service lines `[Output truncated.]' and `[Full output: path]' in addition; the promise 'the model reads exactly N characters' would be false, and the wave does not make it.  (d) **The timer measures the call whole, the wait for the person included**: a deferred call that the person answers after the bound is closed by a timeout.  This is the literal reading of the decision of the parent ('the core stops waiting for the call at that bound') and the price of it is named here.  (e) **The `:timeout' is allowed to an asynchronous tool only**, and the refusal of the registration of a synchronous tool is by name; the writer of the wave derived the word 'asynchronous' from the fact that the core can wait for those calls alone.  (f) **The parameters of a duration are marked by hand**, and `bash` marks both `timeout' and `idle' as durations.  (g) **The wave moved four references of the picture of the layers** (`lib/yeah-files.el', `lib/yeah-process.el', `lib/yeah-scheduler.el' and, already before the wave, `lib/yeah-delegate.el'); the picture belongs to the owner and the owner re-binds the anchors.",
+  "refuted_by": "The registry takes the declaration and drops it, or the turn builds the call without it, or the scheduler does not read the timeout: a tool that declares no limit and no global limit applies; a tool that declares a limit that is not a positive integer and is accepted; a synchronous tool that declares a timeout and is accepted; a call that asks for a duration longer than the timeout its tool declares and is not refused by name; a declaration that raises the global limit; the model reads more characters than the bound that applies, or the text that does not fit lies in no artifact; a call that crossed its timeout and was not closed by a failure that names the bound, or the model does not read that failure; or the control of the claim does not make the check fail by its own assertion.",
+  "note": "The wave is the third of the track B (the contract of a tool).  (1) **The decisions of the parent are named and dated** (2026-11-22): the fields are `:timeout' (seconds) and `:output-limit' (characters); the bound that applies is the smaller of the declared one and the global one, and the global one is a ceiling; the timeout is held in two places -- the core stops waiting for the call at the bound and closes it with a failure that names the bound, and a parameter that is a duration may not exceed the declared bound and is refused by name; `bash' declares `:timeout 120' and marks its parameter `timeout' as a duration; a limit that is not a positive number is refused by name; a synchronous tool may not declare a timeout and is refused by name.  (2) **The measurement is a real move**: the check of the wave plays a call that crosses the bound of its tool with a false model and reads the record of the run, the failure that names the bound, and the text the model reads.  (3) **The control bites** (measured by the writer and again by the parent on the merged tree `baec0d3'): `sed -i 's/(min declared yeah-result-output-limit)/yeah-result-output-limit/' lib/yeah-tools.el' makes the check fail with its own assertions -- `the call of the scheduler carries the output limit 32768', `the whole output of the tool lies in no artifact' and `the model read 500 characters of an output that declares the limit of 100' -- and the check is green again after `git checkout --'.  Two further controls bite as well: the arming of the timer in the scheduler and the refusal of a duration that is longer than the declared bound.  (4) **The full set of the checks of the tree** was run by the writer: every check is green except the picture of the layers, which is red because of the anchors that the waves moved -- the anchors are a file of the owner."
+}
