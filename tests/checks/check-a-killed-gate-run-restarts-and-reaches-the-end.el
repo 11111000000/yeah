@@ -33,6 +33,27 @@
 ;; verdict of the run, nothing of the run was left behind when the gate
 ;; answered, and the wrapper kept no gate of its own.
 ;;
+;; The state of the run is read when it has settled.  The writer of the
+;; state is the run -- the file of the attempts and the file of the map --
+;; and the reader of it is the check, and the two are not one process: a
+;; reader that judges the state before the writer has finished it judges
+;; a state that is not there yet.  The check therefore waits for the
+;; state to settle -- the file of the attempts shows the restart and the
+;; file of the map holds the marker of the end of the run -- and it waits
+;; a bounded time: a state that does not settle is a refusal of the
+;; check, and not a comment.  The refusal names the file and the value
+;; the check waited for, and it says how long the check waited.
+;;
+;; The words of the gate are read when they have come.  The output of the
+;; gate is a pipe, and Emacs drains the pipe after the process of the
+;; gate is reaped: a reader that reads the buffer of the output at the
+;; death of the process reads a tail that has not come yet.  The check
+;; waits for the output to stop growing, and the refusal of the check
+;; names the words of the gate: the gate says why its map is not there,
+;; and a refusal that loses that word names a subject that is not the
+;; real one.  The diagnostic of the refusal -- the output of the gate --
+;; is whole.
+;;
 ;; The control of the claim takes the restart away from the gate: the
 ;; gate answers the kill and stops there, and the check then fails by its
 ;; own assertion -- the killed run was not started again.  The control
@@ -70,6 +91,21 @@
 
 (defvar yeah-gate--failures nil
   "The failures this check found.")
+
+(defconst yeah-gate--settle-timeout 5
+  "The seconds the check waits for the state of the run to settle.
+The wait is bounded on purpose: a state that does not settle is a
+refusal of the check and not a comment, and a check that waits for ever
+is a check that cannot fail.")
+
+(defconst yeah-gate--output-timeout 5
+  "The seconds the check waits for the words of the gate to come.
+The words of the gate are a pipe, and the pipe is drained by Emacs after
+the process is reaped: a reader that reads the buffer of the output at
+the death of the process reads a tail that has not come yet.")
+
+(defconst yeah-gate--output-quiet 0.2
+  "The seconds the output of the gate must be quiet to be called settled.")
 
 (defun yeah-gate--await (predicate &optional timeout)
   "Pump the event loop until PREDICATE returns non-nil, at most TIMEOUT seconds."
@@ -119,6 +155,102 @@ miss that looks like a run that never started."
 (defun yeah-gate--started-p (attempts)
   "Return non-nil when ATTEMPTS holds an attempt that started."
   (and attempts (cl-some (lambda (attempt) (assq :run attempt)) attempts)))
+
+(defun yeah-gate--map-content (path)
+  "Return the text of the map in PATH, or nil when the file is not there."
+  (when (file-exists-p path)
+    (with-temp-buffer
+      (insert-file-contents path)
+      (buffer-string))))
+
+(defun yeah-gate--map-complete-p (path)
+  "Return non-nil when the map in PATH holds the marker of the end of the run."
+  (let ((content (yeah-gate--map-content path)))
+    (and content (string-match-p "map=complete" content))))
+
+(defun yeah-gate--restarted-p (path)
+  "Return non-nil when the attempts file in PATH shows the restart of the run.
+The restart is the second start of the run: the first attempt was killed
+and the gate started the run again."
+  (>= (cl-count-if (lambda (attempt) (assq :run attempt))
+                   (yeah-gate--read-attempts path))
+      2))
+
+(defun yeah-gate--settled-p (attempts-file map-file)
+  "Return non-nil when the state of the run has settled.
+The state has settled when the file of the attempts shows the restart and
+the file of the map holds the marker of the end of the run.  The state is
+written by the run, and the state is read by the check: the two are not
+one process."
+  (and (yeah-gate--restarted-p attempts-file)
+       (yeah-gate--map-complete-p map-file)))
+
+(defun yeah-gate--await-settled (attempts-file map-file timeout)
+  "Wait until the state of the run has settled, at most TIMEOUT seconds.
+Return the seconds the wait took.  A state that does not settle in that
+time is not a state the check may judge: the check judges it as it is and
+refuses it by its own assertion."
+  (let ((started (float-time)))
+    (yeah-gate--await (lambda () (yeah-gate--settled-p attempts-file map-file))
+                       timeout)
+    (- (float-time) started)))
+
+(defun yeah-gate--output-size ()
+  "Return the number of characters in the buffer of the output of the gate."
+  (with-current-buffer (get-buffer-create " *yeah gate*")
+    (buffer-size)))
+
+(defun yeah-gate--output-text ()
+  "Return the whole output of the gate, as it stands in its buffer."
+  (with-current-buffer (get-buffer-create " *yeah gate*")
+    (buffer-string)))
+
+(defun yeah-gate--await-output (timeout quiet)
+  "Wait until the output of the gate stops growing, at most TIMEOUT seconds.
+Return the seconds the wait took.  The output of the gate is a pipe, and
+Emacs drains the pipe after the process of the gate is reaped: a reader
+that reads the buffer at the death of the process reads a tail that has
+not come yet.  The output has settled when it did not grow for QUIET
+seconds."
+  (let ((started (float-time))
+        (deadline (+ (float-time) timeout))
+        (size (yeah-gate--output-size))
+        (changed (float-time))
+        (settled nil))
+    (while (and (not settled) (< (float-time) deadline))
+      (accept-process-output nil 0.05)
+      (let ((now (yeah-gate--output-size)))
+        (if (/= now size)
+            (setq size now changed (float-time))
+          (when (> (- (float-time) changed) quiet)
+            (setq settled t)))))
+    (- (float-time) started)))
+
+(defun yeah-gate--map-reason ()
+  "Return the line of the output of the gate that speaks about the map, or nil.
+The gate says why the map of the project is not green when the step of the
+map failed, and that line is the reason of the run: a refusal that loses
+it names a subject that is not the real one.  The word is looked for in
+the message of the line and not in the name of the program: the path of a
+copy of the tree may hold the letters of the map and says nothing about
+it."
+  (let (found)
+    (dolist (line (split-string (yeah-gate--output-text) "\n" t))
+      (let ((message (and (string-match ":[ \t]" line)
+                          (substring line (match-end 0)))))
+        (when (and message (string-match-p "\\<map\\>" message))
+          (setq found line))))
+    found))
+
+(defun yeah-gate--map-note (reason waited)
+  "Return the tail of a refusal about the map of the run.
+REASON is the line the gate said about the map (or nothing), and WAITED is
+the seconds the check waited for the state of the run to settle.  The
+refusal names what the gate said: the gate knows why its map is not
+there, and a refusal that loses that word names a subject that is not the
+real one."
+  (concat (if reason (format "; the gate said: %s" reason) "")
+          (format "; the state of the run did not settle in %.1f seconds" waited)))
 
 (defun yeah-gate--await-all-dead (pids timeout)
   "Return non-nil when every process of PIDS is gone, at most TIMEOUT seconds.
@@ -265,26 +397,42 @@ second run of the method of its own: two gates are two verdicts."
               (push (format "the gate answered %s, the answer of a run that held is 0"
                             (or status "nothing"))
                     yeah-gate--failures)))
-          ;; the killed run was started again
-          (let ((runs (cl-count-if (lambda (attempt) (assq :run attempt))
-                                   (yeah-gate--read-attempts attempts-file))))
-            (unless (= runs 2)
-              (push (format "the killed run was not started again: the run was started %s time(s), the second start is the restart"
-                            runs)
-                    yeah-gate--failures)))
-          ;; the map reached the end
-          (let ((content (and (file-exists-p map-file)
-                               (with-temp-buffer
-                                 (insert-file-contents map-file)
-                                 (buffer-string)))))
+          ;; the words of the gate come before the check reads them: the
+          ;; output of the gate is a pipe, and Emacs drains the pipe after
+          ;; the process of the gate is reaped, so a reader that reads the
+          ;; buffer at the death of the process reads a tail that has not
+          ;; come yet.  The refusal of the check names the words of the
+          ;; gate, and the diagnostic of the refusal shows them whole.
+          (yeah-gate--await-output yeah-gate--output-timeout
+                                   yeah-gate--output-quiet)
+          ;; the state of the run settles before the check judges it: the
+          ;; run writes the file of the attempts and the file of the map,
+          ;; and the check reads them -- two processes, and the reader
+          ;; waits for the writer.  The wait is bounded, and a state that
+          ;; does not settle is a refusal and not a comment.
+          (let* ((waited (yeah-gate--await-settled attempts-file map-file
+                                                       yeah-gate--settle-timeout))
+                 (attempts-now (yeah-gate--read-attempts attempts-file))
+                 (content (yeah-gate--map-content map-file))
+                 (reason (yeah-gate--map-reason)))
+            ;; the killed run was started again
+            (let ((runs (cl-count-if (lambda (attempt) (assq :run attempt))
+                                     attempts-now)))
+              (unless (= runs 2)
+                (push (format "the killed run was not started again: the run was started %s time(s), the second start is the restart (the state of the run did not settle in %.1f seconds)"
+                              runs waited)
+                      yeah-gate--failures)))
+            ;; the map reached the end
             (cond
              ((null content)
-              (push (format "the map of the run was not written: the file %s is not there"
-                            map-file)
+              (push (format "the map of the run was not written: the file %s is not there%s"
+                            map-file
+                            (yeah-gate--map-note reason waited))
                     yeah-gate--failures))
              ((not (string-match-p "map=complete" content))
-              (push (format "the map of the run did not reach the end: the file %s holds %S, not the marker map=complete"
-                            map-file (string-trim content))
+              (push (format "the map of the run did not reach the end: the file %s holds %S, not the marker map=complete%s"
+                            map-file (string-trim content)
+                            (yeah-gate--map-note reason waited))
                     yeah-gate--failures))))
           ;; nothing of the run was left behind when the gate answered
           (setq left
