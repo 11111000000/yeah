@@ -3037,6 +3037,118 @@ package beyond what those checks measure, and it says nothing about the live
 route — the live run of the package is the section above, and it was made on
 the tree of the artifacts, before the two repairs.
 
+## The live run of the package of the waves B2, B3, C2 and C3 (2026-11-22, 08:11 UTC)
+
+**What was run.**  One live run through the orchestrator Paseo on the tree of the
+package — the commit `ed84210` (the record of the wave C3).  The prompt asked for
+one word and the tool `finish`:
+
+```
+Ответь только словом OK и вызови finish. Больше ничего не делай.
+```
+
+The model was `MiniMax-M3.1-Flash`, the mode was `build`, and the journal of the
+session is `session-1-2b20f6`.  The run began at 08:11:53 UTC and came to an end
+at 08:12:21 UTC — twenty-eight seconds.  The tree of the repository was not
+changed by the run (`git status` is empty, HEAD is `ed84210`).
+
+**The service measured the tree of the package.**  The service was restarted by
+hand before the run, because the plugin of the orchestrator keeps the service in
+a cache (`plugin/yeah-provider/index.server.ts`) and `paseo reload` does not drop
+that cache.  The unit `yeah-acp-service` started at **08:11:19 UTC**, the socket
+`/tmp/yeah-1001/yeah-service-paseo.sock` has the time of its creation
+**08:11:20 UTC**, and the last commit of the tree before the run is `ed84210` at
+**08:10:06 UTC** (the record of the wave C3).  The service therefore held the tree
+of the package and not an older one — the rule of the run that measured an old
+tree (§16.102).
+
+**The question of the permission carried the five answers of the wave C3.**  The
+question that came to the client over the wire named the tool and offered the
+options `allow-once`, `allow-session`, `allow-project`, `allow-global` and
+`reject-once`, with the labels «Allow once», «Allow for this session», «Allow
+for this project», «Allow always» and «Reject».  Two questions were asked (the
+tool `todo_list` and the tool `bash`); the client answered both, and the answer
+that came back carried the scope it named.
+
+**What the journal holds.**
+
+| Record | What it says |
+|---|---|
+| `header` | `session-1-2b20f6`, `2026-11-22T08:11:53+0000` |
+| `session-model` | `MiniMax-M3.1-Flash` |
+| `session-mode` | `build` |
+| `input-queued` / `input-taken` / `user-message` | the prompt of the run, carried through the wire of the orchestrator |
+| `usage` | `input: 12950, output: 31` |
+| `assistant-message` | «I'll check my task list first, then respond as instructed.» |
+| `nudge` / `user-message` | the nudge of the run; the state of the work in it |
+| `tool-request` | `todo_list`, args `nil` |
+| `permission-request` | `todo_list` on `nil` |
+| `permission-decision` | `allow`, **reply `:once`, scope `once`** |
+| `tool-end` | `todo_list`, `ok: true`, payload «The task list is empty.» |
+| `tool-request` | `bash`, args `("pwd; ls -la" 15 "." 5)` — the named arguments are the command, the timeout, the directory and the idle limit |
+| `permission-request` | `bash` on `pwd; ls -la` |
+| `permission-decision` | `allow`, **reply `:session`, scope `session`** |
+| `tool-end` | `bash`, `ok: true`, payload `/home/az/Projects/yeah` and the listing of the directory |
+| `tool-request` / `tool-end` | `read` of `README.md`, `ok: true` |
+| `tool-request` | `finish`, named argument `{"summary": "OK"}` |
+| `permission-decision` | `allow` — **without a reply and without a scope** |
+| `tool-end` | `finish`, `ok: true`, payload `OK` |
+| `finish` | the summary of the run, `OK` |
+
+**The scope of the answer is on the wire — this is the promise of the wave C3, measured live.**  The
+decision of the answer `once` carries the scope `once`, and the decision of the
+answer `session` carries the scope `session`.  Before the wave C3 the decision of
+an answer of a person carried a reply `always` and no scope at all, and the
+question over the wire offered two answers and a refusal.  The run shows the
+five answers of the dictionary of the scopes on the real route, with the scope
+that each answer names.
+
+**The rule of the answer `session` stayed in the memory of the session.**  The
+answer `session` was given on the ACP path, whose carrier is the memory of the
+session; after the run **no file of rules exists** — neither
+`~/.config/yeah/rules.json` nor `.yeah/rules.json` of the project.  This is the
+carrier of the wave C2 measured on the real route: the scope of an answer says
+where the rule lives, and the rule of the answer `session` on this path lives in
+the memory of the session and not on the disk of the person.
+
+**The decision without a reply is the rule of the kernel and not a defect.**  The
+tool `finish` asks nobody: the turn decides it before the answerer is called, and
+the decision carries no reply, no reason and no scope because there is no answer
+of a person to carry.  The run of the package of the waves 106 and 107 showed the
+same shape, and this run confirms it on the tree of this package.
+
+**What it proves.**
+
+* The tree of the package loads and works on the real route: the orchestrator
+  starts a session, the model answers, the tools are called, the permission of a
+  tool is decided by the kernel, the tools run and the run ends with the summary
+  of the model.
+* The wave C3 is on the road: the question over the wire carries the five
+  answers of the dictionary of the scopes, and the answer that comes back carries
+  the scope it named.
+* The wave C2 is on the road: the rule of the answer `session` landed in the
+  carrier of the path that asks and left no file on the disk of the person.
+
+**What it does not prove.**
+
+* It proves nothing about the promises of the package as a whole.  The claims of
+  the waves B2, B3, C2 and C3 are measured by their own checks and by their
+  controls; the run of the orchestrator is not one of them.  The gate of the
+  package is what covers the tree as a whole.
+* **The run asked a person three times and the person answered by hand.**  The
+  answers were `allow-once` (the tool `todo_list`) and `allow-session` (the tool
+  `bash`), and the decision of `read` was taken by the kernel itself, because a
+  read is a safe read.  The run shows the *route* of an answer; it does not show
+  what a person does with the five options in front of them.
+* The model did more than the prompt told it to do: it called `todo_list`, then
+  `bash`, then `read`, and answered «OK» before the `finish`.  The run says
+  nothing about the extra calls of the model.
+* It is one run, one prompt and one model, and the mode was `build`.  The run
+  says nothing about the profile `plan`, which denies the same tools instead of
+  asking.
+* The numbers of the usage are the ones the provider reported.
+
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
