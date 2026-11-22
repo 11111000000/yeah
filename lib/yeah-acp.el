@@ -92,9 +92,13 @@ the printed form otherwise."
 (defun yeah-acp--session-rules (session-id)
   "Return the permission rules that decide for SESSION-ID.
 The standing permissions of the service come first and the decisions the
-client remembered for this session come last: the last match wins."
+client remembered for this session come last: the last match wins.
+The standing permissions are the rules of the carriers that keep their
+rules in a file and the rules of the process."
   (let ((state (yeah-acp--session-state session-id)))
-    (append (yeah-perm-rules-list) (plist-get state :rules))))
+    (append (yeah-perm-file-rules)
+            (yeah-perm-rules-list)
+            (plist-get state :rules))))
 
 (defconst yeah-acp--default-mode "build"
   "The mode a session is in when the client has not chosen another one.
@@ -272,7 +276,7 @@ the decision about the session, and the refusal of the person about a
 tool is the decision about that tool."
   (let ((action (plist-get request :action))
         (resource (plist-get request :resource)))
-    (if (eq (yeah-perm-effect action resource (yeah-perm-rules-list)) 'deny)
+    (if (eq (yeah-perm-effect action resource (yeah-perm-effective-rules)) 'deny)
         (list :effect :deny :reply :reject
               :reason (format "the standing permissions deny %s on %s"
                               action resource))
@@ -1149,7 +1153,8 @@ permission question reaches the turn that asked it."
   "Remember an `always' DECISION for QUESTION in the rules of its session.
 The decision is remembered for this session only: the standing permissions
 of the service are not touched.  The rule carries the scope of the
-session, and an answer that names another scope is refused by name
+session, and it is written into the carrier of its scope, which is the
+session itself.  An answer that names another scope is refused by name
 instead of being written into the rules of the session."
   (let* ((scoped (yeah-approval-scope-decision decision yeah-acp--carrier))
          (session-id (plist-get question :session-id)))
@@ -1158,8 +1163,12 @@ instead of being written into the rules of the session."
                             :resource (plist-get question :resource))
                       scoped)))
       (let ((state (yeah-acp--session-state session-id)))
-        (plist-put state :rules
-                   (yeah-perm-rules-append (plist-get state :rules) rule))))
+        (yeah-perm-rule-store
+         rule yeah-acp--carrier
+         (lambda (stored)
+           (plist-put state :rules
+                      (yeah-perm-rules-append (plist-get state :rules) stored))
+           stored))))
     scoped))
 
 (defun yeah-acp--route-response (message)

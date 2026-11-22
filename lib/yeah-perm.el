@@ -31,10 +31,31 @@
 ;; names: the tools that change the world are the tools that declare a
 ;; risk other than `read' (`lib/yeah-risk.el'), and a tool that declares
 ;; no risk changes the world as far as the rule knows.
+;;
+;; The SCOPE of a rule says where the rule lives, and the CARRIER of a
+;; scope is what holds it: the rules of a run live in the run, the rules
+;; of a session live in the session, the rules of a project live in the
+;; file of the project (`.yeah/rules.json' of the project) and the rules
+;; of the user live in the file of the user (`rules.json' of the
+;; configuration of the user).  The correspondence between a scope and
+;; its carrier is written in one place (`yeah-perm--carriers'), and the
+;; paths of the files come from one place as well.
+;;
+;; A rule that is written into a carrier is read back from it when the
+;; permission is computed: a rule that is saved and never read is a
+;; rule that does not exist.  A file that cannot be read is a refusal
+;; that names the file and the reason, and not a silence.
+;;
+;; The rules of the process are not a carrier: they are the rules that
+;; the Emacs holds in its memory, and they are the freshest.  They are
+;; taken back by `yeah-perm-rules-reset-for-test', and the rules that
+;; the process wrote into a carrier are taken back with them: a test
+;; does not leave a rule in the file of the person.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'seq)
 (require 'yeah-risk)
 
 (defgroup yeah-perm nil
@@ -44,6 +65,20 @@
 (defvar yeah-perm--rules nil
   "Current global permission rules in registration order, newest last.
 Run-scoped rules replace this global set in the placement stage.")
+
+(defvar yeah-perm--written nil
+  "The rules this process wrote into the carriers that keep them in a file.
+Each element is a cons (FILE . RULE): the file the rule was written into
+and the rule that was written there.  The rules of the process are taken
+back by `yeah-perm-rules-reset-for-test', and only the rules that the
+process wrote are taken back: a rule that was in the file before is left
+where it is.")
+
+(defvar yeah-perm--created nil
+  "The files of the carriers that this process created.
+Each element is a file that was not there before the process wrote a rule
+into it.  A file that this process created and that holds no rule any
+more is taken away when the rules of the process are reset.")
 
 (defvar yeah-perm--session-log-fn nil
   "Optional function that records a session-scoped decision.
@@ -58,22 +93,74 @@ It receives `(:action ACT :resource RES :reply REPLY :save SAVE)'.  When nil,
   "The scopes a permission answer may name.
 `once' is this call, `run' the rules of the run, `session' the rules of
 the session, `project' the rules of the project and `global' the rules
-of the process.  This is the one place the scopes are written: every
+of the user.  This is the one place the scopes are written: every
 other place asks for them here and never writes the list again.")
 
-(defconst yeah-perm--carriers
-  '((:run run "the rules of the run")
-    (:session session "the rules of the session")
-    (:global global "the rules of the process"))
-  "The scopes that have a carrier, the name of the carrier and what the
-carrier holds.
+(declare-function yeah-product-project-root "yeah-product" ())
 
-`run' holds the rules of an attached run, `session' the rules of an ACP
-session and `global' the rules of the process.  The correspondence
-between a path and its scope lives here and nowhere else: a path asks
-for the scope of its carrier and never writes the table again.  A scope
-that has no carrier here -- `once' holds no rule and `project' has none
-yet -- is refused by name, and the refusal says why.")
+(defun yeah-perm--project-root ()
+  "Return the root of the project whose rules are read.
+The product layer knows the root of the project (`yeah-product-project-root')
+and the kernel asks it when the product layer is loaded.  A kernel that
+runs without the product layer stands in the directory of the process."
+  (if (fboundp 'yeah-product-project-root)
+      (yeah-product-project-root)
+    (file-truename default-directory)))
+
+(defvar yeah-perm-config-home nil
+  "The directory that holds the configuration of the user.
+The directory is this one when it is set, and the one of
+`XDG_CONFIG_HOME' otherwise -- the one of the home directory when the
+variable of the environment is not set either.  A check that must not
+touch the machine of the person binds this to a directory of its own:
+the rules of the check live there and not in the file of the user.")
+
+(defun yeah-perm--config-home ()
+  "Return the directory that holds the configuration of the user.
+The directory is the one of `yeah-perm-config-home' when that variable is
+set, and the one of `XDG_CONFIG_HOME' otherwise -- the one of the home
+directory when the variable of the environment is not set either."
+  (cond
+   (yeah-perm-config-home
+    (expand-file-name yeah-perm-config-home))
+   ((let ((xdg (getenv "XDG_CONFIG_HOME")))
+      (and xdg (not (string= xdg ""))))
+    (expand-file-name (getenv "XDG_CONFIG_HOME")))
+   (t
+    (expand-file-name ".config" (getenv "HOME")))))
+
+(defun yeah-perm--project-rules-file ()
+  "Return the file that holds the rules of the project.
+The file is the `rules.json' of the `.yeah' directory of the project."
+  (expand-file-name ".yeah/rules.json" (yeah-perm--project-root)))
+
+(defun yeah-perm--user-rules-file ()
+  "Return the file that holds the rules of the user.
+The file is the `rules.json' of the `yeah' directory of the
+configuration of the user."
+  (expand-file-name "yeah/rules.json" (yeah-perm--config-home)))
+
+(defconst yeah-perm--carriers
+  '((:once once "the scope of the call itself" nil)
+    (:run run "the rules of the run" nil)
+    (:session session "the rules of the session" nil)
+    (:project project "the rules of the project" yeah-perm--project-rules-file)
+    (:global global "the rules of the user" yeah-perm--user-rules-file))
+  "The scope, the carrier that holds its rules, what the carrier holds
+and the file that holds them.
+
+Every scope of the dictionary has exactly one carrier, and the
+correspondence between a scope and its carrier lives here and nowhere
+else: a path asks for the scope of its carrier and never writes the
+table again.  The fourth element of an entry is the function that
+returns the file of the carrier, and nil when the carrier keeps its
+rules in the memory of the path that owns it: the rules of a run live
+in the run and the rules of a session live in the session.
+
+The scope `once' is the scope of the call itself: it holds no rule,
+and a rule that carries it is refused by name.  The scopes are written
+from the most specific one to the broadest one, and the rules are
+collected the other way around, because the last matching rule wins.")
 
 (defun yeah-perm--effect-p (x)
   "Non-nil if X is one of the three effect symbols."
@@ -96,9 +183,15 @@ interface spell the scope the same way, and the spelling is made here."
         (if (string-prefix-p ":" name) (substring name 1) name))
     (format "%S" scope)))
 
+(defun yeah-perm--carrier-entry (scope)
+  "Return the entry of the table that holds the rules of SCOPE, or nil."
+  (seq-find (lambda (candidate) (eq (nth 0 candidate) scope))
+            yeah-perm--carriers))
+
 (defun yeah-perm-scope-of-carrier (carrier)
   "Return the scope the rules of CARRIER hold, or nil.
-CARRIER is the name of a holder of rules: `run', `session' or `global'."
+CARRIER is the name of a holder of rules: `once', `run', `session',
+`project' or `global'."
   (let ((entry (seq-find (lambda (candidate) (eq (nth 1 candidate) carrier))
                           yeah-perm--carriers)))
     (and entry (nth 0 entry))))
@@ -106,8 +199,7 @@ CARRIER is the name of a holder of rules: `run', `session' or `global'."
 (defun yeah-perm-carrier-of-scope (scope)
   "Return what holds the rules of SCOPE, or nil when nothing holds them.
 The answer says what the carrier is, so that a refusal can say why."
-  (let ((entry (seq-find (lambda (candidate) (eq (nth 0 candidate) scope))
-                          yeah-perm--carriers)))
+  (let ((entry (yeah-perm--carrier-entry scope)))
     (and entry (nth 2 entry))))
 
 (defun yeah-perm--rule-p (rule)
@@ -158,7 +250,12 @@ Returns RULE. Signals `user-error' if RULE is malformed."
   rule)
 
 (defun yeah-perm-rules-list ()
-  "Return all current permission rules in registration order."
+  "Return the rules of the process in registration order.
+The rules of the process are the rules that the Emacs holds in its
+memory.  They are not the carrier of a scope: the scope `global' is the
+file of the user.  The rules that decide for the person are the rules
+of the process and the rules of the carriers that keep their rules in
+a file (`yeah-perm-effective-rules')."
   yeah-perm--rules)
 
 (defun yeah-perm--refusal-cause ()
@@ -225,11 +322,189 @@ global one."
             (list (format "yeah-perm-rules-append: malformed rule %S" rule))))
   (append rules (list rule)))
 
+(defun yeah-perm--rule->json (rule)
+  "Return RULE as the JSON object of a rules file.
+The object carries the action, the resource, the effect and the scope:
+a rule in a file says where it lives.  The effect and the scope are
+spelled as the words the kernel uses for them."
+  (list :action (plist-get rule :action)
+        :resource (plist-get rule :resource)
+        :effect (symbol-name (plist-get rule :effect))
+        :scope (yeah-perm-scope-name (plist-get rule :scope))))
+
+(defun yeah-perm--rule-from-json (object file)
+  "Return the rule that the JSON object OBJECT holds, or refuse.
+FILE is the file the object was read from: the refusal names it, and it
+names the reason as well."
+  (unless (and (listp object)
+               (stringp (plist-get object :action))
+               (stringp (plist-get object :resource))
+               (stringp (plist-get object :effect))
+               (stringp (plist-get object :scope)))
+    (signal 'user-error
+            (list (format "yeah-perm: the rules file %s is broken: %S is not a rule"
+                          file object))))
+  (let* ((effect-name (plist-get object :effect))
+         (scope-name (plist-get object :scope)))
+    (unless (member effect-name (mapcar #'symbol-name yeah-perm--effects))
+      (signal 'user-error
+              (list (format "yeah-perm: the rules file %s is broken: %S is not an effect of the rules"
+                            file effect-name))))
+    (unless (member scope-name (mapcar #'yeah-perm-scope-name yeah-perm--scopes))
+      (signal 'user-error
+              (list (format "yeah-perm: the rules file %s is broken: %S is not a scope"
+                            file scope-name))))
+    (list :action (plist-get object :action)
+          :resource (plist-get object :resource)
+          :effect (intern effect-name nil)
+          :scope (intern (concat ":" scope-name) nil))))
+
+(defun yeah-perm--read-rules-file (file)
+  "Return the rules that FILE holds, or nil when there is no file.
+A file that is not there is a file of no rules and not an error.  A
+file that cannot be read is a refusal that names the file and the
+reason: a rule that cannot be read is never ignored."
+  (if (not (file-exists-p file))
+      nil
+    (let* ((text (condition-case err
+                     (with-temp-buffer
+                       (insert-file-contents file)
+                       (buffer-string))
+                   (error
+                    (signal 'user-error
+                            (list (format "yeah-perm: the rules file %s cannot be read: %s"
+                                          file (error-message-string err)))))))
+           (parsed (condition-case err
+                       (json-parse-string text :object-type 'plist :array-type 'list)
+                     (error
+                      (signal 'user-error
+                              (list (format "yeah-perm: the rules file %s is broken: %s"
+                                            file (error-message-string err))))))))
+      (unless (listp parsed)
+        (signal 'user-error
+                (list (format "yeah-perm: the rules file %s is broken: it does not hold a list of rules"
+                              file))))
+      (mapcar (lambda (object) (yeah-perm--rule-from-json object file)) parsed))))
+
+(defun yeah-perm--rules->json (rules)
+  "Return RULES as the text of a rules file.
+The text is an array of objects, one rule per line: the file is read by
+a person as well as by the kernel."
+  (if (null rules)
+      "[]"
+    (concat "[\n  "
+            (string-join (mapcar (lambda (rule)
+                                   (json-serialize (yeah-perm--rule->json rule)))
+                                 rules)
+                         ",\n  ")
+            "\n]")))
+
+(defun yeah-perm--write-rules-file (file rules)
+  "Write RULES into FILE and return FILE.
+The file is written atomically: the rules go into a temporary file of
+the same directory and the temporary file takes the place of the file.
+A reader of the file never sees half of it."
+  (let* ((directory (file-name-directory file))
+         (temporary nil))
+    (make-directory directory t)
+    (setq temporary (make-temp-file (expand-file-name "yeah-rules-" directory)))
+    (unwind-protect
+        (progn
+          (with-temp-file temporary
+            (insert (yeah-perm--rules->json rules) "\n"))
+          (rename-file temporary file t))
+      (when (file-exists-p temporary)
+        (delete-file temporary)))))
+
+(defun yeah-perm-file-rules ()
+  "Return the rules of the carriers that keep their rules in a file.
+The broadest carrier comes first: the last matching rule wins, and the
+rules of a project are narrower than the rules of the user.
+A file that is broken is a refusal that names the file: a rule that
+cannot be read is never ignored."
+  (let ((rules nil))
+    (dolist (entry (reverse yeah-perm--carriers))
+      (when-let ((file (nth 3 entry)))
+        (setq rules (append rules (yeah-perm--read-rules-file (funcall file))))))
+    rules))
+
+(defun yeah-perm-effective-rules ()
+  "Return the rules that decide for the person.
+The rules of the carriers that keep their rules in a file come first:
+they are the standing policy of the user and of the project.  The
+rules of the process come last: they are the rules that the Emacs
+holds in its memory, and they are the freshest."
+  (append (yeah-perm-file-rules) (yeah-perm-rules-list)))
+
+(defun yeah-perm-rule-store (rule &optional carrier store)
+  "Store RULE in the carrier of the scope that RULE carries.
+CARRIER is the carrier of the path that stores the rule, and STORE is
+the function that stores a rule in it.  A carrier that keeps its rules
+in a file is written here.
+A scope that has no carrier, a scope that holds no rule and a scope
+whose carrier the path does not hold, are refused by name: the rule is
+never written into the carrier of another scope.  Return RULE."
+  (let* ((scope (plist-get rule :scope))
+         (entry (yeah-perm--carrier-entry scope)))
+    (cond
+     ((null entry)
+      (signal 'user-error
+              (list (format "yeah-perm-rule-store: the scope %s has no carrier: nothing holds the rules of that scope"
+                            scope))))
+     ((eq scope :once)
+      ;; The scope of the call itself holds no rule: a rule that carries
+      ;; it would live nowhere, and a rule that lives nowhere is not a
+      ;; rule.
+      (signal 'user-error
+              (list (format "yeah-perm-rule-store: the scope once holds no rule: it is the scope of the call itself"))))
+     ((nth 3 entry)
+      (let ((file (funcall (nth 3 entry))))
+        (let ((rules (yeah-perm--read-rules-file file)))
+          (unless (member rule rules)
+            ;; The file is written only when the rule is not there yet:
+            ;; a carrier that already holds the rule is left as it is.
+            (unless (file-exists-p file)
+              (push file yeah-perm--created))
+            (push (cons file rule) yeah-perm--written)
+            (yeah-perm--write-rules-file file (append rules (list rule))))))
+      rule)
+     ((and carrier store (eq (nth 1 entry) carrier))
+      (funcall store rule))
+     (t
+      (signal 'user-error
+              (list (format "yeah-perm-rule-store: the scope %s has no carrier here: %s"
+                            scope (nth 2 entry))))))))
+
+(defun yeah-perm--forget-written-rules ()
+  "Take back the rules that this process wrote into the carriers.
+Only the rules that this process wrote are taken back: a rule that was
+in the file before is left where it is.  A file that this process created
+and that holds no rule any more is taken away.  A file that cannot be
+read is left alone: the reset of the tests never dies."
+  (dolist (entry yeah-perm--written)
+    (let ((file (car entry))
+          (rule (cdr entry)))
+      (condition-case nil
+          (let ((rules (yeah-perm--read-rules-file file)))
+            (when (member rule rules)
+              (let ((rest (delete rule rules)))
+                (if (and (null rest) (member file yeah-perm--created))
+                    (delete-file file)
+                  (yeah-perm--write-rules-file file rest)))))
+        (error nil))))
+  (setq yeah-perm--written nil)
+  (setq yeah-perm--created nil))
+
 (defun yeah-perm-rules-reset-for-test ()
   "Drop every rule; for tests only.
 Not exported; documented here so test authors can find it.
 Matches the convention used by `yeah-emcp--reset-for-test' and
-`yeah-tools-reset-for-test'."
+`yeah-tools-reset-for-test'.
+The rules that this process wrote into the carriers that keep their rules
+in a file are taken back as well: a test that leaves a rule in the file
+of the user has changed the machine of the person, and a test does not
+change the machine of the person."
+  (yeah-perm--forget-written-rules)
   (setq yeah-perm--rules nil))
 
 (defun yeah-perm--rule-matches-p (rule action resource)
@@ -248,13 +523,15 @@ an action names one action."
 (defun yeah-perm-effect (action resource &optional rules)
   "Return the effect RULES give for `(ACTION RESOURCE)'.
 
-RULES defaults to the current global ruleset.  The effect is one of
-`:allow', `:deny' or `:ask'.  The last matching rule wins, and no match
-means `:ask'.  This is the query without the signal: a caller that has
+RULES defaults to the rules that decide for the person: the rules of
+the process and the rules of the carriers that keep their rules in a
+file (`yeah-perm-effective-rules').  The effect is one of `:allow',
+`:deny' or `:ask'.  The last matching rule wins, and no match means
+`:ask'.  This is the query without the signal: a caller that has
 somewhere else to ask asks there."
   (let ((last-match nil)
         (rule nil)
-        (rest (or rules yeah-perm--rules)))
+        (rest (or rules (yeah-perm-effective-rules))))
     (while rest
       (setq rule (car rest))
       (when (yeah-perm--rule-matches-p rule action resource)
