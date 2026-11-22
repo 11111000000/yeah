@@ -762,13 +762,17 @@
       "register": "fact",
       "control": "sed -i \"s/('completed \\\"end_turn\\\")/('completed \\\"max_tokens\\\")/\" lib/yeah-acp.el",
       "waiver": null
-    },
-    {
+    },    {
       "id": "approvals-have-reply-kinds",
-      "text": "A permission request is answered once, always or reject: once allows only this call, reject refuses only this call, always is written into the rules so it outlives the question, any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
+      "text": "A permission request is answered once, for the session, for the project, always or reject: once allows only this call, reject refuses only this call, the other three are written into the rules so they outlive the question — the rule of the answer session in the carrier of the path that asks, the rule of the answer project in the file of the project and the rule of the answer global in the file of the user — and every answer carries the scope its rule lives in; the legacy name `always' is read as the answer `session'; any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
       "scope": [
-        "lib/yeah-approval.el", "lib/yeah-perm.el",
-        "tests/checks/check-approvals-have-reply-kinds.el"
+        "lib/yeah-approval.el",
+        "lib/yeah-perm.el",
+        "lib/yeah-approval-ui.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-service-ui.el",
+        "tests/checks/check-approvals-have-reply-kinds.el",
+        "tests/checks/check-the-question-offers-the-scope.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -781,9 +785,9 @@
           "spec": "./scripts/dev check tests/checks/check-approvals-have-reply-kinds.el"
         }
       ],
-      "falsifier": "A reply of once/always/reject does not produce its documented decision, always does not persist into the rules, an invalid reply is accepted, or the policy answers contrary to the rules.",
+      "falsifier": "A reply of once/session/project/global/reject does not produce its documented decision, an answer is not written into the rules, an answer carries no scope or a scope that is not the scope of its rule, the legacy name `always' is not read as the answer `session', an invalid reply is accepted, or the policy answers contrary to the rules.",
       "register": "fact",
-      "control": "sed -i 's|(when (eq kind :always)|(when (eq kind :never)|' lib/yeah-approval.el",
+      "control": "sed -i 's/((\"always\" . \"session\"))/((\"always\" . \"global\"))/' lib/yeah-approval.el",
       "waiver": null
     },
     {
@@ -1380,13 +1384,17 @@
       "register": "fact",
       "control": "sed -i 's|(\"unfinished\"|(\"unfinished-disabled\"|' lib/yeah-ui.el",
       "waiver": null
-    },
-    {
+    },    {
       "id": "one-approval-surface",
-      "text": "The question of the permission is asked in one place: the shared approval view, which names the action, the resource it acts on, the arguments it would run with and the diff of the change; the attached and the service path both answer there.",
+      "text": "The question of the permission is asked in one place: the shared approval view, which names the action, the resource it acts on, the arguments it would run with and the diff of the change, and which offers the four scopes of an answer — once, session, project and global — and the refusal, each named by what it allows; the attached and the service path both answer there.",
       "scope": [
-        "lib/yeah-approval-ui.el", "lib/yeah-product.el",
-        "lib/yeah-service-ui.el", "tests/unit/test-yeah-interaction.el"
+        "lib/yeah-approval-ui.el",
+        "lib/yeah-approval.el",
+        "lib/yeah-product.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-service-ui.el",
+        "tests/unit/test-yeah-interaction.el",
+        "tests/checks/check-the-question-offers-the-scope.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -1399,7 +1407,7 @@
           "spec": "./scripts/dev ert tests/unit/test-yeah-interaction.el"
         }
       ],
-      "falsifier": "a path asks the permission somewhere else, or the view does not name what the person is asked about",
+      "falsifier": "A path asks the permission somewhere else, or the view does not name what the person is asked about, or the view does not offer the scopes it offers.",
       "register": "fact",
       "control": "sed -i 's|(yeah-approval-answer|(ignore|' lib/yeah-product.el",
       "waiver": null
@@ -4024,6 +4032,33 @@
       "falsifier": "A scope has no carrier or two carriers, a rule is written into the carrier of another scope, a rule that is saved in a file is never read back, or a scope that holds no rule is accepted.",
       "register": "fact",
       "control": "sed -i 's|(let ((file (funcall (nth 3 entry))))|(let ((file (yeah-perm--user-rules-file)))|' lib/yeah-perm.el",
+      "waiver": null
+    },
+    {
+      "id": "the-question-offers-the-scope",
+      "text": "The question of the permission offers the four scopes of the answer — once, session, project and global — and the refusal; the client answers with one of them; the answer that comes back over the wire carries the scope it named, and the rule the answer writes carries the scope of the carrier that holds it.",
+      "scope": [
+        "lib/yeah-approval.el",
+        "lib/yeah-approval-ui.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-service-ui.el",
+        "schemas/acp-v1.json",
+        "tests/checks/check-the-question-offers-the-scope.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-question-offers-the-scope.el"
+        }
+      ],
+      "falsifier": "The question offers no scope, or a scope that is not one of the four; the wire carries a name that names no scope; the legacy name `always' is not read as an answer; the scope of the answer does not reach the rule the answer writes; or the schema of the wire does not declare the method of the question.",
+      "register": "fact",
+      "control": "sed -i 's/(:project :project)/(:project :global)/' lib/yeah-approval.el",
       "waiver": null
     }
   ]
