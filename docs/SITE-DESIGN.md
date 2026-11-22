@@ -336,6 +336,20 @@ end of what was typed.
     typed when the minibuffer is open. The frame rests on the command it
     is ready for (`M-x yeah`); a stock Emacs leaves the area empty between
     messages, and that departure of the site is named here.
+16. **The pictures of the architecture are diagrams, not ASCII.** The layer
+    picture of the site is drawn as a diagram: the sources are PlantUML files
+    under `site/diagrams/`, the pictures are in `site/assets/diagrams/`, one
+    picture for the light theme and one for the dark theme of the frame, and
+    the ASCII figure that stood in the architecture section is gone. PlantUML
+    is the tool of the author, not a dependency of the site: the site ships
+    the pictures, and the page is readable with JavaScript disabled and
+    without the tool. The colours of a diagram are the tokens of the frame —
+    the background of a node is the background of a buffer, the arrow is the
+    colour of the prose — and the accents come from the scale of font-lock.
+    Colour never carries the meaning alone: the shape, the line and the name
+    carry it too, every diagram has a caption, and every picture has a text
+    alternative for a reader who does not see it. The palette, the tool and
+    the placement are in `docs/SITE-DIAGRAMS-PLAN.md`.
 
 ## The verification
 
@@ -456,6 +470,10 @@ two by a reader who looked at the site.
 - The mode line reports the scroll of the page as the position in the buffer.
   There is no point in a web page, so the line number and the percentage are
   the honest approximation of what Emacs shows.
+- The diagrams of the site are drawn by the author with PlantUML and are
+  shipped as pictures. A picture that goes out of date is not redrawn by the
+  site itself; the check that keeps the pictures and the sources together
+  lives in the repository, not in the page.
 
 ## The sources
 
