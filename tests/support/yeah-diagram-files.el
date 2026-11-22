@@ -54,8 +54,11 @@
   "The pattern of a name of the form `file:line' in a diagram.")
 
 (defconst yeah-diagram--path-pattern
-  "[A-Za-z0-9._-][A-Za-z0-9._/-]*\\.[A-Za-z0-9]+(:[0-9]+)?"
-  "The pattern of a name of a file in a diagram, with a line or without.")
+  "[A-Za-z0-9._-][A-Za-z0-9._/-]*\\.[A-Za-z0-9]+\\(:[0-9]+\\)?"
+  "The pattern of a name of a file in a diagram, with a line or without.
+The number of the line is a shy group: in the regexp of Emacs a parenthesis
+without a backslash in front of it is a literal character and not a group,
+and a group of a literal parenthesis matches no name of a file at all.")
 
 (defun yeah-diagram--root ()
   "Return the root of the project."
@@ -130,6 +133,21 @@ only in the comment is not a claim of the picture."
                     (push (string-trim fragment) lines))))
             (push (string-trim line) lines)))))
     (nreverse lines)))
+
+(defun yeah-diagram--blocks (text)
+  "Return the blocks of the drawing of the diagram in TEXT.
+A block is a step of the picture: a line of the drawing that begins with a
+colon.  The answer is the text of the block, and the words of the text are
+the words of the step: a step of the turn that the picture does not name is
+a step the reader of the picture does not see."
+  (let (blocks)
+    (dolist (line (yeah-diagram--drawing-lines text))
+      (when (string-match "\\`:[[:space:]]*\\(.*\\)[[:space:]]*\\'" line)
+        (let ((body (match-string 1 line)))
+          (when (string-suffix-p ";" body)
+            (setq body (substring body 0 -1)))
+          (push body blocks))))
+    (nreverse blocks)))
 
 (defun yeah-diagram--references-in-line (line)
   "Return the references of LINE.
@@ -304,8 +322,12 @@ REASON), and the reason says what the reference misses."
   "Return the words of LINE.
 A word is a run of letters and digits: the colon that stands in front of
 a name of an answer is not a part of the word, and the word `project' is
-not the word `projection'."
-  (split-string (string-trim line) "[^A-Za-z0-9]+" t))
+not the word `projection'.
+The name of a file is not a word of the picture: the word `service' of
+`lib/yeah-service.el:127' says where the code is and not what the picture
+says."
+  (split-string (string-trim (replace-regexp-in-string yeah-diagram--path-pattern " " line))
+                "[^A-Za-z0-9]+" t))
 
 (defun yeah-diagram--names-all-p (line names)
   "Return non-nil when LINE names every one of NAMES.
@@ -316,6 +338,17 @@ word `ACP' is not the word `acp'."
   (let ((words (yeah-diagram--words line)))
     (let ((case-fold-search nil))
       (cl-every (lambda (name) (member name words)) names))))
+
+(defconst yeah-diagram--answers
+  '("once" "session" "project" "global" "reject")
+  "The answers the person may give to a request for permission.
+Every picture that shows the person answering names the same five answers,
+and the list of them lives here and not in a check of a picture.")
+
+(defun yeah-diagram--answers-p (lines)
+  "Return non-nil when one of LINES names every answer of the person."
+  (cl-some (lambda (line) (yeah-diagram--names-all-p line yeah-diagram--answers))
+           lines))
 
 (defun yeah-diagram--says-p (lines word)
   "Return non-nil when one of LINES says WORD as a whole word.
