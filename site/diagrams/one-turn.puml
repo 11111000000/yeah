@@ -1,0 +1,58 @@
+@startuml one-turn
+' One turn of the agent loop, end to end.
+'
+' The model proposes a call of a tool; the registry checks the call; the
+' policy decides whether the call may run; the person answers when the rules
+' ask; the scheduler runs what may run; the journal keeps what happened; the
+' result goes back to the model and the turn goes on.
+'
+' The model proposes and does not decide: the registry and the policy decide
+' what may run, and the journal is the only place where the history lives.
+'
+' Every block that asserts something about the code names the files that
+' implement it, as `file:line'.  The names of the tools are the names the
+' model calls them by.
+
+start
+:one turn of the agent
+(the model is asked, the tools are dispatched)
+lib/yeah-turn.el:1471;
+:the model proposes a tool call
+(read, edit, bash, git_status, todo_list)
+lib/yeah-turn.el:1097;
+:the registry checks the call
+(type, name, arguments)
+lib/yeah-tools.el:435;
+:the policy decides
+(may this call run?)
+lib/yeah-perm.el:523;
+if (the rules ask the person) then (yes)
+  :the request goes to the person
+  the human answers: :once, :session, :project, :global or :reject
+  lib/yeah-approval.el:59;
+  if (the answer allows) then (yes)
+    :the call may run;
+  else (no)
+    :the call is refused
+    (the refusal is the result of the call)
+    lib/yeah-turn.el:474;
+  endif
+else (no)
+  if (the rules allow it) then (yes)
+    :the call may run;
+  else (no)
+    :the call is refused
+    (the refusal is the result of the call)
+    lib/yeah-turn.el:474;
+  endif
+endif
+:the scheduler runs what may run
+(once-only, bounded, shared/exclusive)
+lib/yeah-scheduler.el:294;
+:the journal keeps what happened
+(the only place the history lives)
+lib/yeah-session.el:336;
+:the result goes back to the model
+(the turn goes on);
+stop
+@enduml
