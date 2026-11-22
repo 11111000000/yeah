@@ -15,7 +15,7 @@
 ;; picture at all: the reader of the site reads it as the truth about the
 ;; product.
 ;;
-;; This check reads `site/diagrams/fixed-point.puml' and measures four
+;; This check reads `site/diagrams/fixed-point.puml' and measures seven
 ;; things:
 ;;
 ;;   1. the file is there, it is not empty, and it is a diagram of the
@@ -32,7 +32,18 @@
 ;;      names a preset, the child runs in a session and a journal of its
 ;;      own at a depth of its own, the bounds of the tree are named, the
 ;;      agent runs a check of the environment, and the environment is
-;;      what the agent changes and what the agent reads again.
+;;      what the agent changes and what the agent reads again;
+;;   5. the change is the new environment: a block of the picture names
+;;      the change, the new and the environment;
+;;   6. the picture ends with the demonstration of the fixed point: the
+;;      *last* block of the picture is the block in which the agent
+;;      fixed its own code and its own check, and the block that runs
+;;      the check of the environment stands before it.  A picture whose
+;;      last block is not the demonstration, or whose demonstration
+;;      stands before the check it demonstrates, does not end with the
+;;      demonstration;
+;;   7. a block of the picture names the run of the check of the
+;;      environment -- the run, the check and the environment.
 ;;
 ;; A word of the picture is a word of the drawing and not a word of the
 ;; comment at the top of the file: a comment that names a part of the
@@ -78,6 +89,22 @@ the state of Emacs that the agent reads and writes is in
   "The words of the drawing that the diagram of the fixed point must show.
 Every word is a word of the picture and not a word of its comment.")
 
+(defconst yeah-check--run-words
+  '("run" "check" "environment")
+  "The words of the block that runs the check of the environment.
+The block is the run of the check of the environment, and the words
+are the words that name it.")
+
+(defconst yeah-check--demonstration-words
+  '("agent" "fixed" "its" "own" "code" "check")
+  "The words of the block that demonstrates the fixed point.
+The demonstration is the agent that fixed its own code and its own
+check, and it is the last block of the picture.")
+
+(defconst yeah-check--new-environment-words
+  '("change" "new" "environment")
+  "The words of the block that says that the change is the new environment.")
+
 (defun yeah-check--root ()
   "Return the root of the project."
   (expand-file-name default-directory))
@@ -111,7 +138,8 @@ Every word is a word of the picture and not a word of its comment.")
                         (string-trim (or (car (last raw)) "")))
                 yeah-check--failures))
         (let* ((references (yeah-diagram--references text))
-               (content (yeah-diagram--drawing-lines text)))
+               (content (yeah-diagram--drawing-lines text))
+               (blocks (yeah-diagram--blocks text)))
           ;; 2. every name of a file points at code that is there.
           (dolist (reference references)
             (let ((defect (yeah-diagram--reference-defect root
@@ -140,7 +168,30 @@ Every word is a word of the picture and not a word of its comment.")
             (unless (yeah-diagram--says-p content (car word))
               (push (format "the drawing does not say %s: the picture must show %s"
                             (car word) (cadr word))
-                    yeah-check--failures)))))))
+                    yeah-check--failures)))
+          ;; 5. the change is the new environment.
+          (unless (yeah-diagram--block-places blocks yeah-check--new-environment-words)
+            (push (format "the diagram of the fixed point has no block that names the change that is the new environment: the words %s"
+                          (yeah-diagram--words-text yeah-check--new-environment-words))
+                  yeah-check--failures))
+          ;; 6. the picture ends with the demonstration of the fixed point.
+          (let ((last (car (last blocks))))
+            (unless (and last
+                         (yeah-diagram--names-all-p last yeah-check--demonstration-words))
+              (push (format "the diagram of the fixed point does not end with the demonstration of the fixed point: the last block of the picture does not name the words %s"
+                            (yeah-diagram--words-text yeah-check--demonstration-words))
+                    yeah-check--failures)))
+          ;; 7. a block runs the check of the environment, and it stands
+          ;; before the demonstration that follows it.
+          (let ((runs (yeah-diagram--block-places blocks yeah-check--run-words)))
+            (unless runs
+              (push (format "the diagram of the fixed point has no block that names the run of the check of the environment: the words %s"
+                            (yeah-diagram--words-text yeah-check--run-words))
+                    yeah-check--failures))
+            (when (and runs blocks)
+              (unless (< (car runs) (1- (length blocks)))
+                (push "the diagram of the fixed point does not end with the demonstration of the fixed point: the block that runs the check of the environment is the last block of the picture"
+                      yeah-check--failures))))))))
   (when yeah-check--failures
     (dolist (failure yeah-check--failures)
       (message "fixed-point-diagram: %s" failure))
