@@ -4081,7 +4081,7 @@
           "spec": "./scripts/dev check tests/checks/check-the-one-turn-diagram-shows-the-turn-of-the-agent.el"
         }
       ],
-      "falsifier": "the picture names a file, a line or a definition that is not there, it drops one of the six modules that hold the turn together, it has no line that names the five answers of the person, or the control of the claim does not make the check fail by its own assertion",
+      "falsifier": "the picture names a file, a line or a definition that is not there, it drops one of the seven steps of the turn or puts the steps in another order, it drops one of the six modules that hold the turn together, it has no line that names the five answers of the person, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|lib/yeah-perm.el:523||' site/diagrams/one-turn.puml",
       "waiver": null
@@ -4106,7 +4106,7 @@
           "spec": "./scripts/dev check tests/checks/check-the-emacs-layer-diagram-shows-the-bridge-and-the-scopes.el"
         }
       ],
-      "falsifier": "the picture names a file, a line or a definition that is not there, a block of the picture names no file, the picture has no block of the bridge or the block of the bridge names no file of `lib/yeah-bridge.el', the picture drops one of the five modules that hold the layer together, the picture has no line that names the five answers of the person, or the control of the claim does not make the check fail by its own assertion",
+      "falsifier": "the picture names a file, a line or a definition that is not there, a block of the picture names no file, the picture has no block of the bridge or the block of the bridge names no file of `lib/yeah-bridge.el', the picture drops one of the six capabilities of the layer, the picture shows no person or no editor's Emacs or no agent's Emacs, the picture drops one of the five modules that hold the layer together, the picture has no line that names the five answers of the person, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|lib/yeah-bridge.el:177||' site/diagrams/emacs-layer.puml",
       "waiver": null
@@ -4166,7 +4166,7 @@
           "spec": "./scripts/dev check tests/checks/check-the-fixed-point-diagram-shows-the-loop-of-the-delegation.el"
         }
       ],
-      "falsifier": "the drawing says no part of the loop, or names no bound of the recursion, or does not end with the agent running a check of the environment; a name of the form `file:line' points at no file of the repository, at no line of that file, or at a line that carries no definition; a module that carries a part of the loop is named by no line that carries a definition; or the check is satisfied by a word of the comment at the top of the file instead of by the drawing",
+      "falsifier": "the drawing says no part of the loop, or names no bound of the recursion, or does not end with the agent running a check of the environment and fixing its own code and its own check, or has no block that says that the change is the new environment; a name of the form `file:line' points at no file of the repository, at no line of that file, or at a line that carries no definition; a module that carries a part of the loop is named by no line that carries a definition; or the check is satisfied by a word of the comment at the top of the file instead of by the drawing",
       "register": "fact",
       "control": "sed -i 's|lib/yeah-delegate.el:[0-9]*||g' site/diagrams/fixed-point.puml",
       "waiver": null
@@ -4201,7 +4201,7 @@
     },
     {
       "id": "the-code-packages-diagram-names-every-module-of-the-kernel",
-      "text": "The picture of the packages of the code shows where the code lives: `lib/' is in exactly nine packages -- the journal and the projections, the control of a run, the adapter of the model, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, the placements and the plumbing -- and every module of `lib/' is named in one of them with the line of its definition, as `file:line', or is listed in the note of the modules the picture does not name, with the reason why it is not in the picture; every reference of the form `file:line' names a file of this repository, a line of that file and a line that carries a definition; a module is named in one package and not in two; and the note names no module that is not there, names every module with a reason, and names no module that a package names as well.",
+      "text": "The picture of the packages of the code shows where the code lives: `lib/' is in exactly nine packages -- the journal and the projections, the control of a run, the adapter of the model, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, the placements and the plumbing -- and the composition of the nine packages is the decision of the writer of the wave and not a claim that `lib/' is divided so -- and every module of `lib/' is named in one of them with the line of its definition, as `file:line', or is listed in the note of the modules the picture does not name, with the reason why it is not in the picture; every reference of the form `file:line' names a file of this repository, a line of that file and a line that carries a definition; a module is named in one package and not in two; and the note names no module that is not there, names every module with a reason, and names no module that a package names as well.",
       "scope": [
         "site/diagrams/code-packages.puml",
         "lib",
@@ -4219,7 +4219,7 @@
           "spec": "./scripts/dev check tests/checks/check-the-code-packages-diagram-names-every-module-of-the-kernel.el"
         }
       ],
-      "falsifier": "the picture has a package that is not one of the nine, or it is missing one of the nine, it names a file, a line or a definition that is not there, it drops a module of `lib/' silently, it names a module in two packages, the note names a module that is not there, the note names a module without a reason, the note names a module that a package names as well, or the control of the claim does not make the check fail by its own assertion",
+      "falsifier": "the picture has a package that is not one of the nine of the wave, or it is missing one of them, it names a file, a line or a definition that is not there, it drops a module of `lib/' silently, it names a module in two packages, the note names a module that is not there, the note names a module without a reason, the note names a module that a package names as well, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|lib/yeah-todo.el:46||' site/diagrams/code-packages.puml",
       "waiver": null
@@ -4244,7 +4244,7 @@
           "spec": "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el"
         }
       ],
-      "falsifier": "a picture of the site names a file, a line or a definition that is not there, or names a place that is not there, or it says nothing at all, or its name is not the name of its file, or it ends with no `@enduml', or it names no place of the repository and is not the machine of the states, or the generator of the machine of the states is not there, or the control of the claim does not make the check fail by its own assertion",
+      "falsifier": "a picture of the site names a file, a line or a definition that is not there, or names a place that is not there, or it says nothing at all, or its name is not the name of its file, or it ends with no `@enduml', or it names no place of the repository and is not the machine of the states, or the generator of the machine of the states is not there, or a picture in a subdirectory of `site/diagrams/' is not measured, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|lib/yeah-tools.el:119|lib/yeah-tools.el:999999|' site/diagrams/core-layers.puml",
       "waiver": null
