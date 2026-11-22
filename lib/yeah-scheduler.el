@@ -26,6 +26,13 @@
 ;; waiting for calls that will end.  There is no cycle to enter, and no
 ;; two calls that wait for each other.
 ;;
+;; A call may declare the limits of the tool it runs: `:timeout' is the
+;; upper bound of the work of the call in seconds, and `:output-limit' is
+;; the upper bound of its output in characters.  The kernel stops waiting
+;; for a call at its timeout and closes it with a failure that names the
+;; bound; the output of a call is bounded by its limit, so that the model
+;; reads what fits and the whole text goes into a private artifact.
+;;
 ;; Every call settles at most once.  Handler failures become structured
 ;; `(:yeah-error MESSAGE)' results, nil results are explicit failures, and
 ;; successful model-facing results are strings.  A duplicate asynchronous
@@ -34,6 +41,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-result)
 
 (cl-defstruct (yeah-batch (:constructor yeah-batch--make))
   "One batch of tool calls.
@@ -44,8 +52,9 @@ number of calls that have not settled.  RESULTS is a vector in call order.
 SETTLED-CALLS is the per-call once-only guard.  RESOURCES holds the resources
 that the running calls declared, and the index of the call that holds each of
 them.  EXCLUSIVE is the active exclusive call, if any, as an (INDEX . CALL)
-pair.  CONTINUATION is called once after the whole batch settles.  SETTLED
-says whether that has happened."
+pair.  TIMERS holds the timeout timer of every call, so that a timer of a
+call that settled is cancelled.  CONTINUATION is called once after the whole
+batch settles.  SETTLED says whether that has happened."
   (calls nil)
   (pending nil)
   (running 0)
@@ -53,6 +62,7 @@ says whether that has happened."
   (settled-calls nil)
   (resources nil)
   (exclusive nil)
+  (timers nil)
   (continuation nil)
   (settled nil))
 
@@ -106,17 +116,65 @@ The resource is held until the call settles."
     (when resource
       (remhash resource (yeah-batch-resources batch)))))
 
+(defun yeah-scheduler--timeout-result (call)
+  "Return the failure of a call that crossed the timeout it declares.
+The failure names the tool and the bound: the model has to see which
+limit it crossed."
+  (list :yeah-error
+        (format "Error: the call of %S exceeded its timeout of %d seconds"
+                (plist-get call :name)
+                (plist-get call :timeout))))
+
+(defun yeah-scheduler--output-limit-of (call)
+  "Return the output limit of CALL, or nil when the call declares none.
+The limit is the number of characters of the output of the call that
+reach the model; the whole text of an output that does not fit goes into
+a private artifact."
+  (let ((limit (plist-get call :output-limit)))
+    (if (and (integerp limit) (> limit 0)) limit nil)))
+
+(defun yeah-scheduler--arm-timeout (batch index call)
+  "Arm the timeout of CALL at INDEX in BATCH.
+The timer closes the call when the bound is crossed: the kernel stops
+waiting for a call that took longer than the tool declared, and the
+failure names the bound.  A call that declares no timeout is never
+closed by a timer."
+  (let ((timeout (plist-get call :timeout)))
+    (when (and timeout (plist-get call :async))
+      (aset (yeah-batch-timers batch) index
+            (run-at-time timeout nil
+                         (lambda ()
+                           (yeah-scheduler--settle
+                            batch index
+                            (yeah-scheduler--timeout-result call))))))))
+
+(defun yeah-scheduler--cancel-timeout (batch index)
+  "Cancel the timeout timer of the call at INDEX in BATCH.
+A call that settled before its bound does not leave a timer behind."
+  (let ((timers (yeah-batch-timers batch)))
+    (when (and timers (< index (length timers)))
+      (let ((timer (aref timers index)))
+        (when timer
+          (cancel-timer timer)
+          (aset timers index nil))))))
+
 (defun yeah-scheduler--settle (batch index result)
   "Settle the call at INDEX in BATCH with RESULT, unless it already settled.
 The first result wins.  Duplicate callbacks are no-ops.  The resource the
 call held is released here: the lock lasts from the start of the call until
-the call settles."
+the call settles.  The output of the call is bounded by the limit the call
+declares, and the timer of the call is cancelled."
   (unless (aref (yeah-batch-settled-calls batch) index)
     (aset (yeah-batch-settled-calls batch) index t)
     (aset (yeah-batch-results batch) index
-          (yeah-scheduler--normalize-result result))
+          (yeah-scheduler--normalize-result
+           (yeah-result-bound
+            result
+            (yeah-scheduler--output-limit-of
+             (nth index (yeah-batch-calls batch))))))
     (cl-decf (yeah-batch-running batch))
     (yeah-scheduler--release-resource batch index)
+    (yeah-scheduler--cancel-timeout batch index)
     (when (and (yeah-batch-exclusive batch)
                (= (car (yeah-batch-exclusive batch)) index))
       (setf (yeah-batch-exclusive batch) nil))
@@ -127,12 +185,14 @@ the call settles."
 The resource the call declares is held from here until the call settles.  An
 exclusive call takes the batch to itself while it runs.  A handler exception
 becomes the call's failure result instead of escaping and leaving the batch
-pending."
+pending.  A call that declares a timeout is closed by a timer when it
+crosses the bound."
   (let* ((call (nth index (yeah-batch-calls batch)))
          (handler (plist-get call :handler))
          (args (plist-get call :args)))
     (cl-incf (yeah-batch-running batch))
     (yeah-scheduler--claim-resource batch index call)
+    (yeah-scheduler--arm-timeout batch index call)
     (when (and (eq (plist-get call :mode) 'exclusive)
                (plist-get call :async))
       (setf (yeah-batch-exclusive batch) (cons index call)))
@@ -238,9 +298,13 @@ Each call is a plist with :name, :args, :handler, :async and :mode
  (`shared' or `exclusive').  A call may declare the resource it touches under
 `:tool-resource': two calls that declare one resource never run at the same
 time, and the lock lasts from the start of a call until the call settles.  A
-synchronous handler receives ARGS; an asynchronous handler receives ARGS and
-a continuation.  Results are a vector in call order containing strings or
- `(:yeah-error MESSAGE)' failures."
+call may declare the limits of its tool: `:timeout' is the upper bound of
+the work of the call in seconds, and the kernel closes the call when it
+crosses the bound; `:output-limit' is the upper bound of the output of the
+call in characters, and the model reads what fits while the whole text goes
+into a private artifact.  A synchronous handler receives ARGS; an
+asynchronous handler receives ARGS and a continuation.  Results are a vector
+in call order containing strings or `(:yeah-error MESSAGE)' failures."
   (let ((batch (yeah-batch--make
                 :calls calls
                 :pending (let (pending)
@@ -250,6 +314,7 @@ a continuation.  Results are a vector in call order containing strings or
                 :results (make-vector (length calls) nil)
                 :settled-calls (make-vector (length calls) nil)
                 :resources (make-hash-table :test 'equal)
+                :timers (make-vector (length calls) nil)
                 :continuation continuation)))
     (yeah-scheduler--advance batch)
     batch))

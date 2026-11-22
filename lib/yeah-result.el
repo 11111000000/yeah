@@ -102,6 +102,42 @@ full text to a private artifact and return its tail inline."
              (tail (substring content (- (length content) limit))))
         (yeah-result-ok tail metadata t (list artifact))))))
 
+(defun yeah-result-bound (value limit)
+  "Return VALUE with the output the model reads bounded by LIMIT characters.
+LIMIT is the number of characters of the output of the tool that reach the
+model.  The whole text of an output that does not fit goes into a private
+artifact and the model reads the tail of it, exactly as
+`yeah-result-from-output' does.
+
+The value is returned as it is when it carries no output, when the output
+fits into LIMIT, and when LIMIT is not a positive integer: a tool that
+declares no limit works by the global limit, and the caller decides which
+limit applies."
+  (if (not (and (integerp limit) (> limit 0)))
+      value
+    (cond
+     ((stringp value)
+      (if (<= (length value) limit)
+          value
+        (yeah-result-from-output value limit)))
+     ((yeah-result-p value)
+      (let ((content (plist-get value :content)))
+        (if (or (not (stringp content))
+                (<= (length content) limit))
+            value
+          (let* ((full (yeah-text-valid content))
+                 (artifact (yeah-result-artifact-write "tool" full))
+                 (bounded (copy-tree value)))
+            ;; `plist-put' changes the plist it is given, so the value is
+            ;; copied before it is changed: the tick and the version of the
+            ;; result stay where they were.
+            (plist-put bounded :content (substring full (- (length full) limit)))
+            (plist-put bounded :truncated t)
+            (plist-put bounded :artifacts
+                       (append (plist-get value :artifacts) (list artifact)))
+            bounded))))
+     (t value))))
+
 (defun yeah-result-model-text (value)
   "Return one provider-safe string for tool result VALUE.
 Structured results include artifact references and truncation metadata;

@@ -818,17 +818,25 @@ acts on the world of the run writes into the journal of this run."
 
 (defun yeah-turn--call-spec (turn slot)
   "Return the scheduler call of SLOT: the tool, its arguments, the
-handler, the concurrency the tool asks for and the resource it touches.
+handler, the concurrency the tool asks for, the resource it touches and
+the limits it declares.
 The resource is the declared lock of the call: the key is `:tool-resource'
 and not `:resource', because the resource of the call in the domain of
-the rights is the one that is computed from the arguments."
+the rights is the one that is computed from the arguments.
+The limits are the ones the registry holds: `:timeout' is the upper
+bound of the work of the call in seconds, and `:output-limit' is the
+upper bound of its output in characters.  The call carries them, so that
+the scheduler closes a call that crossed its bound and the model reads
+the output that fits."
   (let ((spec (plist-get slot :spec)))
     (list :name (plist-get slot :name)
           :args (plist-get slot :args)
           :handler (yeah-turn--handler turn slot)
           :async (or (plist-get slot :deferred) (plist-get spec :async))
           :mode (yeah-tools-concurrency spec)
-          :tool-resource (yeah-tools-resource spec))))
+          :tool-resource (yeah-tools-resource spec)
+          :timeout (yeah-tools-timeout spec)
+          :output-limit (yeah-tools-output-limit spec))))
 
 (defun yeah-turn--finish-result (calls results)
   "Return the result of the `finish' call among CALLS, or nil."
