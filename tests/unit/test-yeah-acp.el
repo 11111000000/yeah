@@ -585,7 +585,15 @@ does not know is refused with -32601."
       (dolist (method methods)
         (let ((response (yeah-acp-test--response method nil)))
           (should-not
-           (= -32601 (plist-get (plist-get response :error) :code))))))))
+           (= -32601 (plist-get (plist-get response :error) :code))))))
+    ;; The code of the refusal of the question of a permission is pinned:
+    ;; the question travels from the agent to the client, so a client that
+    ;; sends it to the agent is refused with the code of an invalid request
+    ;; -- the method is known and the agent does not accept it.  A code of
+    ;; another refusal would answer another question.
+    (let ((response (yeah-acp-test--response "session/request_permission" nil)))
+      (should (= -32602 (plist-get (plist-get response :error) :code)))
+      (should-not (plist-get response :result)))))
 
 (ert-deftest yeah-acp-session-new-publishes-the-modes-of-the-session ()
   "A new session names the mode it is in and every mode it may be in.
