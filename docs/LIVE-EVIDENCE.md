@@ -3256,6 +3256,72 @@ session began.
 as a whole — the claims are measured by their own checks and by their controls,
 and the gate of the package is what covers the tree as a whole.
 
+## The gate of the package of the waves D3, D4, E1, E2 and E3 (2026-11-22, 15:56-17:52 UTC)
+
+**Four gates, and the question each of them answered.**  The package was gated
+four times.  The logs are `/tmp/w-d3d4e-gate.log`, `/tmp/w-d3d4e-gate2.log`,
+`/tmp/w-d3d4e-gate3.log` and `/tmp/w-d3d4e-gate4.log`.
+
+| gate | unit | window (UTC) | exit | form 1 (red) | form 2 (bite) | form 3 |
+|---|---|---|---|---|---|---|
+| 1 | `yeah-gate-d3d4e` | 15:56:15-16:14:23 | 1 | **1** | 181 | 0 |
+| -- | `yeah-gate-d3d4e-2` | 16:40:52-16:43:44 | stopped (TERM) | -- | -- | -- |
+| 2 | `yeah-gate-d3d4e-3` | 16:50:12-17:07:28 | 1 | **1** | 181 | 0 |
+| 3 | `yeah-gate-d3d4e-4` | 17:30:21-17:48:19 | 3 | 0 | 182 | 0 |
+
+The three forms are the reading of §19.1 п. 7: form 1 is a positive run that
+failed (red), form 2 is a negative control that bit (green), form 3 is a
+control that was set up wrongly.  Each log holds 182 lines `mathc:` -- one
+per requirement that has a check and a control.
+
+The run between the second and the third gate was **stopped on the third
+minute on purpose**: the order of §16.68 asks for the finding to be written
+into the documents before the recount, or the evidence of the claims of the
+documentation goes stale and the map turns red for a real reason.
+
+**Both red marks were of the family of the gate, and not of this package.**
+The first lay on the claim `a-gate-run-needs-no-watchdog` (wave 59): the gate
+restarted the run that was killed, answered 0 and wrote no map.  The journal of
+the method proves it a flake and not a verdict: 60 entries on that claim, 58
+pass and 2 fail -- 2026-11-22 08:28:39 on the tree `5bb88173` and 2026-11-22
+16:10:45 on the tree `657451c`.  The second lay on the claim
+`the-gate-stops-a-check-that-hangs`: the buffer of the check held the first
+line of the output of the inner run and not its tail.  The mechanism follows
+from the refusal itself: the inner run answered 3, the code 3 comes in the
+branch `check` of `scripts/dev` from one line only, and that line prints
+exactly the sentence the check did not find -- so the sentence was written into
+the pipe of the check and had not reached its buffer yet.  **The defect is in
+the read of the check**: it waits for the death of the process and reads the
+buffer, and it does not wait for the pipe to empty.  The journal holds 62
+entries on that claim, 61 pass and 1 fail -- the first refusal of that claim
+in the history of the journal.  Both defects are the next wave; the cause of
+the flake of the wave 59 is still not established and is not named.  The
+findings are written down in `docs/PLAN.md` §16.115 and §16.116.
+
+**The promises of the package held in every gate.**  The map of the third gate
+says `the-site-shows-the-diagrams-of-the-architecture holds (current)` and
+`the-diagram-on-the-site-is-current holds (current)`, and `uncovered: 0
+file(s)`.
+
+**The exit code 3 of the third gate is the voice of a person, not a red
+mark.**  The gate finished all 182 requirements: form 1 is zero, form 2 is
+182 bites, form 3 is zero.  The map said `verdict: unknown` and named the
+reason itself: "the evidence of the-owner-decided-the-order-of-the-next-waves
+is stale (materials-changed)" -- the materials of that claim (`docs/PLAN.md`
+and `docs/ARCHITECTURE-CATCHUP-PLAN.md`) changed, because §16.115 and §16.116
+are the records of the package.  The requirement of that claim is `kind:
+review, spec: owner`, and the method does not distinguish "everything is
+proved" from "everything is proved except the one point a person decides".
+The record of the owner was made at 17:52:26 UTC: `mathc --root . record
+the-owner-decided-the-order-of-the-next-waves owner --by az --outcome pass`,
+and the map answered `verdict: green`, `uncovered: 0 file(s)`, `next: nothing
+to do - declared evidence is current and the tree is covered`.
+
+**What this gate does not prove.**  It proves that the checks of the package
+pass and that their controls bite.  It says nothing about the promises of the
+package beyond what those checks measure, and it says nothing about the live
+route: the package of the waves D3, D4, E1, E2 and E3 was measured offline.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
