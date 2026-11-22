@@ -242,15 +242,27 @@ it."
           (setq found line))))
     found))
 
-(defun yeah-gate--map-note (reason waited)
+(defun yeah-gate--settle-note (waited settled)
+  "Return the phrase that says how the state of the run settled.
+WAITED is the seconds the check waited for the state, and SETTLED says
+whether the state settled.
+
+The phrase says the state as it was.  A refusal that says that the state
+did not settle when it did is a refusal with a false subject, and a false
+subject in a refusal is worse than no subject at all."
+  (if settled
+      (format "the state of the run settled in %.1f seconds" waited)
+    (format "the state of the run did not settle in %.1f seconds" waited)))
+
+(defun yeah-gate--map-note (reason waited settled)
   "Return the tail of a refusal about the map of the run.
-REASON is the line the gate said about the map (or nothing), and WAITED is
-the seconds the check waited for the state of the run to settle.  The
-refusal names what the gate said: the gate knows why its map is not
-there, and a refusal that loses that word names a subject that is not the
-real one."
+REASON is the line the gate said about the map (or nothing), WAITED is
+the seconds the check waited for the state of the run to settle, and
+SETTLED says whether the state settled.  The refusal names what the gate
+said: the gate knows why its map is not there, and a refusal that loses
+that word names a subject that is not the real one."
   (concat (if reason (format "; the gate said: %s" reason) "")
-          (format "; the state of the run did not settle in %.1f seconds" waited)))
+          (format "; %s" (yeah-gate--settle-note waited settled))))
 
 (defun yeah-gate--await-all-dead (pids timeout)
   "Return non-nil when every process of PIDS is gone, at most TIMEOUT seconds.
@@ -412,6 +424,7 @@ second run of the method of its own: two gates are two verdicts."
           ;; does not settle is a refusal and not a comment.
           (let* ((waited (yeah-gate--await-settled attempts-file map-file
                                                        yeah-gate--settle-timeout))
+                 (settled (yeah-gate--settled-p attempts-file map-file))
                  (attempts-now (yeah-gate--read-attempts attempts-file))
                  (content (yeah-gate--map-content map-file))
                  (reason (yeah-gate--map-reason)))
@@ -419,20 +432,20 @@ second run of the method of its own: two gates are two verdicts."
             (let ((runs (cl-count-if (lambda (attempt) (assq :run attempt))
                                      attempts-now)))
               (unless (= runs 2)
-                (push (format "the killed run was not started again: the run was started %s time(s), the second start is the restart (the state of the run did not settle in %.1f seconds)"
-                              runs waited)
+                (push (format "the killed run was not started again: the run was started %s time(s), the second start is the restart (%s)"
+                              runs (yeah-gate--settle-note waited settled))
                       yeah-gate--failures)))
             ;; the map reached the end
             (cond
              ((null content)
               (push (format "the map of the run was not written: the file %s is not there%s"
                             map-file
-                            (yeah-gate--map-note reason waited))
+                            (yeah-gate--map-note reason waited settled))
                     yeah-gate--failures))
              ((not (string-match-p "map=complete" content))
               (push (format "the map of the run did not reach the end: the file %s holds %S, not the marker map=complete%s"
                             map-file (string-trim content)
-                            (yeah-gate--map-note reason waited))
+                            (yeah-gate--map-note reason waited settled))
                     yeah-gate--failures))))
           ;; nothing of the run was left behind when the gate answered
           (setq left
