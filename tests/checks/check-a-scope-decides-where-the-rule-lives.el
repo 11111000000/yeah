@@ -30,7 +30,9 @@
 ;;      computed: a rule that is saved and never read does not exist;
 ;;   8. a file that is not there is a file of no rules, and a file that is
 ;;      broken is a refusal that names the file and the reason;
-;;   9. a rule that goes into a file comes back out of it unchanged.
+;;   9. a rule that goes into a file comes back out of it unchanged;
+;;  10. the write of the rules is atomic: a reader of the file of the rules
+;;      never sees half of a document.
 ;;
 ;; The check works in a temporary directory: it writes nothing into the
 ;; project of the person and nothing into the configuration of the person.
@@ -159,6 +161,116 @@ the scan goes on."
 (defun yeah-check--holds-p (rules rule)
   "Non-nil when RULES holds RULE."
   (and (member rule rules) t))
+
+(defun yeah-check--report-lines (file)
+  "Return the lines of the report FILE, or nil when there is no file."
+  (when (file-exists-p file)
+    (with-temp-buffer
+      (insert-file-contents file)
+      (split-string (buffer-string) "\n" t))))
+
+(defun yeah-check--await-line (file pattern timeout)
+  "Return the line of the report FILE that matches PATTERN, or nil.
+The wait is at most TIMEOUT seconds: the reader of the file writes its
+report as it goes, and the report is read again and again."
+  (let ((deadline (+ (float-time) timeout)))
+    (while (and (< (float-time) deadline)
+                (not (cl-some (lambda (line) (string-match-p pattern line))
+                              (yeah-check--report-lines file))))
+      (accept-process-output nil 0.02))
+    (cl-some (lambda (line) (string-match-p pattern line))
+             (yeah-check--report-lines file))))
+
+(defun yeah-check--atomic-reader (file)
+  "Write the script of the reader of the rules file FILE and return its path.
+The reader is a shell: it reads the file as fast as it can and writes down
+every read that is not a whole document.  It is a process of its own: a
+reader inside the process of the writer would read the file only between two
+writes and would never see the half of a document that a write leaves
+behind while it writes."
+  (let ((script (expand-file-name "c2-atomic-reader.sh" (file-name-directory file))))
+    (with-temp-file script
+      (dolist (line (list
+                     "#!/usr/bin/env bash"
+                     "file=$1"
+                     "expected_a=$2"
+                     "expected_b=$3"
+                     "report=$4"
+                     "whole_a=$(<\"$expected_a\")"
+                     "whole_b=$(<\"$expected_b\")"
+                     "printf 'ready\\n' >> \"$report\""
+                     "reads=0"
+                     "while :; do"
+                     "  if [ -f \"$file\" ]; then"
+                     "    content=$(<\"$file\")"
+                     "    reads=$((reads+1))"
+                     "    if [ \"$content\" != \"$whole_a\" ] && [ \"$content\" != \"$whole_b\" ]; then"
+                     "      if [ -z \"$content\" ]; then"
+                     "        printf 'torn: the file was empty\\n' >> \"$report\""
+                     "      else"
+                     "        printf 'torn: %s\\n' \"${content:0:200}\" >> \"$report\""
+                     "      fi"
+                     "    fi"
+                     "    if [ $((reads % 25)) -eq 0 ]; then"
+                     "      printf 'reads %d\\n' \"$reads\" >> \"$report\""
+                     "    fi"
+                     "  fi"
+                     "done"))
+        (insert line "\n")))
+    script))
+
+(defun yeah-check--atomic-write (file rules-a rules-b)
+  "Measure that the write of the rules into FILE is atomic and return the failures.
+RULES-A and RULES-B are the two documents the writer writes, one after the
+other, many times.  A reader in a process of its own reads the file in a
+tight loop while the writer writes: every read must be a whole document --
+the file is absent or it holds one of the two documents, and never half of
+one.  A read that holds half of a document is a failure that names the file
+and the half that was read."
+  (let* ((directory (file-name-directory file))
+         (expected-a (expand-file-name "c2-atomic-a.json" directory))
+         (expected-b (expand-file-name "c2-atomic-b.json" directory))
+         (report (expand-file-name "c2-atomic-report.txt" directory))
+         (shell (executable-find "bash"))
+         (script (yeah-check--atomic-reader file))
+         (reader nil)
+         (failures nil))
+    (unless shell
+      (push "the check cannot measure the write of the rules without a shell to read the file"
+            failures))
+    (when shell
+      (with-temp-file expected-a (insert (yeah-perm--rules->json rules-a) "\n"))
+      (with-temp-file expected-b (insert (yeah-perm--rules->json rules-b) "\n"))
+      (setq reader (make-process :name "yeah-atomic-reader"
+                                  :command (list shell script file
+                                                 expected-a expected-b report)
+                                  :connection-type 'pipe
+                                  :noquery t))
+      ;; the reader reads before the first write
+      (unless (yeah-check--await-line report "^ready" 10)
+        (push "the reader of the file of the rules did not start: the measurement of the atomicity is empty"
+              failures))
+      ;; the writer writes the file many times
+      (dotimes (index 500)
+        (yeah-perm--write-rules-file file (if (cl-evenp index) rules-a rules-b)))
+      ;; the reader reads the last writes as well
+      (let ((reads (yeah-check--await-line report "^reads " 10)))
+        (unless reads
+          (push "the reader of the file of the rules read nothing: the measurement of the atomicity is empty"
+                failures)))
+      (when (process-live-p reader)
+        (ignore-errors (kill-process reader)))
+      ;; every read of the reader was a whole document
+      (let* ((torn (seq-filter (lambda (line) (string-prefix-p "torn: " line))
+                               (yeah-check--report-lines report)))
+             (partial (seq-find (lambda (line)
+                                  (not (string-prefix-p "torn: the file was empty" line)))
+                                torn)))
+        (when torn
+          (push (format "the write of the rules is not atomic: the reader of %s read a file that is not a whole document %d time(s): %s"
+                        file (length torn) (or partial (car torn)))
+                failures))))
+    failures))
 
 (let ((failures nil)
       (repo (expand-file-name default-directory))
@@ -464,6 +576,25 @@ the scan goes on."
               (yeah-perm--write-rules-file file (list rule))
               (unless (equal (yeah-perm--read-rules-file file) (list rule))
                 (push "the rule came back out of the file changed" failures)))
+
+            ;; --- 12. the write of the rules is atomic -----------------------
+            ;; The wave C2 promises that the write of the rules is atomic:
+            ;; a reader of the file never sees half of it.  The promise is
+            ;; measured here and not taken on faith.
+            (dolist (failure
+                     (yeah-check--atomic-write
+                      (expand-file-name "c2-atomic.json" project)
+                      (mapcar (lambda (index)
+                                (yeah-perm-rule-make
+                                 "read" (format "/tmp/c2-atomic-a-%d.el" index)
+                                 'deny :project))
+                              (number-sequence 0 99))
+                      (mapcar (lambda (index)
+                                (yeah-perm-rule-make
+                                 "write" (format "/tmp/c2-atomic-b-%d.el" index)
+                                 'allow :project))
+                              (number-sequence 0 99))))
+              (push failure failures))
 
             ;; the rules of the process are taken back: the check leaves no
             ;; rule in the file of the person
