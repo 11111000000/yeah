@@ -45,10 +45,17 @@
 ;; permission is computed: a rule that is saved and never read is a
 ;; rule that does not exist.  A file that cannot be read is a refusal
 ;; that names the file and the reason, and not a silence.
+;;
+;; The rules of the process are not a carrier: they are the rules that
+;; the Emacs holds in its memory, and they are the freshest.  They are
+;; taken back by `yeah-perm-rules-reset-for-test', and the rules that
+;; the process wrote into a carrier are taken back with them: a test
+;; does not leave a rule in the file of the person.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'seq)
 (require 'yeah-risk)
 
 (defgroup yeah-perm nil
@@ -58,6 +65,20 @@
 (defvar yeah-perm--rules nil
   "Current global permission rules in registration order, newest last.
 Run-scoped rules replace this global set in the placement stage.")
+
+(defvar yeah-perm--written nil
+  "The rules this process wrote into the carriers that keep them in a file.
+Each element is a cons (FILE . RULE): the file the rule was written into
+and the rule that was written there.  The rules of the process are taken
+back by `yeah-perm-rules-reset-for-test', and only the rules that the
+process wrote are taken back: a rule that was in the file before is left
+where it is.")
+
+(defvar yeah-perm--created nil
+  "The files of the carriers that this process created.
+Each element is a file that was not there before the process wrote a rule
+into it.  A file that this process created and that holds no rule any
+more is taken away when the rules of the process are reset.")
 
 (defvar yeah-perm--session-log-fn nil
   "Optional function that records a session-scoped decision.
@@ -407,9 +428,9 @@ holds in its memory, and they are the freshest."
 CARRIER is the carrier of the path that stores the rule, and STORE is
 the function that stores a rule in it.  A carrier that keeps its rules
 in a file is written here.
-A scope that has no carrier, and a scope whose carrier the path does
-not hold, are refused by name: the rule is never written into the
-carrier of another scope.  Return RULE."
+A scope that has no carrier, a scope that holds no rule and a scope
+whose carrier the path does not hold, are refused by name: the rule is
+never written into the carrier of another scope.  Return RULE."
   (let* ((scope (plist-get rule :scope))
          (entry (yeah-perm--carrier-entry scope)))
     (cond
