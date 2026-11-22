@@ -1,0 +1,71 @@
+@startuml fixed-point
+' The fixed point of the Y.
+'
+' The Y of the name is the Y-combinator: person -> environment -> agent ->
+' environment.  This picture gives that sentence a shape, and ties it to the
+' one thing of the kernel that makes it a loop: the delegation.  A child of a
+' delegation runs in a session of its own, with a journal of its own, with the
+' tools of its preset and at a depth of its own.
+'
+' The limits are on the picture on purpose: the depth of the tree is bounded,
+' the time of a child is bounded and the budget of a child is bounded.  A
+' recursion that is not bounded is not a fixed point, it is a fork bomb.
+'
+' The fixed point is the last step of the picture: the agent changes the code
+' and the check that hold it, and the check passes afterwards.
+
+|Human|
+start
+:give the task to the environment;
+
+|Environment|
+:holds the files, the buffers\nand the checks of the project;
+
+|Agent|
+:read the environment;
+:call the tools of the kernel\n(read, edit, bash, git_status, todo_list);
+:change the environment;
+note right
+  The live state of Emacs is read
+  and written here
+  lib/yeah-emacs.el:62
+  lib/yeah-emacs.el:120
+end note
+
+|Environment|
+:the change is the new environment;
+
+|Agent|
+if (does the task need a child?) then (yes)
+  :delegate names an agent preset;
+  note right
+    The preset is a file: a name, a model,
+    the tools and the depth
+    lib/yeah-agent.el:131
+    lib/yeah-delegate.el:219
+  end note
+  :the child runs in a session of its own,\nwith its own journal, its own tools\nand its own depth;
+  :the child changes the environment too;
+  note right
+    The depth of the tree is bounded,
+    the time of a child is bounded,
+    the budget of a child is bounded
+    lib/yeah-subagent.el:156
+    lib/yeah-subagent.el:313
+  end note
+else (no)
+  :the agent keeps the tools of its own;
+endif
+
+|Agent|
+:run the check of the environment;
+if (does the check pass?) then (yes)
+  :the environment holds the repair:\nthe agent fixed its own code\nand its own check;
+else (no)
+  :read the failure\nand change the environment again;
+endif
+
+|Human|
+:see what the environment holds;
+stop
+@enduml
