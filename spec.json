@@ -764,7 +764,7 @@
       "waiver": null
     },    {
       "id": "approvals-have-reply-kinds",
-      "text": "A permission request is answered once, for the session, for the project, always or reject: once allows only this call, reject refuses only this call, the other three are written into the rules so they outlive the question — the rule of the answer session in the carrier of the path that asks, the rule of the answer project in the file of the project and the rule of the answer global in the file of the user — and every answer carries the scope its rule lives in; the legacy name `always' is read as the answer `session'; any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
+      "text": "A permission request is answered once, for the session, for the project, for the user or reject: once allows only this call, reject refuses only this call, the other three are written into the rules so they outlive the question — the rule of the answer session in the carrier of the path that asks, the rule of the answer project in the file of the project and the rule of the answer global in the file of the user — and every answer carries the scope its rule lives in; the legacy name `always' is read as the answer `session'; any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
       "scope": [
         "lib/yeah-approval.el",
         "lib/yeah-perm.el",
