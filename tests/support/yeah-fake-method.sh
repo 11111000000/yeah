@@ -22,7 +22,8 @@
 # method on 2026-11-18.  A check that needs a run that ends right away
 # asks for no hanging attempt at all.
 #
-# Exit codes: 0 — the run ended; 2 — the usage is wrong.
+# Exit codes: 0 — the run ended; 2 — the usage is wrong; 3 — the map could
+# not be written.
 
 set -u
 
@@ -66,7 +67,13 @@ case "$command_name" in
     exit 0
     ;;
   map)
-    printf 'map=complete\n' > "$dir/map"
+    # The stand must not lie about a write that failed: the gate has to hear
+    # that the map is not there.  A map that could not be written is unknown
+    # (3) -- unknown is never pass.
+    if ! printf 'map=complete\n' > "$dir/map"; then
+      echo "tests/support/yeah-fake-method.sh: the map could not be written: $dir/map" >&2
+      exit 3
+    fi
     exit 0
     ;;
   *)

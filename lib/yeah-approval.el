@@ -21,14 +21,14 @@
 ;;     refuses everything else. A run without a person does not ask a
 ;;     question it cannot answer; it answers it from the rules.
 ;;
-;;   * the PERSON, who answers once, for the session, for the project,
-;;     always or reject. ONCE is for this call and is forgotten. SESSION
-;;     is for the carrier of the path that asks: the rules of the run,
-;;     the rules of the session, or the rules of the process. PROJECT is
-;;     for the file of the project and ALWAYS is for the file of the
-;;     user: the answer is written into the rules, and the rules are
-;;     what the policy reads. REJECT is for this call, and it is not
-;;     remembered.
+;;   * the PERSON, who answers with one of the answers of the kernel:
+;;     `once', `session', `project', `global' or `reject'. ONCE is for this
+;;     call and is forgotten. SESSION is for the carrier of the path that
+;;     asks: the rules of the run, of the session, or of the process.
+;;     PROJECT is for the file of the project and GLOBAL for the file of the
+;;     user. The answer is written into the rules, and the rules are what
+;;     the policy reads. REJECT is for this call, and it is not remembered.
+;;     The legacy name `always' is read as the answer `session'.
 ;;
 ;; So the two kinds are not two truths about what may happen: the person
 ;; answers, the answer is written into the rules, and the rules are the

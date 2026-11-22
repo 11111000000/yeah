@@ -9,8 +9,8 @@
 
 ;;; Commentary:
 ;;
-;; The question of a permission offers the scopes of the answers: once,
-;; the session, the project and always, and the refusal.  This check
+;; The question of a permission offers the scopes of the answers: `once',
+;; `session', `project' and `global', and the refusal.  This check
 ;; measures that:
 ;;
 ;;   1. the dictionary of the answers is the four scopes and the refusal,

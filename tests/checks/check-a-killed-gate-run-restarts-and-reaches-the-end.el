@@ -39,14 +39,23 @@
 ;; that takes the wait away leaves the run behind, and the check fails by
 ;; the other of its assertions.
 ;;
-;; The check measures the subject the way the defect was measured: the
-;; processes of the run, by their command line, in the tree of the
-;; processes of the system.  It does not ask the gate whether it is
-;; alive: a gate that answers is a gate that lives.  The state of the
-;; process decides whether it lives: `S' and `R' are a process that
-;; runs, and `Z' is a zombie -- a process that has died already and
-;; waits to be reaped.  The rule is the one of the kernel
-;; (`lib/yeah-proc.el').
+;; The check measures the subject by the run it started and not by the
+;; machine it runs on: the processes of the run are the processes that
+;; hold the directory of the run in their environment -- every process
+;; the run starts inherits it -- and the pids the check knows, the pid
+;; of the gate and the pid of every attempt of the run.  A process that
+;; only mentions the stand-in of the method is not a process of this
+;; run, and a check that names it names a process that is not the run
+;; of the check.  It does not ask the gate whether it is alive: a gate
+;; that answers is a gate that lives.  The state of the process decides
+;; whether it lives: `S' and `R' are a process that runs, and `Z' is a
+;; zombie -- a process that has died already and waits to be reaped.
+;; The rule is the one of the kernel (`lib/yeah-proc.el').
+;;
+;; The processes of the run get a moment to go before the check calls them
+;; leftovers: what the pilot of the run removes when it ends is not a
+;; leftover of the run -- it is the opposite of one.  A process that is
+;; still there after that moment is a leftover, and the check names it.
 ;;
 ;; No network is involved: the method is a stand-in and the files of the
 ;; run live in a private temporary directory.
@@ -111,19 +120,52 @@ miss that looks like a run that never started."
   "Return non-nil when ATTEMPTS holds an attempt that started."
   (and attempts (cl-some (lambda (attempt) (assq :run attempt)) attempts)))
 
-(defun yeah-gate--processes-with (needle)
-  "Return the pids of the processes whose command line holds NEEDLE."
-  (let (pids)
+(defun yeah-gate--await-all-dead (pids timeout)
+  "Return non-nil when every process of PIDS is gone, at most TIMEOUT seconds.
+The processes of the run get a moment to go: the pilot of the run removes
+what the run left behind when it ends, and a helper of that removal is not
+a leftover of the run -- it is the opposite of one."
+  (let ((deadline (+ (float-time) timeout)))
+    (while (and (< (float-time) deadline)
+                (cl-some (lambda (pid) (yeah-proc-alive-p (yeah-proc-state pid))) pids))
+      (accept-process-output nil 0.05))
+    (not (cl-some (lambda (pid) (yeah-proc-alive-p (yeah-proc-state pid))) pids))))
+
+(defun yeah-gate--pids-of-run (gate-pid attempts)
+  "Return the pids the check knows of the run.
+GATE-PID is the pid of the gate and ATTEMPTS are the attempts of the run,
+as the attempts file holds them.  The gate and every attempt of the run
+are the processes the check waits for and the processes it kills."
+  (cons gate-pid
+        (cl-remove-if nil
+                      (mapcar (lambda (attempt) (cdr (assq :pid attempt)))
+                              attempts))))
+
+(defun yeah-gate--processes-of-run (dir pids)
+  "Return the pids of the processes of the run of this check.
+DIR is the directory of the run and PIDS are the pids the check knows.
+
+A process of the run is a process that holds the directory of the run in
+its environment: every process the run starts inherits it.  A process
+that only mentions the stand-in of the method is not a process of this
+run, and a check that names it names a process that is not the run of
+the check."
+  (let (found)
     (dolist (entry (directory-files "/proc" t "\\`[0-9]+\\'" nil))
       (let* ((name (file-name-nondirectory entry))
-             (command
+             (environment
               (with-temp-buffer
-                (ignore-errors (insert-file-contents (expand-file-name "cmdline" entry)))
+                (ignore-errors
+                  (insert-file-contents (expand-file-name "environ" entry)))
                 (buffer-string))))
         (when (and (string-match-p "\\`[0-9]+\\'" name)
-                   (string-match-p (regexp-quote needle) command))
-          (push (string-to-number name) pids))))
-    pids))
+                   (string-match-p (regexp-quote (concat "YEAH_FAKE_METHOD_DIR=" dir))
+                                   environment))
+          (push (string-to-number name) found))))
+    (dolist (pid pids)
+      (unless (memq pid found)
+        (push pid found)))
+    found))
 
 (defun yeah-gate--sleeps-p (path)
   "Return non-nil when the script PATH holds a command that sleeps.
@@ -184,6 +226,7 @@ second run of the method of its own: two gates are two verdicts."
                        (insert chunk))))))
        (gate-pid (and gate-process (process-id gate-process)))
        (attempts nil)
+       (left nil)
        (killed 0))
   (unwind-protect
       (progn
@@ -230,17 +273,36 @@ second run of the method of its own: two gates are two verdicts."
                             runs)
                     yeah-gate--failures)))
           ;; the map reached the end
-          (unless (and (file-exists-p map-file)
-                       (with-temp-buffer
-                         (insert-file-contents map-file)
-                         (string-match-p "map=complete" (buffer-string))))
-            (push "the map of the run did not reach the end" yeah-gate--failures))
+          (let ((content (and (file-exists-p map-file)
+                               (with-temp-buffer
+                                 (insert-file-contents map-file)
+                                 (buffer-string)))))
+            (cond
+             ((null content)
+              (push (format "the map of the run was not written: the file %s is not there"
+                            map-file)
+                    yeah-gate--failures))
+             ((not (string-match-p "map=complete" content))
+              (push (format "the map of the run did not reach the end: the file %s holds %S, not the marker map=complete"
+                            map-file (string-trim content))
+                    yeah-gate--failures))))
           ;; nothing of the run was left behind when the gate answered
-          (let ((left (yeah-gate--processes-with fake)))
-            (when left
-              (push (format "the run of the gate was left behind when the gate answered: %S"
-                            left)
-                    yeah-gate--failures)))
+          (setq left
+                (cl-remove-if (lambda (pid) (yeah-gate--await-dead pid 0))
+                              (yeah-gate--processes-of-run
+                               dir
+                               (yeah-gate--pids-of-run
+                                gate-pid
+                                (yeah-gate--read-attempts attempts-file)))))
+          ;; the processes of the run get a moment to go: what the pilot of
+          ;; the run removes when it ends is not a leftover of the run
+          (yeah-gate--await-all-dead left 5)
+          (setq left
+                (cl-remove-if (lambda (pid) (yeah-gate--await-dead pid 0)) left))
+          (when left
+            (push (format "the run of the gate was left behind when the gate answered: the pids %S are still alive a moment later"
+                          left)
+                  yeah-gate--failures))
           ;; the run that was killed is gone.  It is measured by its pid:
           ;; the command line of the run is the command it waits with, and
           ;; it does not hold the name of the method.
@@ -257,7 +319,11 @@ second run of the method of its own: two gates are two verdicts."
           (unless (yeah-gate--one-gate-p root)
             (push "the wrapper does not run the one gate of the project: it keeps a gate of its own"
                   yeah-gate--failures))))
-    ;; the check leaves nothing behind
+    ;; the check leaves nothing behind: the processes of the run that it
+    ;; found are killed, the gate is killed and the run that was killed is
+    ;; killed
+    (dolist (pid left)
+      (yeah-gate--kill pid))
     (yeah-gate--kill gate-pid)
     (yeah-gate--kill killed)
     (ignore-errors (delete-directory dir t)))
