@@ -138,7 +138,7 @@ the references and of the places the picture names is returned."
         (when defect
           (push (format "the picture %s: %s" name defect)
                 yeah-check--failures))))
-    (unless (or references places
+    (unless (or places
                 (yeah-check--generated-p (file-name-nondirectory path)))
       (push (format "the picture %s names no place of the repository, and this check cannot tell a good name from a bad one"
                     name)
