@@ -484,12 +484,25 @@ it runs."
     (if (eq (plist-get decision :effect) :allow)
         (yeah-tools-with-registry (yeah-turn-tools-registry turn)
           (yeah-session-with (yeah-turn-session turn)
-            (yeah-tools-dispatch (plist-get slot :name)
-                                 (plist-get slot :args) done)))
+            (yeah-turn--dispatch-guarded slot done)))
       (funcall done
                (yeah-result-error
                 (or (plist-get decision :reason)
                     "the person refused"))))))
+
+(defun yeah-turn--dispatch-guarded (slot done)
+  "Dispatch the tool of SLOT and settle DONE with the failure when it fails.
+A deferred call is dispatched when the person answered, and that moment lies
+outside the handler of the scheduler: a failure of the dispatch would escape
+the turn, the call would stay unsettled, and only the timer of the scheduler
+would close it — with a failure that names the wrong reason.  The refusal of
+the registry, namely the arguments that do not fit the declaration of the
+tool, must reach the model the way it reaches it when no person was asked."
+  (condition-case err
+      (yeah-tools-dispatch (plist-get slot :name) (plist-get slot :args) done)
+    (error
+     (funcall done (yeah-result-error
+                    (format "Error: %s" (error-message-string err)))))))
 
 (defun yeah-turn--prepare-slot (turn index call)
   "Prepare the slot of CALL at INDEX and write its request into the log.

@@ -27,7 +27,7 @@
 ;; that drove the scheduler alone would pass even when the turn dropped the
 ;; declaration on the way.
 ;;
-;; Eight things are proved:
+;; Nine things are proved:
 ;;
 ;;   1. a tool that declares an output limit hands the model no more than
 ;;      that many characters, and the whole text of the output lies in a
@@ -49,6 +49,10 @@
 ;;      registry by asking for more work;
 ;;   8. the declaration travels from the registry to the call of the
 ;;      scheduler.
+;;   9. a call that waits for the person and does not fit the declaration is
+;;      refused by name as well: the refusal of the registry reaches the
+;;      model on the path where the person is asked, and not only on the path
+;;      where the rules decide.
 ;;
 ;; The probes wait on a timer, which is what a tool that waits does.  The
 ;; event loop is pumped in small steps, because a timer that is started
@@ -60,6 +64,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'yeah-approval)
 (require 'yeah-perm)
 (require 'yeah-result)
 (require 'yeah-scheduler)
@@ -106,17 +111,23 @@ continuation that never comes: the kernel has to close the call."
         :timeout timeout
         :handler (lambda (_args _done) nil)))
 
-(defun yeah-check--run-turn (name args &optional steps)
+(defun yeah-check--run-turn (name args &optional steps answerer)
   "Run one turn whose model asks for the tool NAME with ARGS.
 Return the text the model read when the tool had answered, or nil when
 the model read nothing.  STEPS is the number of the steps of the event
-loop that the turn is given after the answer."
+loop that the turn is given after the answer.  ANSWERER is the answerer
+of the turn: nil is the answerer of the rules, and a marked answerer asks
+the person and answers later."
   (let* ((root (make-temp-file "yeah-tool-limits" t))
          (session (yeah-session-open "tool-limits" root))
          (seen nil))
     (unwind-protect
         (progn
-          (yeah-perm-rules-add (yeah-perm-rule-make name "*" 'allow))
+          ;; The rule lets the tool run without a question: that is the path of
+          ;; a call that is not deferred.  A turn whose person is asked must
+          ;; have no such rule, or the question never comes.
+          (unless answerer
+            (yeah-perm-rules-add (yeah-perm-rule-make name "*" 'allow)))
           (yeah-turn-run
            session "probe the limits of the tool"
            (lambda (_prompt callback)
@@ -129,12 +140,24 @@ loop that the turn is given after the answer."
                                            ;; and the run ends there
                                            (setq seen value)
                                            (funcall callback "the probe is done")))))))
+           answerer
            ;; The run is not supervised: the subject of this check is the
            ;; limits of the tool and not the path of the completion.
-           nil 60000 0)
+           60000 0)
           (yeah-check--pump steps)
           seen)
       (ignore-errors (delete-directory root t t)))))
+
+(defun yeah-check--later-answerer ()
+  "Return an answerer that asks the person and answers later.
+The question waits and the answer comes on a timer, so the tool is
+dispatched only after the answer: the path of the live route, where the
+person is asked before the tool runs."
+  (yeah-approval-async
+   (lambda (_request done)
+     (run-at-time 0.05 nil
+                  (lambda ()
+                    (funcall done (list :effect :allow :reply :once)))))))
 
 (defun yeah-check--output-of (model-text)
   "Return the part of MODEL-TEXT that is the output of the tool.
@@ -309,6 +332,26 @@ the marks the harness adds to the text of the model."
     (unless (equal (plist-get timeout-call :timeout) 1)
       (push (format "the call of the scheduler carries the timeout %S"
                     (plist-get timeout-call :timeout))
+            failures)))
+
+  ;; --- 9. a deferred call that does not fit is refused by name ----------
+  ;; The person is asked, the question waits, and the answer comes later.  The
+  ;; tool is dispatched when the answer arrives, and that moment lies outside
+  ;; the handler of the scheduler: a refusal that escaped there would leave the
+  ;; call unsettled, and only the timer of the scheduler would close it — with
+  ;; a failure that names the wrong reason.  The model must read the same
+  ;; refusal it reads when no person was asked.
+  (let ((seen (yeah-check--run-turn "bash" (list "printf hello" 300) 40
+                                     (yeah-check--later-answerer))))
+    (unless (and seen
+                 (string-match-p "bash" seen)
+                 (string-match-p "more than the timeout of 120 seconds" seen))
+      (push (format "the call that asked for more work than the tool declares was not refused by name when a person was asked: %S"
+                    seen)
+            failures))
+    (when (and seen (string-match-p "exceeded its timeout" seen))
+      (push (format "the call waited for the timeout of the scheduler instead of being refused: %S"
+                    seen)
             failures)))
 
   (dolist (failure failures)
