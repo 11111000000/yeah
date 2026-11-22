@@ -3560,6 +3560,32 @@
       "waiver": null
     },
     {
+      "id": "a-dead-service-does-not-pass-for-a-live-connection",
+      "text": "The service the plugin of the orchestrator holds is not a proof that it is alive: before every connection the plugin asks the socket of the service whether anyone listens on it, and a service that is dead is raised again.  The next agent comes to a live kernel instead of to a socket with no kernel behind it.",
+      "scope": [
+        "plugin/yeah-provider/server/transport.ts",
+        "plugin/yeah-provider/server/service.ts",
+        "plugin/yeah-provider/test/service.test.ts",
+        "tests/checks/check-the-plugin-raises-a-dead-service-again.sh",
+        "tests/support/yeah-cached-service-driver.ts"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-plugin-raises-a-dead-service-again.sh"
+        }
+      ],
+      "falsifier": "the plugin believes the service it holds although nobody listens on its socket, or the service is not raised again after the core dies, or the next agent gets no answer from the new core, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(await serviceListens(cached.socketPath))|(await Promise.resolve(true))|' plugin/yeah-provider/server/transport.ts",
+      "waiver": null
+    },
+    {
       "id": "a-session-may-work-without-a-person",
       "text": "A session of a person who is not there may work: the mode `auto' allows the tools that change the world without a question, because nobody would answer the question, and the client of the orchestrator is not asked at all.",
       "scope": [
