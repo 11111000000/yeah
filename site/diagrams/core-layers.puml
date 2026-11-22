@@ -36,7 +36,7 @@ package "projections" as projections {
   component "Model context\nlib/yeah-context.el:60\nlib/yeah-compact.el:53\nlib/yeah-todo.el:128" as context
   component "Read models / UI\nlib/yeah-ui.el:649\nlib/yeah-journal.el:357\nlib/yeah-faces.el:240\nlib/yeah-session-list.el:45\nlib/yeah-org.el:94\nlib/yeah-markdown.el:52" as ui
   component "Session index / cost\nlib/yeah-sessions.el:51" as sessions
-  component "Placements\nattached, service, batch\nlib/yeah-product.el:258\nlib/yeah-service.el:127" as placements
+  component "Placements\nattached, service, batch\nlib/yeah-product.el:259\nlib/yeah-service.el:127" as placements
 }
 
 human --> controller : the prompt
