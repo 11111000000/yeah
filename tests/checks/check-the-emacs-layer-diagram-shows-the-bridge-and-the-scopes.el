@@ -45,7 +45,7 @@
 ;;      the same way in both.
 ;;
 ;; The rule of the reference is the rule of every diagram of the site and
-;; it lives in one place: `tests/support/yeah-diagram-source.el'.
+;; it lives in one place: `tests/support/yeah-diagram-files.el'.
 ;;
 ;; The tree of the repository is never written: this check only reads.
 ;;
@@ -76,7 +76,7 @@
   "The answers the person may give to a request for permission.")
 
 (let* ((root (expand-file-name default-directory))
-       (reader (expand-file-name "tests/support/yeah-diagram-source.el" root))
+       (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
        (diagram (expand-file-name "site/diagrams/emacs-layer.puml" root)))
   (unless (file-directory-p (expand-file-name "lib" root))
     (push "the tree of the repository is not where we think: there is no lib/"
@@ -85,7 +85,7 @@
     (push "the tree of the repository is not where we think: there is no site/diagrams/"
           yeah-check--blockers))
   (unless (file-readable-p reader)
-    (push "the tree of the repository is not where we think: there is no tests/support/yeah-diagram-source.el"
+    (push "the tree of the repository is not where we think: there is no tests/support/yeah-diagram-files.el"
           yeah-check--blockers))
   (unless (file-readable-p diagram)
     (push "the tree of the repository is not where we think: there is no site/diagrams/emacs-layer.puml"
@@ -93,7 +93,7 @@
   (when (null yeah-check--blockers)
     (load reader nil t)
     (let* ((text (yeah-diagram--text diagram))
-           (lines (yeah-diagram--content-lines text))
+           (lines (yeah-diagram--drawing-lines text))
            (references (yeah-diagram--references text))
            (components (yeah-diagram--components text))
            (named (delete-dups (mapcar #'car references))))

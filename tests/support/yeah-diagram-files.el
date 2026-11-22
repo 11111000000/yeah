@@ -17,20 +17,25 @@
 ;; apart, and a check that reads the picture its own way measures
 ;; something else than the other one.
 ;;
-;; The reader answers five things:
+;; The reader answers these things:
 ;;
-;;   * `yeah-diagram--text' reads the file;
-;;   * `yeah-diagram--lines-of' counts the lines of a file and keeps the
-;;     empty ones, because the number of a line is the place of it;
-;;   * `yeah-diagram--content-lines' returns the lines of the *drawing*:
-;;     a quoted title is split at the newlines that PlantUML writes as
-;;     `\n', and the comment of the diagram is not a line of the drawing
-;;     -- a word that is only in the comment is not a claim of the
-;;     picture;
-;;   * `yeah-diagram--references' returns every name of the form
-;;     `file:line' of the diagram, and `yeah-diagram--reference-defect'
-;;     says what is wrong with such a name;
-;;   * `yeah-diagram--says-p' says whether the drawing says a word.
+;; * `yeah-diagram--text' reads the file;
+;; * `yeah-diagram--lines-of' counts the lines of a file and keeps the
+;;   empty ones, because the number of a line is the place of it;
+;; * `yeah-diagram--drawing-lines' returns the lines of the *drawing*:
+;;   a quoted title is split at the newlines that PlantUML writes as
+;;   `\n', and the comment of the diagram is not a line of the drawing
+;;   -- a word that is only in the comment is not a claim of the
+;;   picture;
+;; * `yeah-diagram--references' returns every name of the form
+;;   `file:line' of the drawing, and `yeah-diagram--reference-defect'
+;;   says what is wrong with such a name;
+;; * `yeah-diagram--components' returns the blocks of the picture that
+;;   carry a name of their own, so that a check can ask what a named
+;;   block says;
+;; * `yeah-diagram--says-p' says whether the drawing says a word, and
+;;   `yeah-diagram--names-all-p' says whether one line of the drawing
+;;   names every one of a list of names.
 ;;
 ;; The tree of the repository is never written: this reader only reads.
 
@@ -45,6 +50,10 @@
 (defconst yeah-diagram--path-pattern
   "[A-Za-z0-9._-][A-Za-z0-9._/-]*\\.[A-Za-z0-9]+(:[0-9]+)?"
   "The pattern of a name of a file in a diagram, with a line or without.")
+
+(defun yeah-diagram--root ()
+  "Return the root of the project."
+  (expand-file-name default-directory))
 
 (defun yeah-diagram--text (path)
   "Return the text of the file at PATH."
@@ -70,14 +79,21 @@ the end of the file does not open a line of its own."
 
 (defun yeah-diagram--definition-p (text)
   "Return non-nil when TEXT carries a definition.
-A definition is the opening of a `defun', a `defvar', a `defconst', a
-`cl-defun' or a `cl-defstruct': the name of a thing the picture names
+A definition is the opening of a `defun', a `defvar', a `defconst',
+a `cl-defun' or a `cl-defstruct': the name of a thing the picture names
 is a name of the code, and a line that carries code and no definition
 names no definition.  An empty line carries no code, and a line that
 holds nothing but a comment carries no code either."
   (let ((trimmed (string-trim text)))
     (and (not (string-empty-p trimmed))
          (string-match yeah-diagram--definition-pattern trimmed))))
+
+(defun yeah-diagram--comment-p (line)
+  "Return non-nil when LINE is a comment of PlantUML.
+A comment of PlantUML begins with an apostrophe, and a comment names
+nothing: the name of a file in a comment of the picture is not a name
+of the code."
+  (and (string-match "\\`[[:space:]]*'" line) t))
 
 (defun yeah-diagram--strings (line)
   "Return the quoted strings of LINE."
@@ -87,7 +103,7 @@ holds nothing but a comment carries no code either."
       (setq line (substring line (match-end 0))))
     (nreverse strings)))
 
-(defun yeah-diagram--content-lines (text)
+(defun yeah-diagram--drawing-lines (text)
   "Return the lines of the drawing of the diagram in TEXT.
 A quoted string of the diagram is a title, and a title of several lines
 is split at the newlines that PlantUML writes as `\\n'.  The physical
@@ -99,7 +115,7 @@ The comment of the diagram is not a line of the drawing: a word that is
 only in the comment is not a claim of the picture."
   (let (lines)
     (dolist (line (split-string text "\n" t))
-      (unless (string-prefix-p "'" (string-trim line))
+      (unless (yeah-diagram--comment-p line)
         (let ((strings (yeah-diagram--strings line)))
           (if strings
               (dolist (string strings)
@@ -109,17 +125,14 @@ only in the comment is not a claim of the picture."
             (push (string-trim line) lines)))))
     (nreverse lines)))
 
-(defun yeah-diagram--references (text)
-  "Return the references of the diagram in TEXT.
-A reference is a path of this repository and the number of a line of
-it.
-
+(defun yeah-diagram--references-in-line (line)
+  "Return the references of LINE.
 The newlines that PlantUML writes inside a title as `\\n' are read as
 the line breaks they are: the path of a reference that follows such a
 newline begins at the beginning of a line, and not in the middle of the
 word `\\n'."
-  (let (references)
-    (setq text (replace-regexp-in-string "\\\\n" "\n" text))
+  (let ((text (replace-regexp-in-string "\\\\n" "\n" line))
+        references)
     (while (string-match yeah-diagram--reference-pattern text)
       ;; The place of the scan is taken before anything else is matched:
       ;; a match of another string overwrites the match data of the
@@ -133,6 +146,36 @@ word `\\n'."
               references)
         (setq text (substring text end))))
     (nreverse references)))
+
+(defun yeah-diagram--references (text)
+  "Return the references of the drawing of the diagram in TEXT.
+A reference is a path of this repository and the number of a line of
+it.  The comment of the diagram names nothing: the name of a file in
+the comment of the picture is not a name of the code."
+  (let (references)
+    (dolist (line (split-string text "\n" t))
+      (unless (yeah-diagram--comment-p line)
+        (setq references (append references
+                                 (yeah-diagram--references-in-line line)))))
+    (nreverse references)))
+
+(defun yeah-diagram--components (text)
+  "Return the blocks of the diagram in TEXT.
+A block is a list (ALIAS REFERENCES): the alias of the block and the
+references that the block carries.  A block is a line of the form
+`component \"TITLE\" as ALIAS'; the title is a text of the picture and
+the alias is its name, and the references of the block are the
+references of the line that carries it."
+  (let (blocks)
+    (dolist (line (split-string text "\n" t))
+      (unless (yeah-diagram--comment-p line)
+        (when (string-match
+               "\\`[[:space:]]*component[[:space:]]+\".*\"[[:space:]]+as[[:space:]]+\\([^[:space:]]+\\)[[:space:]]*\\'"
+               line)
+          (push (list (match-string 1 line)
+                      (yeah-diagram--references-in-line line))
+                blocks))))
+    (nreverse blocks)))
 
 (defun yeah-diagram--reference-defect (root file line)
   "Return the defect of the reference FILE:LINE in the tree at ROOT, or nil.
@@ -159,6 +202,36 @@ file must point at a line that is there."
              (not (yeah-diagram--definition-p (nth (1- line) lines))))
         (format "the diagram names %s:%d, and that line carries no definition" file line))
        (t nil))))))
+
+(defun yeah-diagram--broken-references (root references)
+  "Return the references of REFERENCES that point at nothing, with the reason.
+ROOT is the root of the project.  The answer is a list of (REFERENCE
+REASON), and the reason says what the reference misses."
+  (let (broken)
+    (dolist (reference references)
+      (let ((defect (yeah-diagram--reference-defect root
+                                               (nth 0 reference)
+                                               (nth 1 reference))))
+        (when defect
+          (push (list reference defect) broken))))
+    (nreverse broken)))
+
+(defun yeah-diagram--words (line)
+  "Return the words of LINE.
+A word is a run of letters and digits: the colon that stands in front of
+a name of an answer is not a part of the word, and the word `project' is
+not the word `projection'."
+  (split-string (string-trim line) "[^A-Za-z0-9]+" t))
+
+(defun yeah-diagram--names-all-p (line names)
+  "Return non-nil when LINE names every one of NAMES.
+A name is named by the line when the line has a word that is the name.
+The names are compared as words and not as pieces of text: the word
+`project' is not found in the word `projection'.  The case matters: the
+word `ACP' is not the word `acp'."
+  (let ((words (yeah-diagram--words line)))
+    (let ((case-fold-search nil))
+      (cl-every (lambda (name) (member name words)) names))))
 
 (defun yeah-diagram--says-p (lines word)
   "Return non-nil when one of LINES says WORD as a whole word.

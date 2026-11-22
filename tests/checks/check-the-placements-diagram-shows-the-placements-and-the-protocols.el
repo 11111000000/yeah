@@ -113,7 +113,7 @@ Every word is a word of the picture and not a word of its comment.")
                         (string-trim (or (car (last raw)) "")))
                 yeah-check--failures))
         (let* ((references (yeah-diagram--references text))
-               (content (yeah-diagram--content-lines text)))
+               (content (yeah-diagram--drawing-lines text)))
           ;; 2. every name of a file points at code that is there.
           (dolist (reference references)
             (let ((defect (yeah-diagram--reference-defect root
