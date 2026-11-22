@@ -4248,6 +4248,30 @@
       "register": "fact",
       "control": "sed -i 's|lib/yeah-tools.el:119|lib/yeah-tools.el:999999|' site/diagrams/core-layers.puml",
       "waiver": null
+    },
+    {
+      "id": "the-site-shows-the-diagrams-of-the-architecture",
+      "text": "The page of the site shows the eight diagrams of the architecture: each of them is a figure of the page that carries a picture of the light theme and a picture of the dark theme, every picture points at a file that is on disk and carries a text that says what the picture is, every figure carries a caption, the ASCII figure of the architecture is gone from the page and from the stylesheet, the pictures are scaled into the column of the page, the theme of the frame chooses the picture -- the light one stands when the page has no JavaScript -- and the stylesheet prints the pictures.",
+      "scope": [
+        "site/index.html",
+        "site/styles.css",
+        "tests/checks/check-the-site-shows-the-diagrams.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-site-shows-the-diagrams.el"
+        }
+      ],
+      "falsifier": "the page shows fewer than eight figures of the diagrams or more than eight, or a figure of a diagram is missing, or a picture of a diagram points at a file that is not there, or a picture of a diagram carries no text that says what it is, or a figure of a diagram has no caption, or the page still has the figure of ASCII, or the stylesheet still has the rules of the figure of ASCII, or the stylesheet does not scale the pictures of the diagrams into the column, or the stylesheet does not choose the picture by the theme of the frame, or the stylesheet does not print the pictures, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|data-diagram=\"d3\"|data-diagram=\"d9\"|' site/index.html",
+      "waiver": null
     }
   ]
 }
