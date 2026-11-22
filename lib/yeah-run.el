@@ -83,7 +83,10 @@ registers does not appear in another."
 PLACEMENT names where the run lives.  SESSION is the session it writes
 into.  TRANSPORT reaches the model.  ANSWERER answers the requests the
 rules do not decide.  RULES are the permission rules of the run; when
-they are nil the run starts from a copy of the persistent rules.
+they are nil the run starts from a copy of the persistent rules of the
+process.  The rules of the carriers that keep their rules in a file are
+not copied: they are read when the permission is computed, and a rule
+that was saved there outlives the run that started.
 BUDGET, DEADLINE, INPUT, STEER-SOURCE, ON-DONE and MAX-NUDGES are the
 rest of what the run needs."
   (let ((context (yeah-run-context--make
@@ -92,7 +95,7 @@ rest of what the run needs."
                   :session session
                   :transport transport
                   :answerer answerer
-                  :rules (or rules (copy-sequence (yeah-perm-effective-rules)))
+                  :rules (or rules (copy-sequence (yeah-perm-rules-list)))
                   :budget budget
                   :deadline deadline
                   :input input
