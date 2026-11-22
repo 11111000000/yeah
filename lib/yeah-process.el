@@ -336,6 +336,7 @@ without changing its status."
                       (list :name "idle" :type 'integer :optional t))
          :kind "execute"
          :risk "execute"
+         :resource "shell"
          :async t
          :handler #'yeah-process-bash)
    (list :name "job-status"
@@ -357,6 +358,7 @@ without changing its status."
          :input (list (list :name "id" :type 'string))
          :kind "execute"
          :risk "destroy"
+         :resource "process"
          :handler #'yeah-process-job-cancel)))
 
 (provide 'yeah-process)

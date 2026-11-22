@@ -818,13 +818,17 @@ acts on the world of the run writes into the journal of this run."
 
 (defun yeah-turn--call-spec (turn slot)
   "Return the scheduler call of SLOT: the tool, its arguments, the
-handler and the concurrency the tool asks for."
+handler, the concurrency the tool asks for and the resource it touches.
+The resource is the declared lock of the call: the key is `:tool-resource'
+and not `:resource', because the resource of the call in the domain of
+the rights is the one that is computed from the arguments."
   (let ((spec (plist-get slot :spec)))
     (list :name (plist-get slot :name)
           :args (plist-get slot :args)
           :handler (yeah-turn--handler turn slot)
           :async (or (plist-get slot :deferred) (plist-get spec :async))
-          :mode (yeah-tools-concurrency spec))))
+          :mode (yeah-tools-concurrency spec)
+          :tool-resource (yeah-tools-resource spec))))
 
 (defun yeah-turn--finish-result (calls results)
   "Return the result of the `finish' call among CALLS, or nil."
