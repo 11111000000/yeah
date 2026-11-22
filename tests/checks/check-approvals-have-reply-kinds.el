@@ -85,6 +85,18 @@
     (unless (= 1 (length (yeah-perm-rules-list)))
       (push "the answer of the person did not reach the rules" failures)))
 
+  ;; --- the check leaves no rule behind ------------------------------------
+  ;; The answer of the person became a rule of the scope of the user, and
+  ;; that rule was written into the file of the user.  The check takes it
+  ;; back: a test does not change the machine of the person, and a check
+  ;; that leaves a rule behind decides the next run by the state of the
+  ;; machine and not by the code.
+  (yeah-perm-rules-reset-for-test)
+  (unless (null (yeah-perm-rules-list))
+    (push "the check left a rule behind" failures))
+  (unless (null (yeah-perm-file-rules))
+    (push "the check left a rule in the file of the user behind" failures))
+
   (dolist (failure failures)
     (message "approvals: %s" failure))
   (if failures
