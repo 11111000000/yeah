@@ -38,13 +38,15 @@
 ;;   the places, because the name of a place is not a word of the picture;
 ;; * `yeah-diagram--components' returns the blocks of the picture that
 ;;   carry a name of their own, so that a check can ask what a named
-;;   block says;
+;;   block says: a block is a list (ALIAS REFERENCES TITLE), and the
+;;   title is what the picture says about the block;
 ;; * `yeah-diagram--package-names' returns the names of the packages
 ;;   that the picture opens, and `yeah-diagram--packages' returns the
 ;;   packages with the text that stands in them;
 ;; * `yeah-diagram--note-lines' returns the lines of the note of the
-;;   picture, and `yeah-diagram--exclusion' returns the module of `lib/'
-;;   and the reason of one line of that note;
+;;   picture, `yeah-diagram--note-alias' returns the block the note
+;;   hangs on, and `yeah-diagram--exclusion' returns the module of
+;;   `lib/' and the reason of one line of that note;
 ;; * `yeah-diagram--modules-of' walks `lib/' and returns the modules of
 ;;   the kernel, in every directory of it;
 ;; * `yeah-diagram--titles' returns the titles of the drawing: the
@@ -54,7 +56,9 @@
 ;;   of that block;
 ;; * `yeah-diagram--says-p' says whether the drawing says a word, and
 ;;   `yeah-diagram--names-all-p' says whether one line of the drawing
-;;   names every one of a list of names.
+;;   names every one of a list of names, and
+;;   `yeah-diagram--words-name-all-p' says the same of a list of words
+;;   that a check has cut out of the picture.
 ;;
 ;; The tree of the repository is never written: this reader only reads.
 
@@ -290,11 +294,11 @@ The name of a place is not a word of the picture: the word `unit' of
 
 (defun yeah-diagram--components (text)
   "Return the blocks of the diagram in TEXT.
-A block is a list (ALIAS REFERENCES): the alias of the block and the
-references that the block carries.  A block is a line of the form
-`component \"TITLE\" as ALIAS'; the title is a text of the picture and
-the alias is its name, and the references of the block are the
-references of the line that carries it."
+A block is a list (ALIAS REFERENCES TITLE): the alias of the block, the
+references that the block carries and the title of the block.  A block is
+a line of the form `component \"TITLE\" as ALIAS'; the title is a text of
+the picture and the alias is its name, and the references of the block
+are the references of the line that carries it."
   (let (blocks)
     (dolist (line (split-string text "\n" t))
       (unless (yeah-diagram--comment-p line)
@@ -302,7 +306,8 @@ references of the line that carries it."
                "\\`[[:space:]]*component[[:space:]]+\".*\"[[:space:]]+as[[:space:]]+\\([^[:space:]]+\\)[[:space:]]*\\'"
                line)
           (push (list (match-string 1 line)
-                      (yeah-diagram--references-in-line line))
+                      (yeah-diagram--references-in-line line)
+                      (car (yeah-diagram--strings line)))
                 blocks))))
     (nreverse blocks)))
 
@@ -355,6 +360,24 @@ not the lines of the note."
         (setq in-note nil))
        (in-note (push line lines))))
     (nreverse lines)))
+
+(defun yeah-diagram--note-alias (text)
+  "Return the alias the note of the picture in TEXT hangs on, or nil.
+The note opens with a line of the form `note bottom of ALIAS', and the
+alias is the name of the block the note belongs to.  A note that hangs on
+nothing names nothing, and the answer is nil.
+
+The answer is the alias of the first note of the picture: a picture with
+one note has one alias, and a picture with several notes has an alias
+only for the first of them."
+  (let (alias)
+    (dolist (line (split-string text "\n" t))
+      (unless alias
+        (when (string-match
+               "\\`[[:space:]]*note\\b.*\\bof[[:space:]]+\\([^[:space:]]+\\)"
+               line)
+          (setq alias (match-string 1 line)))))
+    alias))
 
 (defun yeah-diagram--exclusion (line)
   "Return the exclusion of LINE, or nil.
@@ -439,6 +462,15 @@ word `ACP' is not the word `acp'."
   (let ((words (yeah-diagram--words line)))
     (let ((case-fold-search nil))
       (cl-every (lambda (name) (member name words)) names))))
+
+(defun yeah-diagram--words-name-all-p (words names)
+  "Return non-nil when the list of WORDS holds every one of NAMES.
+The words of a picture that a check has cut out of it -- the half of a
+note that speaks of one transport and not of the other -- are words and
+not a text: the names are compared as words and not as pieces of text,
+and the case matters."
+  (let ((case-fold-search nil))
+    (cl-every (lambda (name) (member name words)) names)))
 
 (defun yeah-diagram--block-places (blocks words)
   "Return the places of the blocks of BLOCKS that name every word of WORDS.
