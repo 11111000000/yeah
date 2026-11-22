@@ -22,11 +22,11 @@
 ;;      definition -- an empty line names no code, a line that holds
 ;;      nothing but a comment names no code either, and a line that holds
 ;;      code that is not a definition names no definition;
-;;   2. every module of `lib/' is named by the diagram or listed in the
-;;      note of the modules the picture does not name, with the reason why
-;;      it is not there.  A module that is nowhere is a module the picture
-;;      dropped silently, and the reader of the picture cannot tell it
-;;      from a module that was never there;
+;;   2. every module of `lib/' -- in every directory of `lib/' -- is named
+;;      by the diagram or listed in the note of the modules the picture
+;;      does not name, with the reason why it is not there.  A module that
+;;      is nowhere is a module the picture dropped silently, and the reader
+;;      of the picture cannot tell it from a module that was never there;
 ;;   3. the note names no module that is not there, names no module
 ;;      without a reason, and names no module that the diagram names as
 ;;      well -- a module that is both named and excluded is a module whose
@@ -36,16 +36,18 @@
 ;;      journal and the projections.  A block without a file is a block of
 ;;      nothing, and a picture without a layer is a picture of a part.
 ;;
-;; The rule of the reference, the rule of the definition and the rule of
-;; the block live in one place: `tests/support/yeah-diagram-files.el'.  A
-;; copy of the rule in this check is a rule that drifts away from the
-;; rule of the other pictures of the site, and one picture that is read
-;; two ways gives two verdicts for one picture.
+;; The rule of the reference, the rule of the definition, the rule of the
+;; block, the rule of the package, the rule of the note, the rule of the
+;; exclusion and the walk of the modules of `lib/' live in one place:
+;; `tests/support/yeah-diagram-files.el'.  A copy of the rule in this
+;; check is a rule that drifts away from the rule of the other pictures
+;; of the site, and one picture that is read two ways gives two verdicts
+;; for one picture.
 ;;
-;; The format of the source is a rule of this check and not of PlantUML:
-;; a package is `package "NAME" as alias {', the note of the modules the
-;; picture does not name is a `note' whose lines are of the form
-;; `lib/MODULE.el -- the reason'.
+;; The format of the source is a rule of the reader of the pictures and
+;; not of PlantUML: a package is `package "NAME" as alias {', the note of
+;; the modules the picture does not name is a `note' whose lines are of
+;; the form `lib/MODULE.el -- the reason'.
 ;;
 ;; The tree of the repository is never written: this check only reads.
 ;;
@@ -63,40 +65,6 @@
 (defvar yeah-check--blockers nil
   "The reasons why this check cannot answer.")
 
-(defun yeah-check--packages (text)
-  "Return the names of the packages of the diagram in TEXT.
-The reader of the pictures of the site has no rule of the package: the
-package is a line of the form `package \"NAME\" as alias {'."
-  (let (packages)
-    (dolist (line (split-string text "\n" t))
-      (when (string-match
-             "\\`[[:space:]]*package[[:space:]]+\"\\([^\"]*\\)\"[[:space:]]+as[[:space:]]+\\([^[:space:]]+\\)[[:space:]]+{\\'"
-             line)
-        (push (match-string 1 line) packages)))
-    (nreverse packages)))
-
-(defun yeah-check--note (text)
-  "Return the lines of the note of the modules the picture does not name."
-  (let (lines in-note)
-    (dolist (line (split-string text "\n" t))
-      (cond ((string-match "\\`[[:space:]]*note\\b" line)
-             (setq in-note t))
-            ((and in-note (string-match "\\`[[:space:]]*end note\\'" line))
-             (setq in-note nil))
-            (in-note (push line lines))))
-    (nreverse lines)))
-
-(defun yeah-check--exclusion (line)
-  "Return the exclusion of LINE, or nil.
-An exclusion is a module of `lib/' and the reason why the picture does not
-name it.  The reason of an exclusion may be nothing: the check then says
-that the note names a module and says nothing about it."
-  (when (string-match "\\`[[:space:]]*\\(lib/[A-Za-z0-9._-]+\\.el\\)\\b" line)
-    (let ((module (match-string 1 line)))
-      (if (string-match "--[[:space:]]*\\(.*\\)\\'" line)
-          (list module (string-trim (match-string 1 line)))
-        (list module nil)))))
-
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
        (diagram (expand-file-name "site/diagrams/core-layers.puml" root)))
@@ -111,9 +79,9 @@ that the note names a module and says nothing about it."
   (when (null yeah-check--blockers)
     (load reader nil t)
     (let* ((text (yeah-diagram--text diagram))
-           (packages (yeah-check--packages text))
+           (packages (yeah-diagram--package-names text))
            (components (yeah-diagram--components text))
-           (exclusions (delq nil (mapcar #'yeah-check--exclusion (yeah-check--note text))))
+           (exclusions (delq nil (mapcar #'yeah-diagram--exclusion (yeah-diagram--note-lines text))))
            (references (yeah-diagram--references text))
            (named (delete-dups (mapcar #'car references))))
       ;; 1. every reference points at a file, at a line, and at code.
@@ -124,13 +92,12 @@ that the note names a module and says nothing about it."
         (push "the diagram names no file at all: this check cannot tell a good name from a bad one"
               yeah-check--failures))
       ;; 2. every module of lib/ is named by the picture or excluded with a reason.
-      (dolist (module (file-expand-wildcards (expand-file-name "lib/*.el" root)))
-        (let ((name (file-relative-name module root)))
-          (unless (or (cl-find name named :test #'string=)
-                      (cl-find name (mapcar #'car exclusions) :test #'string=))
-            (push (format "the module %s is neither named by the diagram nor listed in the note of the modules the picture does not name"
-                          name)
-                  yeah-check--failures))))
+      (dolist (name (yeah-diagram--modules-of root))
+        (unless (or (cl-find name named :test #'string=)
+                    (cl-find name (mapcar #'car exclusions) :test #'string=))
+          (push (format "the module %s is neither named by the diagram nor listed in the note of the modules the picture does not name"
+                        name)
+                yeah-check--failures)))
       ;; 3. the note names modules that are there, and only once.
       (dolist (exclusion exclusions)
         (let ((module (nth 0 exclusion))
