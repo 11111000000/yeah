@@ -9,11 +9,12 @@
 
 ;;; Commentary:
 ;;
-;; An answer of a person is two things: the kind of the answer and the
-;; scope it holds.  The kind says what the answer does -- once, always
-;; or reject -- and the scope says where the rule that remembers it
-;; lives: the rules of the run, the rules of the session or the rules of
-;; the process.
+;; An answer of a person is two things: the answer itself and the scope
+;; it holds.  The answer says what the answer does -- once, session,
+;; project, global or reject; the legacy name `always' is read as
+;; `session' -- and the scope says where the rule that remembers it
+;; lives: the rules of the run, the rules of the session, the file of the
+;; project or the file of the user.
 ;;
 ;; This check measures that:
 ;;
@@ -22,8 +23,8 @@
 ;;   3. the second call of the same action in the same session does not
 ;;      ask again -- the scope did not break the remembering;
 ;;   4. the journal carries the scope of the decision;
-;;   5. a scope that has no carrier is refused by name, and the refusal
-;;      says why;
+;;   5. a decision that names a scope its answer does not name is refused
+;;      by name, and the refusal says why;
 ;;   6. the dictionary of the answers and the dictionary of the scopes
 ;;      are written in one place each -- this check names a second
 ;;      writing when there is one;

@@ -1,4 +1,4 @@
-;;; yeah-approval-ui.el --- approve or refuse one Yeah tool call -*- lexical-binding: t; -*-
+;;; yeah-approval-ui.el --- approve or refuse one Yeah tool call -*- lexical-binding: t -*-
 
 ;; Copyright (C) 2026  Petr Kosov
 ;;
@@ -8,8 +8,17 @@
 ;;
 ;; A permission request is a decision about one concrete effect.  This
 ;; module shows the action, resource, arguments, and a read-only diff when
-;; one can be computed.  The answer is once, always for the exact resource,
-;; or reject.  The kernel decides what those answers mean.
+;; one can be computed.
+;;
+;; The answer is one of the answers of the kernel: `once', `session',
+;; `project', `global' or `reject'.  The view names what every answer
+;; allows, so that the person reads the scope of the answer and not only
+;; the word "allow".  The kernel decides what the answers mean: the scope
+;; of the answer is the scope of the carrier of the path that asks, and
+;; the answer `global' is the file of the user.
+;;
+;; The legacy name `always' is still accepted: it is the answer `session',
+;; the scope of the path that asks.
 
 ;;; Code:
 
@@ -31,6 +40,37 @@
 (defvar-local yeah-approval--decided nil
   "Non-nil after the current approval has been decided.")
 
+(defconst yeah-approval--keys
+  '((:once . "o") (:session . "s") (:project . "p")
+    (:global . "a") (:reject . "r"))
+  "The key every answer of the view is offered under.
+
+The table holds the keys of the surface and not the answers: the answers
+are read from the dictionary of the kernel, and the view offers every
+answer of that dictionary.  The answer `global' is offered under the key
+of the forever of the person.")
+
+(defun yeah-approval--key-of (answer)
+  "Return the key the view offers ANSWER under, or nil when it has none."
+  (let ((entry (assq answer yeah-approval--keys)))
+    (and entry (cdr entry))))
+
+(defun yeah-approval--offers ()
+  "Return the offers of the view: every answer of the kernel and its words.
+The answers are read from the one dictionary of the kernel, and this
+module writes none of them again."
+  (mapcar (lambda (answer)
+            (list :answer answer
+                  :key (yeah-approval--key-of answer)
+                  :label (yeah-approval-label answer)))
+          (yeah-approval-reply-kinds)))
+
+(defun yeah-approval--offer-line (offer)
+  "Return the line of the view that names OFFER."
+  (format "%s %s"
+          (or (plist-get offer :key) " ")
+          (plist-get offer :label)))
+
 (defun yeah-approval--preview (request)
   "Return the diff preview plist for REQUEST, or nil."
   (let ((action (plist-get request :action))
@@ -50,6 +90,11 @@
            (format "Action: %s\n" action)
            (format "Resource: %s\n" resource)
            (when arguments (format "Arguments: %S\n" arguments))
+           "\nWhat this allows\n"
+           (mapconcat (lambda (offer)
+                        (concat "  " (yeah-approval--offer-line offer) "\n"))
+                      (yeah-approval--offers)
+                      "")
            (if (plist-get preview :ok)
                (concat "\nPreview\n" (plist-get preview :text))
              (concat "\n"
@@ -59,12 +104,14 @@
     (propertize text 'face 'default)))
 
 (defun yeah-approval--decide (reply)
-  "Decide the current approval with REPLY."
+  "Decide the current approval with REPLY.
+REPLY is one of the answers of the kernel; the legacy name `always' is
+the answer `session' and is accepted as well."
   (unless (derived-mode-p 'yeah-approval-mode)
     (user-error "Not in a Yeah approval"))
   (when yeah-approval--decided
     (user-error "This request has already been answered"))
-  (unless (memq reply (yeah-approval-reply-kinds))
+  (unless (yeah-approval-reply-p reply)
     (user-error "Unknown approval reply: %S" reply))
   (let ((callback yeah-approval--callback))
     (setf yeah-approval--decided t)
@@ -73,17 +120,37 @@
   (kill-buffer (current-buffer)))
 
 (defun yeah-approval-allow-once ()
-  "Allow the current tool call once."
+  "Allow the current tool call once.
+The answer is forgotten: nothing is written into the rules."
   (interactive)
   (yeah-approval--decide :once))
 
-(defun yeah-approval-allow-always ()
-  "Allow the current action for the exact resource in this session."
+(defun yeah-approval-allow-session ()
+  "Allow the current action for the session of the path that asks.
+The rule is written into the carrier of that path: the rules of the run
+of an attached run, the rules of the session of an ACP session, and the
+file of the user in the plain path, which has no session of its own."
   (interactive)
-  (yeah-approval--decide :always))
+  (yeah-approval--decide :session))
+
+(defun yeah-approval-allow-project ()
+  "Allow the current action for the project of the person.
+The rule is written into the file of the project, and into no other
+carrier."
+  (interactive)
+  (yeah-approval--decide :project))
+
+(defun yeah-approval-allow-always ()
+  "Allow the current action always.
+The rule is written into the file of the user: the answer `global' is
+the forever of the person.  The legacy name `always' is the answer
+`session', the scope of the path that asks, and it is not this answer."
+  (interactive)
+  (yeah-approval--decide :global))
 
 (defun yeah-approval-reject ()
-  "Reject the current tool call."
+  "Reject the current tool call.
+The refusal is forgotten: nothing is written into the rules."
   (interactive)
   (yeah-approval--decide :reject))
 
@@ -100,6 +167,8 @@
 (defvar yeah-approval-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "o") #'yeah-approval-allow-once)
+    (define-key map (kbd "s") #'yeah-approval-allow-session)
+    (define-key map (kbd "p") #'yeah-approval-allow-project)
     (define-key map (kbd "a") #'yeah-approval-allow-always)
     (define-key map (kbd "r") #'yeah-approval-reject)
     (define-key map (kbd "d") #'yeah-approval-show-diff)
@@ -114,9 +183,9 @@
 ;;;###autoload
 (defun yeah-approval-open (request callback)
   "Open an approval for REQUEST.
-CALLBACK is called with the kind of the answer; the kinds are the ones
-`yeah-approval-reply-kinds' returns, and this module writes none of
-them again."
+CALLBACK is called with the answer of the person; the answers are the
+ones `yeah-approval-reply-kinds' returns, and this module writes none
+of them again."
   (unless (listp request)
     (signal 'user-error (list "yeah-approval-open: REQUEST must be a plist")))
   (unless (functionp callback)
@@ -134,8 +203,11 @@ them again."
       (setq header-line-format
             (list (propertize "Yeah approval" 'face 'mode-line-emphasis)
                   "  "
-                  (propertize "o once · a always for this resource · r reject"
-                              'face 'help-key-binding)))
+                  (propertize
+                   (mapconcat #'yeah-approval--offer-line
+                              (yeah-approval--offers)
+                              " · ")
+                   'face 'help-key-binding)))
       (force-mode-line-update))
     (pop-to-buffer buffer)
     buffer))
@@ -143,20 +215,18 @@ them again."
 ;;;###autoload
 (defun yeah-approval-answer (request)
   "Ask the person about REQUEST in the approval view and return the decision.
-The decision is `(:effect :allow :reply :once)', `(:effect :allow :reply
-:always)' or `(:effect :deny :reply :reject :reason REASON)'.  A request
-that nobody answers is refused: a question with no answer may not become
-an effect."
+The decision carries the answer of the person as `:reply': one of the
+five answers of the kernel.  A request that nobody answers is refused:
+a question with no answer may not become an effect."
   (let ((decision nil))
     (yeah-approval-open
      request
      (lambda (reply)
        (setq decision
-             (pcase reply
-               (:once (list :effect :allow :reply :once))
-               (:always (list :effect :allow :reply :always))
-               (:reject (list :effect :deny :reply :reject
-                              :reason "rejected by the person"))))))
+             (if (eq (yeah-approval-reply-canonical reply) :reject)
+                 (list :effect :deny :reply :reject
+                       :reason "rejected by the person")
+               (list :effect :allow :reply reply)))))
     (let ((deadline (+ (float-time) 600)))
       (while (and (null decision) (< (float-time) deadline))
         (accept-process-output nil 0.1)))

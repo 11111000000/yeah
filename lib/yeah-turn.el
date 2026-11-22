@@ -376,7 +376,8 @@ SCOPE is the scope the answer named, or nil when it named none."
 Return (EFFECT DETAIL REPLY SCOPE): EFFECT is allow, deny or defer,
 DETAIL is the reason of the decision (the question that waits for the
 person when the effect is defer), REPLY is what the person answered
-(`:once' or `:always') and SCOPE the scope the answer named.
+(`:once', `:session', `:project', `:global' or `:reject') and SCOPE the scope
+the answer named.
 
 An answerer marked by `yeah-approval-async' answers later: the effect is
 defer and the detail is the id of the question that waits."
@@ -483,12 +484,25 @@ it runs."
     (if (eq (plist-get decision :effect) :allow)
         (yeah-tools-with-registry (yeah-turn-tools-registry turn)
           (yeah-session-with (yeah-turn-session turn)
-            (yeah-tools-dispatch (plist-get slot :name)
-                                 (plist-get slot :args) done)))
+            (yeah-turn--dispatch-guarded slot done)))
       (funcall done
                (yeah-result-error
                 (or (plist-get decision :reason)
                     "the person refused"))))))
+
+(defun yeah-turn--dispatch-guarded (slot done)
+  "Dispatch the tool of SLOT and settle DONE with the failure when it fails.
+A deferred call is dispatched when the person answered, and that moment lies
+outside the handler of the scheduler: a failure of the dispatch would escape
+the turn, the call would stay unsettled, and only the timer of the scheduler
+would close it — with a failure that names the wrong reason.  The refusal of
+the registry, namely the arguments that do not fit the declaration of the
+tool, must reach the model the way it reaches it when no person was asked."
+  (condition-case err
+      (yeah-tools-dispatch (plist-get slot :name) (plist-get slot :args) done)
+    (error
+     (funcall done (yeah-result-error
+                    (format "Error: %s" (error-message-string err)))))))
 
 (defun yeah-turn--prepare-slot (turn index call)
   "Prepare the slot of CALL at INDEX and write its request into the log.
@@ -818,13 +832,25 @@ acts on the world of the run writes into the journal of this run."
 
 (defun yeah-turn--call-spec (turn slot)
   "Return the scheduler call of SLOT: the tool, its arguments, the
-handler and the concurrency the tool asks for."
+handler, the concurrency the tool asks for, the resource it touches and
+the limits it declares.
+The resource is the declared lock of the call: the key is `:tool-resource'
+and not `:resource', because the resource of the call in the domain of
+the rights is the one that is computed from the arguments.
+The limits are the ones the registry holds: `:timeout' is the upper
+bound of the work of the call in seconds, and `:output-limit' is the
+upper bound of its output in characters.  The call carries them, so that
+the scheduler closes a call that crossed its bound and the model reads
+the output that fits."
   (let ((spec (plist-get slot :spec)))
     (list :name (plist-get slot :name)
           :args (plist-get slot :args)
           :handler (yeah-turn--handler turn slot)
           :async (or (plist-get slot :deferred) (plist-get spec :async))
-          :mode (yeah-tools-concurrency spec))))
+          :mode (yeah-tools-concurrency spec)
+          :tool-resource (yeah-tools-resource spec)
+          :timeout (yeah-tools-timeout spec)
+          :output-limit (yeah-tools-output-limit spec))))
 
 (defun yeah-turn--finish-result (calls results)
   "Return the result of the `finish' call among CALLS, or nil."

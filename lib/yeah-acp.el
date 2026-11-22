@@ -92,9 +92,13 @@ the printed form otherwise."
 (defun yeah-acp--session-rules (session-id)
   "Return the permission rules that decide for SESSION-ID.
 The standing permissions of the service come first and the decisions the
-client remembered for this session come last: the last match wins."
+client remembered for this session come last: the last match wins.
+The standing permissions are the rules of the carriers that keep their
+rules in a file and the rules of the process."
   (let ((state (yeah-acp--session-state session-id)))
-    (append (yeah-perm-rules-list) (plist-get state :rules))))
+    (append (yeah-perm-file-rules)
+            (yeah-perm-rules-list)
+            (plist-get state :rules))))
 
 (defconst yeah-acp--default-mode "build"
   "The mode a session is in when the client has not chosen another one.
@@ -185,11 +189,38 @@ The options travel as a vector: a list of objects does not serialize, and
 the wire of ACP carries an array."
   (vector (yeah-acp--model-option model)))
 
+(defun yeah-acp--option-kind (answer)
+  "Return the kind of the ACP option that offers ANSWER.
+The kind stays inside the vocabulary of ACP: `allow_once', `allow_always'
+and `reject_once'.  The scope of the answer travels in the option id and
+not in the kind: the kind says what the answer does, and the option id
+says how long it lives."
+  (pcase (yeah-approval-reply-canonical answer)
+    (:once "allow_once")
+    (:reject "reject_once")
+    (_ "allow_always")))
+
+(defun yeah-acp--permission-options ()
+  "Return the options of the question of a permission.
+The question offers the four scopes of an answer and the refusal.  The
+options are derived from the dictionary of the answers: the option id is
+the wire name of the answer, and the name is the words the surfaces of
+the kernel use for it."
+  (vconcat
+   (mapcar (lambda (answer)
+             (list :optionId (yeah-approval-reply-on-wire
+                              (yeah-approval-effect-of answer) answer)
+                   :name (yeah-approval-label answer)
+                   :kind (yeah-acp--option-kind answer)))
+           (yeah-approval-reply-kinds))))
+
 (defun yeah-acp--ask-client (session-id output request)
   "Ask the client about REQUEST and return the deferral of the question.
-The question carries three answers: allow once, allow always (the decision
-is remembered for the session) and reject.  The question itself is kept,
-so that the answer reaches the turn that asked and may be remembered."
+The question carries the four scopes of an answer -- once, session,
+project and global -- and the refusal.  The scope travels in the option
+id: the kind of the option stays inside the vocabulary of ACP.  The
+question itself is kept, so that the answer reaches the turn that asked
+and may be remembered."
   (let* ((request-id (yeah-acp--fresh-id "perm"))
          (params (list :sessionId session-id
                        :toolCall (list :toolCallId request-id
@@ -199,13 +230,7 @@ so that the answer reaches the turn that asked and may be remembered."
                                        :rawInput
                                        (yeah-acp--jsonable-args
                                         (plist-get request :args)))
-                       :options (vector
-                                 (list :optionId "allow-once"
-                                       :name "Allow once" :kind "allow_once")
-                                 (list :optionId "allow-always"
-                                       :name "Allow always" :kind "allow_always")
-                                 (list :optionId "reject-once"
-                                       :name "Reject" :kind "reject_once")))))
+                       :options (yeah-acp--permission-options))))
     (puthash request-id
              (list :session-id session-id
                    :action (plist-get request :action)
@@ -226,8 +251,9 @@ session.")
   "Return the answerer of SESSION-ID that asks the client over the wire.
 The rules decide first; what they do not name is asked of the client as a
 `session/request_permission', and the call waits for the answer.  A safe
-read needs no question: it is allowed, and it says why.  Every answer
-carries the scope of the session."
+read needs no question: it is allowed, and it says why.  The question
+offers the four scopes of an answer and the refusal, and the answer that
+comes back carries the scope it named."
   (lambda (request)
     (yeah-approval-scope-decision
      (let* ((action (plist-get request :action))
@@ -272,7 +298,7 @@ the decision about the session, and the refusal of the person about a
 tool is the decision about that tool."
   (let ((action (plist-get request :action))
         (resource (plist-get request :resource)))
-    (if (eq (yeah-perm-effect action resource (yeah-perm-rules-list)) 'deny)
+    (if (eq (yeah-perm-effect action resource (yeah-perm-effective-rules)) 'deny)
         (list :effect :deny :reply :reject
               :reason (format "the standing permissions deny %s on %s"
                               action resource))
@@ -1146,11 +1172,14 @@ permission question reaches the turn that asked it."
       turn)))
 
 (defun yeah-acp--remember-decision (question decision)
-  "Remember an `always' DECISION for QUESTION in the rules of its session.
+  "Remember a DECISION that is to be remembered for QUESTION.
 The decision is remembered for this session only: the standing permissions
-of the service are not touched.  The rule carries the scope of the
-session, and an answer that names another scope is refused by name
-instead of being written into the rules of the session."
+of the service are not touched.  The rule carries the scope of the answer,
+and it is written into the carrier of its scope: the session itself for
+the scope of the session, the file of the project for the scope of the
+project, the file of the user for the scope of the user.  An answer that
+names another scope is refused by name instead of being written into the
+rules of the session."
   (let* ((scoped (yeah-approval-scope-decision decision yeah-acp--carrier))
          (session-id (plist-get question :session-id)))
     (when-let ((rule (yeah-approval-remember-rule
@@ -1158,8 +1187,12 @@ instead of being written into the rules of the session."
                             :resource (plist-get question :resource))
                       scoped)))
       (let ((state (yeah-acp--session-state session-id)))
-        (plist-put state :rules
-                   (yeah-perm-rules-append (plist-get state :rules) rule))))
+        (yeah-perm-rule-store
+         rule yeah-acp--carrier
+         (lambda (stored)
+           (plist-put state :rules
+                      (yeah-perm-rules-append (plist-get state :rules) stored))
+           stored))))
     scoped))
 
 (defun yeah-acp--route-response (message)
@@ -1172,7 +1205,7 @@ permission it answers.  Return non-nil when it was a response."
         (let* ((decision (yeah-acp--permission-decision message))
                (scoped (yeah-approval-scope-decision
                         decision yeah-acp--carrier)))
-          (when (yeah-approval-always-p scoped)
+          (when (yeah-approval-remembers-p scoped)
             (yeah-acp--remember-decision question scoped))
           (when-let ((turn (yeah-acp--turn-waiting-for
                             (plist-get question :session-id) id)))
@@ -1230,6 +1263,14 @@ and asynchronously answered prompts."
      (yeah-acp--response id (yeah-acp-session-withdraw params)))
     ("session/recover"
      (yeah-acp--response id (yeah-acp-session-recover params)))
+    ("session/request_permission"
+     ;; The question of a permission travels from the agent to the
+     ;; client: the agent asks, the client answers.  A client that sends
+     ;; the question to the agent is refused by name: the method is
+     ;; known -- the agent sends it -- and the agent does not accept it
+     ;; as a request.
+     (yeah-acp--error id -32602
+                      "the agent asks the client for permission: the question of a permission travels from the agent to the client"))
     (_
      (yeah-acp--error id -32601 (format "Method not found: %s" method)))))
 

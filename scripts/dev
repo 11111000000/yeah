@@ -290,25 +290,43 @@ EOF
     for f in "$@"; do
       before="$(now_ms)"
       n=$((n + 1))
-      case "$f" in
-        *.el)
-          life_sock="$life_dir/yeah-life-check-$n-$$.sock"
-          YEAH_LIFE_SOCKET="$life_sock" "$timeout_bin" "$limit" \
-            "$emacs_bin" -Q --batch -L lib -L . \
-            --eval "(progn (require 'yeah-life) (yeah-life-adopt-from-environment))" \
-            -l "$f"
-          rc=$?
-          rm -f "$life_sock"
-          ;;
-        *.sh)
-          "$timeout_bin" "$limit" bash "$f"
-          rc=$?
-          ;;
-        *)
-          echo "scripts/dev check: unknown kind of check: $f" >&2
-          exit 2
-          ;;
-      esac
+      # A check does not change the machine of the person.  The rules of
+      # the permissions live in the configuration of the user, so a check
+      # that forgets to take its rules back writes them into the file of
+      # the user -- and the next run of the check reads them and decides
+      # by the state of the machine and not by the code.  Every check
+      # gets a configuration of its own, empty, and it is taken away with
+      # the check: the verdict of a check depends on the code alone.
+      config_home="$(mktemp -d "${TMPDIR:-/tmp}/yeah-check-config-XXXXXX" 2>/dev/null || true)"
+      if [ -z "$config_home" ] || [ ! -d "$config_home" ]; then
+        echo "scripts/dev check: a configuration of its own could not be made for $f" >&2
+        config_home=""
+        rc=2
+      else
+        case "$f" in
+          *.el)
+            life_sock="$life_dir/yeah-life-check-$n-$$.sock"
+            XDG_CONFIG_HOME="$config_home" YEAH_LIFE_SOCKET="$life_sock" \
+              "$timeout_bin" "$limit" \
+              "$emacs_bin" -Q --batch -L lib -L . \
+              --eval "(progn (require 'yeah-life) (yeah-life-adopt-from-environment))" \
+              -l "$f"
+            rc=$?
+            rm -f "$life_sock"
+            ;;
+          *.sh)
+            XDG_CONFIG_HOME="$config_home" "$timeout_bin" "$limit" bash "$f"
+            rc=$?
+            ;;
+          *)
+            echo "scripts/dev check: unknown kind of check: $f" >&2
+            exit 2
+            ;;
+        esac
+      fi
+      if [ -n "$config_home" ]; then
+        rm -rf "$config_home"
+      fi
       case "$rc" in
         0) ;;
         1) failed=1 ;;

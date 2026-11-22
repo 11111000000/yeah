@@ -261,6 +261,7 @@ STATUS and TEXT are what change; at least one of them must be given."
          "Add a task to the task list of this run. Use it when the work takes more than one step: the list is part of the journal of the run, so it is still there after a restart. A new task starts as pending."
          :input (list (list :name "text" :type 'string))
          :risk "write"
+         :resource "todo-list"
          :handler #'yeah-todo-add-tool)
    (list :name "todo_update"
          :description
@@ -269,6 +270,7 @@ STATUS and TEXT are what change; at least one of them must be given."
                       (list :name "status" :type 'string :optional t)
                       (list :name "text" :type 'string :optional t))
          :risk "write"
+         :resource "todo-list"
          :handler #'yeah-todo-update-tool)
    (list :name "todo_list"
          :description

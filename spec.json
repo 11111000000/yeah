@@ -762,13 +762,17 @@
       "register": "fact",
       "control": "sed -i \"s/('completed \\\"end_turn\\\")/('completed \\\"max_tokens\\\")/\" lib/yeah-acp.el",
       "waiver": null
-    },
-    {
+    },    {
       "id": "approvals-have-reply-kinds",
-      "text": "A permission request is answered once, always or reject: once allows only this call, reject refuses only this call, always is written into the rules so it outlives the question, any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
+      "text": "A permission request is answered once, for the session, for the project, for the user or reject: once allows only this call, reject refuses only this call, the other three are written into the rules so they outlive the question — the rule of the answer session in the carrier of the path that asks, the rule of the answer project in the file of the project and the rule of the answer global in the file of the user — and every answer carries the scope its rule lives in; the legacy name `always' is read as the answer `session'; any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
       "scope": [
-        "lib/yeah-approval.el", "lib/yeah-perm.el",
-        "tests/checks/check-approvals-have-reply-kinds.el"
+        "lib/yeah-approval.el",
+        "lib/yeah-perm.el",
+        "lib/yeah-approval-ui.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-service-ui.el",
+        "tests/checks/check-approvals-have-reply-kinds.el",
+        "tests/checks/check-the-question-offers-the-scope.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -781,9 +785,9 @@
           "spec": "./scripts/dev check tests/checks/check-approvals-have-reply-kinds.el"
         }
       ],
-      "falsifier": "A reply of once/always/reject does not produce its documented decision, always does not persist into the rules, an invalid reply is accepted, or the policy answers contrary to the rules.",
+      "falsifier": "A reply of once/session/project/global/reject does not produce its documented decision, an answer is not written into the rules, an answer carries no scope or a scope that is not the scope of its rule, the legacy name `always' is not read as the answer `session', an invalid reply is accepted, or the policy answers contrary to the rules.",
       "register": "fact",
-      "control": "sed -i 's|(when (eq kind :always)|(when (eq kind :never)|' lib/yeah-approval.el",
+      "control": "sed -i 's/((\"always\" . \"session\"))/((\"always\" . \"global\"))/' lib/yeah-approval.el",
       "waiver": null
     },
     {
@@ -1380,13 +1384,17 @@
       "register": "fact",
       "control": "sed -i 's|(\"unfinished\"|(\"unfinished-disabled\"|' lib/yeah-ui.el",
       "waiver": null
-    },
-    {
+    },    {
       "id": "one-approval-surface",
-      "text": "The question of the permission is asked in one place: the shared approval view, which names the action, the resource it acts on, the arguments it would run with and the diff of the change; the attached and the service path both answer there.",
+      "text": "The question of the permission is asked in one place: the shared approval view, which names the action, the resource it acts on, the arguments it would run with and the diff of the change, and which offers the four scopes of an answer — once, session, project and global — and the refusal, each named by what it allows; the attached and the service path both answer there.",
       "scope": [
-        "lib/yeah-approval-ui.el", "lib/yeah-product.el",
-        "lib/yeah-service-ui.el", "tests/unit/test-yeah-interaction.el"
+        "lib/yeah-approval-ui.el",
+        "lib/yeah-approval.el",
+        "lib/yeah-product.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-service-ui.el",
+        "tests/unit/test-yeah-interaction.el",
+        "tests/checks/check-the-question-offers-the-scope.el"
       ],
       "source": null,
       "kind": "acceptance",
@@ -1399,7 +1407,7 @@
           "spec": "./scripts/dev ert tests/unit/test-yeah-interaction.el"
         }
       ],
-      "falsifier": "a path asks the permission somewhere else, or the view does not name what the person is asked about",
+      "falsifier": "A path asks the permission somewhere else, or the view does not name what the person is asked about, or the view does not offer the scopes it offers.",
       "register": "fact",
       "control": "sed -i 's|(yeah-approval-answer|(ignore|' lib/yeah-product.el",
       "waiver": null
@@ -3944,6 +3952,113 @@
       "falsifier": "An answer carries no scope, or a scope that is not one of the canonical scopes, or the rule the answer writes carries another scope than the answer, or the journal record of the decision carries no scope, or a scope without a carrier is written into the rules of another path instead of being refused by name, or the dictionary of the answers or of the scopes is written in more than one place.",
       "register": "fact",
       "control": "sed -i 's/(or scope (plist-get decision :scope))/nil/' lib/yeah-approval.el",
+      "waiver": null
+    },
+    {
+      "id": "two-calls-on-one-resource-do-not-overlap",
+      "text": "A tool declares the resource it touches; two calls of the same tool on the same resource never overlap — the second call waits for the first — and a tool that declares no resource is not serialized by the lock of a resource.",
+      "scope": [
+        "lib/yeah-tools.el",
+        "lib/yeah-scheduler.el",
+        "lib/yeah-turn.el",
+        "tests/checks/check-two-calls-on-one-resource-do-not-overlap.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-two-calls-on-one-resource-do-not-overlap.el"
+        }
+      ],
+      "falsifier": "Two calls on one resource overlap, a call waits for a resource that no call holds, a tool that declares no resource is serialized anyway, or the lock is taken on another resource than the one the tool declared.",
+      "register": "fact",
+      "control": "sed -i \"s/:tool-resource (yeah-tools-resource spec)/:tool-resource nil/\" lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "a-tool-declares-its-own-limits",
+      "text": "A tool declares the limits it has: the field `:timeout` is the upper bound of the work one call of the tool may start, in seconds, and the field `:output-limit` is the upper bound of the output one call of the tool may hand to the model, in characters. The registry refuses a limit that is not a positive integer and refuses the timeout of a synchronous tool, both by name; a call that asks for a duration longer than the timeout its tool declares is refused by name; the bound of the output that applies is the smaller of the declared one and the global one (`yeah-result-output-limit`), so a declaration never raises the global limit, and the text that does not fit lies in a private artifact while the model reads the tail of it; a call that crossed the timeout of its tool is closed by a failure that names the bound, and the model reads that failure.",
+      "scope": [
+        "lib/yeah-tools.el",
+        "lib/yeah-result.el",
+        "lib/yeah-scheduler.el",
+        "lib/yeah-turn.el",
+        "lib/yeah-process.el",
+        "lib/yeah-files.el",
+        "lib/yeah-git.el",
+        "tests/checks/check-a-tool-declares-its-own-limits.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-tool-declares-its-own-limits.el"
+        }
+      ],
+      "falsifier": "The registry takes the declaration and drops it, or the turn builds the call without it, or the scheduler does not read the timeout: a tool that declares no limit and no global limit applies; a tool that declares a limit that is not a positive integer and is accepted; a synchronous tool that declares a timeout and is accepted; a call that asks for a duration longer than the timeout its tool declares and is not refused by name; a declaration that raises the global limit; the model reads more characters than the bound that applies, or the text that does not fit lies in no artifact; a call that crossed its timeout and was not closed by a failure that names the bound, or the model does not read that failure; or the control of the claim does not make the check fail by its own assertion.",
+      "register": "fact",
+      "control": "sed -i 's/(min declared yeah-result-output-limit)/yeah-result-output-limit/' lib/yeah-tools.el",
+      "waiver": null
+    },
+    {
+      "id": "a-scope-decides-where-the-rule-lives",
+      "text": "The scope of a rule says where the rule lives: every scope of the dictionary has exactly one carrier, the rule of a scope is written into the carrier of that scope and into no other, a rule that is saved in a file is read back when the permission is computed, and a scope that holds no rule is refused by name.",
+      "scope": [
+        "lib/yeah-perm.el",
+        "lib/yeah-approval.el",
+        "lib/yeah-run.el",
+        "lib/yeah-acp.el",
+        "tests/checks/check-a-scope-decides-where-the-rule-lives.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-scope-decides-where-the-rule-lives.el"
+        }
+      ],
+      "falsifier": "A scope has no carrier or two carriers, a rule is written into the carrier of another scope, a rule that is saved in a file is never read back, or a scope that holds no rule is accepted.",
+      "register": "fact",
+      "control": "sed -i 's|(let ((file (funcall (nth 3 entry))))|(let ((file (yeah-perm--user-rules-file)))|' lib/yeah-perm.el",
+      "waiver": null
+    },
+    {
+      "id": "the-question-offers-the-scope",
+      "text": "The question of the permission offers the four scopes of the answer — once, session, project and global — and the refusal; the client answers with one of them; the answer that comes back over the wire carries the scope it named, and the rule the answer writes carries the scope of the carrier that holds it.",
+      "scope": [
+        "lib/yeah-approval.el",
+        "lib/yeah-approval-ui.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-service-ui.el",
+        "schemas/acp-v1.json",
+        "tests/checks/check-the-question-offers-the-scope.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-question-offers-the-scope.el"
+        }
+      ],
+      "falsifier": "The question offers no scope, or a scope that is not one of the four; the wire carries a name that names no scope; the legacy name `always' is not read as an answer; the scope of the answer does not reach the rule the answer writes; or the schema of the wire does not declare the method of the question.",
+      "register": "fact",
+      "control": "sed -i 's/(:project :project)/(:project :global)/' lib/yeah-approval.el",
       "waiver": null
     }
   ]

@@ -323,18 +323,23 @@ alist must be symbols."
   "Return the specification of the remote TOOL of CLIENT.
 The name of the tool is `mcp--<server>--<tool>'; PREFIX replaces the
 server part.  The tool is asynchronous: the answer of the server comes
-later, and the run waits for it."
+later, and the run waits for it.
+
+The tool declares the server it touches as its resource: a remote tool
+says nothing about what it touches, and the server is the one thing the
+kernel knows about it.  Two calls of one server do not run at the same
+time, and the calls of two servers do."
   (let* ((remote (plist-get tool :name))
          (schema (plist-get tool :inputSchema))
-         (local (format "mcp--%s--%s"
-                        (or prefix (yeah-mcp-client-name client))
-                        remote)))
+         (server (or prefix (yeah-mcp-client-name client) "unknown"))
+         (local (format "mcp--%s--%s" server remote)))
     (list :name local
           :description (format "Remote MCP tool %s: %s"
                                remote (or (plist-get tool :description) ""))
           :input (yeah-mcp-client--input schema)
           :async t
           :concurrency 'shared
+          :resource (format "mcp:%s" server)
           :handler
           (lambda (args done)
             (yeah-mcp-client-call-tool

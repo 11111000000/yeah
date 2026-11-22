@@ -83,7 +83,10 @@ registers does not appear in another."
 PLACEMENT names where the run lives.  SESSION is the session it writes
 into.  TRANSPORT reaches the model.  ANSWERER answers the requests the
 rules do not decide.  RULES are the permission rules of the run; when
-they are nil the run starts from a copy of the persistent rules.
+they are nil the run starts from a copy of the persistent rules of the
+process.  The rules of the carriers that keep their rules in a file are
+not copied: they are read when the permission is computed, and a rule
+that was saved there outlives the run that started.
 BUDGET, DEADLINE, INPUT, STEER-SOURCE, ON-DONE and MAX-NUDGES are the
 rest of what the run needs."
   (let ((context (yeah-run-context--make
@@ -92,7 +95,7 @@ rest of what the run needs."
                   :session session
                   :transport transport
                   :answerer answerer
-                  :rules (or rules (copy-sequence yeah-perm--rules))
+                  :rules (or rules (copy-sequence (yeah-perm-rules-list)))
                   :budget budget
                   :deadline deadline
                   :input input
@@ -122,13 +125,18 @@ own reach for the length of the run."
   "Ask PERSON about REQUEST and remember an `always' answer in CONTEXT.
 The rules of the context are the run's own: a remembered decision stays
 in this run and in no other.  The answer carries the scope of the run,
-and the rule it writes carries the same scope.  An answer that names a
-scope the run does not hold is refused by name."
+and the rule it writes carries the same scope: the rule is written
+into the carrier of its scope, which is the run itself.  An answer that
+names a scope the run does not hold is refused by name."
   (let* ((decision (yeah-approval-scope-decision
                     (funcall person request) yeah-run--carrier))
          (rule (yeah-approval-remember-rule request decision)))
     (when rule
-      (yeah-run-context-add-rule context rule))
+      (yeah-perm-rule-store
+       rule yeah-run--carrier
+       (lambda (stored)
+         (yeah-run-context-add-rule context stored)
+         stored)))
     decision))
 
 (defun yeah-run-context-policy (context)
@@ -146,7 +154,8 @@ context, so the same question is not asked twice."
        (let* ((action (plist-get request :action))
               (resource (plist-get request :resource))
               (effect (yeah-perm-effect action resource
-                                        (yeah-run-context-rules context))))
+                                     (append (yeah-perm-file-rules)
+                                             (yeah-run-context-rules context)))))
          (pcase effect
            ('allow
             (list :effect :allow :reply :once))

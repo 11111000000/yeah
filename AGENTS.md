@@ -1826,7 +1826,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   applied to them -- the other five names the records hold are silent already, because the guard asks
   git about the ignored names before it asks whether a document is a record -- and they are named and
   not repaired (the decision on the rule of the file for the records is the owner's).  The cost of the reading is 702 ms -> 744 ms (a measurement of 2026-11-21 on a
-  tree of 108 records; the records are 110 today, 667 KB, and they are read whole).  **The claim of the documentation was narrower than its measurement** -- the scope did not
+  tree of 108 records; the records are 114 today, 698 KB, and they are read whole).  **The claim of the documentation was narrower than its measurement** -- the scope did not
   hold `waves/' -- and the parent amended it on 2026-11-21: the text and the falsifier say that the
   guard reads the records and that the rule of the file does not apply to them, and the scope holds
   the directory of the records.  **F47 stays open in its part `a'**: the rule "the stat file of a
@@ -1858,6 +1858,99 @@ work item. Never resolve it by silently making documentation more optimistic.
   no scope at all; the socket of the life of the service on the disk says when that instance
   started, and the plugin of the orchestrator keeps a cache of the service that `paseo reload`
   does not drop (docs/PLAN.md §16.102).
+
+- The package of the waves B2, B3, C2 and C3 (2026-11-22): the contract of a tool and the areas
+  of the approval.  **B2** -- the resource that a tool declares and the lock that resource holds:
+  the field `:resource' of the declaration is an optional non-empty string, the key in the path of
+  the call is `:tool-resource' (the word `resource' in the domain of the permissions already means
+  the resource *of the call*), the lock is taken on the declared resource itself and is held from
+  the start of the call until it settles, a tool that declares no resource has no lock at all (a
+  lock of nothing is a lock of everything), and the lock does not replace `:concurrency'.
+  **B3** -- the timeout and the output limit that a tool declares: `:timeout' in seconds and
+  `:output-limit' in characters, the bound that applies is the *smaller* of the declared one and
+  the global one (`yeah-result-output-limit', 32768), a declaration never raises the global
+  ceiling, a parameter-schema with the flag `:duration t' may not ask for more than the declared
+  bound (the refusal names it), a synchronous tool may not declare a timeout (the kernel can only
+  wait for an asynchronous call), and a call that crossed the timeout is closed by a failure that
+  names the bound.  **C2** -- the carrier of every scope: the table `yeah-perm--carriers' is the
+  only place that is rewritten, and the scope says where the rule lives -- `once' keeps no rule,
+  `run' is the memory of the run, `session' is the memory of the ACP session, `project' is
+  `<project-root>/.yeah/rules.json', `global' is `$XDG_CONFIG_HOME/yeah/rules.json' (or
+  `~/.config/yeah/rules.json').  **C3** -- the scope of the answer in the interface and in ACP:
+  the dictionary of the answers is the dictionary of the scopes (`(:once :session :project :global
+  :reject)'), the legacy name `always' is an alias of the answer `session' (and not of `global'),
+  the question over the wire carries the scope in the identifiers of the options
+  (`allow-once', `allow-session', `allow-project', `allow-global', `reject-once'), and the scope
+  of an answer is resolved into the scope of the carrier of the path that asks.
+  **The gate of the package was red** (unit `yeah-gate-b2-b3-c2-c3', 08:13:31 UTC, 20 minutes,
+  exit 1): 173 marks of `mathc:`, of which **2 were red** -- the picture of the layers named a
+  line that the wave had moved (`lib/yeah-product.el:258`, repaired in `ca71ae7`) and the check
+  of the killed gate run failed with a refusal that does not name its subject.  The second gate
+  (unit `yeah-gate-b2-b3-c2-c3-b`, 08:37:01-08:55:22 UTC, tree `ca71ae7`) was **green**: the same
+  173 marks, all of them bites, **no red line**.  **The count that adds up:** `spec.json` holds 172
+  claims and 174 requirements, of which 173 are `verifier' and one is `review' (a human court),
+  and both gates gave exactly 173 marks.
+  **The live run found a defect that the gate did not see.**  A call that waits for the person is
+  dispatched *after* the answer, and that moment lies outside the handler of the scheduler: the
+  refusal of the registry escaped the turn, the call stayed unsettled, and only the timer of the
+  scheduler closed it -- with a failure that named the *wrong* reason ("the call of \"bash\"
+  exceeded its timeout of 120 seconds" instead of the refusal by name).  The model of the live run
+  of 2026-11-22 asked the same impossible call five times and burned ten minutes on it; the
+  promise of B3 ("the refusal names the tool and the bound") was not kept on that path, and the
+  check of the limits measured only the path where no person is asked.  **The repair** (`45b5606`):
+  the dispatch of a deferred call is guarded (`yeah-turn--dispatch-guarded'), and the refusal of
+  the registry settles the call with the same refusal by name that the path without a person
+  gives; the check of the limits now proves the ninth thing (a deferred call that does not fit the
+  declaration is refused by name), and the control of that probe is measured: with the guard
+  taken away the check falls with the model having read nothing.  **The live run after the repair**
+  (10:30:53-10:32:13 UTC, the journal `session-1-f4a370') measured the refusal by name on the
+  real route -- it reached the model in **13 seconds**, the model corrected the call, and the run
+  finished through `finish`.
+  **The discriminator passed the package with eight findings** (F1-F8; the report
+  `/tmp/discriminator-b2-b3-c2-c3-report.md'), and every finding was repaired and measured (the
+  report of the writer `/tmp/fix-b2-b3-c2-c3-report.md', the branch `fix/discriminator-b2-b3-c2-c3',
+  merged into the package in `43a68e9').  **F1** -- the subject "nothing was left behind" scanned
+  the whole machine and named a foreign process; it is now the processes of that run (the
+  environment of the run and the pids it knows) and they get a bounded moment before they are
+  called leftovers.  **F5** -- the check of the dictionary of the answers died with the code 255
+  in another module and printed none of its own refusals; it refuses now and names its subject.
+  **F7** -- the atomicity of the write of the rules was promised by the wave C2 and measured by
+  nobody; it is measured now, by a reader in another process that writes the file 500 times
+  (the control breaks the mechanism and the reader sees 200-470 torn reads; the honest tree shows
+  none in ~1450 reads).  **F8** -- the gate did not look at the code of the step of the map, so
+  "the gate answered 0" did not prove that the map was written; it does now, and a map that could
+  not be written is an *unknown* (3), not a pass.
+  **Two items are left open.**  The hypothesis about `yeah-proc-alive-p`
+  (`lib/yeah-proc.el:80-98') -- a process in the state `T' or `D' is alive and the function calls
+  it dead -- was **not measured** (1856 polls of the live map showed only `S', `R' and `nil'), so
+  it is an open question and the code was not touched.  And the helper `yeah-check--places' of
+  `tests/checks/check-a-scope-decides-where-the-rule-lives.el' puts its refusals into a lexical
+  list, so the branch "the file cannot be read" of that check **stays silent**; the repair of F7
+  returns its refusals instead, and the old branch was left alone -- a fix of a foreign check
+  without a measurement is a risk.
+- The repair of the refusal was verified by an **independent verifier** (2026-11-22, the role
+  `verifier', the report `/tmp/verifier-fix2-report.md'): **PASS with three findings, all of low
+  severity, and no defect of the code.**  All ten questions were measured: the defect was real
+  (the refusal by name did not arrive, the model read the message of the timer after 120.07
+  seconds, and **on the route of ACP an unhandled `user-error' killed the Emacs process** --
+  exit 255); the repair holds (the check is green 4 times out of 4, the model reads the refusal
+  by name in 0.08 seconds); the probe discriminates; the registered control of the claim still
+  bites; the forms of the refusal on the two paths are **bytewise the same**; the guard does not
+  catch too much (an error of the handler gives the same text on both paths); the call settles
+  once (one `tool-end', the timer cancelled, the resource released, the batch advanced); there
+  is no other uncovered path; the probe is hermetic; and the promise of the claim needs no
+  repair.  **F1** -- the ninth probe did not check that the path was really the deferred one:
+  with the guard of the dispatch taken away **and** the marking of the answerer taken away as
+  well, the check was **green** -- the probe had silently become a copy of the seventh.
+  **The repair** (`09a1371`): the probe now names its subject and refuses unless the journal of
+  the run holds **two** decisions about the permission (the deferral of the question and the
+  answer of the person); the path where the rules decide alone writes one.  **F2** -- the second
+  assertion of the probe could not fire (the window of the probe is two seconds, the bound of
+  the timer is a hundred and twenty) and was removed: every state in which the model reads the
+  message of the timer fails the first assertion as well.  **F3** -- the guard of the ninth probe
+  is not registered in `spec.json': the method holds one control per claim and the promise has
+  two subjects, so the gap is recorded and not papered over -- **the price is named**: a change
+  of that guard would not be caught by the map.
 
 ## The commands
 

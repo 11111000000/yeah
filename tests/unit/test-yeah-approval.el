@@ -6,8 +6,8 @@
 ;;
 ;; The kernel asks; something answers.  The tests below ask what the
 ;; answerers promise: the policy answers from the rules, a person answers
-;; once, always or reject, and a profile refuses what it forbids before
-;; either of them is asked.
+;; once, for the session, for the project, for the user or reject, and a
+;; profile refuses what it forbids before either of them is asked.
 ;;
 ;; The answerer may also answer later.  A question asked over a wire, or
 ;; to a person who is not at the keyboard yet, is answered when the answer

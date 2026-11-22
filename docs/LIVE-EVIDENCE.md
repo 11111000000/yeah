@@ -3037,6 +3037,225 @@ package beyond what those checks measure, and it says nothing about the live
 route — the live run of the package is the section above, and it was made on
 the tree of the artifacts, before the two repairs.
 
+## The live run of the package of the waves B2, B3, C2 and C3 (2026-11-22, 08:11 UTC)
+
+**What was run.**  One live run through the orchestrator Paseo on the tree of the
+package — the commit `ed84210` (the record of the wave C3).  The prompt asked for
+one word and the tool `finish`:
+
+```
+Ответь только словом OK и вызови finish. Больше ничего не делай.
+```
+
+The model was `MiniMax-M3.1-Flash`, the mode was `build`, and the journal of the
+session is `session-1-2b20f6`.  The run began at 08:11:53 UTC and came to an end
+at 08:12:21 UTC — twenty-eight seconds.  The tree of the repository was not
+changed by the run (`git status` is empty, HEAD is `ed84210`).
+
+**The service measured the tree of the package.**  The service was restarted by
+hand before the run, because the plugin of the orchestrator keeps the service in
+a cache (`plugin/yeah-provider/index.server.ts`) and `paseo reload` does not drop
+that cache.  The unit `yeah-acp-service` started at **08:11:19 UTC**, the socket
+`/tmp/yeah-1001/yeah-service-paseo.sock` has the time of its creation
+**08:11:20 UTC**, and the last commit of the tree before the run is `ed84210` at
+**08:10:06 UTC** (the record of the wave C3).  The service therefore held the tree
+of the package and not an older one — the rule of the run that measured an old
+tree (§16.102).
+
+**The question of the permission carried the five answers of the wave C3.**  The
+question that came to the client over the wire named the tool and offered the
+options `allow-once`, `allow-session`, `allow-project`, `allow-global` and
+`reject-once`, with the labels «Allow once», «Allow for this session», «Allow
+for this project», «Allow always» and «Reject».  Two questions were asked (the
+tool `todo_list` and the tool `bash`); the client answered both, and the answer
+that came back carried the scope it named.
+
+**What the journal holds.**
+
+| Record | What it says |
+|---|---|
+| `header` | `session-1-2b20f6`, `2026-11-22T08:11:53+0000` |
+| `session-model` | `MiniMax-M3.1-Flash` |
+| `session-mode` | `build` |
+| `input-queued` / `input-taken` / `user-message` | the prompt of the run, carried through the wire of the orchestrator |
+| `usage` | `input: 12950, output: 31` |
+| `assistant-message` | «I'll check my task list first, then respond as instructed.» |
+| `nudge` / `user-message` | the nudge of the run; the state of the work in it |
+| `tool-request` | `todo_list`, args `nil` |
+| `permission-request` | `todo_list` on `nil` |
+| `permission-decision` | `allow`, **reply `:once`, scope `once`** |
+| `tool-end` | `todo_list`, `ok: true`, payload «The task list is empty.» |
+| `tool-request` | `bash`, args `("pwd; ls -la" 15 "." 5)` — the named arguments are the command, the timeout, the directory and the idle limit |
+| `permission-request` | `bash` on `pwd; ls -la` |
+| `permission-decision` | `allow`, **reply `:session`, scope `session`** |
+| `tool-end` | `bash`, `ok: true`, payload `/home/az/Projects/yeah` and the listing of the directory |
+| `tool-request` / `tool-end` | `read` of `README.md`, `ok: true` |
+| `tool-request` | `finish`, named argument `{"summary": "OK"}` |
+| `permission-decision` | `allow` — **without a reply and without a scope** |
+| `tool-end` | `finish`, `ok: true`, payload `OK` |
+| `finish` | the summary of the run, `OK` |
+
+**The scope of the answer is on the wire — this is the promise of the wave C3, measured live.**  The
+decision of the answer `once` carries the scope `once`, and the decision of the
+answer `session` carries the scope `session`.  Before the wave C3 the decision of
+an answer of a person carried a reply `always` and no scope at all, and the
+question over the wire offered two answers and a refusal.  The run shows the
+five answers of the dictionary of the scopes on the real route, with the scope
+that each answer names.
+
+**The rule of the answer `session` stayed in the memory of the session.**  The
+answer `session` was given on the ACP path, whose carrier is the memory of the
+session; after the run **no file of rules exists** — neither
+`~/.config/yeah/rules.json` nor `.yeah/rules.json` of the project.  This is the
+carrier of the wave C2 measured on the real route: the scope of an answer says
+where the rule lives, and the rule of the answer `session` on this path lives in
+the memory of the session and not on the disk of the person.
+
+**The decision without a reply is the rule of the kernel and not a defect.**  The
+tool `finish` asks nobody: the turn decides it before the answerer is called, and
+the decision carries no reply, no reason and no scope because there is no answer
+of a person to carry.  The run of the package of the waves 106 and 107 showed the
+same shape, and this run confirms it on the tree of this package.
+
+**What it proves.**
+
+* The tree of the package loads and works on the real route: the orchestrator
+  starts a session, the model answers, the tools are called, the permission of a
+  tool is decided by the kernel, the tools run and the run ends with the summary
+  of the model.
+* The wave C3 is on the road: the question over the wire carries the five
+  answers of the dictionary of the scopes, and the answer that comes back carries
+  the scope it named.
+* The wave C2 is on the road: the rule of the answer `session` landed in the
+  carrier of the path that asks and left no file on the disk of the person.
+
+**What it does not prove.**
+
+* It proves nothing about the promises of the package as a whole.  The claims of
+  the waves B2, B3, C2 and C3 are measured by their own checks and by their
+  controls; the run of the orchestrator is not one of them.  The gate of the
+  package is what covers the tree as a whole.
+* **The run asked a person three times and the person answered by hand.**  The
+  answers were `allow-once` (the tool `todo_list`) and `allow-session` (the tool
+  `bash`), and the decision of `read` was taken by the kernel itself, because a
+  read is a safe read.  The run shows the *route* of an answer; it does not show
+  what a person does with the five options in front of them.
+* The model did more than the prompt told it to do: it called `todo_list`, then
+  `bash`, then `read`, and answered «OK» before the `finish`.  The run says
+  nothing about the extra calls of the model.
+* It is one run, one prompt and one model, and the mode was `build`.  The run
+  says nothing about the profile `plan`, which denies the same tools instead of
+  asking.
+* The numbers of the usage are the ones the provider reported.
+
+
+## The live run that found the defect of the refusal (2026-11-22, 10:20 UTC)
+
+**What was run.**  One live run through the orchestrator Paseo on the tree of the
+package after the merge of the repairs of the discriminator — the commit
+`43a68e9` of 10:18:01 UTC.  The prompt asked for the list of the tasks, for
+`pwd` in `bash`, and then for `finish`:
+
+```
+Вызови инструмент todo_list, затем выполни bash с командой pwd, затем вызови finish с ответом OK. Больше ничего не делай.
+```
+
+The model was `MiniMax-M3.1-Flash`, the mode was `build`.  **The service measured
+the tree of the package:** the instance that served the run was started at
+**10:19:03 UTC**, the merge of the repairs is at 10:18:01 UTC, and the socket
+`/tmp/yeah-1001/yeah-service-paseo.sock` was created by that instance — the
+rule of the run that measured an old tree (§16.102) is kept.
+
+**The run hung, and it hung for a reason that the gate had not seen.**  The
+journal of the session is `session-2-181cb` (60 records), and it holds this:
+
+| Time (UTC) | Record | What it says |
+|---|---|---|
+| 10:20:50 | `header` | the session begins |
+| 10:20:54 | `tool-request` | `bash`, args `("pwd" 30 "." 10000)` — the command, the timeout of 30, the directory and **the idle limit of 10 000** |
+| 10:20:54 | `permission-request` / `permission-decision` | the question of the tool `bash` |
+| 10:21:16 | `permission-decision` | the person answered: **reply `:once`, scope `once`** |
+| 10:22:54 | `tool-end` | `bash`, `ok: false`, payload «Error: the call of "bash" exceeded its timeout of 120 seconds» |
+| 10:22:58 | `tool-request` | `bash`, args `("pwd" 30 "/" 10000)` — the same impossible call |
+| 10:24:58 | `tool-end` | the same payload |
+| 10:25:03 | `tool-request` | `bash`, args `("pwd" 60 "/tmp" 5000)` |
+| 10:27:03 | `tool-end` | the same payload |
+| 10:27:07 | `tool-request` | `bash`, args `("pwd" 20 "/home" 5000)` |
+| 10:29:07 | `tool-end` | the same payload |
+| 10:29:24 | `tool-end` | `git_status`, `ok: true` — the tree, with the two files of the repair still uncommitted |
+
+**The refusal by name never reached the model.**  The tool `bash` declares the
+timeout of **120** seconds, and the model asked for the idle of 10 000 — the
+refusal of the registry is the promise of the wave B3, and it names the tool and
+the bound.  The model read something else: «the call of "bash" exceeded its
+timeout of 120 seconds».  That message is the timer of the scheduler, and it
+arrived at **10:22:54** — 120 seconds after the request and **98 seconds after
+the person had already answered**.  The model asked again with the same
+arguments, four times, and every time it read the same message.  The run burned
+**eight minutes and thirty-nine seconds** (10:20:50 → 10:29:29) and ended
+without a `finish`: the instance of the service was stopped at 10:29:50.
+
+**The dropped call is the promise of the wave 30, and it held.**  The model asked
+for `todo_list` while `bash` was running; the journal holds `tool-dropped` with
+the reason «the same call is already running» — the repeated call was refused by
+name, and the refusal named its subject.
+
+**What it proves.**  The promise of the wave B3 — «a call that does not fit the
+declaration of the tool is refused by name» — was **not kept on the path where a
+person is asked**, and the model cannot learn from a refusal it never sees: it
+repeated the same impossible call five times.  **The gate did not see it**
+because the check of the limits measured the path where the rule of the
+permissions decides alone; the path where a person is asked was covered by
+nothing.
+
+**What it does not prove.**  It proves nothing about the promises of the package
+as a whole.  The claims of the waves B2, B3, C2 and C3 are measured by their own
+checks and by their controls; the run of the orchestrator is not one of them.
+
+## The live run after the repair (2026-11-22, 10:30 UTC)
+
+**What was run.**  The same prompt, on the tree that carries the repair of the
+defect above: the guard of the deferred dispatch
+(`lib/yeah-turn.el`, `yeah-turn--dispatch-guarded`) and the ninth probe of the
+check of the limits.  **The instance of the service was restarted by hand at
+10:29:51 UTC**, and the commit that carries the repair (`45b5606`) was made at
+**10:31:58 UTC** — after the run.  The run therefore measured the **working
+tree**, and not the commit; that the instance held the repaired code is proved
+by what the model read, and not by the name of a commit.
+
+**The refusal by name reached the model, and the model acted on it.**  The
+journal of the session is `session-1-f4a370` (40 records):
+
+| Time (UTC) | Record | What it says |
+|---|---|---|
+| 10:30:49 | `header` | the session begins |
+| 10:30:53 | `tool-request` | `bash`, args `("pwd" 30 "." 5000)` — the same impossible idle |
+| 10:31:04 | `permission-decision` | the person answered: **reply `:once`, scope `once`** |
+| 10:31:06 | `tool-end` | `bash`, `ok: false`, payload «Error: yeah-tools-call: "bash": the idle of 5000 seconds is more than the timeout of 120 seconds the tool declares» |
+| 10:31:06 | `tool-request` | `bash`, args `("pwd && ls -la" 20 "." 5000)` — the same idle, once more |
+| 10:31:54 | `tool-end` | the same refusal by name |
+| 10:31:57 | `tool-request` | `bash`, args `("pwd" 120 "." 10)` — **the model corrected the call**: the idle of 10 and the timeout of 120 |
+| 10:32:10 | `tool-end` | `bash`, `ok: true`, payload `/home/az/Projects/yeah` |
+| 10:32:13 | `tool-end` / `finish` | `finish`, `ok: true`, and the summary of the task |
+
+**The measure is the time.**  The refusal by name arrived at 10:31:06 —
+**13 seconds** after the request and **two seconds** after the answer of the
+person.  The run before it read the message of the timer of the scheduler 98
+seconds after the answer of the person; the two runs differ by the kernel and
+not by the model: the model is the same, the prompt is the same, and the model
+repeats the impossible call only while the kernel refuses it with the wrong
+reason.
+
+**What it proves.**  The repair holds on the real route: the refusal of the
+registry settles the deferred call with the same refusal by name that the path
+without a person gives, and the model **corrected the call instead of repeating
+it** — the run ended through `finish` at 10:32:13, twenty-four seconds after the
+session began.
+
+**What it does not prove.**  It proves nothing about the promises of the package
+as a whole — the claims are measured by their own checks and by their controls,
+and the gate of the package is what covers the tree as a whole.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
@@ -3201,3 +3420,18 @@ the tree of the artifacts, before the two repairs.
   life of the service on the disk says when that instance started; but nothing in
   the harness says it, and the plugin still starts the service once and keeps
   it.
+- A process in the state `T' (stopped by a signal) or `D' (uninterruptible
+  sleep) is alive, and `yeah-proc-alive-p` (`lib/yeah-proc.el:80-98`) calls it
+  dead: it holds a process dead when the letter of its state is anything but `S'
+  and `R'.  The hypothesis came from the discriminator of the package of the
+  waves B2, B3, C2 and C3 (2026-11-22) and was **not measured**: 1856 polls of
+  the live map showed only the states `S', `R' and nothing.  The code was not
+  touched, and the question is the owner's.
+- A branch of refusal that never fires is a check that cannot fail.  The helper
+  `yeah-check--places' of `tests/checks/check-a-scope-decides-where-the-rule-lives.el'
+  puts its refusals into the list it is given, and the list is lexical: the
+  refusals of the helper do not reach the caller, and the branch "the file
+  cannot be read" of that check stays silent.  It was reported by the writer of
+  the repairs of 2026-11-22 and was not repaired: a change of a foreign check
+  without a measurement is a risk.  The new helper of the repair returns its
+  refusals instead of putting them into a foreign list.

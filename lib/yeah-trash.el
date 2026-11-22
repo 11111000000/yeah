@@ -224,6 +224,7 @@ entry of the trash so that the path can be brought back."
               :description "Move a file or a directory into the trash.  Nothing is removed: the path can be brought back from the trash, and the result names the entry of the trash."
               :input (list (list :name "path" :type 'string))
               :risk "destroy"
+              :resource "file"
               :handler #'yeah-trash--delete)))
 
 (provide 'yeah-trash)
