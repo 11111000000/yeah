@@ -431,14 +431,30 @@ EOF
     # their place one by one: a render that fails leaves no half-written
     # picture behind.
     trap 'rm -rf "$tmp"' EXIT
+    # Every diagram of the tree of the pictures is drawn, in every directory
+    # of it: a picture in a subdirectory of `site/diagrams/' is a picture of
+    # the site too, and the tree of the sources keeps its shape in the tree
+    # of the pictures.  The skins of the themes are not pictures of the site,
+    # and they are skipped wherever they stand.
+    find site/diagrams -type f -name '*.puml' | LC_ALL=C sort >"$tmp/sources" || {
+      echo "scripts/dev diagrams: cannot read the tree of the sources" >&2
+      exit 2
+    }
     diagrams=0
     pictures=0
-    for src in site/diagrams/*.puml; do
+    index=0
+    while IFS= read -r src; do
       [ -f "$src" ] || continue
       name="$(basename "$src" .puml)"
       case "$name" in
         palette-*) continue ;;
       esac
+      # The name of a picture in the tree of the pictures is the path of its
+      # source without the root of the tree and without the extension: a
+      # picture in a subdirectory keeps the subdirectory in front of it.
+      stem="${src#site/diagrams/}"
+      stem="${stem%.puml}"
+      index=$((index + 1))
       if ! grep -q '^[[:space:]]*@startuml' "$src"; then
         echo "scripts/dev diagrams: $src has no @startuml line" >&2
         exit 2
@@ -451,24 +467,36 @@ EOF
         fi
         # The skin of a theme goes inside the diagram: a skinparam outside of
         # @startuml is an error of PlantUML.  The file that is rendered is
-        # named after the diagram and the theme, and PlantUML writes the
-        # picture after the name of that file.
-        wrapper="$tmp/$name-$theme.puml"
+        # named after the source and the theme, and PlantUML writes the
+        # picture after the name of that file.  The name of the file of the
+        # wrapper is the path of the source with the slashes of it replaced
+        # by dashes: two sources of the same name in two directories are two
+        # files and not one.
+        flat="$(printf '%s' "$stem" | tr '/' '-')"
+        wrapper="$tmp/$flat-$theme.puml"
         sed "/^[[:space:]]*@startuml/r $palette" "$src" >"$wrapper"
-        mkdir -p "$tmp/out"
-        if ! "$plantuml_bin" -tsvg -o "$tmp/out" "$wrapper" >"$tmp/log" 2>&1; then
+        # Every source is drawn in a directory of its own: the pictures of two
+        # sources do not lie on top of each other, and the search of the
+        # picture of a diagram that names itself sees the pictures of that
+        # source and of no other.
+        out="$tmp/out/$index-$theme"
+        mkdir -p "$out" || {
+          echo "scripts/dev diagrams: cannot make $out" >&2
+          exit 3
+        }
+        if ! "$plantuml_bin" -tsvg -o "$out" "$wrapper" >"$tmp/log" 2>&1; then
           echo "scripts/dev diagrams: plantuml failed on $name ($theme)" >&2
           cat "$tmp/log" >&2
           exit 1
         fi
-        picture="$tmp/out/$name-$theme.svg"
+        picture="$out/$flat-$theme.svg"
         if [ ! -s "$picture" ]; then
           # A diagram that names itself (`@startuml name') makes PlantUML
           # write the picture under the name of the diagram and not under
           # the name of the file.  The picture that was written is the
           # picture of the theme, and it is given the name of the theme.
           written=()
-          for candidate in "$tmp/out"/*.svg; do
+          for candidate in "$out"/*.svg; do
             [ -f "$candidate" ] || continue
             written+=("$candidate")
           done
@@ -485,11 +513,21 @@ EOF
           echo "scripts/dev diagrams: the picture of $name ($theme) is an error of PlantUML" >&2
           exit 1
         fi
-        mv "$picture" "$out_dir/$name-$theme.svg"
+        # The tree of the pictures keeps the shape of the tree of the sources.
+        target="$out_dir"
+        dir="${stem%/*}"
+        if [ "$dir" != "$stem" ]; then
+          target="$out_dir/$dir"
+          mkdir -p "$target" || {
+            echo "scripts/dev diagrams: cannot make $target" >&2
+            exit 3
+          }
+        fi
+        mv "$picture" "$target/$name-$theme.svg"
         pictures=$((pictures + 1))
       done
       diagrams=$((diagrams + 1))
-    done
+    done <"$tmp/sources"
     echo "diagrams: rendered $pictures picture(s) of $diagrams diagram(s) into $out_dir"
     ;;
 

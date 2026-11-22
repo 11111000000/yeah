@@ -27,10 +27,12 @@
 #      environment in which nothing resolves;
 #   2. the pipeline answers 3 when the instrument is not there at all;
 #   3. every diagram of the tree is drawn in both themes: two pictures for
-#      every diagram, and every picture comes from the whole of its own
-#      source — every state of the source and every arrow of it is in the
-#      picture, and a picture drawn from a part of a source is not a picture
-#      of that source;
+#      every diagram — a diagram in a subdirectory of the tree of the
+#      sources is a diagram of the tree, and the tree of the pictures keeps
+#      the shape of the tree of the sources — and every picture comes from
+#      the whole of its own source — every state of the source and every
+#      arrow of it is in the picture, and a picture drawn from a part of a
+#      source is not a picture of that source;
 #   4. the pictures come from the skins of the site, and the colours of the
 #      pictures are the tokens of the site — read from site/styles.css, and
 #      not written here;
@@ -150,7 +152,7 @@ system_tool() {
 }
 
 mkdir -p "$shim" || blocked "cannot make the tree of the check"
-for tool in bash dirname basename mktemp mkdir sed grep cat mv rm; do
+for tool in bash dirname basename mktemp mkdir sed grep cat mv rm find sort tr; do
   tool_path="$(system_tool "$tool" || true)"
   if [ -n "$tool_path" ]; then
     ln -sf "$tool_path" "$shim/$tool" || blocked "cannot make the tree of the check"
@@ -705,15 +707,20 @@ PUML
 # the sources, so it says two times the number of the diagrams without
 # saying the number.  The diagram of the state machine is in that tree
 # after the run: the pipeline writes it out of the code before it draws
-# anything.
+# anything.  A diagram in a subdirectory of the tree of the sources is a
+# diagram of the tree, and its pictures keep the subdirectory in front of
+# their name: the tree of the pictures keeps the shape of the tree of the
+# sources.
 expected_pictures_of() {
-  local dir="$1" src name
-  for src in "$dir"/site/diagrams/*.puml; do
+  local dir="$1" src base name rel
+  find "$dir/site/diagrams" -type f -name '*.puml' | LC_ALL=C sort | while IFS= read -r src; do
     [ -f "$src" ] || continue
-    name="$(basename "$src" .puml)"
-    case "$name" in
+    base="$(basename "$src" .puml)"
+    case "$base" in
       palette-*) continue ;;
     esac
+    rel="${src#$dir/site/diagrams/}"
+    name="${rel%.puml}"
     printf '%s-dark.svg\n%s-light.svg\n' "$name" "$name"
   done | LC_ALL=C sort | tr '\n' ' '
 }
@@ -728,7 +735,7 @@ assert_chain_pictures() {
     return
   fi
   expected="$(expected_pictures_of "$dir")"
-  pictures="$(cd "$dir/site/assets/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+  pictures="$(cd "$dir/site/assets/diagrams" && find . -type f -name '*.svg' | sed 's|^\./||' | LC_ALL=C sort | tr '\n' ' ')"
   if [ "$pictures" != "$expected" ]; then
     fail "the step $step of the chain of the search drew [$pictures] and not the two pictures of every diagram of the tree: $expected"
   fi
@@ -1071,6 +1078,19 @@ beta --> beta2 : tick
 @enduml
 PUML
 
+# A diagram in a subdirectory of the tree of the sources: a diagram of the
+# tree is a diagram in every directory of it, and the tree of the pictures
+# keeps the shape of the tree of the sources.  The label of the diagram is in
+# no other diagram, as the labels of the others are.
+mkdir -p "$main_dir/site/diagrams/nested" || blocked "cannot make the tree of the check"
+cat >"$main_dir/site/diagrams/nested/gamma.puml" <<'PUML'
+@startuml
+state "label-of-gamma-only" as gamma
+state "second-of-gamma" as gamma2
+gamma --> gamma2 : tick
+@enduml
+PUML
+
 # The label of a diagram: the text of the first state of the diagram.  A
 # state of the diagram of the state machine carries its name as it is
 # (`state idle'), and not in quotes.
@@ -1101,7 +1121,7 @@ picture_texts() {
     | grep -v '^[[:space:]]*$'
 }
 
-sources_before="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+sources_before="$(cd "$main_dir/site/diagrams" && find . -type f | LC_ALL=C sort | tr '\n' ' ')"
 
 run_pipeline "$main_dir" "$tmp/main.log" \
   "PLANTUML=$plantuml_bin" \
@@ -1116,8 +1136,8 @@ fi
 # The tree of the sources keeps the sources of the fixture and the diagram
 # that the pipeline wrote out of the code, and nothing else: the pipeline
 # must not leave a file of its own next to them.
-sources_after="$(cd "$main_dir/site/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
-expected_sources="$(printf '%s\n' $sources_before state-machine.puml | LC_ALL=C sort | tr '\n' ' ')"
+sources_after="$(cd "$main_dir/site/diagrams" && find . -type f | LC_ALL=C sort | tr '\n' ' ')"
+expected_sources="$(printf '%s\n' $sources_before ./state-machine.puml | LC_ALL=C sort | tr '\n' ' ')"
 if [ "$sources_after" != "$expected_sources" ]; then
   fail "the tree of the sources holds [$sources_after] and not [$expected_sources]"
 fi
@@ -1134,12 +1154,18 @@ expected_file="$tmp/expected-pictures"
 : >"$labels_file"
 : >"$all_labels_file"
 : >"$expected_file"
-for src in "$main_dir"/site/diagrams/*.puml; do
+find "$main_dir/site/diagrams" -type f -name '*.puml' | LC_ALL=C sort >"$tmp/main-sources"
+while IFS= read -r src; do
   [ -f "$src" ] || continue
-  name="$(basename "$src" .puml)"
-  case "$name" in
+  base="$(basename "$src" .puml)"
+  case "$base" in
     palette-*) continue ;;
   esac
+  # The name of a diagram of the tree is the path of its source without the
+  # root of the tree and without the extension: the picture of a diagram in a
+  # subdirectory keeps the subdirectory in front of its name.
+  name="${src#$main_dir/site/diagrams/}"
+  name="${name%.puml}"
   label="$(diagram_label "$src")"
   if [ -z "$label" ]; then
     fail "the diagram $name carries no label: the picture of it cannot be told from the picture of another diagram"
@@ -1154,13 +1180,13 @@ for src in "$main_dir"/site/diagrams/*.puml; do
     printf '%s %s\n' "$name" "$one_label" >>"$all_labels_file"
   done
   printf '%s-dark.svg\n%s-light.svg\n' "$name" "$name" >>"$expected_file"
-done
+done <"$tmp/main-sources"
 expected_pictures="$(LC_ALL=C sort "$expected_file" | tr '\n' ' ')"
 
 if [ ! -d "$main_dir/site/assets/diagrams" ]; then
   fail "the pipeline wrote no tree of pictures: site/assets/diagrams does not exist"
 else
-  pictures="$(cd "$main_dir/site/assets/diagrams" && LC_ALL=C ls -A | LC_ALL=C sort | tr '\n' ' ')"
+  pictures="$(cd "$main_dir/site/assets/diagrams" && find . -type f -name '*.svg' | sed 's|^\./||' | LC_ALL=C sort | tr '\n' ' ')"
   if [ "$pictures" != "$expected_pictures" ]; then
     fail "the pipeline drew [$pictures] and not two pictures for every diagram: $expected_pictures"
   fi
