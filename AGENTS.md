@@ -1982,6 +1982,25 @@ work item. Never resolve it by silently making documentation more optimistic.
   placing.  Seven claims are registered (179 in `spec.json'), and every one of them has a control
   that bites.  The pictures are **not on the site yet**: the insertion is the wave D3 and the check
   that the picture of the site is current is the wave D4 (docs/PLAN.md §16.110).
+- The package of the waves `wave-d2b` to `wave-d2h` was **green at the gate and false in six of
+  its promises** (2026-11-22).  The gate proved that the checks of the package did not fail; the
+  **discriminator** -- an agent whose task is to break the promises -- found **six high findings**:
+  the seven steps of the turn were not measured (any captions passed), the six capabilities of the
+  Emacs layer were not measured at all, the words `service' and `socket' of the picture of the
+  placements were found in the **names of files** and not in the picture, the demonstration of the
+  fixed point could be cut out and the picture stayed green, the pattern of the name of a file in
+  the reader **never matched** (in an Emacs regexp a `(' without a backslash is a literal
+  character, and a group is `\(...\)' or `\(?:...\)'), and the rule of the code packages that a
+  module is named in one package and not in two was **dead code** (`delete-dups' before `cl-count'
+  always counts one).  **A green gate is not a measured promise**: the gate runs the checks, and a
+  check that measures half of a promise is green on a broken picture.  The repairs are the reader
+  (the rule of the word lives in one place, and the pattern of the name of a file matches), the
+  pictures (the seven steps are seven blocks, the capabilities and the three hosts are titles, the
+  demonstration is the last block), the checks (the packages are counted and not the names, the
+  ladder of the levels is the order of the blocks, the rule of the reference lives in the reader),
+  and the claims (the falsifiers name the ways to break them, and the records of the waves repeat
+  them word for word).  **The lesson is written down** (`ELISP_BEST_PRACTICES.md' §11.18): a dead
+  pattern is an invisible rule, and an invisible rule is a promise that nobody keeps.
 
 ## The commands
 
