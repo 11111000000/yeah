@@ -107,14 +107,27 @@ runs without the product layer stands in the directory of the process."
       (yeah-product-project-root)
     (file-truename default-directory)))
 
+(defvar yeah-perm-config-home nil
+  "The directory that holds the configuration of the user, when it is not the default one.
+The default directory is the one of `XDG_CONFIG_HOME', and the one of the
+home directory when the variable of the environment is not set.  A check
+that must not touch the machine of the person binds this to a directory of
+its own: the rules of the check live there and not in the file of the
+user.")
+
 (defun yeah-perm--config-home ()
   "Return the directory that holds the configuration of the user.
-The directory is the one of `XDG_CONFIG_HOME', and the one of the home
-directory when the variable is not set."
-  (let ((xdg (getenv "XDG_CONFIG_HOME")))
-    (if (and xdg (not (string= xdg "")))
-        (expand-file-name xdg)
-      (expand-file-name ".config" (getenv "HOME")))))
+The directory is the one of `yeah-perm-config-home' when that variable is
+set, and the one of `XDG_CONFIG_HOME' otherwise -- the one of the home
+directory when the variable of the environment is not set either."
+  (cond
+   (yeah-perm-config-home
+    (expand-file-name yeah-perm-config-home))
+   ((let ((xdg (getenv "XDG_CONFIG_HOME")))
+      (and xdg (not (string= xdg ""))))
+    (expand-file-name (getenv "XDG_CONFIG_HOME")))
+   (t
+    (expand-file-name ".config" (getenv "HOME")))))
 
 (defun yeah-perm--project-rules-file ()
   "Return the file that holds the rules of the project.

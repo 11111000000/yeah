@@ -255,7 +255,16 @@ the scan goes on."
                         (push (format "the file of the user is %s without XDG_CONFIG_HOME"
                                       (yeah-perm--user-rules-file))
                               failures)))
-                  (setenv "XDG_CONFIG_HOME" saved))))
+                  (setenv "XDG_CONFIG_HOME" saved)))
+              ;; a check that must not touch the machine of the person moves
+              ;; the file of the user out of the way with one binding
+              (let ((yeah-perm-config-home (expand-file-name "elsewhere" config)))
+                (unless (equal (expand-file-name "yeah/rules.json"
+                                                 (expand-file-name "elsewhere" config))
+                               (yeah-perm--user-rules-file))
+                  (push (format "the file of the user is %s and does not follow yeah-perm-config-home"
+                                (yeah-perm--user-rules-file))
+                        failures))))
 
             ;; --- 4. the person writes into the file of the user -----------
             (let ((request (yeah-approval-request "edit" "/tmp/c2-human.el")))
