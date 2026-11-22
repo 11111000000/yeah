@@ -75,10 +75,6 @@
     "lib/yeah-session.el")
   "The modules the picture of the turn has to name.")
 
-(defconst yeah-check--answers
-  '("once" "session" "project" "global" "reject")
-  "The answers the person may give to a request for permission.")
-
 (defconst yeah-check--turn-steps
   '(("model" . ("model" "proposes" "call"))
     ("registry" . ("registry" "checks" "call"))
@@ -146,8 +142,7 @@ of this list.")
                         module)
                 yeah-check--failures)))
       ;; 4. the answers of the person are the words of the kernel.
-      (unless (cl-some (lambda (line) (yeah-diagram--names-all-p line yeah-check--answers))
-                       lines)
+      (unless (yeah-diagram--answers-p lines)
         (push "the picture of the turn has no line that names the answers of the person: once, session, project, global and reject"
               yeah-check--failures))
       ;; 5. the seven steps of the turn are in the picture and in the order

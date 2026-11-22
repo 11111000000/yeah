@@ -82,10 +82,6 @@
     "lib/yeah-approval-ui.el")
   "The modules the picture of the Emacs layer has to name.")
 
-(defconst yeah-check--answers
-  '("once" "session" "project" "global" "reject")
-  "The answers the person may give to a request for permission.")
-
 (defconst yeah-check--layer-capabilities
   '("BUFFERS" "INTROSPECT" "EDIT" "DIAGNOSE" "COMPOSE" "RECOVER")
   "The six capabilities of the Emacs layer.
@@ -161,8 +157,7 @@ matters: the word `ACP' is not the word `acp'."
           (push "the block of the bridge names no file of lib/yeah-bridge.el: the bridge is the only path to the live state of the editor's Emacs"
                 yeah-check--failures)))
       ;; 5. the answers of the person are the words of the kernel.
-      (unless (cl-some (lambda (line) (yeah-diagram--names-all-p line yeah-check--answers))
-                       lines)
+      (unless (yeah-diagram--answers-p lines)
         (push "the picture of the Emacs layer has no line that names the answers of the person: once, session, project, global and reject"
               yeah-check--failures))
       ;; 6. the six capabilities of the layer are named by a title.
