@@ -86,7 +86,8 @@ resource it acts on and the arguments it would run with."
 
 (ert-deftest yeah-approval-answer-returns-the-decision-of-the-person ()
   "The shared approval view answers the question: the person decides once,
-always or reject, and the decision is what the caller receives."
+session, project, global or reject, and the decision is what the caller
+receives."
   (let ((decide (lambda (reply)
                   (run-at-time 0.05 nil
                     (lambda ()

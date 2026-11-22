@@ -10,8 +10,8 @@
 ;; module shows the action, resource, arguments, and a read-only diff when
 ;; one can be computed.
 ;;
-;; The answer is one of the answers of the kernel: once, for the session,
-;; for the project, always, or reject.  The view names what every answer
+;; The answer is one of the answers of the kernel: `once', `session',
+;; `project', `global' or `reject'.  The view names what every answer
 ;; allows, so that the person reads the scope of the answer and not only
 ;; the word "allow".  The kernel decides what the answers mean: the scope
 ;; of the answer is the scope of the carrier of the path that asks, and

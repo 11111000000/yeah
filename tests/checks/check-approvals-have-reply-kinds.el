@@ -9,8 +9,9 @@
 
 ;;; Commentary:
 ;;
-;; A person answers a request for permission once, for the session, for the
-;; project, always or reject.  ONCE is for this call and is forgotten.
+;; A person answers a request for permission with one of the answers of the
+;; kernel: `once', `session', `project', `global' or `reject'.  ONCE is
+;; for this call and is forgotten.
 ;; SESSION is for the carrier of the path that asks: the rules of the run
 ;; of an attached run, the rules of the session of an ACP session, and the
 ;; file of the user in the plain path, which has no session of its own.
