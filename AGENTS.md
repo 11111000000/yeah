@@ -2056,6 +2056,43 @@ work item. Never resolve it by silently making documentation more optimistic.
   one.  **The lesson is the same as the one of L-C**: a repair that adds a rule can add a dead
   thing with it, and the count of the dead things is what tells.
 
+- The package of the waves D3, D4, E1, E2 and E3 (2026-11-22): the diagrams of the architecture
+  stand on the page of the site, and a picture that is out of date can no longer stand there
+  quietly.  **D3** -- the eight pictures of the plan are on the page in the places of
+  `docs/SITE-DIAGRAMS-PLAN.md` §10, each of them as a figure with a picture of the light theme and
+  a picture of the dark theme, a text that says what the picture is and a caption; the ASCII figure
+  of the architecture is gone from the page and from the stylesheet; the page is readable with
+  JavaScript disabled, the theme of the frame chooses the picture, and the stylesheet prints the
+  pictures.  The check of the page (`tests/checks/check-the-site-shows-the-diagrams.el`) was written
+  by the parent **against the brief and not against the result of the writer**, and the eyes of a
+  reader were measured separately, in a browser: both themes were seen, the widest picture fits the
+  column, and the page does not scroll sideways.  **D4** -- the check
+  `tests/checks/check-site-diagrams-current.sh` draws every diagram of the tree of
+  `site/diagrams/` again in both of its themes, writes the source of the diagram of the state
+  machine **out of the code of the kernel** (not out of the file of the repository), and compares
+  the picture of the render with the picture of the site.  The comparison is a comparison of
+  pictures and not of bytes: both go into one canonical form that drops the noise (the metadata of
+  the render, the order of the attributes, the whitespace) and keeps the content (the names of the
+  tags, their order, the colours, the texts, the geometry), and the check proves the boundary of
+  its own normalizer by numbers -- the noise must differ in no line, the colour, the text and the
+  element must differ.  The tree of the repository is never written: the sources are copied into a
+  temporary tree and the trap of the check removes it.  **E1** -- the decision №16 of
+  `docs/SITE-DESIGN.md`: PlantUML is the instrument of the author, the site has two themes, the
+  colour is never the only carrier of the sense, every picture carries a text and a caption, and
+  the ASCII figure is replaced by the picture.  **E2** -- `site/README.md` says that the pictures of
+  the site are diagrams and not ASCII, and names the tokens of the palette.  **E3** --
+  `docs/ARCHITECTURE.md` §5 and §8 are brought to the code of the waves A--C: the contract of a
+  tool names the fields that the code has (`:kind`, `:risk`, `:concurrency`, `:resource`, `:async`,
+  `:timeout`, `:output-limit`), the envelope of an event names the fields that the code writes, and
+  the security model names the scopes that the code knows (`once`, `session`, `project`, `global`,
+  `reject`) and the carrier of every scope -- **the document is normative, and a promise that the
+  code does not keep is named in it as a debt and not lowered to fit the code**.  **The decisions of
+  the parent (2026-11-22; a rule outside §17.2, the owner may cancel it)**: the check of the page
+  and the check of the pictures live in `tests/checks/` and are bound to their claims, because a
+  page without a check is a page that rots quietly; the source of the state machine is written out
+  of the code and not read from the file (the alternative is one line, and the owner may ask for
+  it); the verdict of the gate is written by the parent and not by the gate (docs/PLAN.md §16.114).
+
 ## The commands
 
 ```sh
