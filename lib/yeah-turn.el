@@ -376,7 +376,8 @@ SCOPE is the scope the answer named, or nil when it named none."
 Return (EFFECT DETAIL REPLY SCOPE): EFFECT is allow, deny or defer,
 DETAIL is the reason of the decision (the question that waits for the
 person when the effect is defer), REPLY is what the person answered
-(`:once' or `:always') and SCOPE the scope the answer named.
+(`:once', `:session', `:project', `:global' or `:reject') and SCOPE the scope
+the answer named.
 
 An answerer marked by `yeah-approval-async' answers later: the effect is
 defer and the detail is the id of the question that waits."

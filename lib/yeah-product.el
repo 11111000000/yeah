@@ -117,7 +117,8 @@ A session is resumed by its file, so a person can quit and come back."
 (defun yeah-product--human-answerer (request)
   "Answer REQUEST in the shared approval view.
 The view names the action, its target and the change it would make, and
-the person answers there: once, always for this resource, or reject.  A
+the person answers there: once, for the session, for the project, always for
+this resource, or reject.  A
 safe read needs no question at all."
   (let ((action (plist-get request :action)))
     (if (member action yeah-product--safe-tools)
