@@ -1,0 +1,29 @@
+{
+  "id": "wave-d2g",
+  "title": "the picture of the packages of the code names every module of the kernel, and the check knows every module that is not named",
+  "intent": "The sixth picture of the catch-up plan D2: the packages of the code (D8 of `docs/SITE-DIAGRAMS-PLAN.md' §8).  `lib/' is one directory and dozens of files that a reader has to know by heart, and the question of a person who reads the code -- \"where does this live?\" -- has no answer in the tree.  The picture puts the 68 modules of `lib/' into the nine packages of the plan (the journal and the projections, the control of a run, the adapter of the model, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, the placements and the plumbing): 66 are named in a package with the line of their definition, and the two that are not -- `lib/yeah-codes.el' and `lib/yeah-state-diagram.el' -- are named in a note with the reason why they are not in the picture.  A picture that drops a module without saying so is worse than no picture at all: the reader cannot tell a module that was dropped from a module that was never there.  The claim of the wave is new (`the-code-packages-diagram-names-every-module-of-the-kernel').",
+  "touches": [
+    "site/diagrams/code-packages.puml",
+    "site/assets/diagrams/code-packages-light.svg",
+    "site/assets/diagrams/code-packages-dark.svg",
+    "tests/checks/check-the-code-packages-diagram-names-every-module-of-the-kernel.el",
+    "tests/support/yeah-diagram-files.el",
+    "waves/wave-d2g.json",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-the-code-packages-diagram-names-every-module-of-the-kernel.el",
+    "./scripts/dev check tests/checks/check-the-layer-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "the-code-packages-diagram-names-every-module-of-the-kernel"
+  ],
+  "commitment": [],
+  "objection": "The picture is a map of the kernel as it is today.  (a) **The composition of the nine packages is the decision of the writer of the wave and not the decision of the plan**: the plan gives the nine names and not the composition, and the check measures the completeness of the map and not the rightness of the placing; a reader who does not like the placing has to move the modules and the check will say nothing.  (b) **The picture is wide**: 66 links in nine columns make it 3233 pixels wide, and the text of the picture will be small on a page of about 900 pixels; the page that carries it needs a way to scroll sideways or to open the file whole, and that is the work of the wave D3.  (c) **The check is bound to the tree**: any new module of `lib/` that the map does not name falls the check, and a wave that adds a module must fix the map as well.  (d) **The picture is not on the site**: that is the wave D3.  (e) **The contradiction with §8 of `docs/SITE-DIAGRAMS-PLAN.md'` is named and not resolved by this wave**: the brief of the parent asks for every module and the plan says that a coarsened version goes to the site.",
+  "refuted_by": "the picture has a package that is not one of the nine, or it is missing one of the nine, it names a file, a line or a definition that is not there, it drops a module of `lib/' silently, it names a module in two packages, the note names a module that is not there, the note names a module without a reason, the note names a module that a package names as well, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The decisions of the parent (2026-11-22; a rule outside §17.2, the owner may cancel it): the name of the picture is `code-packages'; the picture names every module of `lib/' or excludes it with a reason, because a map that drops a module silently is worse than no map; the names of the nine packages are the names of the plan and not a list of the writer's own; the note of the modules that the picture does not name is part of the contract of the picture.  The measurements of the writer: the check of the picture is green; four controls bite -- the block of the package `model adapter' removed (the check refuses with the number of packages and with the three modules that fell out), the reference of `lib/yeah-todo.el' removed (the check refuses with the name of the module), the module named in the note as well as in a package (the check refuses, because a module that a package names is not a module the picture does not name), and the tree without `lib/' refused with the code 2.  **The measurement of the parent**: the control of the claim is `sed -i 's|lib/yeah-todo.el:46||' site/diagrams/code-packages.puml' and it bites (exit 1) with the message \"the module lib/yeah-todo.el is neither named by a package of the picture nor listed in the note of the modules the picture does not name\"; the form of the control that the writer named (`\\nlib/yeah-todo.el:46') does not apply to the file, because the `\\n' of the title is two characters and not a newline -- a control that does not apply is not a control, and the parent measured the form that does."
+}

@@ -1952,6 +1952,37 @@ work item. Never resolve it by silently making documentation more optimistic.
   two subjects, so the gap is recorded and not papered over -- **the price is named**: a change
   of that guard would not be caught by the map.
 
+- The package of the waves `wave-d2b` to `wave-d2h` drew the remaining **seven pictures of the
+  site** and a **guard for every picture of the site** (2026-11-22; the catch-up plan D2, the wave
+  D1 of the core was wave 97).  The pictures are `site/diagrams/one-turn.puml` (D1, the turn of the
+  agent), `emacs-layer.puml` (D3, the bridge and the scopes), `placements.puml` (D4, the three
+  placements and the two protocols and the limit of the wire), `fixed-point.puml` (D6, the loop of the
+  delegation), `check-levels.puml` (D7, the four levels and the boundary of the proof) and
+  `code-packages.puml` (D8, the nine packages and every module of `lib/`), and the guard is
+  `tests/checks/check-every-diagram-points-at-files-that-exist.el`.  **The name of a picture is a
+  rule and not a list**: the name of the file is the name of the picture and the file begins with
+  `@startuml NAME' and ends with `@enduml'.  **The rule of a reference lives in one place** --
+  `tests/support/yeah-diagram-files.el` -- and a reference of the form `file:line' must name a file
+  of the repository, a line of that file and a line that carries a definition.  **The rule of a place
+  lives in the same reader**, because a picture may name a directory and not a line (`tests/unit',
+  `scripts/gate'): a place is a run of words with a slash or a dot in it, a place of the repository is
+  one whose first segment is an entry at the root of the tree, and a place of the repository must be
+  there.  **The merge found that rule the hard way**: the guard of the writer asked every picture for
+  a name of the form `file:line' and refused the honest picture of the levels, which names the
+  directories of the tests -- the two briefs of the package contradicted each other, and the guard was
+  right to refuse a picture that names no file of the code.  **The rendered pictures are committed**
+  (16 files in `site/assets/diagrams/'): without them the site has nothing to show and the check of
+  the wave D4 ("the picture on the site is current") has nothing to compare with; the render is
+  bytewise reproducible, which was measured.  **The palette of the site gives no colour to the kind
+  `node'`** -- a leaf of that kind is drawn in `#F1F1F1' with the letters `#FFFFFF', a contrast of
+  1.13:1, unreadable in the dark theme -- so the leaves are drawn as `component' and the machines as
+  `node' (21:1); the palette itself is not fixed by this package, and `skinparam nodeStyle rectangle'
+  is dead in PlantUML 1.2025.10.  **The composition of the nine packages is the decision of the
+  writer of the wave**, and the check measures the completeness of the map and not the rightness of the
+  placing.  Seven claims are registered (179 in `spec.json'), and every one of them has a control
+  that bites.  The pictures are **not on the site yet**: the insertion is the wave D3 and the check
+  that the picture of the site is current is the wave D4 (docs/PLAN.md §16.110).
+
 ## The commands
 
 ```sh

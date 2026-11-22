@@ -1,0 +1,29 @@
+{
+  "id": "wave-d2d",
+  "title": "the picture of the placements and the protocols shows the three placements, the two protocols and the limit of the wire",
+  "intent": "The third picture of the catch-up plan D2: the placements and the protocols (D4 of `docs/SITE-DIAGRAMS-PLAN.md' §8).  It answers the first question of the installer -- \"where does this run and who talks to me\" -- and it is honest about the limit of the wire, which the Status of the site already says: on stdio a cancel cannot interrupt a running prompt, and the local socket is what can.  The picture names the three placements -- attached, service and batch -- the two protocols -- ACP and MCP -- the two transports -- stdio and socket -- and the seven modules that carry them: `lib/yeah-placement.el', `lib/yeah-product.el', `lib/yeah-service.el', `lib/yeah-acp.el', `lib/yeah-mcp.el', `lib/yeah-wire.el' and `lib/yeah-wire-socket.el'.  The claim of the wave is new (`the-placements-diagram-shows-the-placements-and-the-protocols').",
+  "touches": [
+    "site/diagrams/placements.puml",
+    "site/assets/diagrams/placements-light.svg",
+    "site/assets/diagrams/placements-dark.svg",
+    "tests/checks/check-the-placements-diagram-shows-the-placements-and-the-protocols.el",
+    "tests/support/yeah-diagram-files.el",
+    "waves/wave-d2d.json",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-the-placements-diagram-shows-the-placements-and-the-protocols.el",
+    "./scripts/dev check tests/checks/check-the-layer-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "the-placements-diagram-shows-the-placements-and-the-protocols"
+  ],
+  "commitment": [],
+  "objection": "The picture shows the placements as the code shows them.  (a) **The seven modules are a list and the check knows that list by name**: a module that carries a placement and is not named here is not caught by this check.  (b) **The palette of the site does not cover the kind `node'**: the leaves of the picture are drawn in the face `#F1F1F1' with the letters `#FFFFFF' -- a contrast of 1.13:1, unreadable in the dark theme -- and the writer of the wave found it and did not fix it, because the palette is the business of the parent; the leaves are therefore drawn as `component' and the machines as `node', where the contrast is 21:1.  The finding is named in the note of the wave and is not closed by it.  (c) **The picture is not on the site**: that is the wave D3.  (d) **The plant of the picture is a deployment diagram, and PlantUML does not tell a deployment diagram from a component diagram by its plant**: the kind of the picture is carried by its content and not by a flag of the file.",
+  "refuted_by": "the drawing says no placement, or no protocol, or not the honest limit of the wire; a name of the form `file:line' points at no file of the repository, at no line of that file, or at a line that carries no definition; a module that implements a placement or a protocol is named by no line that carries a definition; or the check is satisfied by a word of the comment at the top of the file instead of by the drawing",
+  "note": "The decisions of the parent (2026-11-22; a rule outside §17.2, the owner may cancel it): the name of the picture is `placements'; the leaves of the picture are `component' and not `node', because the palette of the site does not give a readable colour to `node' -- the palette is fixed in a wave of its own; the picture names the limit of the wire in words and not only in the shape of the arrows, because no colour and no shape may be the only carrier of a meaning.  The measurements of the writer: the check of the picture is green; the controls bite (the reference of `lib/yeah-wire-socket.el' removed, and the check refuses with the name of the module); the negative control bites as well -- the word that the check looks for was moved into the comment of the picture and the check refused, because a comment names nothing; the refusal path answers the code 2.  What was not measured: the picture is not on the site and its readability on the page was not measured."
+}

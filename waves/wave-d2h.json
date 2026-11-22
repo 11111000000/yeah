@@ -1,0 +1,31 @@
+{
+  "id": "wave-d2h",
+  "title": "the guard of every picture of the site measures every picture, and the rule of a place lives in one place",
+  "intent": "The seventh part of the catch-up plan D2 and the one that closes it: the guard of every picture of the site.  One check of one picture reads one picture; this check reads the whole catalogue of `site/diagrams/', so that a picture that is added later is covered by the rule and not by a new list of names.  It walks the catalogue and measures four things for every picture it finds there: the picture is a picture of PlantUML and its name is the name of its file (`@startuml NAME' ... `@enduml'), the picture says something (a comment says nothing, an empty line says nothing and a `skinparam' is the skin of a theme and not a part of the picture), every reference of the form `file:line' names a file of this repository, a line of that file and a line that carries a definition, and the picture names at least one place of the repository and every place it names is there in the tree.  The pictures of the skins of the themes (`palette-*') are not pictures of the site and are not measured.  The one exception of the rule of naming a place -- the machine of the states, which is written out of the code by `lib/yeah-state-diagram.el' -- is named in the code of the check, and the check asks for the generator of the picture to be there, so that the exception cannot outlive its reason.  The claim of the wave is new (`every-diagram-points-at-files-that-exist').",
+  "touches": [
+    "tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "tests/support/yeah-diagram-files.el",
+    "waves/wave-d2h.json",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-the-layer-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-the-one-turn-diagram-shows-the-turn-of-the-agent.el",
+    "./scripts/dev check tests/checks/check-the-emacs-layer-diagram-shows-the-bridge-and-the-scopes.el",
+    "./scripts/dev check tests/checks/check-the-placements-diagram-shows-the-placements-and-the-protocols.el",
+    "./scripts/dev check tests/checks/check-the-fixed-point-diagram-shows-the-loop-of-the-delegation.el",
+    "./scripts/dev check tests/checks/check-the-check-levels-diagram-shows-the-four-levels.el",
+    "./scripts/dev check tests/checks/check-the-code-packages-diagram-names-every-module-of-the-kernel.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "every-diagram-points-at-files-that-exist"
+  ],
+  "commitment": [],
+  "objection": "The guard measures the pictures that are there.  (a) **A picture that is removed from the catalogue leaves the guard green**: the guard measures a directory and not a list, and the list of the pictures of the site is the claim of the plan and not of this check.  (b) **The name of a file without a line was a hole and the parent closed it**: the writer of the wave named the hole -- the rule of the reference is about `file:line', so a picture that named only `lib/nowhere.el' passed the rules -- and the parent closed it in the wave with the rule of a place (see the note).  (c) **The truth of the picture of the state machine is not measured here**: the check of that truth is `tests/checks/check-the-state-diagram-comes-from-the-code.sh', and the guard only asks for the generator to be there.  (d) **The content of a picture is not measured here**: that is the work of the six checks of the pictures, one for each picture.  (e) **The exception of the machine of the states is a named exception and not a hole**: the exception cannot outlive its reason, because the check asks for the generator.",
+  "refuted_by": "a picture of the site names a file, a line or a definition that is not there, or names a place that is not there, or it says nothing at all, or its name is not the name of its file, or it ends with no `@enduml', or it names no place of the repository and is not the machine of the states, or the generator of the machine of the states is not there, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The decisions of the parent (2026-11-22; a rule outside §17.2, the owner may cancel it): the guard walks the catalogue and measures every picture it finds there, and the skins of the themes are told apart by the prefix of their name; the rule of a reference lives in the shared reader (`tests/support/yeah-diagram-files.el'), and the rule of a place lives there too, because two copies of a rule are two rules that drift apart; the exception of the machine of the states is bound to its generator.  **The defect that the merge exposed and that the parent fixed**: the guard of the writer of the wave asked every picture to name a file as `file:line', and the picture of the levels names the directories of the tests and not the lines of their files -- so the guard refused an honest picture, and the two briefs of the package contradicted each other.  The rule of a place now lives in the reader: a place is a run of words with a slash or a dot in it, a place of the repository is one whose first segment is an entry at the root of the tree (the picture of the scheduler says `shared/exclusive' about the scheduler, and that is a word of the picture and not a path), and a place of the repository must be there.  **Measured by the parent (2026-11-22, on copies in `/tmp')**: the guard measures eight pictures, 173 references and 168 places and passes; the control that names a place that is not there refuses with the name of the place (exit 1); the control that takes every place away refuses with the name of the picture (exit 1); the control of the claim (`lib/yeah-tools.el:119' -> `lib/yeah-tools.el:999999') refuses with the number of lines of the file (exit 1); the control of the picture of the levels still bites after the change of the reader (exit 1)."
+}

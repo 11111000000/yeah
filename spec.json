@@ -4060,6 +4060,194 @@
       "register": "fact",
       "control": "sed -i 's/(:project :project)/(:project :global)/' lib/yeah-approval.el",
       "waiver": null
+    },
+    {
+      "id": "the-one-turn-diagram-shows-the-turn-of-the-agent",
+      "text": "The picture of one turn of the agent shows the turn: the model proposes a call of a tool, the registry checks the call, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened and the result goes back to the model. Every reference of the picture of the form `file:line' names a file of this repository, a line of that file and a line that carries a definition -- an empty line names no code, a line that holds nothing but a comment names no code either, and a line that holds code and no definition names no definition -- the picture names the six modules that hold the turn together -- `lib/yeah-turn.el', `lib/yeah-tools.el', `lib/yeah-perm.el', `lib/yeah-approval.el', `lib/yeah-scheduler.el' and `lib/yeah-session.el' -- and one line of the picture names the five answers the person may give: `:once', `:session', `:project', `:global' and `:reject'.",
+      "scope": [
+        "site/diagrams/one-turn.puml",
+        "lib",
+        "tests/checks/check-the-one-turn-diagram-shows-the-turn-of-the-agent.el",
+        "tests/support/yeah-diagram-files.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-one-turn-diagram-shows-the-turn-of-the-agent.el"
+        }
+      ],
+      "falsifier": "the picture names a file, a line or a definition that is not there, it drops one of the six modules that hold the turn together, it has no line that names the five answers of the person, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|lib/yeah-perm.el:523||' site/diagrams/one-turn.puml",
+      "waiver": null
+    },
+    {
+      "id": "the-emacs-layer-diagram-shows-the-bridge-and-the-scopes",
+      "text": "The picture of the Emacs layer shows the person, the editor's Emacs, the agent's Emacs and the bridge between them: the bridge is the only path to the live state of the editor's Emacs, and it is a capability the person approves on purpose. The six capabilities of the layer -- BUFFERS, INTROSPECT, EDIT, DIAGNOSE, COMPOSE and RECOVER -- are in the picture, every reference of the picture of the form `file:line' names a file of this repository, a line of that file and a line that carries a definition, every block of the picture names a file, the block of the bridge names `lib/yeah-bridge.el', the picture names the five modules that hold the layer together -- `lib/yeah-emacs.el', `lib/yeah-bridge.el', `lib/yeah-compose.el', `lib/yeah-doctor-ui.el' and `lib/yeah-approval-ui.el' -- and one line of the picture names the five answers the person may give: `:once', `:session', `:project', `:global' and `:reject'.",
+      "scope": [
+        "site/diagrams/emacs-layer.puml",
+        "lib",
+        "tests/checks/check-the-emacs-layer-diagram-shows-the-bridge-and-the-scopes.el",
+        "tests/support/yeah-diagram-files.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-emacs-layer-diagram-shows-the-bridge-and-the-scopes.el"
+        }
+      ],
+      "falsifier": "the picture names a file, a line or a definition that is not there, a block of the picture names no file, the picture has no block of the bridge or the block of the bridge names no file of `lib/yeah-bridge.el', the picture drops one of the five modules that hold the layer together, the picture has no line that names the five answers of the person, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|lib/yeah-bridge.el:177||' site/diagrams/emacs-layer.puml",
+      "waiver": null
+    },
+    {
+      "id": "the-placements-diagram-shows-the-placements-and-the-protocols",
+      "text": "The diagram of the placements shows the three placements -- attached, service and batch -- and the two protocols -- ACP and MCP -- with the transports that carry them: on stdio a cancel cannot interrupt a running prompt, and the local socket is what can. Every name of the form `file:line' in the diagram points at a file of this repository, at a line of that file, and at a line that carries a definition, and the drawing itself says every word the picture is about -- a word that is only in the comment of the picture is not a word of the picture.",
+      "scope": [
+        "site/diagrams/placements.puml",
+        "tests/checks/check-the-placements-diagram-shows-the-placements-and-the-protocols.el",
+        "tests/support/yeah-diagram-files.el",
+        "lib/yeah-placement.el",
+        "lib/yeah-product.el",
+        "lib/yeah-service.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-mcp.el",
+        "lib/yeah-wire.el",
+        "lib/yeah-wire-socket.el",
+        "lib/yeah-bridge.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-placements-diagram-shows-the-placements-and-the-protocols.el"
+        }
+      ],
+      "falsifier": "the drawing says no placement, or no protocol, or not the honest limit of the wire; a name of the form `file:line' points at no file of the repository, at no line of that file, or at a line that carries no definition; a module that implements a placement or a protocol is named by no line that carries a definition; or the check is satisfied by a word of the comment at the top of the file instead of by the drawing",
+      "register": "fact",
+      "control": "sed -i 's|lib/yeah-wire-socket.el:[0-9]*||g' site/diagrams/placements.puml",
+      "waiver": null
+    },
+    {
+      "id": "the-fixed-point-diagram-shows-the-loop-of-the-delegation",
+      "text": "The diagram of the fixed point shows the loop of the delegation: the person gives the task to the environment, the agent reads the environment and changes it, the change is the new environment, and the delegation closes the loop -- a child runs in a session of its own, with a journal of its own, with the tools of its preset and at a depth of its own, with the depth of the tree, the time of a child and the budget of a child bounded. The picture ends with the demonstration of the fixed point: the agent runs the check of the environment and fixes its own code and its own check. Every name of the form `file:line' in the diagram points at a file of this repository, at a line of that file, and at a line that carries a definition.",
+      "scope": [
+        "site/diagrams/fixed-point.puml",
+        "tests/checks/check-the-fixed-point-diagram-shows-the-loop-of-the-delegation.el",
+        "tests/support/yeah-diagram-files.el",
+        "lib/yeah-delegate.el",
+        "lib/yeah-subagent.el",
+        "lib/yeah-agent.el",
+        "lib/yeah-emacs.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-fixed-point-diagram-shows-the-loop-of-the-delegation.el"
+        }
+      ],
+      "falsifier": "the drawing says no part of the loop, or names no bound of the recursion, or does not end with the agent running a check of the environment; a name of the form `file:line' points at no file of the repository, at no line of that file, or at a line that carries no definition; a module that carries a part of the loop is named by no line that carries a definition; or the check is satisfied by a word of the comment at the top of the file instead of by the drawing",
+      "register": "fact",
+      "control": "sed -i 's|lib/yeah-delegate.el:[0-9]*||g' site/diagrams/fixed-point.puml",
+      "waiver": null
+    },
+    {
+      "id": "the-check-levels-diagram-shows-the-four-levels",
+      "text": "The picture of the levels of the verification shows the four levels of `docs/ARCHITECTURE.md' §10 and the boundary of what they prove: the unit, the contract (the canary), the integration and the live (the evaluation), in the order of the strength of their proof; every level is named as a word of its own -- a name that is only a part of a path is not the name of a level; the place of every level is named in the picture -- `tests/unit', `tests/checks', `tests/live' and `scripts/gate' -- and every one of them is there in the tree; the picture is an activity, it begins and it ends; and the boundary of the proof is on the picture: it says what a level proves and where the proof of a level ends, because no level proves the product and a green module is not a working product.",
+      "scope": [
+        "site/diagrams/check-levels.puml",
+        "tests/unit",
+        "tests/checks",
+        "tests/live",
+        "scripts/gate",
+        "tests/checks/check-the-check-levels-diagram-shows-the-four-levels.el",
+        "tests/support/yeah-diagram-files.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-check-levels-diagram-shows-the-four-levels.el"
+        }
+      ],
+      "falsifier": "the picture does not name one of the four levels as a word of its own, it names a level only as a part of a path, it names a place of a level that is not there in the tree, it puts the levels in another order, it has no `start' or no `stop', it does not say where the proof of a level ends, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|^:integration$|:the third level of the ladder|' site/diagrams/check-levels.puml",
+      "waiver": null
+    },
+    {
+      "id": "the-code-packages-diagram-names-every-module-of-the-kernel",
+      "text": "The picture of the packages of the code shows where the code lives: `lib/' is in exactly nine packages -- the journal and the projections, the control of a run, the adapter of the model, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, the placements and the plumbing -- and every module of `lib/' is named in one of them with the line of its definition, as `file:line', or is listed in the note of the modules the picture does not name, with the reason why it is not in the picture; every reference of the form `file:line' names a file of this repository, a line of that file and a line that carries a definition; a module is named in one package and not in two; and the note names no module that is not there, names every module with a reason, and names no module that a package names as well.",
+      "scope": [
+        "site/diagrams/code-packages.puml",
+        "lib",
+        "tests/checks/check-the-code-packages-diagram-names-every-module-of-the-kernel.el",
+        "tests/support/yeah-diagram-files.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-code-packages-diagram-names-every-module-of-the-kernel.el"
+        }
+      ],
+      "falsifier": "the picture has a package that is not one of the nine, or it is missing one of the nine, it names a file, a line or a definition that is not there, it drops a module of `lib/' silently, it names a module in two packages, the note names a module that is not there, the note names a module without a reason, the note names a module that a package names as well, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|lib/yeah-todo.el:46||' site/diagrams/code-packages.puml",
+      "waiver": null
+    },
+    {
+      "id": "every-diagram-points-at-files-that-exist",
+      "text": "Every diagram of the site points at what is there: the check walks `site/diagrams/' and measures every picture it finds there -- the pictures of the skins of the themes (`palette-*') are not pictures of the site and are not measured -- the name of the picture is the name of its file and the picture ends with `@enduml', the picture says something -- a comment says nothing, an empty line says nothing and a `skinparam' is the skin of a theme and not a part of the picture -- and every reference of the form `file:line' names a file of this repository, at a line of that file and, for a file of Elisp, at a line that carries a definition: an empty line names no code, a line that holds nothing but a comment names no code either, and a line that holds code that is not a definition names no definition. Every picture names at least one place of the repository -- a place is named with a line or without one, a place of the repository is one whose first segment is an entry at the root of the tree -- and every place it names is there in the tree. The one exception of the rule of naming a place -- the machine of the states, which is written out of the code by `lib/yeah-state-diagram.el' -- is named in the code of the check and cannot outlive its reason: the check asks for the generator of the picture to be there.",
+      "scope": [
+        "site/diagrams",
+        "lib",
+        "tests/checks/check-every-diagram-points-at-files-that-exist.el",
+        "tests/support/yeah-diagram-files.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el"
+        }
+      ],
+      "falsifier": "a picture of the site names a file, a line or a definition that is not there, or names a place that is not there, or it says nothing at all, or its name is not the name of its file, or it ends with no `@enduml', or it names no place of the repository and is not the machine of the states, or the generator of the machine of the states is not there, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|lib/yeah-tools.el:119|lib/yeah-tools.el:999999|' site/diagrams/core-layers.puml",
+      "waiver": null
     }
   ]
 }
