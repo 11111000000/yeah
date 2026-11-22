@@ -230,8 +230,10 @@ refuse what they do not name."
 (defun yeah-approval-reply-decision (request reply)
   "Answer REQUEST with REPLY, which is `once', `always' or `reject'.
 ALWAYS is written into the rules, so that the answer outlives the
-question.  The answer carries the scope of the process, and the rule it
-writes carries the same scope.  Return the decision."
+question.  The answer carries the scope of the user, and the rule it
+writes carries the same scope: the rule is written into the carrier of
+its scope, which is the file of the user, and the rules of the process
+keep it in the memory of the Emacs as well.  Return the decision."
   (let ((kind (yeah-approval-reply-canonical reply)))
     (unless kind
       (signal 'user-error
@@ -241,11 +243,15 @@ writes carries the same scope.  Return the decision."
                       (:reject (list :effect :deny :reply :reject))
                       (:always (list :effect :allow :reply :always)))))
       (when (eq kind :always)
-        (yeah-perm-rules-add
-         (yeah-perm-rule-make (plist-get request :action)
-                              (plist-get request :resource)
-                              'allow
-                              (yeah-approval-scope-of kind yeah-approval--carrier))))
+        (let ((rule (yeah-perm-rule-make (plist-get request :action)
+                                         (plist-get request :resource)
+                                         'allow
+                                         (yeah-approval-scope-of kind yeah-approval--carrier))))
+          ;; The rules of the process keep the rule in the memory of the
+          ;; Emacs, and the carrier of the scope -- the file of the user
+          ;; -- keeps it beyond the life of the process.
+          (yeah-perm-rules-add rule)
+          (yeah-perm-rule-store rule yeah-approval--carrier nil)))
       (yeah-approval-scope-decision decision yeah-approval--carrier))))
 
 (defun yeah-approval-profile-decision (profile request &optional person)

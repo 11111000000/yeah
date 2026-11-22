@@ -92,7 +92,7 @@ rest of what the run needs."
                   :session session
                   :transport transport
                   :answerer answerer
-                  :rules (or rules (copy-sequence yeah-perm--rules))
+                  :rules (or rules (copy-sequence (yeah-perm-effective-rules)))
                   :budget budget
                   :deadline deadline
                   :input input
@@ -122,13 +122,18 @@ own reach for the length of the run."
   "Ask PERSON about REQUEST and remember an `always' answer in CONTEXT.
 The rules of the context are the run's own: a remembered decision stays
 in this run and in no other.  The answer carries the scope of the run,
-and the rule it writes carries the same scope.  An answer that names a
-scope the run does not hold is refused by name."
+and the rule it writes carries the same scope: the rule is written
+into the carrier of its scope, which is the run itself.  An answer that
+names a scope the run does not hold is refused by name."
   (let* ((decision (yeah-approval-scope-decision
                     (funcall person request) yeah-run--carrier))
          (rule (yeah-approval-remember-rule request decision)))
     (when rule
-      (yeah-run-context-add-rule context rule))
+      (yeah-perm-rule-store
+       rule yeah-run--carrier
+       (lambda (stored)
+         (yeah-run-context-add-rule context stored)
+         stored)))
     decision))
 
 (defun yeah-run-context-policy (context)
@@ -146,7 +151,8 @@ context, so the same question is not asked twice."
        (let* ((action (plist-get request :action))
               (resource (plist-get request :resource))
               (effect (yeah-perm-effect action resource
-                                        (yeah-run-context-rules context))))
+                                     (append (yeah-perm-file-rules)
+                                             (yeah-run-context-rules context)))))
          (pcase effect
            ('allow
             (list :effect :allow :reply :once))
