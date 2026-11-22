@@ -901,29 +901,35 @@ code {
 .y-note strong { color: var(--face-default-fg); }
 
 /* ------------------------------------------------------------------ *
- * The ASCII figure — fundamental-mode, so plain black text
+ * The diagrams — the pictures of the kernel, one for each theme
  * ------------------------------------------------------------------ */
 
-.ascii-figure {
+.diagram {
   margin-top: 2.2rem;
   border: 1px solid var(--face-divider);
   background: var(--face-default-bg);
 }
-.ascii-figure pre {
-  margin: 0;
-  padding: clamp(1rem, 3vw, 2rem);
-  overflow-x: auto;
-  color: var(--face-default-fg);
-  font-size: 0.72rem;
-  line-height: 1.55;
+.diagram__img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin-inline: auto;
+  padding: clamp(0.6rem, 2vw, 1.4rem);
 }
-.ascii-figure code { display: inline-block; min-width: max-content; background: none; color: inherit; }
-.ascii-figure figcaption {
+/* The dark picture stands only when the page says that it is dark: the
+   light one stands by default, and the page reads without JavaScript. */
+.diagram__img--dark { display: none; }
+.diagram figcaption {
   padding: 0.75rem 1rem;
   border-top: 1px solid var(--face-divider);
   color: var(--face-prose);
   font-size: 0.8rem;
   line-height: 1.6;
+}
+
+@media screen {
+  [data-theme="dark"] .diagram__img--light { display: none; }
+  [data-theme="dark"] .diagram__img--dark { display: block; }
 }
 
 .doc-links {
@@ -1198,7 +1204,7 @@ body.chrome-off { background: var(--face-default-bg); }
   .keys dt { padding-bottom: 0; border-bottom: 0; }
   .footer__grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .footer__meta { grid-column: auto; }
-  .ascii-figure pre { font-size: 0.62rem; }
+  .diagram__img { padding: 0.5rem; }
   .event { grid-template-columns: 2.7rem minmax(0, 1fr); }
   .hero h1 { font-size: clamp(2.2rem, 10vw, 3rem); }
 }
@@ -1212,4 +1218,9 @@ body.chrome-off { background: var(--face-default-bg); }
   .menu-bar, .tab-bar, .header-line, .fringe, .frame-bottom { display: none; }
   .frame { max-width: none; border: 0; }
   .buffer__content { padding-inline: 0; }
+  /* The picture prints: the light one, whole, and not split over two
+     pages.  The dark one is a picture of the screen, not of the paper. */
+  .diagram { break-inside: avoid; page-break-inside: avoid; }
+  .diagram__img--light { display: block; }
+  .diagram__img--dark { display: none; }
 }
