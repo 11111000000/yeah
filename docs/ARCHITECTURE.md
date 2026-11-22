@@ -502,50 +502,106 @@ Git is the historical record; there is no second, contradictory design corpus.
 
 ```text
  Human (`M-x yeah`)     ACP clients      MCP clients      Batch
-          \__________________ Session API / Run Controller __________/
+         |                   |                |             |
+                             +--- Wire ------+
+                             (stdio, socket)
+         \________________Session API / Run Controller  ____/
                                   |
              +--------------------+--------------------+
              |                    |                    |
        Model adapter        Tool registry        Policy / approvals
-       (private gptel)    (typed, validated)    (rules as data)
+       (private gptel)    (typed, validated)    (rules as data,
+                                                declared risk)
              |                    |                    |
              +--------- Execution scheduler -----------+
-                       shared/exclusive, once-only,
-                       cancellation, deadlines
+                       shared/exclusive, resource lock,
+                       once-only, bounded
                                   |
-                    Append-only versioned event journal
+                    Append-only versioned JSONL journal
                                   |
              +--------------------+--------------------+
              |                    |                    |
         Model context        Read models/UI       Session index/cost
                                   |
-                 attached / service / batch placements
+                  attached, service, batch placements
 ```
+
+The site publishes this picture as a diagram, and every block of it names the
+files that implement it (`site/diagrams/core-layers.puml`; `site/index.html`).
+The figure above and that diagram are one architecture: the drivers submit to
+the controller, the controller drives the model adapter, the tool registry and
+the policy, the scheduler runs what may run, everything that happened is
+written into one journal, and the projections read the journal.
 
 ### Run Controller
 
-A run has an explicit context containing at least its ids, session, model
-adapter, registry, policy, answerer, cancellation token, budgets, clock and
-event sink. Registries and permissions must not be implicit process-wide
-state shared by unrelated runs.
+A run has an explicit context: its id, its placement, its session, its
+transport to the model, its own rules, its answerer, its budget, its
+deadline, its input, the number of nudges it may get, its cancellation flag
+and its own snapshot of the tool registry (`lib/yeah-run.el:40`). The session
+is the event sink and the clock is the clock of Emacs.
+
+Registries and permissions must not be implicit process-wide state shared by
+unrelated runs. The registry of a run is its own snapshot
+(`lib/yeah-run.el:105`; `lib/yeah-tools.el:69`), and the rules of a run are
+its own list: a run asks with the rules of the run and with the rules of the
+files, and not with the rules of the process (`lib/yeah-run.el:156`).
 
 The controller is the only component that advances the run. UI, protocols and
-tests submit commands to it; they do not reproduce its transitions.
+tests submit commands to it; they do not reproduce its transitions. The
+advance happens in the turn (`lib/yeah-turn.el:256`), and every move of the
+turn is a cell of the table of the machine (`lib/yeah-loop.el:26`); the check
+of that promise is
+`tests/checks/check-every-transition-of-the-table-is-taken.el`. A placement
+and a child start a run of their own through that same turn
+(`lib/yeah-placement.el:136`; `lib/yeah-subagent.el:223`).
 
 ### Tool contract
 
-A tool declaration contains:
+A tool declaration is a plist, and the registry refuses a declaration it does
+not understand (`lib/yeah-tools.el:202`). It contains:
 
-- stable name and human/model description;
-- JSON-compatible input schema, required and optional fields;
-- handler and synchronous/asynchronous shape;
-- risk/capability classification;
-- shared/exclusive or resource-lock declaration;
-- timeout and output limits where applicable.
+- `:name`, `:description`, `:input` and `:handler` — the four are required
+  (`lib/yeah-tools.el:110`);
+- `:input` — a list of `(:name PARAM :type TYPE [:optional t] [:duration t])`,
+  where the type is `string`, `integer`, `symbol` or `boolean`; the required
+  parameters come first and the optional ones come last, and the values are
+  the JSON-safe ones, so that the wire and the journal can carry them
+  (`lib/yeah-tools.el:125`; `lib/yeah-tools.el:343`);
+- `:kind` — `read`, `edit`, `delete`, `move`, `search`, `execute`, `think`,
+  `fetch`, `switch_mode` or `other`; a tool that declares no kind has the
+  kind `other`, and a kind outside this vocabulary is refused by name
+  (`lib/yeah-tools.el:96`; `lib/yeah-tools.el:218`);
+- `:risk` — `read`, `write`, `execute` or `destroy`; a tool that declares no
+  risk has a risk that is not known, and a risk that is not known changes the
+  world: the rule asks about it, and the absence of a declaration never makes
+  the rule softer (`lib/yeah-risk.el:42`; `lib/yeah-risk.el:113`);
+- `:concurrency` — `shared` (the default) or `exclusive`
+  (`lib/yeah-tools.el:258`);
+- `:resource` — a nonempty string that names what the tool touches; it is a
+  lock: two calls that declare one resource never run at the same time, and a
+  tool that declares no resource is never held back
+  (`lib/yeah-tools.el:161`; `lib/yeah-scheduler.el:104`);
+- `:async` — the handler takes a continuation (`lib/yeah-tools.el:173`);
+- `:timeout` — the upper bound of the work of one call, in seconds; only an
+  asynchronous tool may declare one, because the kernel cannot interrupt the
+  handler of a synchronous tool (`lib/yeah-tools.el:181`);
+- `:output-limit` — the upper bound of the output of one call, in characters;
+  the limit that applies is the smaller of the declared one and the global
+  one (`yeah-result-output-limit`), and the global limit is a ceiling that a
+  declaration cannot raise (`lib/yeah-tools.el:288`).
+
+The arguments of a call are checked against the declaration before the handler
+runs: the count of the arguments and the type of every one of them must
+match, and a tool is never called with arguments it did not ask for
+(`lib/yeah-tools.el:397`). A parameter that says how long the work may take
+is marked `:duration t`, and a call that asks for a duration longer than the
+timeout of the tool is refused by name (`lib/yeah-tools.el:198`).
 
 A result is structured: success/failure, content or typed error, truncation
-information and artifact references. Tool errors are values for the model and
-events for the journal; they do not wedge the run.
+information and artifact references (`lib/yeah-result.el:34`). Tool errors
+are values for the model and events for the journal; they do not wedge the
+run.
 
 The content of a result is text. A tool of the agent can return bytes that
 are not text — `tail -c` cuts a character of a UTF-8 file in half — and such
@@ -559,16 +615,43 @@ that are not text.
 
 ### Event envelope
 
-The exact schema is versioned. At minimum:
+The exact schema is versioned, and the record is JSON: the journal is JSONL,
+one record per line (`lib/yeah-session.el:167`). At minimum:
 
 ```text
-schema-version, event-id, session-id, timestamp, type, payload
-run-id, turn-id, tool-call-id, parent-event-id   (when applicable)
+schema_version, id, type, session_id, timestamp
+run_id, turn_id, tool_call_id, parent_event_id   (when applicable)
 ```
 
-Payloads are typed per event. Unknown types and unknown replay-relevant
-provider fields fail closed. Writers validate before append. Readers detect
-truncation/corruption rather than silently dropping records.
+The envelope of every new record carries `schema_version`, `session_id` and
+`timestamp`, and the writer supplies `id` and `type` (`lib/yeah-events.el:30`;
+`lib/yeah-session.el:336`).
+
+Payloads are typed per event: the vocabulary declares the required and the
+optional fields of every type (`lib/yeah-events.el:38`). Writers validate
+before append, and an unknown type and an unknown field are refused by name
+(`lib/yeah-events.el:139`). Readers detect truncation and corruption rather
+than silently dropping records: a malformed line is counted, an unterminated
+final line is named, and the warning says that the file was not modified
+(`lib/yeah-session.el:210`). A record of a type that the vocabulary does not
+name stays in the journal and is not projected: the reader of the wire sends
+no update for it (`lib/yeah-acp.el:637`).
+
+*Amended on 2026-11-22 (wave E3): this section is synchronized with the code
+of the tracks A, B and C, and one line of it is a **declaration and not a
+description**. The line is "registries and permissions must not be implicit
+process-wide state shared by unrelated runs". The registry of a run is its
+own snapshot (`lib/yeah-run.el:105`), and the rules of a run are its own list
+(`lib/yeah-run.el:59`): a run that registers a tool or that widens its own
+rules touches neither the registry nor the rules of another run. The rules of
+the process are another thing: they are one list of the Emacs
+(`lib/yeah-perm.el:65`), and the sessions of a process read that list as the
+standing permissions (`lib/yeah-acp.el:100`), so two runs of one Emacs share
+the permissions of the process without asking each other. The module of the
+permissions states the promise itself (`lib/yeah-perm.el:25`), and the path
+of the ACP does not keep it yet. The promise is kept and the debt is named:
+the rules of the process are the rules of the person, and what the promise
+forbids is that they be the implicit state of a run.*
 
 ## 6. Emacs-native capability layer
 
@@ -636,15 +719,34 @@ The model, repository instructions, fetched text and tool output are
 untrusted inputs. Security is capability-based:
 
 - canonical workspace paths and explicit outside-workspace permission;
-- separate read, write, process and network capabilities;
-- once/session/project/global approval scopes;
-- deny-by-default headless policy;
-- bounded time, tokens, output, pending input and child depth;
+- separate read, write, process and network capabilities: the code asks by
+  the risk that the tool declares, and the risks are `read', `write',
+  `execute' and `destroy' (`lib/yeah-risk.el:42`); a tool that declares no
+  risk has a risk that is not known, and a risk that is not known changes the
+  world (`lib/yeah-risk.el:113`);
+- once, session, project and global approval scopes, and the refusal: the
+  answers a person may give are `once', `session', `project', `global' and
+  `reject' (`lib/yeah-approval.el:60`), the legacy name `always' is read as
+  the answer `session' (`lib/yeah-approval.el:74`), and every scope has
+  exactly one carrier (`lib/yeah-perm.el:143`): `once' holds no rule, `run'
+  and `session' keep their rules in the memory of the path that owns them,
+  and `project' and `global' keep their rules in a file of the project and a
+  file of the user;
+- deny-by-default headless policy (`lib/yeah-approval.el:300`);
+- bounded time, tokens, output, pending input and child depth: a tool may
+  declare the upper bound of its own work (`lib/yeah-tools.el:181`) and a run
+  may have a deadline (`lib/yeah-run.el:61`); the budget of the context is
+  60000 tokens by default (`lib/yeah-context.el:32`), the output of one tool
+  is 32768 characters by default (`lib/yeah-result.el:23`), the queue of the
+  pending input holds eight entries (`lib/yeah-input.el:33`) and 262144 bytes
+  (`lib/yeah-input.el:34`), the depth of a child is three
+  (`lib/yeah-subagent.el:57`), and the budget of the completion nudges is
+  three (`lib/yeah-turn.el:141`);
 - no secret files or credentials in logs, examples or test fixtures;
 - no claim that regex/whitelist evaluation is a complete sandbox;
 - the code of the project is never run: a file that the harness opens for an
   edit comes up with the local variables of the file and the directory-local
-  variables of its directory neutralized.
+  variables of its directory neutralized (`lib/yeah-untrusted.el:35`).
 
 General untrusted evaluation, if ever offered, requires a separately designed
 process boundary and its own adversarial verification.
@@ -674,6 +776,28 @@ third line of this model is true and stays true: there is no claim that a
 regex or a whitelist is a complete sandbox -- the guard of the shell
 (`lib/yeah-shell-guard.el`) is a list of forms, and the trash of the agent
 (`lib/yeah-trash.el`) keeps what the agent throws away.*
+
+*Amended on 2026-11-22 (wave E3): this model is synchronized with the code of
+the tracks B and C, and the amendment names a third debt instead of hiding
+it. The scopes of an approval are the scopes of a rule and the answers of a
+person: the dictionary of the answers is `once', `session', `project',
+`global' and `reject' (`lib/yeah-approval.el:60`), the legacy name `always'
+is read as the answer `session' (`lib/yeah-approval.el:74`), and the scope
+of a rule and the answer that writes it are the same thing now -- every
+scope has exactly one carrier (`lib/yeah-perm.el:143`). The capabilities of
+the model are the risks of a tool: `read', `write', `execute' and `destroy'
+(`lib/yeah-risk.el:42`), and the rule asks by the declaration of the tool and
+not by its name (`lib/yeah-risk.el:106`). The third debt of this model is
+that the network is not a capability of the code: there is no risk of the
+network in the vocabulary, and a tool that comes from a server outside the
+kernel declares no risk at all, so the rule asks about it as about any other
+tool that changes the world (`lib/yeah-risk.el:106`). The separation the
+model promises is the separation between the tools that only look and the
+tools that change the world, and it is kept; what the code has not got is a
+capability of its own for the network. The two debts of wave 76 stand where
+they stood: the canonical workspace path is not a boundary of the kernel, and
+a credential that a command read is in the log. The map of what is protected
+and what is not is `docs/AGENT-SAFETY.md`.*
 
 ## 9. Product and interface
 
