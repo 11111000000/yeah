@@ -108,12 +108,12 @@ runs without the product layer stands in the directory of the process."
     (file-truename default-directory)))
 
 (defvar yeah-perm-config-home nil
-  "The directory that holds the configuration of the user, when it is not the default one.
-The default directory is the one of `XDG_CONFIG_HOME', and the one of the
-home directory when the variable of the environment is not set.  A check
-that must not touch the machine of the person binds this to a directory of
-its own: the rules of the check live there and not in the file of the
-user.")
+  "The directory that holds the configuration of the user.
+The directory is this one when it is set, and the one of
+`XDG_CONFIG_HOME' otherwise -- the one of the home directory when the
+variable of the environment is not set either.  A check that must not
+touch the machine of the person binds this to a directory of its own:
+the rules of the check live there and not in the file of the user.")
 
 (defun yeah-perm--config-home ()
   "Return the directory that holds the configuration of the user.
