@@ -19,7 +19,7 @@
 ;; A picture of the loop that dropped one of these steps shows a loop
 ;; that does not exist, and a picture that names a module that is not
 ;; there sends the reader to a file that is not there.  This check reads
-;; `site/diagrams/one-turn.puml' and measures four things:
+;; `site/diagrams/one-turn.puml' and measures five things:
 ;;
 ;;   1. the file is there, it is not empty, and it is a diagram of
 ;;      PlantUML: the first line is `@startuml one-turn' and the last
@@ -37,7 +37,15 @@
 ;;      give to a request for permission -- `:once', `:session',
 ;;      `:project', `:global' and `:reject'.  The person answers in the
 ;;      words of the kernel, and the picture that shows other words
-;;      shows a dialogue that the kernel does not have.
+;;      shows a dialogue that the kernel does not have;
+;;   5. the seven steps of the turn are in the picture, and they stand in
+;;      the order of the turn: every step is a *block* of the picture --
+;;      a step that the reader of the picture does not see is not a step
+;;      -- every step is named by its own words, the seven blocks are
+;;      seven different blocks, and the block of the first step stands
+;;      before the block of the second one, and so on.  A picture whose
+;;      seven blocks say the same thing, or whose blocks stand in the
+;;      wrong order, shows a turn that does not happen.
 ;;
 ;; The rule of the reference is the rule of every diagram of the site and
 ;; it lives in one place: `tests/support/yeah-diagram-files.el'.
@@ -71,6 +79,24 @@
   '("once" "session" "project" "global" "reject")
   "The answers the person may give to a request for permission.")
 
+(defconst yeah-check--turn-steps
+  '(("model" . ("model" "proposes" "call"))
+    ("registry" . ("registry" "checks" "call"))
+    ("policy" . ("policy" "decides"))
+    ("person" . ("person" "answers"))
+    ("scheduler" . ("scheduler" "runs"))
+    ("journal" . ("journal" "keeps"))
+    ("result" . ("result" "model")))
+  "The seven steps of the turn, with the words that name each of them.
+Every step is a pair: the name of the step and the words that the
+block of that step has to say.  The name of a step is the name of the
+thing the step is about, and it is one of the words of the step: a
+block that names the scheduler and says nothing else does not name
+the step of the scheduler.
+
+The steps stand in the order of the turn, and the order is the order
+of this list.")
+
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
        (diagram (expand-file-name "site/diagrams/one-turn.puml" root)))
@@ -90,6 +116,7 @@
     (load reader nil t)
     (let* ((text (yeah-diagram--text diagram))
            (lines (yeah-diagram--drawing-lines text))
+           (blocks (yeah-diagram--blocks text))
            (references (yeah-diagram--references text))
            (named (delete-dups (mapcar #'car references))))
       ;; 1. the file is a diagram of PlantUML and it is not empty.
@@ -123,6 +150,28 @@
                        lines)
         (push "the picture of the turn has no line that names the answers of the person: once, session, project, global and reject"
               yeah-check--failures))
+      ;; 5. the seven steps of the turn are in the picture and in the order
+      ;; of the turn.  Every step is a block of its own, and the block of
+      ;; a step stands before the block of the step that follows it.
+      (let ((previous -1)
+            (previous-step nil))
+        (dolist (step yeah-check--turn-steps)
+          (let* ((name (car step))
+                 (words (cdr step))
+                 (places (yeah-diagram--block-places blocks words)))
+            (cond
+             ((null places)
+              (push (format "the picture of the turn has no block that names the step of the %s: the words %s"
+                            name (yeah-diagram--words-text words))
+                    yeah-check--failures))
+             (t
+              (let ((place (cl-find-if (lambda (p) (> p previous)) places)))
+                (if (null place)
+                    (push (format "the picture of the turn does not stand the steps of the turn in the order of the turn: the step of the %s stands before the step of the %s"
+                                  name previous-step)
+                          yeah-check--failures)
+                  (setq previous place)
+                  (setq previous-step name)))))))))
       (dolist (failure yeah-check--failures)
         (message "one-turn-diagram: %s" failure))
       (if yeah-check--failures

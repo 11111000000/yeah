@@ -57,15 +57,15 @@ else (no)
   :the agent keeps the tools of its own;
 endif
 
-|Agent|
-:run the check of the environment;
-if (does the check pass?) then (yes)
-  :the environment holds the repair:\nthe agent fixed its own code\nand its own check;
-else (no)
-  :read the failure\nand change the environment again;
-endif
-
 |Human|
 :see what the environment holds;
+
+|Agent|
+:run the check of the environment;
+if (does the check fail?) then (yes)
+  :read the failure\nand change the environment again;
+else (no)
+  :the environment holds the repair:\nthe agent fixed its own code\nand its own check;
+endif
 stop
 @enduml

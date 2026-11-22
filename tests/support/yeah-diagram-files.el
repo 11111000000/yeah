@@ -39,6 +39,11 @@
 ;; * `yeah-diagram--components' returns the blocks of the picture that
 ;;   carry a name of their own, so that a check can ask what a named
 ;;   block says;
+;; * `yeah-diagram--titles' returns the titles of the drawing: the
+;;   quoted strings of the lines, split at the newlines that PlantUML
+;;   writes as `\n'.  A title is what the picture says about a thing,
+;;   and a word that is only in the body of a block is not the title
+;;   of that block;
 ;; * `yeah-diagram--says-p' says whether the drawing says a word, and
 ;;   `yeah-diagram--names-all-p' says whether one line of the drawing
 ;;   names every one of a list of names.
@@ -133,6 +138,23 @@ only in the comment is not a claim of the picture."
                     (push (string-trim fragment) lines))))
             (push (string-trim line) lines)))))
     (nreverse lines)))
+
+(defun yeah-diagram--titles (text)
+  "Return the titles of the drawing of the diagram in TEXT.
+A title is a quoted string of a line of the picture, and a title of
+several lines is split at the newlines that PlantUML writes as `\\n',
+exactly as `yeah-diagram--drawing-lines' splits a title of the drawing.
+
+The comment of the diagram is not a line of the drawing: a title that
+is only in the comment is not a title of the picture."
+  (let (titles)
+    (dolist (line (split-string text "\n" t))
+      (unless (yeah-diagram--comment-p line)
+        (dolist (string (yeah-diagram--strings line))
+          (dolist (fragment (split-string string (regexp-quote "\\n") t))
+            (unless (string-empty-p (string-trim fragment))
+              (push (string-trim fragment) titles))))))
+    (nreverse titles)))
 
 (defun yeah-diagram--blocks (text)
   "Return the blocks of the drawing of the diagram in TEXT.
@@ -338,6 +360,29 @@ word `ACP' is not the word `acp'."
   (let ((words (yeah-diagram--words line)))
     (let ((case-fold-search nil))
       (cl-every (lambda (name) (member name words)) names))))
+
+(defun yeah-diagram--block-places (blocks words)
+  "Return the places of the blocks of BLOCKS that name every word of WORDS.
+The place of a block is its number in the list of the blocks, counted
+from zero, and the places come in the order of the blocks.  A block
+that names every word of a step is the block of that step, and a
+picture in which the step is not in the picture has no place for it."
+  (let (places)
+    (let ((place 0))
+      (dolist (block blocks)
+        (when (yeah-diagram--names-all-p block words)
+          (push place places))
+        (setq place (1+ place))))
+    (nreverse places)))
+
+(defun yeah-diagram--words-text (words)
+  "Return the words WORDS as the text of a list.
+The list is read the way a person reads it: `scheduler and runs' and
+`model, proposes and call'.  The words are the words of the picture,
+and the text names them for the reader of a refusal."
+  (if (= 1 (length words))
+      (car words)
+    (concat (mapconcat #'identity (butlast words) ", ") " and " (car (last words)))))
 
 (defconst yeah-diagram--answers
   '("once" "session" "project" "global" "reject")
