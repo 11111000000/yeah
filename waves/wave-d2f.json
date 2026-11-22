@@ -1,0 +1,29 @@
+{
+  "id": "wave-d2f",
+  "title": "the picture of the levels of the verification shows the four levels and the boundary of what they prove",
+  "intent": "The fifth picture of the catch-up plan D2: the levels of the verification (D7 of `docs/SITE-DIAGRAMS-PLAN.md' §8).  The Status section of the site is the one place where the reader asks \"is that true?\", and it answers with two lists of text.  The picture shows the four levels of `docs/ARCHITECTURE.md' §10 in the order of the strength of their proof -- unit, contract (the canary), integration, live (the evaluation) -- and it names the place of every level: `tests/unit', `tests/checks', `tests/live' and the runner of the whole tree `scripts/gate'.  The boundary of the proof is on the picture and not beside it: no level proves the product, and a green module is not a working product.  The claim of the wave is new (`the-check-levels-diagram-shows-the-four-levels').",
+  "touches": [
+    "site/diagrams/check-levels.puml",
+    "site/assets/diagrams/check-levels-light.svg",
+    "site/assets/diagrams/check-levels-dark.svg",
+    "tests/checks/check-the-check-levels-diagram-shows-the-four-levels.el",
+    "tests/support/yeah-diagram-files.el",
+    "waves/wave-d2f.json",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-the-check-levels-diagram-shows-the-four-levels.el",
+    "./scripts/dev check tests/checks/check-the-layer-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "the-check-levels-diagram-shows-the-four-levels"
+  ],
+  "commitment": [],
+  "objection": "The picture shows the levels as the tree shows them.  (a) **The levels are named as words of their own and a name that is only a part of a path is not the name of a level**: without that rule the word `unit' could be hidden in `tests/unit' and the picture would pass with no level at all.  (b) **The order of the levels is a measured part of the picture**: a picture in another order shows another ladder.  (c) **The places of the levels are checked against the tree**: a picture that sends the reader to a place that is not there is a bad picture, and the check refuses it.  (d) **The picture names no file of the code and names no line**: the places of the levels are directories, and a directory has no line of a definition -- the rule of the place lives in the shared reader and the picture of the levels keeps no copy of it.  (e) **The picture is not on the site**: that is the wave D3.  (f) **The check is bound to the tree**: a module of `lib/` that is not in the map of the packages falls the check of D8, and a wave that adds a module must also fix the map.",
+  "refuted_by": "the picture does not name one of the four levels as a word of its own, it names a level only as a part of a path, it names a place of a level that is not there in the tree, it puts the levels in another order, it has no `start' or no `stop', it does not say where the proof of a level ends, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The decisions of the parent (2026-11-22; a rule outside §17.2, the owner may cancel it): the name of the picture is `check-levels' and not `levels', because the picture shows the levels of the checks; the picture names the four levels as words and not as paths; the boundary of the proof is a measured part of the picture and not a note beside it.  The measurements of the writer: the check of the picture is green; four controls bite -- the word `integration' replaced by other words (the check refuses with the name of the level), the block of the packages removed (the check refuses with the name of the package and with the three modules that fell out), the reference of `lib/yeah-todo.el' removed (the check refuses with the name of the module), and the module named in the note as well as in a package (the check refuses, because a module that a package names is not a module the picture does not name); the tree without the pictures refused with the code 2.  **The writer found a contradiction between the brief of the parent and the plan of the site** -- the brief asks for every module of `lib/` to be named or excluded with a reason, and §8 of `docs/SITE-DIAGRAMS-PLAN.md' says that \"a coarsened version without the extra modules goes to the site\".  The decision of the parent (2026-11-22): the picture in the tree is the complete map of the kernel, and the coarsening belongs to the wave D3, which puts the picture on the site; the contradiction is recorded here and not resolved by making the document more optimistic."
+}

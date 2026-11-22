@@ -137,6 +137,6 @@
     (message "session-mcp: %s" failure))
   (if yeah-check--failures
       (kill-emacs 1)
-    (kill-emacs 0))))
+    (kill-emacs 0)))
 
 ;;; check-the-mcp-servers-of-a-session-reach-the-model.el ends here

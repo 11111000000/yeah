@@ -92,6 +92,6 @@
       (message "registry-async: %s" failure))
     (if failures
         (kill-emacs 1)
-      (kill-emacs 0))))
+      (kill-emacs 0)))
 
 ;;; check-registry-async.el ends here

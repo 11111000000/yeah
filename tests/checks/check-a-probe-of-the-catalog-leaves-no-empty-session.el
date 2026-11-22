@@ -174,6 +174,6 @@ under it."
     (message "probe-catalog: %s" failure))
   (if yeah-check--failures
       (kill-emacs 1)
-    (kill-emacs 0))))
+    (kill-emacs 0)))
 
 ;;; check-a-probe-of-the-catalog-leaves-no-empty-session.el ends here

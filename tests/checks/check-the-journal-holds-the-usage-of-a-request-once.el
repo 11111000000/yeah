@@ -141,6 +141,6 @@
     (message "usage-once: %s" failure))
   (if yeah-check--failures
       (kill-emacs 1)
-    (kill-emacs 0)))
+    (kill-emacs 0))
 
 ;;; check-the-journal-holds-the-usage-of-a-request-once.el ends here

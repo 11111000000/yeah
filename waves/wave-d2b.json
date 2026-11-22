@@ -1,0 +1,29 @@
+{
+  "id": "wave-d2b",
+  "title": "the picture of one turn of the agent shows the turn, and the check follows every name of it",
+  "intent": "The catch-up plan (D2) asks for eight pictures of the site, and the composition of each of them is named in `docs/SITE-DIAGRAMS-PLAN.md' §8.  This is the first of the seven that follow the picture of the layers of the kernel (wave 97): the picture of one turn of the agent (D1 of §8).  The section of the site that carries it (`*readme*') is called \"Inspect the whole loop\" and shows three cards of invariants and no movement at all -- the reader is told about the loop and never sees it.  The picture shows the turn as the code shows it: the model proposes a call of a tool, the registry checks the call, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened, and the result goes back to the model.  Two shapes of the turn are named on purpose, because the code has them: the refusal is a result of the call and not the end of the turn (`yeah-turn--run-or-refuse' returns `done' with an error and the turn goes on), and the policy has three answers and not two -- the rules allow it, the rules deny it, the rules ask the person.  The picture names the six modules that hold the turn together -- `lib/yeah-turn.el', `lib/yeah-tools.el', `lib/yeah-perm.el', `lib/yeah-approval.el', `lib/yeah-scheduler.el' and `lib/yeah-session.el' -- and one line of the picture names the five answers the person may give: `:once', `:session', `:project', `:global' and `:reject'.  The claim of the wave is new (`the-one-turn-diagram-shows-the-turn-of-the-agent').",
+  "touches": [
+    "site/diagrams/one-turn.puml",
+    "site/assets/diagrams/one-turn-light.svg",
+    "site/assets/diagrams/one-turn-dark.svg",
+    "tests/checks/check-the-one-turn-diagram-shows-the-turn-of-the-agent.el",
+    "tests/support/yeah-diagram-files.el",
+    "waves/wave-d2b.json",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-the-one-turn-diagram-shows-the-turn-of-the-agent.el",
+    "./scripts/dev check tests/checks/check-the-layer-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "the-one-turn-diagram-shows-the-turn-of-the-agent"
+  ],
+  "commitment": [],
+  "objection": "The picture shows the turn as the code shows it, and not as the site describes it.  (a) **The picture is a drawing of the code, and its truth is measured by the check, not by the eye**: a statement about the kernel that the check does not measure is a statement the picture makes on its own authority.  (b) **The six modules are a list and the check knows that list by name**: a module that joins the turn and is not named in the picture is not caught by this check, and the wave does not pretend otherwise.  (c) **The five answers are the answers of the person, not the scopes of a rule**: the code has two dictionaries -- `yeah-approval--reply-kinds' (`lib/yeah-approval.el:59') holds the answers (`:once :session :project :global :reject') and `yeah-perm--scopes' (`lib/yeah-perm.el:91') holds the scopes of a rule (`:once :run :session :project :global'); `:run' is a scope and not an answer, and the picture shows what the person is asked.  (d) **The picture is not on the site**: the insertion is the wave D3, and nothing here measures the readability of the picture on the page.  (e) **The words of the picture are English and the documents of the project are Russian**: the site is in English, and the picture belongs to the site.",
+  "refuted_by": "the picture names a file, a line or a definition that is not there, it drops one of the seven steps of the turn or puts the steps in another order, it drops one of the six modules that hold the turn together, it has no line that names the five answers of the person, or the control of the claim does not make the check fail by its own assertion",
+  "note": "The decisions of the parent (2026-11-22; a rule outside §17.2, the owner may cancel it): the name of a picture is a rule and not a list (`site/diagrams/<name>.puml', `docs/SITE-DIAGRAMS-PLAN.md' §7.1), and the name of this picture is `one-turn'; the picture is written by hand and the palette is the business of the pipeline -- the pictures carry no colour of their own, and \"no colour is the only carrier of a meaning\" is met by there being no colour; the refusal is not the end of the turn; the line with the five answers is the same word for word in D1 and D3, as §4 of the catch-up plan asks.  The measurements: the check of the picture is green on the tree of the wave; four controls bite (the reference of `lib/yeah-perm.el:523' removed, the line of the five answers removed, and the same two for the picture of the Emacs layer) -- every one of them bites with its own assertion (exit 1) and not with a crash; the picture was drawn by the pipeline (`./scripts/dev diagrams') and the picture of the state machine came out byte for byte the same, so the generator of that picture and this one do not fight.  What was not measured: the picture is not on the site, the contrast of the picture on the page was not measured, and the gate of the project was not run by the writer of the wave."
+}

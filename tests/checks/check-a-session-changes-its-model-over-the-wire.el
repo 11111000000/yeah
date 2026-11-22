@@ -171,6 +171,6 @@
     (message "session-model: %s" failure))
   (if yeah-check--failures
       (kill-emacs 1)
-    (kill-emacs 0))))
+    (kill-emacs 0)))
 
 ;;; check-a-session-changes-its-model-over-the-wire.el ends here

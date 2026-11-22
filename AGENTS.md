@@ -1952,6 +1952,110 @@ work item. Never resolve it by silently making documentation more optimistic.
   two subjects, so the gap is recorded and not papered over -- **the price is named**: a change
   of that guard would not be caught by the map.
 
+- The package of the waves `wave-d2b` to `wave-d2h` drew the remaining **seven pictures of the
+  site** and a **guard for every picture of the site** (2026-11-22; the catch-up plan D2, the wave
+  D1 of the core was wave 97).  The pictures are `site/diagrams/one-turn.puml` (D1, the turn of the
+  agent), `emacs-layer.puml` (D3, the bridge and the scopes), `placements.puml` (D4, the three
+  placements and the two protocols and the limit of the wire), `fixed-point.puml` (D6, the loop of the
+  delegation), `check-levels.puml` (D7, the four levels and the boundary of the proof) and
+  `code-packages.puml` (D8, the nine packages and every module of `lib/`), and the guard is
+  `tests/checks/check-every-diagram-points-at-files-that-exist.el`.  **The name of a picture is a
+  rule and not a list**: the name of the file is the name of the picture and the file begins with
+  `@startuml NAME' and ends with `@enduml'.  **The rule of a reference lives in one place** --
+  `tests/support/yeah-diagram-files.el` -- and a reference of the form `file:line' must name a file
+  of the repository, a line of that file and a line that carries a definition.  **The rule of a place
+  lives in the same reader**, because a picture may name a directory and not a line (`tests/unit',
+  `scripts/gate'): a place is a run of words with a slash or a dot in it, a place of the repository is
+  one whose first segment is an entry at the root of the tree, and a place of the repository must be
+  there.  **The merge found that rule the hard way**: the guard of the writer asked every picture for
+  a name of the form `file:line' and refused the honest picture of the levels, which names the
+  directories of the tests -- the two briefs of the package contradicted each other, and the guard was
+  right to refuse a picture that names no file of the code.  **The rendered pictures are committed**
+  (16 files in `site/assets/diagrams/'): without them the site has nothing to show and the check of
+  the wave D4 ("the picture on the site is current") has nothing to compare with; the render is
+  bytewise reproducible, which was measured.  **The palette of the site gives no colour to the kind
+  `node'`** -- a leaf of that kind is drawn in `#F1F1F1' with the letters `#FFFFFF', a contrast of
+  1.13:1, unreadable in the dark theme -- so the leaves are drawn as `component' and the machines as
+  `node' (21:1); the palette itself is not fixed by this package, and `skinparam nodeStyle rectangle'
+  is dead in PlantUML 1.2025.10.  **The composition of the nine packages is the decision of the
+  writer of the wave**, and the check measures the completeness of the map and not the rightness of the
+  placing.  Seven claims are registered (179 in `spec.json'), and every one of them has a control
+  that bites.  The pictures are **not on the site yet**: the insertion is the wave D3 and the check
+  that the picture of the site is current is the wave D4 (docs/PLAN.md §16.110).
+- The package of the waves `wave-d2b` to `wave-d2h` was **green at the gate and false in six of
+  its promises** (2026-11-22).  The gate proved that the checks of the package did not fail; the
+  **discriminator** -- an agent whose task is to break the promises -- found **six high findings**:
+  the seven steps of the turn were not measured (any captions passed), the six capabilities of the
+  Emacs layer were not measured at all, the words `service' and `socket' of the picture of the
+  placements were found in the **names of files** and not in the picture, the demonstration of the
+  fixed point could be cut out and the picture stayed green, the pattern of the name of a file in
+  the reader **never matched** (in an Emacs regexp a `(' without a backslash is a literal
+  character, and a group is `\(...\)' or `\(?:...\)'), and the rule of the code packages that a
+  module is named in one package and not in two was **dead code** (`delete-dups' before `cl-count'
+  always counts one).  **A green gate is not a measured promise**: the gate runs the checks, and a
+  check that measures half of a promise is green on a broken picture.  The repairs are the reader
+  (the rule of the word lives in one place, and the pattern of the name of a file matches), the
+  pictures (the seven steps are seven blocks, the capabilities and the three hosts are titles, the
+  demonstration is the last block), the checks (the packages are counted and not the names, the
+  ladder of the levels is the order of the blocks, the rule of the reference lives in the reader),
+  and the claims (the falsifiers name the ways to break them, and the records of the waves repeat
+  them word for word).  **The lesson is written down** (`ELISP_BEST_PRACTICES.md' §11.18): a dead
+  pattern is an invisible rule, and an invisible rule is a promise that nobody keeps.
+
+- The **second round of repairs** of the package of the waves `wave-d2b` to `wave-d2h` closed **six
+  more findings of an independent verifier** (2026-11-22).  The verifier of the first round measured
+  the six high findings of the discriminator itself and confirmed that they were honest; it found
+  **two middle findings (S-1, S-2) and four low ones (L-A--L-D)**, and all six were of one kind:
+  **the promise of a claim was wider than the measurement**.  **S-1** -- the guard of every picture
+  asked a picture for a place of the repository and closed the rule with the operand `references',
+  so a picture whose only name was a link to a file under a hidden directory of the top level
+  (`.github/probe.el:1') named no place at all and passed with the code 0; the operand is gone, and
+  the exception of the picture that the code writes is recognised by the **path** of the picture
+  (`site/diagrams/state-machine.puml') and not by the name of the file.  **S-2** -- the note of the
+  limit of the wire was measured by a bag of words, so an inverted note (the socket -- *cannot*, the
+  stdio -- *may*) kept all nine words and passed; the **relation** is measured now -- the part of
+  the note from `stdio' to `socket' must name `cancel' and `cannot', the part from `socket' must
+  name `cancel' and `handled', and the note must hang on the block of the socket.  **L-A, L-B** --
+  the prose of the promise of the picture of the Emacs layer and of the picture of the turn was not
+  measured at all; it is measured now, by the words of the same **line** and of a **block** of the
+  picture, and the part of the prose that the rule of the reader cannot measure (the aside
+  `(may this call run?)' -- a continuation of the activity and not a block) was **narrowed in the
+  measurement and not in the promise**.  **L-C** -- the function `yeah-diagram--root' of the reader
+  was declared and called by nothing, and the two branches of the pattern of a place and of a
+  reference could not be reached; the dead code is gone and its unreachability was **measured**.
+  **L-D** -- the pipeline of the pictures drew only the top level of `site/diagrams/', so a picture
+  in a subdirectory was measured and never drawn, in silence; the pipeline walks the **whole tree**
+  now, and the tree of the pictures mirrors the tree of the sources.  **A finding of the side**: the
+  files of the checks were **not whole files** -- a stray closing parenthesis made a file unreadable
+  as a whole (`invalid-read-syntax ")"'), and it worked only because the last form killed the process
+  before the reader reached it; the parenthesis is gone in eight files (one of the package, seven of
+  the earlier waves), and all of them still answer with the code 0.  **The promises were not
+  rewritten**: the texts of the claims in `spec.json` did not change (`git diff 8290c96 --
+  spec.json' is empty) -- they were **measured**.
+
+- The **independent verifier of the second round** of the package of the waves `wave-d2b` to
+  `wave-d2h` answered **PASS** (2026-11-22; the report
+  `/tmp/verifier-d2-round2-report.md`).  It measured twenty things (V-1--V-20) on copies of the
+  tree in `/tmp` and confirmed, with numbers and codes, that all six findings of the first round
+  are repaired for real -- the defect reproduces with the code 0 before the repair and bites with
+  the code 1 and a precise subject after it -- that the repairs of the parent are real (eight
+  files of checks are whole files now, and the guard of the documentation is green and bites),
+  that **no check was weakened** (the diffs show tightenings and additions only), and that the
+  **promises were not rewritten** (`git diff 8290c96 -- spec.json` is empty: the measurement was
+  repaired, not the promise).  It left **two findings of low severity**, and both were of the
+  class it had been asked to look for.  **F-1** -- the repair of L-C removed the dead code of
+  the reader and brought a new dead function with it (`yeah-diagram--words-name-all-p` was
+  declared and called by nothing): it is gone, and the header of the reader does not mention it.
+  **F-2** -- the repair of S-2 asked the note to hang on the block of the local socket, but it
+  took the alias of the **first** note and the words of **all** of them, so a picture with two
+  notes -- one that says nothing of the limit on the socket, and one that says the limit on the
+  stdio -- passed with the code 0.  The reader now returns every note with the block it hangs
+  on (`yeah-diagram--notes`), and the check measures the note that **carries** the limit of the
+  wire: a picture that spreads the limit over two notes has no note of the limit, and the words
+  of one note and the block of another note are the words of one thing and the name of another
+  one.  **The lesson is the same as the one of L-C**: a repair that adds a rule can add a dead
+  thing with it, and the count of the dead things is what tells.
+
 ## The commands
 
 ```sh

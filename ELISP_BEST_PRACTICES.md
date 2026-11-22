@@ -442,3 +442,49 @@ success, and a waived claim is never read as a passing one.
 - **Convention:** a value the model must pass to another tool belongs in
   the model's view of the result.  A renderer that supports a value no
   producer emits is not a fix (see §11.15, which claims this is done).
+
+### §11.18 — a parenthesis without a backslash is a literal character, not a group
+
+- **Date:** 2026-11-22 (the pictures of the site)
+- **Symptom:** a rule that every check depends on never fires, and every
+  check stays green: the pattern of the name of a file
+  (`tests/support/yeah-diagram-files.el') was written
+  `"[A-Za-z0-9._-][A-Za-z0-9._/-]*\\.[A-Za-z0-9]+(:[0-9]+)?"`, and it
+  matched no name of a file at all.  The words `service', `socket' and
+  `delegate' were therefore found inside the names of the files and not in
+  the drawing, and a picture that said neither of them passed the check.
+- **Cause:** in the regexp of Emacs a parenthesis without a backslash in
+  front of it is a literal character and not a group; the group is written
+  `\\(…\\)' (a shy group) and `\\(?:' is its capturing brother.  So
+  `(:[0-9]+)?' asks for the text `(:127)' and not for a colon and a number.
+  Measured in Emacs 30.2: `(a)' does not match `a', and `\\(?::[0-9]+\\)?'
+  does.
+- **Fix:** the group is a shy group now, and the rule that the name of a
+  file is not a word of the picture lives in one place -- in
+  `yeah-diagram--words', which every way of reading the words of a picture
+  goes through.
+- **Convention:** a pattern that is meant to group is written with a shy
+  group, and a pattern that must match something is measured before it is
+  trusted: `string-match-p' with the pattern and with the text says in one
+  line whether the pattern matches at all.  A rule that cannot fire is
+  invisible in the verdict of a check and costs more than a broken one,
+  because it promises a measurement that is not there.
+
+### §11.19 — `nth` walks the chain of a pair and needs a list in it
+
+- **Date:** 2026-11-22 (the pictures of the site)
+- **Symptom:** a check that read the body of a package of a picture died with
+  the code 255 and no verdict at all: the pair that carries the name of the
+  package and the text of its body was written as a dotted pair
+  `(NAME . BODY)`, and the body is a string and not a list.
+- **Cause:** `nth' walks the chain of the cdr and asks every cell of it for a
+  list, so a dotted pair works only as long as the cell is a list.  Measured
+  in Emacs 30.2: `(nth 1 '("a" . "b"))' raises
+  `Wrong type argument: listp, "b"', and `(nth 1 '("a" "b"))' answers `b'.
+- **Fix:** the pair is a list of two elements now -- `(NAME BODY)' -- which is
+  the shape the reader of the pictures uses for its other pairs
+  (`yeah-diagram--components', `yeah-diagram--broken-references').
+- **Convention:** a pair that is read with `nth' is a list of two elements and
+  not a dotted pair; `cons' with a dotted pair is for the cell of a list and
+  not for a record that is read by index.
+

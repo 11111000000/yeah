@@ -1,0 +1,29 @@
+{
+  "id": "wave-d2e",
+  "title": "the picture of the fixed point shows the loop of the delegation and the bounds of it",
+  "intent": "The fourth picture of the catch-up plan D2: the fixed point (D6 of `docs/SITE-DIAGRAMS-PLAN.md' §8).  The section of the site that carries it (`*vision*') says four words -- INHERIT, CARRY, ISOLATE, FIXPOINT -- and no picture, and the abstraction without a shape is the part of the site that the reader skims.  The picture shows the loop: the person gives the task to the environment, the agent reads the environment and changes it, the change is the new environment, and the delegation closes the loop.  It names the four modules that carry it -- `lib/yeah-delegate.el', `lib/yeah-subagent.el', `lib/yeah-agent.el' and `lib/yeah-emacs.el' -- and the bounds of the recursion: a child runs in a session of its own, with a journal of its own, with the tools of its preset and at a depth of its own, with the depth of the tree, the time of a child and the budget of a child bounded.  The picture ends with the demonstration of the fixed point: the agent runs the check of the environment and fixes its own code and its own check.  The claim of the wave is new (`the-fixed-point-diagram-shows-the-loop-of-the-delegation').",
+  "touches": [
+    "site/diagrams/fixed-point.puml",
+    "site/assets/diagrams/fixed-point-light.svg",
+    "site/assets/diagrams/fixed-point-dark.svg",
+    "tests/checks/check-the-fixed-point-diagram-shows-the-loop-of-the-delegation.el",
+    "tests/support/yeah-diagram-files.el",
+    "waves/wave-d2e.json",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev check tests/checks/check-the-fixed-point-diagram-shows-the-loop-of-the-delegation.el",
+    "./scripts/dev check tests/checks/check-the-layer-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "./scripts/dev byte-compile-all"
+  ],
+  "claims": [
+    "the-fixed-point-diagram-shows-the-loop-of-the-delegation"
+  ],
+  "commitment": [],
+  "objection": "The picture shows the loop as the code shows it.  (a) **The picture claims a demonstration that the offline check does not run**: the fixed point of Yeah is demonstrated by a live model that repairs a canary of Yeah (`tests/live/live-fixed-point.el'), and that run is not part of this wave and was not repeated here; the picture names the demonstration, and the check measures that the picture names it and not that the demonstration happened.  (b) **The four modules are a list and the check knows that list by name**.  (c) **The picture is not on the site**: that is the wave D3.  (d) **The word `delegate' is on the picture and the check looks for it as a word of the drawing and not of the comment**: a picture that says the word only in its comment is refused.",
+  "refuted_by": "the drawing says no part of the loop, or names no bound of the recursion, or does not end with the agent running a check of the environment and fixing its own code and its own check, or has no block that says that the change is the new environment; a name of the form `file:line' points at no file of the repository, at no line of that file, or at a line that carries no definition; a module that carries a part of the loop is named by no line that carries a definition; or the check is satisfied by a word of the comment at the top of the file instead of by the drawing",
+  "note": "The decisions of the parent (2026-11-22; a rule outside §17.2, the owner may cancel it): the name of the picture is `fixed-point'; the picture names the demonstration of the fixed point because that is the claim of the section it belongs to, and the check measures the naming and not the demonstration; the bounds of the recursion are on the picture as words and not as a shape of the arrows.  The measurements of the writer: the check of the picture is green; the controls bite (the reference of `lib/yeah-delegate.el' removed, and the check refuses with the name of the module); the negative control bites as well -- the word was moved into the comment of the picture and the check refused; the refusal path answers the code 2; the picture was drawn by the pipeline and the file of the state machine came out byte for byte the same.  The reader of the pictures was written twice by the two writers of the package -- with the same names and with a different meaning -- and the parent merged them into one reader (`tests/support/yeah-diagram-files.el', commit `acf38e5'); two readers are two readers that drift apart."
+}
