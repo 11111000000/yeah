@@ -200,6 +200,6 @@ of this list.")
   (when yeah-check--blockers
     (dolist (blocker yeah-check--blockers)
       (message "one-turn-diagram: %s" blocker))
-    (kill-emacs 2)))
+    (kill-emacs 2))
 
 ;;; check-the-one-turn-diagram-shows-the-turn-of-the-agent.el ends here
