@@ -3945,6 +3945,86 @@
       "register": "fact",
       "control": "sed -i 's/(or scope (plist-get decision :scope))/nil/' lib/yeah-approval.el",
       "waiver": null
+    },
+    {
+      "id": "two-calls-on-one-resource-do-not-overlap",
+      "text": "A tool declares the resource it touches; two calls of the same tool on the same resource never overlap — the second call waits for the first — and a tool that declares no resource is not serialized by the lock of a resource.",
+      "scope": [
+        "lib/yeah-tools.el",
+        "lib/yeah-scheduler.el",
+        "lib/yeah-turn.el",
+        "tests/checks/check-two-calls-on-one-resource-do-not-overlap.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-two-calls-on-one-resource-do-not-overlap.el"
+        }
+      ],
+      "falsifier": "Two calls on one resource overlap, a call waits for a resource that no call holds, a tool that declares no resource is serialized anyway, or the lock is taken on another resource than the one the tool declared.",
+      "register": "fact",
+      "control": "sed -i \"s/:tool-resource (yeah-tools-resource spec)/:tool-resource nil/\" lib/yeah-turn.el",
+      "waiver": null
+    },
+    {
+      "id": "a-tool-declares-its-own-limits",
+      "text": "A tool declares the limits it has: the field `:timeout` is the upper bound of the work one call of the tool may start, in seconds, and the field `:output-limit` is the upper bound of the output one call of the tool may hand to the model, in characters. The registry refuses a limit that is not a positive integer and refuses the timeout of a synchronous tool, both by name; a call that asks for a duration longer than the timeout its tool declares is refused by name; the bound of the output that applies is the smaller of the declared one and the global one (`yeah-result-output-limit`), so a declaration never raises the global limit, and the text that does not fit lies in a private artifact while the model reads the tail of it; a call that crossed the timeout of its tool is closed by a failure that names the bound, and the model reads that failure.",
+      "scope": [
+        "lib/yeah-tools.el",
+        "lib/yeah-result.el",
+        "lib/yeah-scheduler.el",
+        "lib/yeah-turn.el",
+        "lib/yeah-process.el",
+        "lib/yeah-files.el",
+        "lib/yeah-git.el",
+        "tests/checks/check-a-tool-declares-its-own-limits.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-tool-declares-its-own-limits.el"
+        }
+      ],
+      "falsifier": "The registry takes the declaration and drops it, or the turn builds the call without it, or the scheduler does not read the timeout: a tool that declares no limit and no global limit applies; a tool that declares a limit that is not a positive integer and is accepted; a synchronous tool that declares a timeout and is accepted; a call that asks for a duration longer than the timeout its tool declares and is not refused by name; a declaration that raises the global limit; the model reads more characters than the bound that applies, or the text that does not fit lies in no artifact; a call that crossed its timeout and was not closed by a failure that names the bound, or the model does not read that failure; or the control of the claim does not make the check fail by its own assertion.",
+      "register": "fact",
+      "control": "sed -i 's/(min declared yeah-result-output-limit)/yeah-result-output-limit/' lib/yeah-tools.el",
+      "waiver": null
+    },
+    {
+      "id": "a-scope-decides-where-the-rule-lives",
+      "text": "The scope of a rule says where the rule lives: every scope of the dictionary has exactly one carrier, the rule of a scope is written into the carrier of that scope and into no other, a rule that is saved in a file is read back when the permission is computed, and a scope that holds no rule is refused by name.",
+      "scope": [
+        "lib/yeah-perm.el",
+        "lib/yeah-approval.el",
+        "lib/yeah-run.el",
+        "lib/yeah-acp.el",
+        "tests/checks/check-a-scope-decides-where-the-rule-lives.el"
+      ],
+      "source": null,
+      "kind": "acceptance",
+      "phase": "pre-merge",
+      "owner": "p.b.kosov@yandex.ru",
+      "review_on": [],
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-a-scope-decides-where-the-rule-lives.el"
+        }
+      ],
+      "falsifier": "A scope has no carrier or two carriers, a rule is written into the carrier of another scope, a rule that is saved in a file is never read back, or a scope that holds no rule is accepted.",
+      "register": "fact",
+      "control": "sed -i 's|(let ((file (funcall (nth 3 entry))))|(let ((file (yeah-perm--user-rules-file)))|' lib/yeah-perm.el",
+      "waiver": null
     }
   ]
 }
