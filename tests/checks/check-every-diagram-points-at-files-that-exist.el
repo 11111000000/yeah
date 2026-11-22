@@ -47,9 +47,11 @@
 ;;      machine of the states is the one exception of this rule: it is
 ;;      written out of the code by `lib/yeah-state-diagram.el', and its
 ;;      truth is there and not in a reference of the picture.  The
-;;      exception is named in the code of this check, and the check asks
-;;      for the generator of the picture to be there, so that the
-;;      exception cannot outlive its reason.
+;;      exception is the picture at `site/diagrams/state-machine.puml'
+;;      and not every picture that carries that name, and it is named in
+;;      the code of this check, and the check asks for the generator of
+;;      the picture to be there, so that the exception cannot outlive its
+;;      reason.
 ;;
 ;; The pictures of the skins of the themes (`palette-*') are not pictures
 ;; of the site: the pipeline does not draw them, and they name no file.
@@ -75,13 +77,18 @@
   "The reasons why this check cannot answer.")
 
 (defconst yeah-check--generated-diagrams
-  '(("state-machine.puml" "lib/yeah-state-diagram.el"))
+  '(("site/diagrams/state-machine.puml" "lib/yeah-state-diagram.el"))
   "The pictures that the code writes out, and the generator of each.
 The machine of the states of the kernel is not drawn by hand: the code
 of `lib/yeah-state-diagram.el' reads the tables of the kernel and writes
 the picture out of them.  A picture that the code writes names no file of
 the repository, and this is the one exception of the rule of the fourth
-measurement.")
+measurement.
+
+The exception is the path of the picture and not the name of its file:
+the machine of the states is at `site/diagrams/state-machine.puml', and a
+picture that carries that name in a subdirectory of the tree of the
+pictures is a picture of a person and not the machine of the states.")
 
 (defun yeah-check--substantive-p (line)
   "Return non-nil when LINE of a drawing says something.
@@ -94,10 +101,10 @@ the `@enduml' says that the picture begins and ends."
          (not (string-match "\\`skinparam\\([ \t]\\|$\\)" trimmed))
          (not (string-match "\\`@" trimmed)))))
 
-(defun yeah-check--generated-p (name)
-  "Return non-nil when the picture NAME is written out of the code.
-NAME is the name of the file of the picture, with its extension."
-  (cl-some (lambda (entry) (string= name (nth 0 entry)))
+(defun yeah-check--generated-p (path)
+  "Return non-nil when the picture at PATH is written out of the code.
+PATH is the path of the picture relative to the root of the tree."
+  (cl-some (lambda (entry) (string= path (nth 0 entry)))
            yeah-check--generated-diagrams))
 
 (defun yeah-check--measure (root path)
@@ -139,8 +146,8 @@ the references and of the places the picture names is returned."
           (push (format "the picture %s: %s" name defect)
                 yeah-check--failures))))
     (unless (or places
-                (yeah-check--generated-p (file-name-nondirectory path)))
-      (push (format "the picture %s names no place of the repository, and this check cannot tell a good name from a bad one"
+                (yeah-check--generated-p name))
+      (push (format "the picture %s names no place of the repository, and a picture of the site must name at least one place of the tree"
                     name)
             yeah-check--failures))
     (cons (length references) (length places))))
