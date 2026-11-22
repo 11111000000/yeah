@@ -438,12 +438,22 @@ never written into the carrier of another scope.  Return RULE."
       (signal 'user-error
               (list (format "yeah-perm-rule-store: the scope %s has no carrier: nothing holds the rules of that scope"
                             scope))))
+     ((eq scope :once)
+      ;; The scope of the call itself holds no rule: a rule that carries
+      ;; it would live nowhere, and a rule that lives nowhere is not a
+      ;; rule.
+      (signal 'user-error
+              (list (format "yeah-perm-rule-store: the scope once holds no rule: it is the scope of the call itself"))))
      ((nth 3 entry)
-      (let ((file (funcall (nth 3 entry)))
-            (rules (yeah-perm--read-rules-file file)))
-        (unless (member rule rules)
-          (setq rules (append rules (list rule))))
-        (yeah-perm--write-rules-file file rules))
+      (let ((file (funcall (nth 3 entry))))
+        (let ((rules (yeah-perm--read-rules-file file)))
+          (unless (member rule rules)
+            ;; The file is written only when the rule is not there yet:
+            ;; a carrier that already holds the rule is left as it is.
+            (unless (file-exists-p file)
+              (push file yeah-perm--created))
+            (push (cons file rule) yeah-perm--written)
+            (yeah-perm--write-rules-file file (append rules (list rule))))))
       rule)
      ((and carrier store (eq (nth 1 entry) carrier))
       (funcall store rule))
@@ -452,11 +462,36 @@ never written into the carrier of another scope.  Return RULE."
               (list (format "yeah-perm-rule-store: the scope %s has no carrier here: %s"
                             scope (nth 2 entry))))))))
 
+(defun yeah-perm--forget-written-rules ()
+  "Take back the rules that this process wrote into the carriers.
+Only the rules that this process wrote are taken back: a rule that was
+in the file before is left where it is.  A file that this process created
+and that holds no rule any more is taken away.  A file that cannot be
+read is left alone: the reset of the tests never dies."
+  (dolist (entry yeah-perm--written)
+    (let ((file (car entry))
+          (rule (cdr entry)))
+      (condition-case nil
+          (let ((rules (yeah-perm--read-rules-file file)))
+            (when (member rule rules)
+              (let ((rest (delete rule rules)))
+                (if (and (null rest) (member file yeah-perm--created))
+                    (delete-file file)
+                  (yeah-perm--write-rules-file file rest)))))
+        (error nil))))
+  (setq yeah-perm--written nil)
+  (setq yeah-perm--created nil))
+
 (defun yeah-perm-rules-reset-for-test ()
   "Drop every rule; for tests only.
 Not exported; documented here so test authors can find it.
 Matches the convention used by `yeah-emcp--reset-for-test' and
-`yeah-tools-reset-for-test'."
+`yeah-tools-reset-for-test'.
+The rules that this process wrote into the carriers that keep their rules
+in a file are taken back as well: a test that leaves a rule in the file
+of the user has changed the machine of the person, and a test does not
+change the machine of the person."
+  (yeah-perm--forget-written-rules)
   (setq yeah-perm--rules nil))
 
 (defun yeah-perm--rule-matches-p (rule action resource)
