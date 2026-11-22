@@ -21,9 +21,12 @@
 ;;     refuses everything else. A run without a person does not ask a
 ;;     question it cannot answer; it answers it from the rules.
 ;;
-;;   * the PERSON, who answers once, always or reject. ONCE is for this
-;;     call. ALWAYS is for this call and every later one of the same
-;;     shape: the answer is written into the rules, and the rules are
+;;   * the PERSON, who answers once, for the session, for the project,
+;;     always or reject. ONCE is for this call and is forgotten. SESSION
+;;     is for the carrier of the path that asks: the rules of the run,
+;;     the rules of the session, or the rules of the process. PROJECT is
+;;     for the file of the project and ALWAYS is for the file of the
+;;     user: the answer is written into the rules, and the rules are
 ;;     what the policy reads. REJECT is for this call, and it is not
 ;;     remembered.
 ;;
@@ -54,18 +57,42 @@
 (require 'yeah-perm)
 
 (defconst yeah-approval--reply-kinds
-  '(:once :always :reject)
-  "The kinds of answer a person may give to a request for permission.
+  '(:once :session :project :global :reject)
+  "The answers a person may give to a request for permission.
+
+The answers are the scopes of a rule and the refusal: `once' is this
+call, `session' is the carrier of the path that asks, `project' is the
+file of the project and `global' is the file of the user.  The scope
+`run' is not an answer: the person is never asked to make a rule that
+dies with the run.
+
 This is the one canonical enumeration of the answers: every surface of
 the kernel converts its own names into these, and none of them writes
 the list again.")
+
+(defconst yeah-approval--legacy-replies
+  '(("always" . "session"))
+  "The old names of the answers and the answers they name now.
+
+The name `always' is the old name of the answer `session': the scope of
+the path that asks.  The wire name `allow-always' is read the same way.
+
+The reason is the scope.  The claims `an-answer-carries-a-scope' and
+`a-scope-decides-where-the-rule-lives' give the old answer the scope of
+the path that asks: the file of the user in the plain path, the run in
+the attached path, the session of the ACP path.  Reading `always' as the
+scope `global' would move the rule of the attached path out of the run
+and into the file of the user: a change of behaviour that no document
+asks for.
+
+The alias is written here, next to the dictionary, and nowhere else.")
 
 (defconst yeah-approval--carrier 'global
   "The carrier of the rules a plain answer writes: the rules of the
 process.  The scope of that carrier is the scope of a plain answer.")
 
 (defun yeah-approval-reply-kinds ()
-  "Return the canonical kinds of answer a person may give."
+  "Return the canonical answers a person may give."
   yeah-approval--reply-kinds)
 
 (defun yeah-approval--kind-name (kind)
@@ -75,16 +102,35 @@ process.  The scope of that carrier is the scope of a plain answer.")
         (substring name 1)
       name)))
 
+(defun yeah-approval--reply-of-name (name)
+  "Return the reply the name NAME spells, as it is spelled, or nil.
+The dictionary is read here and written nowhere else.  A legacy name
+spells the reply it used to spell: the name `always' spells the reply
+`always', and the answer it names now is `session'."
+  (or (seq-find (lambda (kind) (equal name (yeah-approval--kind-name kind)))
+                yeah-approval--reply-kinds)
+      (and (seq-find (lambda (pair) (equal name (car pair)))
+                     yeah-approval--legacy-replies)
+           (intern (concat ":" name) nil))))
+
 (defun yeah-approval--kind-of-name (name)
-  "Return the canonical kind whose name is NAME, or nil.
-The dictionary is read here and written nowhere else."
-  (seq-find (lambda (kind) (equal name (yeah-approval--kind-name kind)))
-            yeah-approval--reply-kinds))
+  "Return the canonical answer the name NAME spells, or nil.
+The dictionary is read here and written nowhere else.  A legacy name
+spells the answer it used to spell: the name `always' spells the answer
+`session'."
+  (let ((reply (yeah-approval--reply-of-name name)))
+    (when reply
+      (if (memq reply yeah-approval--reply-kinds)
+          reply
+        ;; A legacy name: the answer it names now is written next to it.
+        (let ((entry (seq-find (lambda (pair) (equal name (car pair)))
+                               yeah-approval--legacy-replies)))
+          (yeah-approval--kind-of-name (cdr entry)))))))
 
 (defun yeah-approval-reply-canonical (reply)
-  "Return the canonical kind of REPLY, or nil when it names no kind.
-REPLY may be spelled as a symbol or as a keyword; the canonical kind is
-the keyword.  The dictionary is read here and written nowhere else."
+  "Return the canonical answer of REPLY, or nil when it names no answer.
+REPLY may be spelled as a symbol or as a keyword; the canonical answer
+is the keyword.  The dictionary is read here and written nowhere else."
   (when (symbolp reply)
     (yeah-approval--kind-of-name (yeah-approval--kind-name reply))))
 
@@ -92,72 +138,109 @@ the keyword.  The dictionary is read here and written nowhere else."
   "Non-nil when REPLY is one of the answers a person may give."
   (and (yeah-approval-reply-canonical reply) t))
 
+(defun yeah-approval--remembered-kinds ()
+  "Return the answers that are written into the rules.
+The answer of this call remembers nothing and the refusal remembers
+nothing either; every other answer is remembered.  The answers are
+taken from the one dictionary, and this module writes no list of them."
+  (seq-remove (lambda (answer) (or (eq answer :once) (eq answer :reject)))
+              yeah-approval--reply-kinds))
+
+(defun yeah-approval-effect-of (answer)
+  "Return the effect the answer ANSWER has.
+The refusal refuses; every other answer allows.  ANSWER is an answer,
+spelled as it is given."
+  (if (eq (yeah-approval-reply-canonical answer) :reject) :deny :allow))
+
+(defun yeah-approval-label (answer)
+  "Return the words the surfaces of the kernel use for ANSWER.
+The words are the ones of the plan: one time, this session, this
+project, always, and the refusal.  The names are written here, next to
+the dictionary of the answers, and nowhere else."
+  (pcase (yeah-approval--kind-name answer)
+    ("once" "Allow once")
+    ("session" "Allow for this session")
+    ("project" "Allow for this project")
+    ("global" "Allow always")
+    ("reject" "Reject")
+    (_ (format "Allow %s" (yeah-approval--kind-name answer)))))
+
 (defun yeah-approval-reply-on-wire (effect kind)
   "Return the wire name of the answer EFFECT with the canonical kind KIND.
-EFFECT is `:allow' or `:deny' and KIND the canonical kind of the answer.
-The wire spells the kinds in its own words; the name is derived from the
-canonical kind, and no list of names is written here."
+EFFECT is `:allow' or `:deny' and KIND the answer, spelled as it is
+given.  The wire spells the answers in its own words; the name is
+derived from the answer, and no list of names is written here."
   (if (eq effect :allow)
       (concat "allow-" (yeah-approval--kind-name kind))
     "reject-once"))
 
 (defun yeah-approval-reply-from-wire (name)
-  "Return the canonical kind the wire answer NAME spells, or nil.
-The wire names the kinds in its own words; the converter reads the
-canonical dictionary and writes no list of names of its own."
+  "Return the reply the wire answer NAME spells, or nil.
+The wire names the answers in its own words; the converter reads the
+canonical dictionary and writes no list of names of its own.  A legacy
+name spells the reply it used to spell: the wire name `allow-always'
+spells the reply `always', which is the answer `session'."
   (when (stringp name)
     (cond
      ((string-prefix-p "allow-" name)
-      (yeah-approval--kind-of-name (substring name (length "allow-"))))
+      (yeah-approval--reply-of-name (substring name (length "allow-"))))
      ((string-prefix-p "reject-" name) :reject)
      (t nil))))
 
 (defun yeah-approval-scope-of (kind carrier)
-  "Return the scope an answer of the canonical kind KIND has in CARRIER.
-An answer that remembers nothing is the scope of this call, an answer
-that remembers a rule has the scope of the carrier that holds it, and
-an answer that refuses carries no scope at all.
+  "Return the scope the answer KIND has in CARRIER.
+KIND is an answer, spelled as it is given: the legacy name `always' is
+the answer `session'.  An answer that remembers nothing is the scope of
+this call, an answer that remembers a rule has the scope of the carrier
+that holds it, and a refusal carries no scope at all.
 CARRIER is the name of a holder of rules: `run', `session' or `global'."
-  (pcase kind
-    (:always (yeah-perm-scope-of-carrier carrier))
-    (:reject nil)
-    (_ :once)))
+  (pcase (yeah-approval-reply-canonical kind)
+    (:once :once)
+    (:session (yeah-perm-scope-of-carrier carrier))
+    (:project :project)
+    (:global :global)
+    (_ nil)))
 
 (defun yeah-approval-scope-decision (decision carrier)
-  "Return DECISION with the scope of the path of CARRIER named in it.
+  "Return DECISION with the scope its answer names in CARRIER.
 CARRIER is the holder of the rules of the path: `run', `session' or
-`global'.  The scope of an answer that remembers a rule is the scope of
-that carrier, and an answer that remembers nothing is the scope of this
-call.  A question that waits is not an answer and carries no scope.  A
-decision that names a scope the path does not hold comes back as a
+`global'.  The scope of an answer is the scope the answer names: the
+answer `once' is the scope of this call, the answer `session' is the
+scope of the carrier of the path that asks, and the answers `project'
+and `global' are the scopes of the file of the project and of the file
+of the user -- a file is reachable from every path.  A refusal carries
+no scope at all.  A question that waits is not an answer and carries no
+scope.
+
+A decision that names a scope of its own must name the scope its
+answer names: a decision that claims another scope comes back as a
 refusal: the refusal names the scope and says why, and the scope is
 never routed silently into the carrier of another path."
-  (let* ((kind (yeah-approval-reply-canonical (plist-get decision :reply)))
+  (let* ((answer (yeah-approval-reply-canonical (plist-get decision :reply)))
          (named (plist-get decision :scope))
          (carrier-scope (yeah-perm-scope-of-carrier carrier))
          (scope (cond
                  ((plist-get decision :defer) nil)
-                 (named named)
-                 (kind (yeah-approval-scope-of kind carrier))
+                 (answer (yeah-approval-scope-of answer carrier))
                  (t nil))))
     (cond
      ;; A decision that is not an answer carries no scope.
-     ((and (null named) (null kind)) decision)
-     ;; `always' remembers a rule, and a rule lives in a carrier; a
-     ;; carrier that holds no rules is named in the refusal.
-     ((and (eq kind :always) (null carrier-scope))
+     ((and (null named) (null answer)) decision)
+     ;; The answer `session' needs a carrier that holds rules.
+     ((and (eq answer :session) (null carrier-scope))
       (list :effect :deny :reply :reject
             :reason (format "the carrier %s holds no rules" carrier)))
+     ;; A refusal carries no scope.
      ((null scope) decision)
-     ((eq scope :once) (plist-put (copy-sequence decision) :scope :once))
-     ((eq scope carrier-scope)
-      (plist-put (copy-sequence decision) :scope scope))
-     (t
+     ;; The scope the decision names must be the scope its answer names.
+     ((and named (not (eq named scope)))
       (list :effect :deny :reply :reject
-            :reason (format "the scope %s has no carrier here: %s"
-                             scope
-                             (or (yeah-perm-carrier-of-scope scope)
-                                 "nothing holds the rules of that scope")))))))
+            :reason (format "the scope %s is not the scope the answer names: %s"
+                             named
+                             (format "the answer names the scope of the carrier %s"
+                                     carrier))))
+     ((eq scope :once) (plist-put (copy-sequence decision) :scope :once))
+     (t (plist-put (copy-sequence decision) :scope scope)))))
 
 (defun yeah-approval-request (action resource &optional args tool-call-id)
   "Return a request for permission to run ACTION on RESOURCE.
@@ -192,20 +275,23 @@ changes nothing, so there is nothing to ask about."
           :reason (format "%s is a safe read: it changes nothing"
                           (plist-get request :action)))))
 
-(defun yeah-approval-always-p (decision)
+(defun yeah-approval-remembers-p (decision)
   "Return non-nil when DECISION is an answer that is to be remembered.
-The kind is read from the one dictionary of the answers: this module
-writes no list of kinds of its own."
-  (eq (yeah-approval-reply-canonical (plist-get decision :reply)) :always))
+The answer of this call is forgotten and the refusal is forgotten as
+well; every other answer is written into the rules.  The answers are
+read from the one dictionary of the answers: this module writes no list
+of them of its own."
+  (let ((answer (yeah-approval-reply-canonical (plist-get decision :reply))))
+    (and (memq answer (yeah-approval--remembered-kinds)) t)))
 
 (defun yeah-approval-remember-rule (request decision &optional scope)
   "Return the rule that remembers DECISION for REQUEST, or nil.
-An `always' answer becomes an allow rule for the exact action and the
-exact resource of REQUEST; every other answer is forgotten.  SCOPE, when
-given, is the canonical scope the rule belongs to; the scope of DECISION
-is used when it is not.  The rule says where it lives."
+An answer that names a scope becomes an allow rule for the exact action
+and the exact resource of REQUEST; every other answer is forgotten.
+SCOPE, when given, is the canonical scope the rule belongs to; the scope
+of DECISION is used when it is not.  The rule says where it lives."
   (when (and (eq (plist-get decision :effect) :allow)
-             (yeah-approval-always-p decision))
+             (yeah-approval-remembers-p decision))
     (yeah-perm-rule-make (plist-get request :action)
                          (plist-get request :resource)
                          'allow
@@ -227,32 +313,48 @@ refuse what they do not name."
       (user-error
        (list :effect :deny :reply :reject :reason (error-message-string err))))))
 
+(defun yeah-approval--decision-of (answer reply)
+  "Return the decision of the answer ANSWER, spelled as REPLY.
+ANSWER is the canonical answer and REPLY the answer as the person gave
+it: the legacy name `always' is the answer `session', and the decision
+carries the name it was given."
+  (cond
+   ((null answer) nil)
+   ((eq answer :reject) (list :effect :deny :reply :reject
+                               :reason "rejected by the person"))
+   (t (list :effect :allow :reply reply))))
+
 (defun yeah-approval-reply-decision (request reply)
-  "Answer REQUEST with REPLY, which is `once', `always' or `reject'.
-ALWAYS is written into the rules, so that the answer outlives the
-question.  The answer carries the scope of the user, and the rule it
-writes carries the same scope: the rule is written into the carrier of
-its scope, which is the file of the user, and the rules of the process
-keep it in the memory of the Emacs as well.  Return the decision."
-  (let ((kind (yeah-approval-reply-canonical reply)))
-    (unless kind
+  "Answer REQUEST with REPLY, which is one of the answers.
+The answers are `once', `session', `project', `global' and `reject'; the
+legacy name `always' is the answer `session'.  The answer carries the
+scope of the path that asks: the rule of the answer `session' is written
+into the carrier of the plain path, the rule of the answer `project'
+into the file of the project and the rule of the answer `global' into
+the file of the user.  The rule the answer writes carries the same
+scope: the rule is written into the carrier of its scope, and the rules
+of the process keep it in the memory of the Emacs as well when it is
+the rule of the person.  Return the decision."
+  (let ((answer (yeah-approval-reply-canonical reply)))
+    (unless answer
       (signal 'user-error
               (list (format "yeah-approval: %S is not an answer" reply))))
-    (let ((decision (pcase kind
-                      (:once (list :effect :allow :reply :once))
-                      (:reject (list :effect :deny :reply :reject))
-                      (:always (list :effect :allow :reply :always)))))
-      (when (eq kind :always)
-        (let ((rule (yeah-perm-rule-make (plist-get request :action)
-                                         (plist-get request :resource)
-                                         'allow
-                                         (yeah-approval-scope-of kind yeah-approval--carrier))))
+    (let* ((decision (yeah-approval--decision-of answer reply))
+           (scoped (yeah-approval-scope-decision decision yeah-approval--carrier)))
+      (when (yeah-approval-remembers-p scoped)
+        (let ((rule (yeah-approval-remember-rule request scoped)))
           ;; The rules of the process keep the rule in the memory of the
-          ;; Emacs, and the carrier of the scope -- the file of the user
-          ;; -- keeps it beyond the life of the process.
-          (yeah-perm-rules-add rule)
+          ;; Emacs when the rule is the rule of the person.  The rule of
+          ;; the project belongs to the project: it is read from the file
+          ;; of the project and from no other carrier.
+          (when (eq (plist-get rule :scope)
+                     (yeah-perm-scope-of-carrier yeah-approval--carrier))
+            (yeah-perm-rules-add rule))
+          ;; The carrier of the scope holds the rule: the file of the
+          ;; user for the scope of the person, the file of the project
+          ;; for the scope of the project.
           (yeah-perm-rule-store rule yeah-approval--carrier nil)))
-      (yeah-approval-scope-decision decision yeah-approval--carrier))))
+      scoped)))
 
 (defun yeah-approval-profile-decision (profile request &optional person)
   "Answer REQUEST under the permission profile PROFILE.
@@ -290,8 +392,8 @@ PERSON answers what the profile does not decide."
 
 (defun yeah-approval-person-answerer (answer)
   "Return an answerer that asks the person through ANSWER.
-ANSWER is a function of the REQUEST; it returns the reply, which is
-`once', `always' or `reject'."
+ANSWER is a function of the REQUEST; it returns the reply, which is one
+of the answers: `once', `session', `project', `global' or `reject'."
   (lambda (request)
     (let ((reply (funcall answer request)))
       (unless (yeah-approval-reply-p reply)
