@@ -19,8 +19,8 @@
 ;; catalogue of the pictures of the site, so that a picture that is added
 ;; later is covered by the rule and not by a new list of names.
 ;;
-;; This check walks `site/diagrams/*.puml' and measures four things for
-;; every picture it finds there:
+;; This check walks `site/diagrams/' -- every directory of it -- and
+;; measures four things for every picture it finds there:
 ;;
 ;;   1. the picture is a picture of PlantUML and its name is the name of
 ;;      its file: the first line of the drawing is `@startuml NAME', where
@@ -148,7 +148,7 @@ the references and of the places the picture names is returned."
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
        (pictures (expand-file-name "site/diagrams" root))
-       (paths (sort (file-expand-wildcards (expand-file-name "*.puml" pictures)) #'string<))
+       (paths (sort (directory-files-recursively pictures "\\.puml\\'") #'string<))
        (measured (delq nil
                         (mapcar (lambda (path)
                                   (unless (string-prefix-p "palette-"
