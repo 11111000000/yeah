@@ -248,6 +248,74 @@
         }
       }
     },
+    "PermissionOption": {
+      "type": "object",
+      "description": "One answer of the question of a permission.  The scope of the answer travels in the option id: the kind stays inside the vocabulary of ACP.",
+      "required": ["optionId", "name", "kind"],
+      "properties": {
+        "optionId": {
+          "type": "string",
+          "description": "The name of the answer.  The scope the answer names travels in it: `allow-once', `allow-session', `allow-project', `allow-global' and `reject-once'."
+        },
+        "name": {
+          "type": "string",
+          "description": "What the answer allows, in the words of the person."
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["allow_once", "allow_always", "reject_once"],
+          "description": "The kind of the answer in the vocabulary of ACP."
+        }
+      }
+    },
+    "RequestPermissionRequest": {
+      "type": "object",
+      "description": "The question of a permission.  The options are the four scopes of an answer and the refusal.",
+      "required": ["sessionId", "toolCall"],
+      "properties": {
+        "sessionId": { "type": "string", "description": "The id of the session that asks." },
+        "toolCall": {
+          "type": "object",
+          "description": "The tool call the question is about.",
+          "required": ["toolCallId", "title"],
+          "properties": {
+            "toolCallId": { "type": "string", "description": "The id of the tool call; the answer is addressed to it." },
+            "title": { "type": "string", "description": "What the tool call would do, in the words of the person." },
+            "rawInput": {
+              "description": "The arguments the tool would run with.",
+              "type": ["array", "object", "string", "null"]
+            }
+          }
+        },
+        "options": {
+          "type": "array",
+          "description": "The answers the client may choose.",
+          "items": { "$ref": "#/definitions/PermissionOption" }
+        }
+      }
+    },
+    "RequestPermissionResponse": {
+      "type": "object",
+      "description": "The answer of the client to the question of a permission.",
+      "required": ["outcome"],
+      "properties": {
+        "outcome": {
+          "type": "object",
+          "required": ["outcome"],
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "enum": ["selected", "cancelled"],
+              "description": "Whether the client chose an option or cancelled the question."
+            },
+            "optionId": {
+              "type": "string",
+              "description": "The id of the option the client chose.  The scope of the answer travels in it."
+            }
+          }
+        }
+      }
+    },
     "OutcomeNotification": {
       "type": "object",
       "required": ["sessionId", "outcome"],
@@ -325,6 +393,10 @@
     "session/recover": {
       "params": { "$ref": "#/definitions/RecoverRequest" },
       "result": { "$ref": "#/definitions/RecoverResponse" }
+    },
+    "session/request_permission": {
+      "params": { "$ref": "#/definitions/RequestPermissionRequest" },
+      "result": { "$ref": "#/definitions/RequestPermissionResponse" }
     }
   },
   "notifications": {

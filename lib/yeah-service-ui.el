@@ -92,15 +92,18 @@ own.")
 (defun yeah-service-ui--approval-prompter (title raw-input)
   "Ask the person about TITLE with RAW-INPUT in the shared approval view.
 Returns the option id of the answer, spelled by the converter of the
-kernel."
+kernel.  The answer is spelled the way the person gave it, so that the
+legacy name `always' travels as `allow-always' and is read as the answer
+`session'."
   (let* ((decision (yeah-approval-answer
                     (list :action (yeah-service-ui--permission-action title)
                           :resource (yeah-service-ui--permission-resource title)
                           :arguments raw-input)))
          (effect (plist-get decision :effect))
-         (kind (or (yeah-approval-reply-canonical (plist-get decision :reply))
-                   :reject)))
-    (yeah-approval-reply-on-wire effect kind)))
+         (reply (plist-get decision :reply)))
+    (if (and (eq effect :allow) (yeah-approval-reply-p reply))
+        (yeah-approval-reply-on-wire effect reply)
+      "reject-once")))
 
 (defun yeah-service-ui--answer-effect (answer)
   "Return the effect the wire answer ANSWER has: \"allow\" or \"deny\".
@@ -115,11 +118,13 @@ must name the effect that really happened."
   "Return the scope the wire answer ANSWER names, or nil.
 An answer that allows this call alone is the scope of this call, an
 answer that allows it for the session is the scope of the session, and a
-refusal carries no scope."
-  (let ((kind (yeah-approval-reply-from-wire answer)))
-    (when (and kind
+refusal carries no scope.  The wire name is read through the dictionary
+of the answers, so the legacy name `allow-always' names the scope of the
+session."
+  (let ((reply (yeah-approval-reply-from-wire answer)))
+    (when (and reply
                (equal "allow" (yeah-service-ui--answer-effect answer)))
-      (yeah-perm-scope-name (yeah-approval-scope-of kind 'session)))))
+      (yeah-perm-scope-name (yeah-approval-scope-of reply 'session)))))
 
 (defun yeah-service-ui--next-id (prefix)
   "Return a fresh local id beginning with PREFIX."
