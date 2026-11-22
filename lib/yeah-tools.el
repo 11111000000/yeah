@@ -122,9 +122,10 @@ is a kind outside `yeah-tools--kinds'."
 SPEC is a plist of shape
 
   (:name NAME :description DESC
-   :input ((:name PARAM :type TYPE [:optional t]) ...)
+   :input ((:name PARAM :type TYPE [:optional t] [:duration t]) ...)
    :handler FN
-   [:kind KIND] [:concurrency MODE] [:async t] [:resource RESOURCE])
+   [:kind KIND] [:concurrency MODE] [:async t] [:resource RESOURCE]
+   [:timeout SECONDS] [:output-limit CHARACTERS])
 
 where NAME is a string, DESC is a string, PARAM is a string, TYPE
 is one of `string', `integer', `symbol', `boolean', and FN is a
@@ -174,10 +175,36 @@ Three more fields are optional and say what the tool is and how it runs:
                 result. A tool that waits — on a process, on a timer —
                 says so, and the scheduler does not block on it.
 
+Two more fields are optional and say what the tool may do at once.  They
+are the limits of the tool, and the model cannot lift them:
+
+  :timeout      the upper bound of the work that one call of the tool
+                may start, in seconds.  The kernel stops waiting for the
+                call at that bound and closes it with a failure that
+                names the bound.  Only an asynchronous tool may declare
+                a timeout: the kernel cannot interrupt the handler of a
+                synchronous tool, and a promise it cannot keep is
+                refused at the registration.
+
+  :output-limit the upper bound of the output of one call of the tool,
+                in characters.  The whole text of an output that does not
+                fit goes into a private artifact, and the model reads
+                the tail of it.  The limit that applies is the smaller
+                of the declared one and the global one
+                (`yeah-result-output-limit'): the global limit is a
+                ceiling that a declaration cannot raise.  A tool that
+                declares no limit works by the global limit.
+
+A parameter of the input that says how long the work may take is marked
+with `:duration t'.  A call that asks for a duration longer than the
+timeout of the tool is refused by name.
+
 Signals `user-error' if SPEC is malformed, if SPEC declares a kind
 outside the vocabulary of the protocol, if SPEC declares a risk outside
 the vocabulary of the kernel, if SPEC declares a resource that is not a
-nonempty string, or if a tool with the same `:name' is already
+nonempty string, if SPEC declares a timeout or an output limit that is
+not a positive integer, if SPEC declares a timeout and is not
+asynchronous, or if a tool with the same `:name' is already
 registered."
   (unless (yeah-tools--spec-p spec)
     (signal 'user-error
@@ -185,7 +212,9 @@ registered."
   (let ((name (plist-get spec :name))
         (kind (plist-get spec :kind))
         (risk (plist-get spec :risk))
-        (resource (plist-get spec :resource)))
+        (resource (plist-get spec :resource))
+        (timeout (plist-get spec :timeout))
+        (output-limit (plist-get spec :output-limit)))
     (when (and kind (not (yeah-tools-kind-known-p kind)))
       (signal 'user-error
               (list (format "yeah-tools-register: the tool %S declares the kind %S, which is not in the vocabulary of the protocol"
@@ -199,6 +228,21 @@ registered."
       (signal 'user-error
               (list (format "yeah-tools-register: the tool %S declares the resource %S, which is not a nonempty string"
                              name resource))))
+    (when (and (plist-member spec :timeout)
+               (not (and (integerp timeout) (> timeout 0))))
+      (signal 'user-error
+              (list (format "yeah-tools-register: the tool %S declares the timeout %S, which is not a positive integer"
+                             name timeout))))
+    (when (and (plist-member spec :timeout)
+               (not (plist-get spec :async)))
+      (signal 'user-error
+              (list (format "yeah-tools-register: the tool %S declares the timeout %S, but only an asynchronous tool may declare a timeout"
+                             name timeout))))
+    (when (and (plist-member spec :output-limit)
+               (not (and (integerp output-limit) (> output-limit 0))))
+      (signal 'user-error
+              (list (format "yeah-tools-register: the tool %S declares the output limit %S, which is not a positive integer"
+                             name output-limit))))
     (when (gethash name (yeah-tools--active-registry))
       (signal 'user-error
               (list (format "yeah-tools-register: %S already registered" name))))
@@ -229,6 +273,28 @@ switched on by the declaration."
     (if (and (stringp resource) (> (length resource) 0))
         resource
       nil)))
+
+(defun yeah-tools-timeout (spec)
+  "Return the timeout the tool SPEC declares, in seconds, or nil.
+The timeout is the upper bound of the work that one call of the tool may
+start.  Only an asynchronous tool may declare one: the kernel cannot
+interrupt the handler of a synchronous tool, so a promise it cannot keep
+is refused at the registration."
+  (let ((timeout (plist-get spec :timeout)))
+    (if (and (integerp timeout) (> timeout 0))
+        timeout
+      nil)))
+
+(defun yeah-tools-output-limit (spec)
+  "Return the output limit that applies to the tool SPEC, in characters.
+The limit is the smaller of the limit the tool declares and the global
+limit `yeah-result-output-limit': the global limit is a ceiling that a
+declaration cannot raise.  A tool that declares no limit works by the
+global limit."
+  (let ((declared (plist-get spec :output-limit)))
+    (if (and (integerp declared) (> declared 0))
+        (min declared yeah-result-output-limit)
+      yeah-result-output-limit)))
 
 (defun yeah-tools-unregister (name)
   "Remove the tool registered under NAME. No-op if absent."
@@ -308,11 +374,32 @@ refused by the dispatch, and the names of its arguments are not read."
           (setq n (1+ n))))
     n))
 
+(defun yeah-tools--check-durations (name spec args)
+  "Signal a `user-error' unless every duration of ARGS fits the timeout of SPEC.
+A parameter that the tool declares as a duration (`:duration t') says how
+long the work may take.  A call that asks for more than the timeout the
+tool declares is refused by name: the registry limits what the model may
+ask for, and the model does not lift that limit by asking for more."
+  (let ((timeout (yeah-tools-timeout spec)))
+    (when timeout
+      (let ((params (plist-get spec :input))
+            (index 0))
+        (dolist (param params)
+          (when (plist-get param :duration)
+            (let ((value (nth index args)))
+              (when (and (integerp value) (> value timeout))
+                (signal 'user-error
+                        (list (format
+                                "yeah-tools-call: %S: the %s of %d seconds is more than the timeout of %d seconds the tool declares"
+                                name (plist-get param :name) value timeout))))))
+          (setq index (1+ index)))))))
+
 (defun yeah-tools--check-args (name spec args)
   "Signal a `user-error' unless ARGS fit the input of the tool SPEC.
 The count of the arguments, and the type of every one of them, must
 match what the tool declared. This is the gate: a tool is never called
-with arguments it did not ask for."
+with arguments it did not ask for.  A duration that is longer than the
+timeout of the tool is refused as well."
   (let* ((params (plist-get spec :input))
          (req (yeah-tools--required-count params))
          (max (length params))
@@ -335,7 +422,8 @@ with arguments it did not ask for."
         (setq idx (1+ idx))))
     (when err
       (signal 'user-error
-              (list (format "yeah-tools-call: %S: %s" name err))))))
+              (list (format "yeah-tools-call: %S: %s" name err))))
+    (yeah-tools--check-durations name spec args)))
 
 (defun yeah-tools--validate-and-apply (name spec args)
   "Validate ARGS against SPEC for tool NAME, then call the handler.
@@ -351,6 +439,10 @@ DONE is called with the result of the tool. A tool that is not
 asynchronous answers at once; a tool that is asynchronous takes the
 continuation itself and calls it when it has settled.
 
+The output of the tool is bounded by the limit the tool declares: the
+model reads the tail of an output that does not fit, and the whole text
+goes into a private artifact.
+
 This is the way into the registry from outside it: the arguments are
 checked here, and nowhere else."
   (let ((spec (yeah-tools-get name)))
@@ -358,11 +450,17 @@ checked here, and nowhere else."
       (signal 'user-error
               (list (format "yeah-tools-dispatch: unknown tool name %S" name))))
     (yeah-tools--check-args name spec args)
-    (if (plist-get spec :async)
-        (funcall (plist-get spec :handler) args (or done #'ignore))
-      (let ((result (apply (plist-get spec :handler) args)))
-        (when done (funcall done result))
-        result))))
+    (let ((limit (yeah-tools-output-limit spec)))
+      (if (plist-get spec :async)
+          (funcall (plist-get spec :handler) args
+                   (lambda (result)
+                     (let ((bounded (yeah-result-bound result limit)))
+                       (when done (funcall done bounded))
+                       bounded)))
+        (let ((result (yeah-result-bound
+                       (apply (plist-get spec :handler) args) limit)))
+          (when done (funcall done result))
+          result)))))
 
 (defun yeah-tools--normalize-value (value)
   "Return VALUE with the JSON booleans and null turned into the Elisp ones.
@@ -402,8 +500,13 @@ arguments; its length must be between the count of required
 parameters and the total count of parameters declared in the
 spec. Each non-nil argument must satisfy the declared `:type'.
 
+The output of the tool is bounded by the limit the tool declares: the
+model reads the tail of an output that does not fit, and the whole text
+goes into a private artifact.
+
 Signals `user-error' if NAME is not registered, if the arg count
-is wrong, or if any arg fails the type check."
+is wrong, if any arg fails the type check, or if a duration is longer
+than the timeout the tool declares."
   (let ((spec (gethash name yeah-tools--registry)))
     (unless spec
       (signal 'user-error
@@ -413,7 +516,8 @@ is wrong, or if any arg fails the type check."
               (list (format "yeah-tools-call: args must be a list, got %S"
                             (type-of args)))))
     (condition-case err
-        (yeah-tools--validate-and-apply name spec args)
+        (yeah-result-bound (yeah-tools--validate-and-apply name spec args)
+                           (yeah-tools-output-limit spec))
       (user-error
        (signal 'user-error
                (list (format "yeah-tools-call: %S raised: %S"

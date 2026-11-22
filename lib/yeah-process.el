@@ -21,6 +21,11 @@
 (defconst yeah-process--default-timeout 120
   "Default maximum process runtime in seconds.")
 
+(defconst yeah-process--output-limit 32768
+  "Maximum number of characters one job read may hand to the model.
+The bound belongs to the tool: the model asks for a slice of the output
+of a job, and the registry says how large a slice it may get.")
+
 (defvar yeah-process--jobs (make-hash-table :test 'equal)
   "Map job IDs to their managed process records.")
 
@@ -329,14 +334,15 @@ without changing its status."
   "Return Bash and job tool specifications for Yeah's tool registry."
   (list
    (list :name "bash"
-         :description "Run a command asynchronously with sh -c and bounded output."
+         :description "Run a command asynchronously with sh -c and bounded output. The command may run for at most 120 seconds, and the timeout you ask for may not be longer than that."
          :input (list (list :name "command" :type 'string)
-                      (list :name "timeout" :type 'integer :optional t)
+                      (list :name "timeout" :type 'integer :duration t :optional t)
                       (list :name "directory" :type 'string :optional t)
-                      (list :name "idle" :type 'integer :optional t))
+                      (list :name "idle" :type 'integer :duration t :optional t))
          :kind "execute"
          :risk "execute"
          :resource "shell"
+         :timeout yeah-process--default-timeout
          :async t
          :handler #'yeah-process-bash)
    (list :name "job-status"
@@ -352,6 +358,7 @@ without changing its status."
                       (list :name "limit" :type 'integer :optional t))
          :kind "execute"
          :risk "read"
+         :output-limit yeah-process--output-limit
          :handler #'yeah-process-job-read)
    (list :name "job-cancel"
          :description "Delete a job's managed process; descendants are not guaranteed to stop."

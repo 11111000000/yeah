@@ -29,6 +29,11 @@
 (defconst yeah-files--binary-sniff-length 4096
   "Number of initial characters checked for a NUL byte.")
 
+(defconst yeah-files--output-limit 32768
+  "Maximum number of characters one file tool may hand to the model.
+The bound belongs to the tool: the model asks for a file, or for a list
+of paths, and the registry says how much of it may reach the model.")
+
 (defun yeah-files--protect (tool thunk)
   "Run THUNK for TOOL, returning structured expected failures."
   (condition-case err
@@ -238,6 +243,7 @@ Return at most LIMIT path:line:text matches."
                       (list :name "limit" :type 'integer :optional t))
          :kind "read"
          :risk "read"
+         :output-limit yeah-files--output-limit
          :handler #'yeah-files--read)
    (list :name "glob"
          :description "List the relative paths of the files that match an Emacs regexp; it returns the paths, not their contents."
@@ -246,6 +252,7 @@ Return at most LIMIT path:line:text matches."
                       (list :name "limit" :type 'integer :optional t))
          :kind "search"
          :risk "read"
+         :output-limit yeah-files--output-limit
          :handler #'yeah-files--glob)
    (list :name "grep"
          :description "Search the text files below a directory for an Emacs regexp and return path:line:text matches; it returns the matches, not the whole file."
