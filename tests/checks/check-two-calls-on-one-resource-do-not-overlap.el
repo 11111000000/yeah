@@ -25,7 +25,7 @@
 ;; that drove the scheduler alone would pass even when the turn dropped the
 ;; declaration on the way.
 ;;
-;; Six things are proved:
+;; Seven things are proved:
 ;;
 ;;   1. two calls that declare one resource do not overlap: the second one
 ;;      starts after the first one has settled;
@@ -35,20 +35,22 @@
 ;;      no refusal at all;
 ;;   3. a call that declares no resource is not held back by another call:
 ;;      the lock is switched on by the declaration;
-;;   4. the declaration reaches the scheduler: the call the turn builds out
-;;      of the registry carries the resource, and the turns of the three
-;;      proofs above run through that call;
-;;   5. the registration refuses a declaration that is not a nonempty
+;;   4. the waiting is finite: a call that waits for a busy resource does
+;;      not hold back the calls of other resources, and the batch settles;
+;;   5. the declaration reaches the scheduler: the call the turn builds out
+;;      of the registry carries the resource, and the turns of the proofs
+;;      above run through that call;
+;;   6. the registration refuses a declaration that is not a nonempty
 ;;      string, and the refusal names the tool;
-;;   6. every tool that changes the world declares a resource.  The set of
+;;   7. every tool that changes the world declares a resource.  The set of
 ;;      the tools that change the world is MEASURED, not taken from a
 ;;      constant: it is read from the declarations of the registry.
 ;;
-;; The sixth proof is a measurement and not a list: a tool that changes the
-;; world is in the set because it says so, and a tool that declares no risk
-;; is in it as well, because a risk that is not known changes the world.
-;; The tools that only read are not in the set, and they declare nothing: a
-;; reader needs no lock.
+;; The seventh proof is a measurement and not a list: a tool that changes
+;; the world is in the set because it says so, and a tool that declares no
+;; risk is in it as well, because a risk that is not known changes the
+;; world.  The tools that only read are not in the set, and they declare
+;; nothing: a reader needs no lock.
 ;;
 ;; The probes wait on a timer, which is what a tool that waits does.  The
 ;; event loop is pumped in small steps, because a timer that is started
@@ -169,10 +171,44 @@ happened."
         (push (format "the call that declares nothing was held back: %S" order)
               failures))))
 
-  ;; --- 4. the declaration reaches the scheduler --------------------------
+  ;; --- 4. the waiting is finite and the blocked call does not block ------
+  ;; Three calls: the first and the third declare one resource, the second
+  ;; declares another one.  The third waits for the first, and the second
+  ;; runs while the third waits: a call that waits for a resource waits for
+  ;; the calls that are running and for nothing else, and a running call
+  ;; waits for nothing.  There is no cycle to enter, and the batch settles:
+  ;; the last event is the end of the third call.
+  (let ((events (list nil)))
+    (yeah-tools-register
+     (yeah-check--probe "probe-chain-a" "probe-chain-resource-a" events 0.15))
+    (yeah-tools-register
+     (yeah-check--probe "probe-chain-b" "probe-chain-resource-b" events 0.15))
+    (yeah-tools-register
+     (yeah-check--probe "probe-chain-c" "probe-chain-resource-a" events 0.15))
+    (let* ((order (yeah-check--run-turn
+                   '("probe-chain-a" "probe-chain-b" "probe-chain-c") events))
+           (at (lambda (event) (cl-position event order :test #'equal))))
+      (unless (equal (list (nth 0 order) (nth 1 order))
+                     '("probe-chain-a-start" "probe-chain-b-start"))
+        (push (format "the call on the free resource did not run while the other waited: %S"
+                      order)
+              failures))
+      (unless (and (funcall at "probe-chain-a-finish")
+                   (funcall at "probe-chain-c-start")
+                   (< (funcall at "probe-chain-a-finish")
+                      (funcall at "probe-chain-c-start")))
+        (push (format "the call on the busy resource did not wait for it: %S"
+                      order)
+              failures))
+      (unless (and (= 6 (length order))
+                   (equal (nth 5 order) "probe-chain-c-finish"))
+        (push (format "the batch with a waiting call never settled: %S" order)
+              failures))))
+
+  ;; --- 5. the declaration reaches the scheduler --------------------------
   ;; The call the turn builds out of the registry carries the resource.  The
-  ;; three proofs above run through that call: a turn that dropped the
-  ;; declaration would let the calls of one resource overlap.
+  ;; proofs above run through that call: a turn that dropped the declaration
+  ;; would let the calls of one resource overlap.
   (let* ((spec (yeah-tools-get "probe-lock-a"))
          (call (yeah-turn--call-spec nil (list :name "probe-lock-a"
                                                :args nil
@@ -183,7 +219,7 @@ happened."
                     resource)
             failures)))
 
-  ;; --- 5. the registration refuses a declaration that is not a string ---
+  ;; --- 6. the registration refuses a declaration that is not a string ---
   (dolist (bad (list 42 "" :file))
     (let ((refusal nil))
       (condition-case err
@@ -201,7 +237,7 @@ happened."
                         bad (error-message-string refusal))
                 failures)))))
 
-  ;; --- 6. every tool that changes the world declares a resource ---------
+  ;; --- 7. every tool that changes the world declares a resource ---------
   ;; The set of the tools that change the world is measured: it comes from
   ;; the declarations of the registry and not from a list of names.
   (dolist (name (yeah-risk-mutating-tools))
