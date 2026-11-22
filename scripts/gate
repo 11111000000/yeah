@@ -27,7 +27,8 @@
 #   1 — fail  (something was refuted)
 #   2 — blocked (the input of the run was wrong)
 #   3 — unknown (the method could not tell: the run was killed and the
-#       attempts ran out, or the run passed the limit of its time)
+#       attempts ran out, or the run passed the limit of its time, or the
+#       map of the project could not be written)
 
 set -u
 
@@ -170,4 +171,19 @@ sweep_method_copies
 # project, and it must say how far the run came -- even when the run was
 # killed.
 "$mathc_bin" --root . map
+map_rc=$?
+if [ "$map_rc" -ne 0 ]; then
+  # The map is the state of the project.  A gate that answers 0 without a
+  # green map answers about a state it does not know, so the answer of the
+  # gate is the answer of the map: a map that says a claim is refuted is a
+  # refusal (1), and a map that could not be written at all is unknown (3).
+  # Unknown is never pass.
+  echo "scripts/gate: the step map answered $map_rc: the map of the project is not green" >&2
+  if [ "$verdict" -eq 0 ]; then
+    case "$map_rc" in
+      1|2) verdict="$map_rc" ;;
+      *) verdict=3 ;;
+    esac
+  fi
+fi
 exit "$verdict"
