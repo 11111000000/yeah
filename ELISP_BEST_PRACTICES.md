@@ -469,3 +469,22 @@ success, and a waived claim is never read as a passing one.
   line whether the pattern matches at all.  A rule that cannot fire is
   invisible in the verdict of a check and costs more than a broken one,
   because it promises a measurement that is not there.
+
+### §11.19 — `nth` walks the chain of a pair and needs a list in it
+
+- **Date:** 2026-11-22 (the pictures of the site)
+- **Symptom:** a check that read the body of a package of a picture died with
+  the code 255 and no verdict at all: the pair that carries the name of the
+  package and the text of its body was written as a dotted pair
+  `(NAME . BODY)`, and the body is a string and not a list.
+- **Cause:** `nth' walks the chain of the cdr and asks every cell of it for a
+  list, so a dotted pair works only as long as the cell is a list.  Measured
+  in Emacs 30.2: `(nth 1 '("a" . "b"))' raises
+  `Wrong type argument: listp, "b"', and `(nth 1 '("a" "b"))' answers `b'.
+- **Fix:** the pair is a list of two elements now -- `(NAME BODY)' -- which is
+  the shape the reader of the pictures uses for its other pairs
+  (`yeah-diagram--components', `yeah-diagram--broken-references').
+- **Convention:** a pair that is read with `nth' is a list of two elements and
+  not a dotted pair; `cons' with a dotted pair is for the cell of a list and
+  not for a record that is read by index.
+
