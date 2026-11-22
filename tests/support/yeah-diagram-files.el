@@ -45,8 +45,9 @@
 ;;   packages with the text that stands in them;
 ;; * `yeah-diagram--note-lines' returns the lines of the note of the
 ;;   picture, `yeah-diagram--note-alias' returns the block the note
-;;   hangs on, and `yeah-diagram--exclusion' returns the module of
-;;   `lib/' and the reason of one line of that note;
+;;   hangs on, `yeah-diagram--notes' returns every note of the picture
+;;   with the block it hangs on, and `yeah-diagram--exclusion' returns
+;;   the module of `lib/' and the reason of one line of that note;
 ;; * `yeah-diagram--modules-of' walks `lib/' and returns the modules of
 ;;   the kernel, in every directory of it;
 ;; * `yeah-diagram--titles' returns the titles of the drawing: the
@@ -56,9 +57,7 @@
 ;;   of that block;
 ;; * `yeah-diagram--says-p' says whether the drawing says a word, and
 ;;   `yeah-diagram--names-all-p' says whether one line of the drawing
-;;   names every one of a list of names, and
-;;   `yeah-diagram--words-name-all-p' says the same of a list of words
-;;   that a check has cut out of the picture.
+;;   names every one of a list of names.
 ;;
 ;; The tree of the repository is never written: this reader only reads.
 
@@ -379,6 +378,42 @@ only for the first of them."
           (setq alias (match-string 1 line)))))
     alias))
 
+(defun yeah-diagram--notes (text)
+  "Return the notes of the picture in TEXT.
+Every note is a list (ALIAS LINES): the block the note hangs on -- nil
+when it hangs on nothing -- and the lines of the note.  The notes come
+in the order of the picture, and a picture with one note has one entry
+here and a picture with several notes has one entry for each of them.
+
+The lines of a note are the lines between the line that opens it and
+the line that closes it: the line that opens the note is not a line of
+it, and the line that closes it is not a line of it either.
+
+One note and the alias of one note are two different things, and a
+check that measures a note measures the note it means: the words of one
+note and the block of another note are the words of one thing and the
+name of another one."
+  (let (notes in-note alias lines)
+    (dolist (line (split-string text "\n" t))
+      (cond
+       ((string-match "\\`[[:space:]]*note\\b" line)
+        (when in-note
+          (push (list alias (nreverse lines)) notes))
+        (setq in-note t
+              lines nil
+              alias (if (string-match
+                         "\\`[[:space:]]*note\\b.*\\bof[[:space:]]+\\([^[:space:]]+\\)"
+                         line)
+                        (match-string 1 line)
+                      nil)))
+       ((and in-note (string-match "\\`[[:space:]]*end note\\'" line))
+        (push (list alias (nreverse lines)) notes)
+        (setq in-note nil lines nil alias nil))
+       (in-note (push line lines))))
+    (when in-note
+      (push (list alias (nreverse lines)) notes))
+    (nreverse notes)))
+
 (defun yeah-diagram--exclusion (line)
   "Return the exclusion of LINE, or nil.
 An exclusion is a list (MODULE REASON): a module of `lib/' and the reason
@@ -462,15 +497,6 @@ word `ACP' is not the word `acp'."
   (let ((words (yeah-diagram--words line)))
     (let ((case-fold-search nil))
       (cl-every (lambda (name) (member name words)) names))))
-
-(defun yeah-diagram--words-name-all-p (words names)
-  "Return non-nil when the list of WORDS holds every one of NAMES.
-The words of a picture that a check has cut out of it -- the half of a
-note that speaks of one transport and not of the other -- are words and
-not a text: the names are compared as words and not as pieces of text,
-and the case matters."
-  (let ((case-fold-search nil))
-    (cl-every (lambda (name) (member name words)) names)))
 
 (defun yeah-diagram--block-places (blocks words)
   "Return the places of the blocks of BLOCKS that name every word of WORDS.

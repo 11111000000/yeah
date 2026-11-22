@@ -174,7 +174,7 @@ The names are compared as words and not as pieces of text."
               (push (format "the drawing does not say %s: the picture must show %s"
                             (car word) (cadr word))
                     yeah-check--failures)))
-          ;; 5. the honest limit of the wire.  The limit is a relation
+;; 5. the honest limit of the wire.  The limit is a relation
           ;;    between the two transports: the part of the note that
           ;;    speaks of stdio says that a cancel cannot interrupt a
           ;;    running prompt, and the part of the note that speaks of
@@ -183,65 +183,89 @@ The names are compared as words and not as pieces of text."
           ;;    halves says the opposite of the truth and says every
           ;;    word of the truth, and a bag of words cannot tell the
           ;;    two halves apart.
-          (let* ((note (yeah-diagram--note-lines text))
-                 (words (apply #'append (mapcar #'yeah-diagram--words note)))
-                 (stdio (yeah-check--word-place "stdio" words))
+          ;;
+          ;;    The relation is one note of the picture: the note that
+          ;;    speaks of both transports.  The words of that note and
+          ;;    the block it hangs on are the words of one thing and the
+          ;;    name of the same thing, and a picture that spreads the
+          ;;    limit over two notes has no note of the limit at all.
+          (let* ((notes (yeah-diagram--notes text))
+                 (words-of
+                  (lambda (note)
+                    (apply #'append (mapcar #'yeah-diagram--words (nth 1 note)))))
+                 (carriers
+                  (cl-remove-if-not
+                   (lambda (note)
+                     (let ((words (funcall words-of note)))
+                       (and (yeah-check--word-place "stdio" words)
+                            (yeah-check--word-place "socket" words))))
+                   notes))
+                 (note (and (= 1 (length carriers)) (car carriers)))
+                 (words (and note (funcall words-of note)))
+                 (stdio (and words (yeah-check--word-place "stdio" words)))
                  (socket (and stdio
                               (let ((rest (nthcdr stdio words)))
                                 (and rest
                                      (let ((place (yeah-check--word-place "socket" rest)))
                                        (and place (+ stdio place)))))))
-                 (alias (yeah-diagram--note-alias text))
+                 (alias (and note (nth 0 note)))
                  (block (and alias
                              (cl-find-if (lambda (component)
                                            (string= alias (nth 0 component)))
                                          components)))
                  (title (and block (nth 2 block))))
-            (if (null note)
-                (push "the picture has no note at all: the picture must say the honest limit of the wire"
-                      yeah-check--failures)
-              (progn
-                (cond
-                 ((null stdio)
-                  (push "the note of the picture does not name stdio: the note must say that a cancel cannot interrupt a running prompt on stdio"
-                        yeah-check--failures))
-                 ((null socket)
-                  (push "the note of the picture does not name the local socket: the note must say that a cancel is handled while the prompt is still running"
-                        yeah-check--failures))
-                 (t
-                  (let* ((before (cl-subseq (nthcdr stdio words) 0 (- socket stdio)))
-                         (after (nthcdr socket words))
-                         (missing-stdio (yeah-check--missing-words before '("cancel" "cannot")))
-                         (missing-socket (yeah-check--missing-words after '("cancel" "handled"))))
-                    (unless (null missing-stdio)
-                      (push (format "the part of the note about stdio does not say that a cancel cannot interrupt a running prompt: the word %s is not there"
-                                    (yeah-diagram--words-text missing-stdio))
-                            yeah-check--failures))
-                    (unless (null missing-socket)
-                      (push (format "the part of the note about the local socket does not say that a cancel is handled while the prompt is still running: the word %s is not there"
-                                    (yeah-diagram--words-text missing-socket))
-                            yeah-check--failures)))))
-                ;; The note hangs on the block it speaks of: the note of
-                ;; the limit of the wire belongs to the local socket, and
-                ;; a note that hangs on the stdio transport tells the
-                ;; reader that stdio is the transport that can cancel a
-                ;; running prompt.
-                (cond
-                 ((null alias)
-                  (push "the note of the picture hangs on nothing: the note of the limit of the wire must hang on the block of the local socket"
-                        yeah-check--failures))
-                 ((null block)
-                  (push (format "the note of the picture hangs on the block %s, and the picture has no block of that name"
-                                alias)
-                        yeah-check--failures))
-                 ((yeah-diagram--names-all-p title '("stdio"))
-                  (push (format "the note of the picture hangs on the block %s, and the note of the limit of the wire belongs to the local socket: on stdio a cancel cannot interrupt a running prompt"
-                                alias)
-                        yeah-check--failures))
-                 ((not (yeah-diagram--names-all-p title '("socket")))
-                  (push (format "the note of the picture hangs on the block %s, and that block does not name the local socket: the note of the limit of the wire belongs to the local socket"
-                                alias)
-                        yeah-check--failures))))))))))
+            (cond
+             ((null notes)
+              (push "the picture has no note at all: the picture must say the honest limit of the wire"
+                    yeah-check--failures))
+             ((null carriers)
+              (push "no note of the picture says the honest limit of the wire: the limit is one relation between the two transports, and a note that speaks of one of them only is not the note of the limit"
+                    yeah-check--failures))
+             ((> 1 (length carriers))
+              (push "two notes of the picture say the honest limit of the wire: the note of the limit of the wire is one note of the picture"
+                    yeah-check--failures))
+             (t
+              (when (null stdio)
+                (push "the note of the picture does not name stdio: the note must say that a cancel cannot interrupt a running prompt on stdio"
+                      yeah-check--failures))
+              (when (null socket)
+                (push "the note of the picture does not name the local socket: the note must say that a cancel is handled while the prompt is still running"
+                      yeah-check--failures))
+              (when (and stdio socket)
+                (let* ((before (cl-subseq (nthcdr stdio words) 0 (- socket stdio)))
+                       (after (nthcdr socket words))
+                       (missing-stdio (yeah-check--missing-words before '("cancel" "cannot")))
+                       (missing-socket (yeah-check--missing-words after '("cancel" "handled"))))
+                  (unless (null missing-stdio)
+                    (push (format "the part of the note about stdio does not say that a cancel cannot interrupt a running prompt: the word %s is not there"
+                                  (yeah-check--words-text missing-stdio))
+                          yeah-check--failures))
+                  (unless (null missing-socket)
+                    (push (format "the part of the note about the local socket does not say that a cancel is handled while the prompt is still running: the word %s is not there"
+                                  (yeah-check--words-text missing-socket))
+                          yeah-check--failures))))
+              ;; The note hangs on the block it speaks of: the note of
+              ;; the limit of the wire belongs to the local socket, and
+              ;; a note that hangs on the stdio transport tells the
+              ;; reader that stdio is the transport that can cancel a
+              ;; running prompt.
+              (cond
+               ((null alias)
+                (push "the note of the picture hangs on nothing: the note of the limit of the wire must hang on the block of the local socket"
+                      yeah-check--failures))
+               ((null block)
+                (push (format "the note of the picture hangs on the block %s, and the picture has no block of that name"
+                              alias)
+                      yeah-check--failures))
+               ((yeah-diagram--names-all-p title '("stdio"))
+                (push (format "the note of the picture hangs on the block %s, and the note of the limit of the wire belongs to the local socket: on stdio a cancel cannot interrupt a running prompt"
+                              alias)
+                      yeah-check--failures))
+               ((not (yeah-diagram--names-all-p title '("socket")))
+                (push (format "the note of the picture hangs on the block %s, and that block does not name the local socket: the note of the limit of the wire belongs to the local socket"
+                              alias)
+                      yeah-check--failures))))))))))
+
   (when yeah-check--failures
     (dolist (failure yeah-check--failures)
       (message "placements-diagram: %s" failure))
