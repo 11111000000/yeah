@@ -31,11 +31,13 @@
 ;;      repository, at a line of that file, and at a line that carries a
 ;;      definition -- an empty line names no code, and a line that holds
 ;;      code and no definition names no definition;
-;;   4. every module of `lib/' is named inside one of the nine packages or
-;;      is listed in the note of the modules the picture does not name, with
-;;      the reason why it is not in the picture;
+;;   4. every module of `lib/' -- in every directory of `lib/' -- is named
+;;      inside one of the nine packages or is listed in the note of the
+;;      modules the picture does not name, with the reason why it is not in
+;;      the picture;
 ;;   5. a module is named in one package and not in two: a module in two
-;;      packages has no place of its own;
+;;      packages has no place of its own, and the refusal names the module
+;;      and the two packages that name it;
 ;;   6. the note of the modules the picture does not name names no module
 ;;      that is not there, names every module with the reason why it is not
 ;;      in the picture, and names no module that a package names as well.
@@ -132,6 +134,34 @@ that the note names a module and says nothing about it."
           (list module (string-trim (match-string 1 line)))
         (list module nil)))))
 
+(defun yeah-check--packages-by-module (named-by)
+  "Return the packages of the picture that name each module.
+NAMED-BY is a list of (PACKAGE . MODULES): the name of a package of the
+picture and the modules it names.  The answer is a list of (MODULE .
+PACKAGES): the module and the names of the packages that name it, in the
+order of the picture.
+
+The packages that name a module are counted, and not the names of the
+module: a module that two packages name is a module that has no place of
+its own, and the check must be able to name the two packages."
+  (let (by-module)
+    (dolist (entry named-by)
+      (dolist (module (cdr entry))
+        (let ((found (assoc module by-module)))
+          (if found
+              (setcdr found (append (cdr found) (list (car entry))))
+            (push (cons module (list (car entry))) by-module)))))
+    (nreverse by-module)))
+
+(defun yeah-check--modules-of (root)
+  "Return the modules of `lib/' of the tree at ROOT.
+Every directory of `lib/' is walked: a module in a subdirectory of `lib/'
+is a module of the kernel as well."
+  (sort (mapcar (lambda (module) (file-relative-name module root))
+                (directory-files-recursively (expand-file-name "lib" root)
+                                             "\\.el\\'"))
+        #'string<))
+
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
        (diagram (expand-file-name "site/diagrams/code-packages.puml" root)))
@@ -154,12 +184,14 @@ that the note names a module and says nothing about it."
            (package-names (yeah-check--package-lines text))
            (packages (yeah-check--packages text))
            (exclusions (delq nil (mapcar #'yeah-check--exclusion (yeah-check--note-lines text))))
-           (named (mapcar (lambda (package)
-                            (mapcar #'car (yeah-diagram--references (nth 1 package))))
-                          packages))
-           (all-named (delete-dups (apply #'append named)))
-           (modules (mapcar (lambda (module) (file-relative-name module root))
-                             (file-expand-wildcards (expand-file-name "lib/*.el" root)))))
+           (named-by (mapcar (lambda (package)
+                               (cons (nth 0 package)
+                                     (delete-dups
+                                      (mapcar #'car
+                                              (yeah-diagram--references (nth 1 package))))))
+                             packages))
+           (all-named (delete-dups (apply #'append (mapcar #'cdr named-by))))
+           (modules (yeah-check--modules-of root)))
       ;; 1. the file is a diagram of PlantUML and it is not empty.
       (when (string-empty-p (string-trim text))
         (push "site/diagrams/code-packages.puml is empty: there is no picture of the code"
@@ -204,11 +236,12 @@ that the note names a module and says nothing about it."
                         module)
                 yeah-check--failures)))
       ;; 5. a module is named in one package and not in two.
-      (dolist (module all-named)
-        (let ((places (cl-count module all-named :test #'string=)))
-          (when (> places 1)
-            (push (format "the module %s is named %d times: a module of the code has one place and not two"
-                          module places)
+      (dolist (entry (yeah-check--packages-by-module named-by))
+        (let ((module (car entry))
+              (packages (cdr entry)))
+          (when (> (length packages) 1)
+            (push (format "the module %s is named by two packages of the picture: %s"
+                          module (string-join packages " and "))
                   yeah-check--failures))))
       ;; 6. the note of the modules the picture does not name.
       (dolist (exclusion exclusions)
