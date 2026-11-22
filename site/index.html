@@ -338,9 +338,23 @@
               <div>
                 <h3>The environment develops itself.</h3>
                 <p>The Y is the Y-combinator: person → environment → agent → environment. Yeah repairing its own canary is the modest, measurable form of that cycle.</p>
+                <p>The loop is the shape of the delegation: a child run with its own journal, its own tools and its own depth.</p>
               </div>
             </li>
           </ul>
+
+          <!-- The fixed point of the Y, in the notation of the site: the
+               person, the environment, the agent and the child that the
+               agent delegates to.  Two pictures, one for each theme; the
+               light one stands when the page does not say that it is
+               dark, so the page reads without JavaScript. -->
+          <figure class="diagram" data-diagram="d6">
+            <img class="diagram__img diagram__img--light" src="assets/diagrams/fixed-point-light.svg"
+                 alt="The Y-combinator as a loop: the person gives the task to the environment, the environment holds the files, the buffers and the checks, the agent reads the environment and calls the tools of the kernel, a delegated child runs with its own journal, its own tools and its own depth, and the check of the environment decides whether the agent changes it again.">
+            <img class="diagram__img diagram__img--dark" src="assets/diagrams/fixed-point-dark.svg"
+                 alt="The Y-combinator as a loop: the person gives the task to the environment, the environment holds the files, the buffers and the checks, the agent reads the environment and calls the tools of the kernel, a delegated child runs with its own journal, its own tools and its own depth, and the check of the environment decides whether the agent changes it again.">
+            <figcaption>The Y is a fixed point: the agent starts from what the environment already holds, and the environment is what the agent changes.</figcaption>
+          </figure>
 
           <p class="note"><span class="face-comment">;;</span> A check that cannot fail is a comment; unknown is not pass. <a href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md" rel="noopener">Read the whole vision.</a></p>
         </div>
@@ -359,7 +373,9 @@
           <h2 id="what-title" class="headline">Inspect the whole loop.</h2>
           <p class="lead lead--wide">
             The point is not another chat window. It is an agent whose execution, effects and
-            history remain visible to the person running it.
+            history remain visible to the person running it. One turn of the loop, end to end: the
+            model proposes a call, the registry checks it, the policy decides whether it may run,
+            and the journal keeps what happened.
           </p>
 
           <div class="invariants">
@@ -385,6 +401,16 @@
               </div>
             </article>
           </div>
+
+          <!-- One turn of the agent loop, end to end: the model proposes, the
+               registry and the policy decide, the journal remembers. -->
+          <figure class="diagram" data-diagram="d1">
+            <img class="diagram__img diagram__img--light" src="assets/diagrams/one-turn-light.svg"
+                 alt="One turn of the agent loop: the model proposes a tool call, the registry checks the type, the name and the arguments, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened, and the result goes back to the model.">
+            <img class="diagram__img diagram__img--dark" src="assets/diagrams/one-turn-dark.svg"
+                 alt="One turn of the agent loop: the model proposes a tool call, the registry checks the type, the name and the arguments, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened, and the result goes back to the model.">
+            <figcaption>One turn. The model proposes; the registry and the policy decide; the journal remembers. The states in the diagram are the states of the kernel (<code>lib/yeah-state.el</code>). The names of the tools in the diagrams are the names the model calls them by.</figcaption>
+          </figure>
 
           <aside class="y-note" aria-labelledby="y-title">
             <div class="y-note__form" aria-hidden="true">(yeah<br>&nbsp;&nbsp;emacs<br>&nbsp;&nbsp;agent<br>&nbsp;&nbsp;harness)</div>
@@ -412,6 +438,10 @@
             Emacs holds decades of community packages and years of your own configuration. Yeah is
             designed to start from that inheritance: the agent becomes a participant in the
             environment you built, rather than a shell scraping files and process output.
+          </p>
+          <p class="lead lead--wide">
+            The bridge is the only path to the live state of your Emacs, and it is a capability you
+            approve on purpose — not a scraping of files and process output.
           </p>
 
           <ul class="capability-list">
@@ -459,6 +489,16 @@
             </li>
           </ul>
 
+          <!-- The Emacs layer: the person, the editor's Emacs, the agent's
+               Emacs and the bridge between them. -->
+          <figure class="diagram" data-diagram="d3">
+            <img class="diagram__img diagram__img--light" src="assets/diagrams/emacs-layer-light.svg"
+                 alt="The Emacs layer of Yeah: the person writes the prompt in the editing Emacs and answers the requests of approval there, the kernel runs in the agent's Emacs, and the bridge is the only path from the kernel to the live buffers, the introspection and the edits of the editor.">
+            <img class="diagram__img diagram__img--dark" src="assets/diagrams/emacs-layer-dark.svg"
+                 alt="The Emacs layer of Yeah: the person writes the prompt in the editing Emacs and answers the requests of approval there, the kernel runs in the agent's Emacs, and the bridge is the only path from the kernel to the live buffers, the introspection and the edits of the editor.">
+            <figcaption>Your Emacs, the agent's Emacs, and the bridge between them. The bridge is a capability, not a default.</figcaption>
+          </figure>
+
           <p class="note"><span class="face-comment">;;</span> Parity with mature harnesses is a goal to measure by completed tasks, not a feature to claim by checklist.</p>
         </div>
 
@@ -477,32 +517,29 @@
           <p class="lead lead--wide">
             Human, ACP, MCP and batch drivers submit to the same run controller. Placement can
             change process ownership and who answers approvals; it cannot change the event sequence.
+            The controller is the only component that advances a run; the interfaces and the tests
+            submit commands to it.
           </p>
 
-          <figure class="ascii-figure">
-            <pre tabindex="0" aria-label="Human, ACP, MCP and Batch converge on the Session API and Run Controller, then the model adapter, typed tool registry and policy, execution scheduler, append-only JSONL journal, projections, and attached, service or batch placement."><code> Human: M-x yeah       ACP          MCP          Batch
-          \                |            |             /
-           +---------------+------------+------------+
-                           |
-              Session API / Run Controller
-                           |
-             +-------------+-------------+
-             |             |             |
-       Model adapter  Tool registry   Policy / approvals
-       private gptel  typed tools     rules as data
-             +-------------+-------------+
-                           |
-                 Execution scheduler
-              once-only · bounded · shared/exclusive
-                           |
-              Append-only versioned JSONL journal
-                           |
-             +-------------+-------------+
-             |             |             |
-       Model context   Read models / UI   Session index / cost
-                           |
-               attached · service · batch</code></pre>
-            <figcaption>Commands flow inward; events flow into one durable journal. The primary deployment is a dedicated service Emacs.</figcaption>
+          <!-- The layers of the core, in the notation of components: the same
+               picture as the ASCII figure that stood here, and every block
+               names the files that implement it. -->
+          <figure class="diagram" data-diagram="d2">
+            <img class="diagram__img diagram__img--light" src="assets/diagrams/core-layers-light.svg"
+                 alt="The layers of the core of Yeah: the human, the ACP, MCP and batch drivers and the wire submit to the session API and run controller, the controller drives the model adapter, the tool registry, the policy and the execution scheduler, every event is written into one append-only JSONL journal, and the projections of the context, the read models and the sessions read the journal.">
+            <img class="diagram__img diagram__img--dark" src="assets/diagrams/core-layers-dark.svg"
+                 alt="The layers of the core of Yeah: the human, the ACP, MCP and batch drivers and the wire submit to the session API and run controller, the controller drives the model adapter, the tool registry, the policy and the execution scheduler, every event is written into one append-only JSONL journal, and the projections of the context, the read models and the sessions read the journal.">
+            <figcaption>Commands flow inward; events flow into one durable journal. Everything else is a projection of the journal.</figcaption>
+          </figure>
+
+          <!-- The machine of the states of a run, written out of the tables of
+               the kernel. -->
+          <figure class="diagram" data-diagram="d5">
+            <img class="diagram__img diagram__img--light" src="assets/diagrams/state-machine-light.svg"
+                 alt="The machine of the states of a run: idle, deciding, post-decide, awaiting-tool, awaiting-user-permission, accumulating, compacting and blocked-on-rate, and the three ends of a run — completed, failed and interrupted — with the event that moves a run from one state to another.">
+            <img class="diagram__img diagram__img--dark" src="assets/diagrams/state-machine-dark.svg"
+                 alt="The machine of the states of a run: idle, deciding, post-decide, awaiting-tool, awaiting-user-permission, accumulating, compacting and blocked-on-rate, and the three ends of a run — completed, failed and interrupted — with the event that moves a run from one state to another.">
+            <figcaption>The states of a run. A run ends in one of three: completed, failed, interrupted.</figcaption>
           </figure>
 
           <div class="doc-links">
@@ -583,6 +620,16 @@
             </section>
           </div>
 
+          <!-- The four levels of the verification, and the boundary of what
+               each of them proves. -->
+          <figure class="diagram" data-diagram="d7">
+            <img class="diagram__img diagram__img--light" src="assets/diagrams/check-levels-light.svg"
+                 alt="The four levels of the verification of Yeah: unit tests of pure transitions, contract and canary checks with a control that can make them fail, integration tests of real round trips and restarts, and live tests against real providers — each level proves its own subject, and a green module is not a working product.">
+            <img class="diagram__img diagram__img--dark" src="assets/diagrams/check-levels-dark.svg"
+                 alt="The four levels of the verification of Yeah: unit tests of pure transitions, contract and canary checks with a control that can make them fail, integration tests of real round trips and restarts, and live tests against real providers — each level proves its own subject, and a green module is not a working product.">
+            <figcaption>Four levels of verification. A green module is not a working product.</figcaption>
+          </figure>
+
           <p class="note"><span class="face-comment">;;</span> Machine-checked claims live in <code>spec.json</code> and <code>./scripts/dev map</code>. This page is documentation, not a substitute for evidence.</p>
         </div>
 
@@ -601,6 +648,7 @@
           <p class="lead lead--wide">
             Target: Emacs 30.2 with <code>gptel</code> and a configured model backend. Keep
             credentials in your normal Emacs configuration, never in the repository or session log.
+            The harness runs in its own Emacs process; your editor reaches it through the bridge.
           </p>
 
           <div class="install-grid">
@@ -632,6 +680,15 @@
             <li><span>3</span><p>Start with <code>M-x yeah</code>; choose Plan for read-oriented work or Build for approved effects.</p></li>
           </ol>
 
+          <!-- Where the harness runs and who speaks to it. -->
+          <figure class="diagram" data-diagram="d4">
+            <img class="diagram__img diagram__img--light" src="assets/diagrams/placements-light.svg"
+                 alt="Where Yeah runs: the attached placement shares the process of the person, the service Emacs is the primary placement and speaks ACP and MCP over stdio and over a local socket, the batch placement is one process and one task, and the bridge connects the service Emacs to the editing one.">
+            <img class="diagram__img diagram__img--dark" src="assets/diagrams/placements-dark.svg"
+                 alt="Where Yeah runs: the attached placement shares the process of the person, the service Emacs is the primary placement and speaks ACP and MCP over stdio and over a local socket, the batch placement is one process and one task, and the bridge connects the service Emacs to the editing one.">
+            <figcaption>Where it runs and who talks to it: the editing Emacs reaches the service Emacs through the bridge, and the orchestrators speak ACP or MCP to the same one.</figcaption>
+          </figure>
+
           <p class="note"><span class="face-comment">;;</span> The bootstrap installs the supported gptel revision and Yeah through package-vc. Report failures before treating the published-repository installation as supported.</p>
         </div>
 
@@ -655,6 +712,16 @@
 ./scripts/dev map
 ./scripts/dev run
 ./scripts/dev gate</code></pre>
+
+            <!-- The modules of lib/ in nine packages. -->
+            <figure class="diagram" data-diagram="d8">
+              <img class="diagram__img diagram__img--light" src="assets/diagrams/code-packages-light.svg"
+                   alt="The modules of lib/ in nine packages: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing.">
+              <img class="diagram__img diagram__img--dark" src="assets/diagrams/code-packages-dark.svg"
+                   alt="The modules of lib/ in nine packages: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing.">
+              <figcaption>The kernel in nine packages. Every package has its own checks.</figcaption>
+            </figure>
+
             <p class="doc-links"><a href="https://github.com/11111000000/yeah/blob/main/docs/ENGINEERING.md" rel="noopener">C-h engineering</a></p>
           </div>
           <div class="mode-line mode-line--inactive">
