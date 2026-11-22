@@ -273,11 +273,19 @@ second run of the method of its own: two gates are two verdicts."
                             runs)
                     yeah-gate--failures)))
           ;; the map reached the end
-          (unless (and (file-exists-p map-file)
-                       (with-temp-buffer
-                         (insert-file-contents map-file)
-                         (string-match-p "map=complete" (buffer-string))))
-            (push "the map of the run did not reach the end" yeah-gate--failures))
+          (let ((content (and (file-exists-p map-file)
+                               (with-temp-buffer
+                                 (insert-file-contents map-file)
+                                 (buffer-string)))))
+            (cond
+             ((null content)
+              (push (format "the map of the run was not written: the file %s is not there"
+                            map-file)
+                    yeah-gate--failures))
+             ((not (string-match-p "map=complete" content))
+              (push (format "the map of the run did not reach the end: the file %s holds %S, not the marker map=complete"
+                            map-file (string-trim content))
+                    yeah-gate--failures))))
           ;; nothing of the run was left behind when the gate answered
           (setq left
                 (cl-remove-if (lambda (pid) (yeah-gate--await-dead pid 0))
