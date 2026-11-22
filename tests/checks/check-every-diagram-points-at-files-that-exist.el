@@ -39,13 +39,17 @@
 ;;      code, a line that holds nothing but a comment names no code
 ;;      either, and a line that holds code that is not a definition names
 ;;      no definition;
-;;   4. the picture names at least one file of the repository, so that
-;;      there is a name to follow.  The machine of the states is the one
-;;      exception of this rule: it is written out of the code by
-;;      `lib/yeah-state-diagram.el', and its truth is there and not in a
-;;      reference of the picture.  The exception is named in the code of
-;;      this check, and the check asks for the generator of the picture to
-;;      be there, so that the exception cannot outlive its reason.
+;;   4. the picture names at least one place of the repository, so that
+;;      there is a name to follow, and every place it names is there in
+;;      the tree.  A place is named with a line or without one: a picture
+;;      that shows where the levels of the verification live names the
+;;      directories of the tests and not the lines of their files.  The
+;;      machine of the states is the one exception of this rule: it is
+;;      written out of the code by `lib/yeah-state-diagram.el', and its
+;;      truth is there and not in a reference of the picture.  The
+;;      exception is named in the code of this check, and the check asks
+;;      for the generator of the picture to be there, so that the
+;;      exception cannot outlive its reason.
 ;;
 ;; The pictures of the skins of the themes (`palette-*') are not pictures
 ;; of the site: the pipeline does not draw them, and they name no file.
@@ -99,12 +103,14 @@ NAME is the name of the file of the picture, with its extension."
 (defun yeah-check--measure (root path)
   "Measure the picture at PATH against the tree at ROOT.
 The failures are pushed onto `yeah-check--failures', and the number of
-the references the picture names is returned."
+the references and of the places the picture names is returned."
   (let* ((name (file-relative-name path root))
          (base (file-name-base path))
          (text (yeah-diagram--text path))
          (lines (yeah-diagram--drawing-lines text))
          (references (yeah-diagram--references text))
+         (places (cl-remove-if-not (lambda (place) (yeah-diagram--place-p root place))
+                                   (yeah-diagram--places text)))
          (first (string-trim (or (car lines) "")))
          (last (string-trim (or (car (last lines)) ""))))
     ;; 1. the picture is a picture of PlantUML and it is named after its file.
@@ -125,13 +131,19 @@ the references the picture names is returned."
     (dolist (broken (yeah-diagram--broken-references root references))
       (push (format "the picture %s: %s" name (nth 1 broken))
             yeah-check--failures))
-    ;; 4. the picture names a file of the repository.
-    (unless (or references
+    ;; 4. the picture names a place of the repository, and every place it
+    ;;    names is there.
+    (dolist (place places)
+      (let ((defect (yeah-diagram--place-defect root place)))
+        (when defect
+          (push (format "the picture %s: %s" name defect)
+                yeah-check--failures))))
+    (unless (or references places
                 (yeah-check--generated-p (file-name-nondirectory path)))
-      (push (format "the picture %s names no file of the repository as `file:line', and this check cannot tell a good name from a bad one"
+      (push (format "the picture %s names no place of the repository, and this check cannot tell a good name from a bad one"
                     name)
             yeah-check--failures))
-    (length references)))
+    (cons (length references) (length places))))
 
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
@@ -167,13 +179,14 @@ the references the picture names is returned."
                           (nth 0 entry) generator)
                   yeah-check--failures))))
       (let* ((counts (mapcar (lambda (path) (yeah-check--measure root path)) measured))
-             (references (cl-reduce #'+ counts :initial-value 0)))
+             (references (cl-reduce #'+ (mapcar #'car counts) :initial-value 0))
+             (places (cl-reduce #'+ (mapcar #'cdr counts) :initial-value 0)))
         (dolist (failure yeah-check--failures)
           (message "every-diagram: %s" failure))
         (if yeah-check--failures
             (kill-emacs 1)
-          (message "every-diagram: %d picture(s) of site/diagrams/ measured, %d reference(s) followed"
-                   (length measured) references)
+          (message "every-diagram: %d picture(s) of site/diagrams/ measured, %d reference(s) and %d place(s) followed"
+                   (length measured) references places)
           (kill-emacs 0)))))
   (when yeah-check--blockers
     (dolist (blocker yeah-check--blockers)

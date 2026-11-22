@@ -30,6 +30,12 @@
 ;; * `yeah-diagram--references' returns every name of the form
 ;;   `file:line' of the drawing, and `yeah-diagram--reference-defect'
 ;;   says what is wrong with such a name;
+;; * `yeah-diagram--places' returns every name of a place of the tree that
+;;   the drawing carries -- a directory of the tests or a file of `lib/',
+;;   with a line or without one -- and `yeah-diagram--place-defect' says
+;;   what is wrong with such a name;
+;; * `yeah-diagram--without-places' returns a line without the names of
+;;   the places, because the name of a place is not a word of the picture;
 ;; * `yeah-diagram--components' returns the blocks of the picture that
 ;;   carry a name of their own, so that a check can ask what a named
 ;;   block says;
@@ -158,6 +164,84 @@ the comment of the picture is not a name of the code."
         (setq references (append references
                                  (yeah-diagram--references-in-line line)))))
     (nreverse references)))
+
+(defconst yeah-diagram--place-pattern
+  "[A-Za-z0-9._-]+\\(?:[/.][A-Za-z0-9._-]+\\)+"
+  "The pattern of a name of a place in a diagram.
+A place is a run of words with a slash or a dot in it: the directories of the
+tests and the files of `lib/' are places, and the name of a level is a word
+of its own.")
+
+(defun yeah-diagram--trim-dots (name)
+  "Return NAME without the dots at its end.
+The dot that ends a sentence is not a part of the name of the place, and a
+name of a file that ends with a dot is not a file."
+  (replace-regexp-in-string "\\.+\\'" "" name))
+
+(defun yeah-diagram--places-in-line (line)
+  "Return the names of the places of LINE.
+The newlines that PlantUML writes inside a title as `\\n' are read as the
+line breaks they are: the path of a place that follows such a newline begins
+at the beginning of a line, and not in the middle of the word `\\n'."
+  (let ((text (replace-regexp-in-string "\\\\n" "\n" line))
+        places)
+    (while (string-match yeah-diagram--place-pattern text)
+      (push (yeah-diagram--trim-dots (match-string 0 text)) places)
+      (setq text (substring text (match-end 0))))
+    (nreverse places)))
+
+(defun yeah-diagram--places (text)
+  "Return the names of the places of the drawing of the diagram in TEXT.
+A place is named with a line or without one: the line of a place is the
+line of its definition, and a picture that names a directory names it
+without a line.  The comment of the diagram names nothing: the name of a
+place in the comment of the picture is not a name of the code."
+  (let (places)
+    (dolist (line (split-string text "\n" t))
+      (unless (yeah-diagram--comment-p line)
+        (setq places (append places (yeah-diagram--places-in-line line)))))
+    (delete-dups places)))
+
+(defun yeah-diagram--root-entries (root)
+  "Return the names of the entries at the root of the tree at ROOT.
+The hidden entries are not entries of the project: the dot before the name
+of a file is a habit of a person and not a place of the repository."
+  (let (entries)
+    (dolist (entry (directory-files root nil "\\`[^.]" t))
+      (push (file-name-nondirectory entry) entries))
+    (nreverse entries)))
+
+(defun yeah-diagram--place-p (root place)
+  "Return non-nil when PLACE is a place of the tree at ROOT.
+A place of the repository begins where the repository begins: the first
+segment of the name of a place is an entry at the root of the tree.  The
+name of a place that begins elsewhere is not a name of a place -- the
+picture of the scheduler says `shared/exclusive' about the scheduler, and
+that is a word of the picture and not a path."
+  (let ((segments (split-string place "/")))
+    (and segments
+         (member (car segments) (yeah-diagram--root-entries root)))))
+
+(defun yeah-diagram--place-defect (root place)
+  "Return the defect of the place PLACE in the tree at ROOT, or nil.
+A place of the repository must be there: a name that nobody wrote any more
+is a dead end for the reader of the picture."
+  (cond
+   ((string-prefix-p "/" place)
+    (format "the diagram names the place %s, and a name of the diagram must be a path of this repository"
+            place))
+   ((not (yeah-diagram--place-p root place))
+    nil)
+   ((not (file-exists-p (expand-file-name place root)))
+    (format "the diagram names the place %s, and there is no such place in the tree"
+            place))
+   (t nil)))
+
+(defun yeah-diagram--without-places (line)
+  "Return LINE without the names of the places.
+The name of a place is not a word of the picture: the word `unit' of
+`tests/unit' says where the level lives and not what the level is."
+  (replace-regexp-in-string yeah-diagram--place-pattern " " line))
 
 (defun yeah-diagram--components (text)
   "Return the blocks of the diagram in TEXT.

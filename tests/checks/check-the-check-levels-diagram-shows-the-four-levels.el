@@ -72,25 +72,13 @@ contract (the canary), the integration and the live (the evaluation).")
 The three directories hold the tests of the three lower levels, and the
 gate is the runner of the checks of the tree.")
 
-(defconst yeah-check--path-pattern
-  "[A-Za-z0-9._-]+\\(?:[/.][A-Za-z0-9._-]+\\)+"
-  "The pattern of a name of a file or of a directory in the drawing.
-A name of a place is a run of words with a slash or a dot in it: the
-directories of the tests and the files of `lib/' are places, and the name of
-a level is a word of its own.")
-
-(defun yeah-check--without-paths (line)
-  "Return LINE without the names of the files and of the directories.
-The level of the verification is a word of the picture and not a part of
-the name of a directory: the word `unit' of `tests/unit' says where the
-level lives and not what the level is."
-  (replace-regexp-in-string yeah-check--path-pattern " " line))
-
 (defun yeah-check--says-level-p (lines word)
   "Return non-nil when one of LINES says WORD as a word of its own.
 The names of the places are taken out of the lines before the word is
-looked for."
-  (yeah-diagram--says-p (mapcar #'yeah-check--without-paths lines) word))
+looked for: the word `unit' of `tests/unit' says where the level lives and
+not what the level is.  The rule of the place is the rule of every picture
+of the site and it lives in one place: `tests/support/yeah-diagram-files.el'."
+  (yeah-diagram--says-p (mapcar #'yeah-diagram--without-places lines) word))
 
 (defun yeah-check--first-level (lines word)
   "Return the number of the first of LINES that says WORD, or nil."
