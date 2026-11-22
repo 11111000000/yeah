@@ -52,7 +52,9 @@
 ;;   9. a call that waits for the person and does not fit the declaration is
 ;;      refused by name as well: the refusal of the registry reaches the
 ;;      model on the path where the person is asked, and not only on the path
-;;      where the rules decide.
+;;      where the rules decide.  The probe names its subject: it holds only
+;;      when the person was really asked, and it refuses when the journal of
+;;      the run shows that the rules decided alone.
 ;;
 ;; The probes wait on a timer, which is what a tool that waits does.  The
 ;; event loop is pumped in small steps, because a timer that is started
@@ -111,6 +113,11 @@ continuation that never comes: the kernel has to close the call."
         :timeout timeout
         :handler (lambda (_args _done) nil)))
 
+(defvar yeah-check--last-records nil
+  "The records of the journal of the last run of `yeah-check--run-turn'.
+The helper puts them here: the caller needs them after the run, and the
+directory of the run is gone when the helper returns.")
+
 (defun yeah-check--run-turn (name args &optional steps answerer)
   "Run one turn whose model asks for the tool NAME with ARGS.
 Return the text the model read when the tool had answered, or nil when
@@ -145,6 +152,7 @@ the person and answers later."
            ;; limits of the tool and not the path of the completion.
            60000 0)
           (yeah-check--pump steps)
+          (setq yeah-check--last-records (yeah-session-records session))
           seen)
       (ignore-errors (delete-directory root t t)))))
 
@@ -341,16 +349,24 @@ the marks the harness adds to the text of the model."
   ;; call unsettled, and only the timer of the scheduler would close it — with
   ;; a failure that names the wrong reason.  The model must read the same
   ;; refusal it reads when no person was asked.
-  (let ((seen (yeah-check--run-turn "bash" (list "printf hello" 300) 40
-                                     (yeah-check--later-answerer))))
+  (let* ((seen (yeah-check--run-turn "bash" (list "printf hello" 300) 40
+                                      (yeah-check--later-answerer)))
+         (decisions (cl-remove-if-not
+                     (lambda (r) (equal (plist-get r :type) "permission-decision"))
+                     yeah-check--last-records)))
+    ;; The subject of this probe is the path where the person is asked.  That
+    ;; path writes two decisions about the permission: the deferral of the
+    ;; question and the answer of the person.  A path that writes one is the
+    ;; path where the rules decide alone -- the probe would measure the wrong
+    ;; subject and say nothing about the path it names.
+    (unless (= 2 (length decisions))
+      (push (format "the probe did not take the path where the person is asked: the journal holds %d decision(s) about the permission, not 2"
+                    (length decisions))
+            failures))
     (unless (and seen
                  (string-match-p "bash" seen)
                  (string-match-p "more than the timeout of 120 seconds" seen))
       (push (format "the call that asked for more work than the tool declares was not refused by name when a person was asked: %S"
-                    seen)
-            failures))
-    (when (and seen (string-match-p "exceeded its timeout" seen))
-      (push (format "the call waited for the timeout of the scheduler instead of being refused: %S"
                     seen)
             failures)))
 
