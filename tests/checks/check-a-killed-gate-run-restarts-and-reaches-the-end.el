@@ -334,6 +334,6 @@ second run of the method of its own: two gates are two verdicts."
       (message "gate output:\n%s" (buffer-string))))
   (if yeah-gate--failures
       (kill-emacs 1)
-    (kill-emacs 0)))
+    (kill-emacs 0))
 
 ;;; check-a-killed-gate-run-restarts-and-reaches-the-end.el ends here
