@@ -2093,6 +2093,8 @@ work item. Never resolve it by silently making documentation more optimistic.
   of the code and not read from the file (the alternative is one line, and the owner may ask for
   it); the verdict of the gate is written by the parent and not by the gate (docs/PLAN.md §16.114).
 
+* **The gate of the package of the waves D3, D4, E1, E2 and E3 answered red, and the red mark was not ours** -- the only red mark of that run (form 1 of the three marks) lay on the claim `a-gate-run-needs-no-watchdog` of the wave 59: the gate saw the run that was killed, started it again (attempt 2 of 3), answered 0 and wrote no map.  The journal of the method proves it a flake and not a verdict: on that claim the journal holds 60 entries, 58 pass and 2 fail -- 2026-11-22 08:28:39 on the tree `5bb88173` (the package B2/B3/C2/C3) and 2026-11-22 16:10:45 on the tree `657451c` (this package) -- and the output of the gate ends in both of them at the same line, with no output of the second attempt.  Twelve direct runs of the check and ten runs with the exact environment of the unit are green, `setsid` does not change the structure of the process groups, and the gate really answered 0 (the step of the map answered 0 as well: the gate prints the failure of that step since the repair `79c926f`, and the log holds no such line).  **The cause is not established and therefore not invented** -- the defect stays open as a defect of the wave 59 with its shape written down (the output of the gate ends at "attempt 2 of 3", the second attempt leaves no output, the map is not written), and the package is closed by a re-gate, the practice of the project after the same flake of the package B2/B3/C2/C3 (docs/PLAN.md §16.115).
+
 ## The commands
 
 ```sh
