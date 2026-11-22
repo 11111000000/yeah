@@ -19,7 +19,7 @@
 ;; the harness reaches the live state some other way, and a picture that
 ;; shows other answers than the kernel knows shows a dialogue that does
 ;; not exist.  This check reads `site/diagrams/emacs-layer.puml' and
-;; measures four things:
+;; measures seven things:
 ;;
 ;;   1. the file is there, it is not empty, and it is a diagram of
 ;;      PlantUML: the first line is `@startuml emacs-layer' and the last
@@ -42,7 +42,18 @@
 ;;      give to a request for permission -- `:once', `:session',
 ;;      `:project', `:global' and `:reject'.  The same line names them in
 ;;      the picture of the turn of the agent, because the person answers
-;;      the same way in both.
+;;      the same way in both;
+;;   6. every one of the six capabilities of the layer -- BUFFERS,
+;;      INTROSPECT, EDIT, DIAGNOSE, COMPOSE and RECOVER -- is named by a
+;;      *title* of the picture: a title is a quoted string of a line, and
+;;      a capability that is only in the body of a block is not the
+;;      title of that block;
+;;   7. the three hosts of the picture are there: a title names the
+;;      person and names neither the editor nor the agent, a title names
+;;      the editor's Emacs and the agent does not, and a title names the
+;;      agent's Emacs and the editor does not.  A picture that calls the
+;;      person the user and the hosts the first and the second host
+;;      shows a layer without a person and without two Emacs.
 ;;
 ;; The rule of the reference is the rule of every diagram of the site and
 ;; it lives in one place: `tests/support/yeah-diagram-files.el'.
@@ -75,6 +86,19 @@
   '("once" "session" "project" "global" "reject")
   "The answers the person may give to a request for permission.")
 
+(defconst yeah-check--layer-capabilities
+  '("BUFFERS" "INTROSPECT" "EDIT" "DIAGNOSE" "COMPOSE" "RECOVER")
+  "The six capabilities of the Emacs layer.
+Every one of them is named by a title of the picture.  The case
+matters: the picture says `EDIT' and the word `edit' is not the word
+`EDIT'.")
+
+(defun yeah-check--names-p (line word)
+  "Return non-nil when LINE names WORD as a whole word.
+The name of a file is not a word of the picture, and the case
+matters: the word `ACP' is not the word `acp'."
+  (and (yeah-diagram--names-all-p line (list word)) t))
+
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
        (diagram (expand-file-name "site/diagrams/emacs-layer.puml" root)))
@@ -94,6 +118,7 @@
     (load reader nil t)
     (let* ((text (yeah-diagram--text diagram))
            (lines (yeah-diagram--drawing-lines text))
+           (titles (yeah-diagram--titles text))
            (references (yeah-diagram--references text))
            (components (yeah-diagram--components text))
            (named (delete-dups (mapcar #'car references))))
@@ -139,6 +164,35 @@
       (unless (cl-some (lambda (line) (yeah-diagram--names-all-p line yeah-check--answers))
                        lines)
         (push "the picture of the Emacs layer has no line that names the answers of the person: once, session, project, global and reject"
+              yeah-check--failures))
+      ;; 6. the six capabilities of the layer are named by a title.
+      (dolist (capability yeah-check--layer-capabilities)
+        (unless (cl-some (lambda (title) (yeah-check--names-p title capability))
+                         titles)
+          (push (format "the picture of the Emacs layer has no title that names the capability %s: the capability of the layer is not in the picture"
+                        capability)
+                yeah-check--failures)))
+      ;; 7. the three hosts of the picture are there.
+      (unless (cl-some (lambda (title)
+                         (and (yeah-check--names-p title "person")
+                              (not (yeah-check--names-p title "editor"))
+                              (not (yeah-check--names-p title "agent"))))
+                       titles)
+        (push "the picture of the Emacs layer has no title that names the person and names neither the editor nor the agent: the person is one of the three hosts of the picture"
+              yeah-check--failures))
+      (unless (cl-some (lambda (title)
+                         (and (yeah-check--names-p title "editor")
+                              (yeah-check--names-p title "Emacs")
+                              (not (yeah-check--names-p title "agent"))))
+                       titles)
+        (push "the picture of the Emacs layer has no title that names the editor's Emacs and the Emacs itself and names no agent: the editor's Emacs is one of the three hosts of the picture"
+              yeah-check--failures))
+      (unless (cl-some (lambda (title)
+                         (and (yeah-check--names-p title "agent")
+                              (yeah-check--names-p title "Emacs")
+                              (not (yeah-check--names-p title "editor"))))
+                       titles)
+        (push "the picture of the Emacs layer has no title that names the agent's Emacs and the Emacs itself and names no editor: the agent's Emacs is one of the three hosts of the picture"
               yeah-check--failures))
       (dolist (failure yeah-check--failures)
         (message "emacs-layer-diagram: %s" failure))
