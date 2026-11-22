@@ -27,9 +27,7 @@ lib/yeah-tools.el:435;
 (may this call run?)
 lib/yeah-perm.el:523;
 if (the rules ask the person) then (yes)
-  :the request goes to the person
-  the human answers: :once, :session, :project, :global or :reject
-  lib/yeah-approval.el:59;
+  :the request goes to the person\nthe human answers: :once, :session, :project, :global or :reject\nlib/yeah-approval.el:59;
   if (the answer allows) then (yes)
     :the call may run;
   else (no)
