@@ -42,8 +42,12 @@
 ;;      that is not there, names every module with the reason why it is not
 ;;      in the picture, and names no module that a package names as well.
 ;;
-;; The rule of the reference lives in one place:
-;; `tests/support/yeah-diagram-files.el'.
+;; The rule of the reference, the rule of the package, the rule of the
+;; note, the rule of the exclusion and the walk of the modules of `lib/'
+;; live in one place: `tests/support/yeah-diagram-files.el'.  A copy of a
+;; rule in a check is a rule that drifts away from the rule of the other
+;; checks, and two checks that read one picture two ways give two
+;; verdicts for one picture.
 ;;
 ;; The tree of the repository is never written: this check only reads.
 ;;
@@ -61,7 +65,7 @@
 (defvar yeah-check--blockers nil
   "The reasons why this check cannot answer.")
 
-(defconst yeah-check--package-names
+(defconst yeah-check--expected-packages
   '("journal and projections"
     "run control"
     "model adapter"
@@ -77,62 +81,6 @@ journal and the projections, the control of a run, the adapter of the model,
 the tools and the registry, the rights and the approvals, the protocols and
 the wire, the interface and the product, the delegation and the subagents,
 the placements and the plumbing.")
-
-(defconst yeah-check--package-pattern
-  "\\`[[:space:]]*package[[:space:]]+\"\\([^\"]*\\)\"[[:space:]]+as[[:space:]]+\\([^[:space:]]+\\)[[:space:]]*{\\'"
-  "The pattern of a package of the picture.
-The rule is the rule of the check of the diagram of the layers: a package
-is a line of the form `package \"NAME\" as alias {'.")
-
-(defun yeah-check--package-lines (text)
-  "Return the names of the packages of the picture in TEXT.
-A package that is never closed is a package of the picture all the same:
-the count is the count of the lines that open a package."
-  (let (names)
-    (dolist (line (split-string text "\n" t))
-      (when (string-match yeah-check--package-pattern line)
-        (push (match-string 1 line) names)))
-    (nreverse names)))
-
-(defun yeah-check--packages (text)
-  "Return the packages of the picture in TEXT.
-A package is a list (NAME BODY): the name of the package and the text of
-the lines that stand in it.  The braces are counted, so the lines that
-stand outside of a package -- the note at the end -- are the lines of no
-package."
-  (let (stack packages)
-    (dolist (line (split-string text "\n" t))
-      (cond
-       ((string-match yeah-check--package-pattern line)
-        (push (list (match-string 1 line) "") stack))
-       ((and stack (string-match "\\`[[:space:]]*}" line))
-        (push (pop stack) packages))
-       (stack
-        (setcdr (car stack) (list (concat (nth 1 (car stack)) "\n" line))))))
-    (nreverse packages)))
-
-(defun yeah-check--note-lines (text)
-  "Return the lines of the note of the picture in TEXT."
-  (let (lines in-note)
-    (dolist (line (split-string text "\n" t))
-      (cond
-       ((string-match "\\`[[:space:]]*note\\b" line)
-        (setq in-note t))
-       ((and in-note (string-match "\\`[[:space:]]*end note\\'" line))
-        (setq in-note nil))
-       (in-note (push line lines))))
-    (nreverse lines)))
-
-(defun yeah-check--exclusion (line)
-  "Return the exclusion of LINE, or nil.
-An exclusion is a module of `lib/' and the reason why the picture does not
-name it.  The reason of an exclusion may be nothing: the check then says
-that the note names a module and says nothing about it."
-  (when (string-match "\\`[[:space:]]*\\(lib/[A-Za-z0-9._-]+\\.el\\)\\b" line)
-    (let ((module (match-string 1 line)))
-      (if (string-match "--[[:space:]]*\\(.*\\)\\'" line)
-          (list module (string-trim (match-string 1 line)))
-        (list module nil)))))
 
 (defun yeah-check--packages-by-module (named-by)
   "Return the packages of the picture that name each module.
@@ -153,15 +101,6 @@ its own, and the check must be able to name the two packages."
             (push (cons module (list (car entry))) by-module)))))
     (nreverse by-module)))
 
-(defun yeah-check--modules-of (root)
-  "Return the modules of `lib/' of the tree at ROOT.
-Every directory of `lib/' is walked: a module in a subdirectory of `lib/'
-is a module of the kernel as well."
-  (sort (mapcar (lambda (module) (file-relative-name module root))
-                (directory-files-recursively (expand-file-name "lib" root)
-                                             "\\.el\\'"))
-        #'string<))
-
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
        (diagram (expand-file-name "site/diagrams/code-packages.puml" root)))
@@ -181,9 +120,9 @@ is a module of the kernel as well."
     (load reader nil t)
     (let* ((text (yeah-diagram--text diagram))
            (lines (yeah-diagram--drawing-lines text))
-           (package-names (yeah-check--package-lines text))
-           (packages (yeah-check--packages text))
-           (exclusions (delq nil (mapcar #'yeah-check--exclusion (yeah-check--note-lines text))))
+           (package-names (yeah-diagram--package-names text))
+           (packages (yeah-diagram--packages text))
+           (exclusions (delq nil (mapcar #'yeah-diagram--exclusion (yeah-diagram--note-lines text))))
            (named-by (mapcar (lambda (package)
                                (cons (nth 0 package)
                                      (delete-dups
@@ -191,7 +130,7 @@ is a module of the kernel as well."
                                               (yeah-diagram--references (nth 1 package))))))
                              packages))
            (all-named (delete-dups (apply #'append (mapcar #'cdr named-by))))
-           (modules (yeah-check--modules-of root)))
+           (modules (yeah-diagram--modules-of root)))
       ;; 1. the file is a diagram of PlantUML and it is not empty.
       (when (string-empty-p (string-trim text))
         (push "site/diagrams/code-packages.puml is empty: there is no picture of the code"
@@ -205,17 +144,17 @@ is a module of the kernel as well."
                       (string-trim (or (car (last lines)) "")))
               yeah-check--failures))
       ;; 2. exactly nine packages, and they are the nine of the plan.
-      (unless (= (length package-names) (length yeah-check--package-names))
+      (unless (= (length package-names) (length yeah-check--expected-packages))
         (push (format "the picture has %d package(s), and it must have exactly %d: the nine packages of the code of Yeah"
-                      (length package-names) (length yeah-check--package-names))
+                      (length package-names) (length yeah-check--expected-packages))
               yeah-check--failures))
-      (dolist (name yeah-check--package-names)
+      (dolist (name yeah-check--expected-packages)
         (unless (cl-find name package-names :test #'string=)
           (push (format "the picture has no package %s: the nine packages of the code of Yeah are %s"
-                        name (string-join yeah-check--package-names ", "))
+                        name (string-join yeah-check--expected-packages ", "))
                 yeah-check--failures)))
       (dolist (name package-names)
-        (unless (cl-find name yeah-check--package-names :test #'string=)
+        (unless (cl-find name yeah-check--expected-packages :test #'string=)
           (push (format "the picture has a package %s, and it is not one of the nine packages of the code of Yeah"
                         name)
                 yeah-check--failures)))

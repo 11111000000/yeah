@@ -39,6 +39,14 @@
 ;; * `yeah-diagram--components' returns the blocks of the picture that
 ;;   carry a name of their own, so that a check can ask what a named
 ;;   block says;
+;; * `yeah-diagram--package-names' returns the names of the packages
+;;   that the picture opens, and `yeah-diagram--packages' returns the
+;;   packages with the text that stands in them;
+;; * `yeah-diagram--note-lines' returns the lines of the note of the
+;;   picture, and `yeah-diagram--exclusion' returns the module of `lib/'
+;;   and the reason of one line of that note;
+;; * `yeah-diagram--modules-of' walks `lib/' and returns the modules of
+;;   the kernel, in every directory of it;
 ;; * `yeah-diagram--titles' returns the titles of the drawing: the
 ;;   quoted strings of the lines, split at the newlines that PlantUML
 ;;   writes as `\n'.  A title is what the picture says about a thing,
@@ -300,6 +308,79 @@ references of the line that carries it."
                       (yeah-diagram--references-in-line line))
                 blocks))))
     (nreverse blocks)))
+
+(defconst yeah-diagram--package-pattern
+  "\\`[[:space:]]*package[[:space:]]+\"\\([^\"]*\\)\"[[:space:]]+as[[:space:]]+\\([^[:space:]]+\\)[[:space:]]*{\\'"
+  "The pattern of a package of a picture.
+A package is a line of the form `package \"NAME\" as alias {': the title of
+the package is its name and the alias is the name the picture uses for it.
+The group of the alias is not read by the rules of the reader: the name of
+a package is what the picture says about it.")
+
+(defun yeah-diagram--package-names (text)
+  "Return the names of the packages that the picture in TEXT opens.
+A package that is never closed is a package of the picture all the same:
+the count is the count of the lines that open a package."
+  (let (names)
+    (dolist (line (split-string text "\n" t))
+      (when (string-match yeah-diagram--package-pattern line)
+        (push (match-string 1 line) names)))
+    (nreverse names)))
+
+(defun yeah-diagram--packages (text)
+  "Return the packages of the picture in TEXT.
+A package is a list (NAME BODY): the name of the package and the text of
+the lines that stand in it.  The braces are counted, so the lines that
+stand outside of a package -- the note at the end -- are the lines of no
+package, and a package that is never closed has no body of its own."
+  (let (stack packages)
+    (dolist (line (split-string text "\n" t))
+      (cond
+       ((string-match yeah-diagram--package-pattern line)
+        (push (list (match-string 1 line) "") stack))
+       ((and stack (string-match "\\`[[:space:]]*}" line))
+        (push (pop stack) packages))
+       (stack
+        (setcdr (car stack) (list (concat (nth 1 (car stack)) "\n" line))))))
+    (nreverse packages)))
+
+(defun yeah-diagram--note-lines (text)
+  "Return the lines of the note of the picture in TEXT.
+The note opens with a line that begins with `note' and closes with a line
+that is `end note'.  The lines before the note and the lines after it are
+not the lines of the note."
+  (let (lines in-note)
+    (dolist (line (split-string text "\n" t))
+      (cond
+       ((string-match "\\`[[:space:]]*note\\b" line)
+        (setq in-note t))
+       ((and in-note (string-match "\\`[[:space:]]*end note\\'" line))
+        (setq in-note nil))
+       (in-note (push line lines))))
+    (nreverse lines)))
+
+(defun yeah-diagram--exclusion (line)
+  "Return the exclusion of LINE, or nil.
+An exclusion is a list (MODULE REASON): a module of `lib/' and the reason
+why the picture does not name it.  The reason of an exclusion may be
+nothing: the check then says that the note names a module and says nothing
+about it."
+  (when (string-match "\\`[[:space:]]*\\(lib/[A-Za-z0-9._-]+\\.el\\)\\b" line)
+    (let ((module (match-string 1 line)))
+      (if (string-match "--[[:space:]]*\\(.*\\)\\'" line)
+          (list module (string-trim (match-string 1 line)))
+        (list module nil)))))
+
+(defun yeah-diagram--modules-of (root)
+  "Return the modules of `lib/' of the tree at ROOT.
+Every directory of `lib/' is walked: a module in a subdirectory of `lib/'
+is a module of the kernel as well.  The answer holds the paths of the
+modules relative to the root of the tree, and the paths come in the order
+of their names."
+  (sort (mapcar (lambda (module) (file-relative-name module root))
+                (directory-files-recursively (expand-file-name "lib" root)
+                                             "\\.el\\'"))
+        #'string<))
 
 (defun yeah-diagram--reference-defect (root file line)
   "Return the defect of the reference FILE:LINE in the tree at ROOT, or nil.
