@@ -34,7 +34,10 @@
 ;;   5. the levels stand in the order of the strength of their proof: unit,
 ;;      then contract, then integration, then live.  The order is the
 ;;      claim of the picture, and a picture that shows the levels in
-;;      another order shows another ladder;
+;;      another order shows another ladder.  The order is the order of the
+;;      blocks of the picture: every level has a block of its own, and a
+;;      legend that names the levels at the top of the picture names them
+;;      and does not move them;
 ;;   6. the boundary is on the picture: the drawing says what a level
 ;;      proves, and it says where the proof of a level ends.
 ;;
@@ -64,13 +67,12 @@ The levels are the four of `docs/ARCHITECTURE.md' §10: the unit, the
 contract (the canary), the integration and the live (the evaluation).")
 
 (defconst yeah-check--places
-  '(("tests/unit" . directory)
-    ("tests/checks" . directory)
-    ("tests/live" . directory)
-    ("scripts/gate" . file))
-  "The places of the levels, and what each of them is.
+  '("tests/unit" "tests/checks" "tests/live" "scripts/gate")
+  "The places of the levels.
 The three directories hold the tests of the three lower levels, and the
-gate is the runner of the checks of the tree.")
+gate is the runner of the checks of the tree.  The rule of the place is
+the rule of every picture of the site and it lives in one place:
+`tests/support/yeah-diagram-files.el'.")
 
 (defun yeah-check--says-level-p (lines word)
   "Return non-nil when one of LINES says WORD as a word of its own.
@@ -80,10 +82,23 @@ not what the level is.  The rule of the place is the rule of every picture
 of the site and it lives in one place: `tests/support/yeah-diagram-files.el'."
   (yeah-diagram--says-p (mapcar #'yeah-diagram--without-places lines) word))
 
-(defun yeah-check--first-level (lines word)
-  "Return the number of the first of LINES that says WORD, or nil."
-  (cl-position-if (lambda (line) (yeah-check--says-level-p (list line) word))
-                  lines))
+(defun yeah-check--blocks-of-level (blocks level)
+  "Return the numbers of the blocks of BLOCKS that name LEVEL.
+A block names a level when it says the level as a word of its own: the
+name of a place is not the name of a level, and a legend that names all
+the levels in one block names no level of the ladder."
+  (let (found)
+    (dotimes (i (length blocks))
+      (when (yeah-check--says-level-p (list (nth i blocks)) level)
+        (push i found)))
+    (nreverse found)))
+
+(defun yeah-check--levels-in-blocks (blocks)
+  "Return the blocks of BLOCKS that name each of the four levels.
+The answer is a list of (LEVEL . NUMBERS): the level and the numbers of
+the blocks of the picture that name it, in the order of the picture."
+  (mapcar (lambda (level) (cons level (yeah-check--blocks-of-level blocks level)))
+          yeah-check--levels))
 
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
@@ -130,32 +145,51 @@ of the site and it lives in one place: `tests/support/yeah-diagram-files.el'."
                         level level)
                 yeah-check--failures)))
       ;; 4. the places of the levels are named, and they are there.
-      (dolist (place yeah-check--places)
-        (let ((name (car place))
-              (kind (cdr place)))
-          (unless (yeah-diagram--says-p lines name)
-            (push (format "the drawing does not say %s: the picture must show where the level lives"
-                          name)
-                  yeah-check--failures))
-          (let ((path (expand-file-name name root)))
-            (cond
-             ((and (eq kind 'directory) (not (file-directory-p path)))
-              (push (format "the picture names %s, and there is no such directory in the tree" name)
-                    yeah-check--failures))
-             ((and (eq kind 'file) (not (file-regular-p path)))
-              (push (format "the picture names %s, and there is no such file in the tree" name)
-                    yeah-check--failures))))))
+      (dolist (name yeah-check--places)
+        (unless (yeah-diagram--says-p lines name)
+          (push (format "the drawing does not say %s: the picture must show where the level lives"
+                        name)
+                yeah-check--failures))
+        (let ((defect (yeah-diagram--place-defect root name)))
+          (when defect
+            (push defect yeah-check--failures))))
       ;; 5. the levels stand in the order of the strength of their proof.
-      (let ((positions (mapcar (lambda (level) (yeah-check--first-level lines level))
-                                yeah-check--levels)))
-        (when (cl-every #'numberp positions)
-          (let ((rest positions)
-                (ordered t))
-            (while (and rest (cdr rest))
-              (unless (< (car rest) (cadr rest))
-                (setq ordered nil))
-              (setq rest (cdr rest)))
-            (unless ordered
+      ;;    The order is the order of the blocks of the picture: a legend
+      ;;    that names the levels at the top of the picture is not a block
+      ;;    and does not move them, and a level without a block of its own
+      ;;    is not a level of the ladder.
+      (let* ((levels-in (yeah-check--levels-in-blocks (yeah-diagram--blocks text))))
+        (dolist (entry levels-in)
+          (let ((level (car entry))
+                (found (cdr entry)))
+            (cond
+             ((null found)
+              (push (format "the picture has no block for the level %s: the levels of the picture are blocks of it, and a level that has no block of its own is not a level of the ladder"
+                            level)
+                    yeah-check--failures))
+             ((> (length found) 1)
+              (push (format "the picture has %d blocks for the level %s: a level of the ladder has one block of its own"
+                            (length found) level)
+                    yeah-check--failures)))))
+        (let ((numbers (mapcar (lambda (entry)
+                                  (let ((found (cdr entry)))
+                                    (if (= 1 (length found)) (car found) nil)))
+                                levels-in)))
+          (when (cl-every #'numberp numbers)
+            ;; The four blocks are four blocks: two levels that share one
+            ;; block have no ladder between them.
+            (let ((shared (cl-find-if (lambda (number)
+                                        (> (cl-count number numbers :test #'eq) 1))
+                                      numbers)))
+              (when shared
+                (let ((levels (cl-remove-if-not
+                               (lambda (entry) (eq (car (cdr entry)) shared))
+                               levels-in)))
+                  (push (format "the levels %s and %s of the picture share one block of it: a level of the ladder has a block of its own"
+                                (car (nth 0 levels)) (car (nth 1 levels)))
+                        yeah-check--failures))))
+            (unless (cl-every (lambda (pair) (< (car pair) (cdr pair)))
+                               (cl-mapcar #'cons numbers (cdr numbers)))
               (push (format "the levels of the picture do not stand in the order of the strength of their proof: the order of the levels is %s"
                             (string-join yeah-check--levels ", "))
                     yeah-check--failures)))))
