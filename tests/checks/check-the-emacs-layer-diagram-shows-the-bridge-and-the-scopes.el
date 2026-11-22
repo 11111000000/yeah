@@ -19,7 +19,7 @@
 ;; the harness reaches the live state some other way, and a picture that
 ;; shows other answers than the kernel knows shows a dialogue that does
 ;; not exist.  This check reads `site/diagrams/emacs-layer.puml' and
-;; measures seven things:
+;; measures eight things:
 ;;
 ;;   1. the file is there, it is not empty, and it is a diagram of
 ;;      PlantUML: the first line is `@startuml emacs-layer' and the last
@@ -53,7 +53,15 @@
 ;;      the editor's Emacs and the agent does not, and a title names the
 ;;      agent's Emacs and the editor does not.  A picture that calls the
 ;;      person the user and the hosts the first and the second host
-;;      shows a layer without a person and without two Emacs.
+;;      shows a layer without a person and without two Emacs;
+;;   8. the picture says the promise of the layer in its own words: one
+;;      line of the picture says that the bridge is the only path to the
+;;      live state of the editor's Emacs, and one line of the picture
+;;      says that it is a capability the person approves on purpose.  A
+;;      line of the picture is a line of the drawing and not a line of
+;;      the comment at the top of the file: the comment says the
+;;      promise, and a picture that dropped the two lines of the promise
+;;      says nothing about it.
 ;;
 ;; The rule of the reference is the rule of every diagram of the site and
 ;; it lives in one place: `tests/support/yeah-diagram-files.el'.
@@ -188,6 +196,18 @@ matters: the word `ACP' is not the word `acp'."
                               (not (yeah-check--names-p title "editor"))))
                        titles)
         (push "the picture of the Emacs layer has no title that names the agent's Emacs and the Emacs itself and names no editor: the agent's Emacs is one of the three hosts of the picture"
+              yeah-check--failures))
+      ;; 8. the promise of the layer is in the picture, and it is in the
+      ;;    picture and not in the comment at the top of the file.
+      (unless (cl-some (lambda (line)
+                         (yeah-diagram--names-all-p line '("only" "path" "live" "state")))
+                       lines)
+        (push "the picture of the Emacs layer has no line that says that the bridge is the only path to the live state of the editor's Emacs: the promise of the layer is not in the picture"
+              yeah-check--failures))
+      (unless (cl-some (lambda (line)
+                         (yeah-diagram--names-all-p line '("capability" "approve" "purpose")))
+                       lines)
+        (push "the picture of the Emacs layer has no line that says that the bridge is a capability the person approves on purpose: the promise of the layer is not in the picture"
               yeah-check--failures))
       (dolist (failure yeah-check--failures)
         (message "emacs-layer-diagram: %s" failure))

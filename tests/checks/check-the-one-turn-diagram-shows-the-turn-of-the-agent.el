@@ -45,7 +45,14 @@
 ;;      seven different blocks, and the block of the first step stands
 ;;      before the block of the second one, and so on.  A picture whose
 ;;      seven blocks say the same thing, or whose blocks stand in the
-;;      wrong order, shows a turn that does not happen.
+;;      wrong order, shows a turn that does not happen;
+;;   6. the picture says the rest of the promise of the turn in its own
+;;      words: a *block* of the picture says that the call may run, and
+;;      a *line* of the picture says that the rules ask the person.  A
+;;      line of the picture is a line of the drawing and not a line of
+;;      the comment at the top of the file: the comment says the
+;;      promise, and a picture that dropped the lines of the promise says
+;;      nothing about it.
 ;;
 ;; The rule of the reference is the rule of every diagram of the site and
 ;; it lives in one place: `tests/support/yeah-diagram-files.el'.
@@ -76,7 +83,7 @@
   "The modules the picture of the turn has to name.")
 
 (defconst yeah-check--turn-steps
-  '(("model" . ("model" "proposes" "call"))
+  '(("model" . ("model" "proposes" "call" "tool"))
     ("registry" . ("registry" "checks" "call"))
     ("policy" . ("policy" "decides"))
     ("person" . ("person" "answers"))
@@ -89,6 +96,10 @@ block of that step has to say.  The name of a step is the name of the
 thing the step is about, and it is one of the words of the step: a
 block that names the scheduler and says nothing else does not name
 the step of the scheduler.
+
+The first step is a call of a tool and not a call of nothing: the block
+of the model names the tool as well, and a picture that says `the model
+proposes a call' shows a turn without a tool in it.
 
 The steps stand in the order of the turn, and the order is the order
 of this list.")
@@ -166,7 +177,21 @@ of this list.")
                                   name previous-step)
                           yeah-check--failures)
                   (setq previous place)
-                  (setq previous-step name)))))))))
+                  (setq previous-step name))))))))
+      ;; 6. the promise of the turn is in the picture, and it is in the
+      ;;    picture and not in the comment at the top of the file.  A
+      ;;    block says that the call may run, and a line says that the
+      ;;    rules ask the person.
+      (unless (cl-some (lambda (block)
+                         (yeah-diagram--names-all-p block '("call" "may" "run")))
+                       blocks)
+        (push "the picture of the turn has no block that says that the call may run: the promise of the turn is not in the picture"
+              yeah-check--failures))
+      (unless (cl-some (lambda (line)
+                         (yeah-diagram--names-all-p line '("rules" "ask" "person")))
+                       lines)
+        (push "the picture of the turn has no line that says that the rules ask the person: the promise of the turn is not in the picture"
+              yeah-check--failures)))
       (dolist (failure yeah-check--failures)
         (message "one-turn-diagram: %s" failure))
       (if yeah-check--failures
