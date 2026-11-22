@@ -2002,6 +2002,37 @@ work item. Never resolve it by silently making documentation more optimistic.
   them word for word).  **The lesson is written down** (`ELISP_BEST_PRACTICES.md' §11.18): a dead
   pattern is an invisible rule, and an invisible rule is a promise that nobody keeps.
 
+- The **second round of repairs** of the package of the waves `wave-d2b` to `wave-d2h` closed **six
+  more findings of an independent verifier** (2026-11-22).  The verifier of the first round measured
+  the six high findings of the discriminator itself and confirmed that they were honest; it found
+  **two middle findings (S-1, S-2) and four low ones (L-A--L-D)**, and all six were of one kind:
+  **the promise of a claim was wider than the measurement**.  **S-1** -- the guard of every picture
+  asked a picture for a place of the repository and closed the rule with the operand `references',
+  so a picture whose only name was a link to a file under a hidden directory of the top level
+  (`.github/probe.el:1') named no place at all and passed with the code 0; the operand is gone, and
+  the exception of the picture that the code writes is recognised by the **path** of the picture
+  (`site/diagrams/state-machine.puml') and not by the name of the file.  **S-2** -- the note of the
+  limit of the wire was measured by a bag of words, so an inverted note (the socket -- *cannot*, the
+  stdio -- *may*) kept all nine words and passed; the **relation** is measured now -- the part of
+  the note from `stdio' to `socket' must name `cancel' and `cannot', the part from `socket' must
+  name `cancel' and `handled', and the note must hang on the block of the socket.  **L-A, L-B** --
+  the prose of the promise of the picture of the Emacs layer and of the picture of the turn was not
+  measured at all; it is measured now, by the words of the same **line** and of a **block** of the
+  picture, and the part of the prose that the rule of the reader cannot measure (the aside
+  `(may this call run?)' -- a continuation of the activity and not a block) was **narrowed in the
+  measurement and not in the promise**.  **L-C** -- the function `yeah-diagram--root' of the reader
+  was declared and called by nothing, and the two branches of the pattern of a place and of a
+  reference could not be reached; the dead code is gone and its unreachability was **measured**.
+  **L-D** -- the pipeline of the pictures drew only the top level of `site/diagrams/', so a picture
+  in a subdirectory was measured and never drawn, in silence; the pipeline walks the **whole tree**
+  now, and the tree of the pictures mirrors the tree of the sources.  **A finding of the side**: the
+  files of the checks were **not whole files** -- a stray closing parenthesis made a file unreadable
+  as a whole (`invalid-read-syntax ")"'), and it worked only because the last form killed the process
+  before the reader reached it; the parenthesis is gone in eight files (one of the package, seven of
+  the earlier waves), and all of them still answer with the code 0.  **The promises were not
+  rewritten**: the texts of the claims in `spec.json` did not change (`git diff 8290c96 --
+  spec.json' is empty) -- they were **measured**.
+
 ## The commands
 
 ```sh
