@@ -1,0 +1,63 @@
+@startuml placements
+' Where Yeah runs, and who talks to it.
+'
+' The three placements of `docs/ARCHITECTURE.md' §7 -- attached, service and
+' batch -- are three ways of giving the kernel a session, a transport and an
+' answerer; the kernel itself does not know in which of them it runs.  This
+' picture says where each of them lives and what speaks to it.
+'
+' The service is the primary placement (the decision of the owner of
+' 2026-11-12): a dedicated Emacs process runs the harness, so the editing
+' Emacs never shares a thread with a long turn.
+'
+' Every block names the files that implement it, as `file:line'.
+'
+' The machines are `node' and the blocks inside them are `component': the
+' skin of the site (`site/diagrams/palette-dark.puml') gives no colour to a
+' leaf `node', and a leaf `node' is drawn as a cube of a light grey with white
+' letters on it -- a picture that cannot be read.  The skin gives its colours
+' to `component', and a component is flat.  A `node' that has a body is drawn
+' as a frame and is flat too, and the skin gives the frame the colour of a
+' package.  The shape of the picture is the same either way.
+
+node "Your machine" as machine {
+
+  component "Editing Emacs\nattached placement: the agent shares the process of the person\nlib/yeah-product.el:161\nlib/yeah-placement.el:45" as attached
+
+  node "Service Emacs\nservice placement: the primary one, a dedicated process for the harness\nlib/yeah-service.el:127\nlib/yeah-placement.el:45" as service {
+
+    component "ACP server\nlib/yeah-acp.el:1314\nlib/yeah-acp.el:1349" as acp_server
+
+    component "MCP server\nlib/yeah-mcp.el:173\nlib/yeah-mcp.el:192" as mcp_server
+
+    component "stdio transport\none request at a time\nlib/yeah-wire.el:23" as stdio
+
+    component "local socket transport\na connection is a process\nlib/yeah-wire-socket.el:57" as socket
+  }
+
+  component "Batch process\nbatch placement: one process, one task (CI, benchmarks)\nlib/yeah-placement.el:45" as batch
+
+  component "emacsclient bridge\nan approved capability, not a default\nlib/yeah-bridge.el:177" as bridge
+}
+
+component "ACP clients\norchestrators and editors" as acp_clients
+
+component "MCP clients\ntools of the outside world" as mcp_clients
+
+acp_clients --> acp_server : ACP
+mcp_clients --> mcp_server : MCP
+acp_server --> stdio : stdio
+acp_server --> socket : the local socket
+mcp_server --> stdio : stdio
+mcp_server --> socket : the local socket
+service --> bridge : asks
+bridge --> attached : evaluates in the attached Emacs
+
+note bottom of socket
+  The honest limit of the wire: on stdio the transport reads its input with a
+  blocking read, so the event loop of Emacs does not run while a prompt is
+  running, and a cancel cannot interrupt that prompt.  On the local socket
+  the connection is a process, the event loop keeps running, and a cancel is
+  handled while the prompt is still running.
+end note
+@enduml
