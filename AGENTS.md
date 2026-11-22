@@ -2142,6 +2142,23 @@ work item. Never resolve it by silently making documentation more optimistic.
   The first version of the repair broke the path of the wait without time -- it asked nothing, and every
   number of the run read as alive -- and the honest run caught it (docs/PLAN.md §16.119).
 
+* **The plugin of the orchestrator does not trust the service it holds** -- the live failure of
+  2026-11-22 (20:38-21:48 UTC): the daemon wrote "ACP connection closed" 32 times for the provider
+  `yeah`, every attempt of an agent to reach the core failed the same way, and only a manual reload of
+  the plugin brought the provider back.  What is measured: the plugin keeps ONE Emacs for all agents
+  (the service placement) and holds a *reference* to it; a reference is not a proof of life -- the core
+  died, the reference stayed, and every connection went to the socket of a dead process (the socket file
+  survives the process).  The hole of wave 74 was closed in the other path (the service is raised from
+  scratch), while the path of the cached service went around that question.  Now the question is asked
+  on every connection: the socket itself is asked whether anyone listens on it, a service that nobody
+  listens on is closed and raised again, and the next agent comes to a live kernel.  The parallel agents
+  share one raise.  **The cause of the death of the core is not established and is not named**: the
+  cgroup of the daemon holds no OOM kill (`memory.events: oom_kill 0`), the kernel journal holds no
+  killed process, and the plugin wrote no line about the exit of the service.  The wave removes the
+  class of the defect, not the cause.  The check is
+  `tests/checks/check-the-plugin-raises-a-dead-service-again.sh`, the claim is
+  `a-dead-service-does-not-pass-for-a-live-connection` (docs/PLAN.md §16.120).
+
 ## The commands
 
 ```sh

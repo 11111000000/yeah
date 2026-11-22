@@ -216,24 +216,79 @@ test("размещение выбирается в одном месте", async
     assert.equal(spawned.service, null);
 
     // Сервисное размещение приходит к живому сервису, а не поднимает свой.
+    // Живой — значит на сокете кто-то слушает: ссылка на сервис проверяется
+    // вопросом к сокету, и мёртвый сокет проверку не проходит (это отдельный
+    // тест ниже).
     const socketPath = serviceSocketPath("paseo", env);
     mkdirSync(path.dirname(socketPath), { recursive: true });
+    const listener = net.createServer(() => undefined);
+    await new Promise<void>((resolve) => listener.listen(socketPath, resolve));
+    try {
+      const served = await yeahTransport({
+        launch,
+        key: "k",
+        mode: "service",
+        serviceName: "paseo",
+        service: {
+          socketPath,
+          lifePath: serviceLifeSocketPath("paseo", env),
+          process: null,
+          close: async () => undefined,
+        },
+      });
+      assert.ok(served.service, "сервисное размещение не дало сервис");
+      assert.equal(served.service?.socketPath, socketPath);
+      assert.equal(served.service?.process, null, "плагин поднял второе ядро рядом с живым");
+    } finally {
+      await new Promise<void>((resolve) => listener.close(() => resolve()));
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("мёртвый сервис из кэша не выдаёт себя за живой", async () => {
+  const { root, env } = sandbox();
+  // Сервис поднимается с окружением процесса, поэтому каталог сокетов на
+  // время проверки — песочница, а не каталог пользователя.
+  const previous = process.env.XDG_RUNTIME_DIR;
+  process.env.XDG_RUNTIME_DIR = root;
+  try {
+    const name = "cached-dead";
+    const socketPath = serviceSocketPath(name, env);
+    // Сервис из кэша мёртв: файл сокета остался от процесса, который умер,
+    // и слушать его некому.
+    mkdirSync(path.dirname(socketPath), { recursive: true });
     writeFileSync(socketPath, "");
-    const served = await yeahTransport({
+    const command: [string, ...string[]] = [
+      "/bin/sh",
+      "-c",
+      'mkdir -p "$(dirname "$1")" && : > "$1"',
+      "sh",
+      socketPath,
+    ];
+    const transport = await yeahTransport({
       launch,
-      key: "k",
+      key: "",
       mode: "service",
-      serviceName: "paseo",
+      serviceName: name,
+      serviceCommand: command,
       service: {
         socketPath,
-        lifePath: serviceLifeSocketPath("paseo", env),
+        lifePath: serviceLifeSocketPath(name, env),
         process: null,
         close: async () => undefined,
       },
     });
-    assert.ok(served.service, "сервисное размещение не дало сервис");
-    assert.equal(served.service?.socketPath, socketPath);
+    try {
+      assert.ok(transport.service?.process, "плагин поверил мёртвому сервису из кэша");
+      assert.equal(transport.service?.socketPath, socketPath);
+    } finally {
+      await transport.service?.close();
+    }
   } finally {
+    if (previous === undefined) delete process.env.XDG_RUNTIME_DIR;
+    else process.env.XDG_RUNTIME_DIR = previous;
     rmSync(root, { recursive: true, force: true });
   }
 });

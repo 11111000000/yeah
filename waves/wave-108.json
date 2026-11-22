@@ -1,0 +1,31 @@
+{
+  "id": "wave-108",
+  "title": "the plugin does not trust the service it holds",
+  "intent": "The live failure of 2026-11-22 (20:38-21:48 UTC): the orchestrator wrote 'ACP connection closed' 32 times for the provider 'yeah', every attempt of an agent to reach the core failed the same way, and the only thing that brought the provider back was a manual reload of the plugin.  The cause: the plugin of the orchestrator keeps ONE Emacs for all agents (the service placement) and holds a REFERENCE to it.  A reference is not a proof of life.  The core of the service died, the reference stayed, and every connection went to a socket that nobody listened on -- the socket file of a dead process survives the process.  The wave 74 closed this hole in the other path (the service is raised from scratch: a socket file that nobody listens on is removed and the service is raised again), but the path of the cached service went around that question: `yeahTransport' took the reference it was given and connected to its socket without asking whether anyone was listening.  The wave asks that question on every connection: the socket itself is asked, a service that nobody listens on is closed and raised again, and the next agent comes to a live kernel.  The parallel agents share one raise: while the service is rising, the second agent waits for the same one instead of raising a second Emacs.  The promise of the wave is narrow and is about the plugin only: the cause of the death of the core is NOT established here and is not named.",
+  "touches": [
+    "plugin/yeah-provider/server/transport.ts",
+    "plugin/yeah-provider/test/service.test.ts",
+    "tests/checks/check-the-plugin-raises-a-dead-service-again.sh",
+    "tests/support/yeah-cached-service-driver.ts",
+    "spec.json",
+    "waves/wave-108.json",
+    "docs/PLAN.md",
+    "AGENTS.md"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev check tests/checks/check-the-plugin-raises-a-dead-service-again.sh",
+    "./scripts/dev check tests/checks/check-the-plugin-does-not-trust-a-dead-socket.sh",
+    "./scripts/dev check tests/checks/check-the-plugin-talks-to-the-core-over-the-socket.sh",
+    "./scripts/dev check tests/checks/check-the-plugin-steers-the-running-turn.sh",
+    "npm --prefix plugin/yeah-provider test",
+    "npm --prefix plugin/yeah-provider run typecheck"
+  ],
+  "claims": [
+    "a-dead-service-does-not-pass-for-a-live-connection"
+  ],
+  "commitment": [],
+  "objection": "The wave does not establish WHY the core of the service died, and it does not name a cause: the journal of the cgroup of the daemon holds no OOM kill (memory.events: oom_kill 0), the kernel journal of that day holds no killed process, and the plugin wrote no line about the exit of the service -- the only such line in the whole journal is from 2026-11-21T15:56 (the service of the previous life of the plugin, ended with SIGTERM by the teardown of the plugin).  What the wave removes is the CLASS of the defect (a reference that outlived the process it points at), not the cause of that death; a cause that is not established must not be invented.  The price is named: the liveness question costs one connection to the socket per connection of an agent, and the core sees a client that says nothing and leaves -- that is the same question the wave 74 asks in the other path, and the core already answers it.  The wave does not touch the process placement (one Emacs per connection): there each connection brings its own core, and there is no shared service to go stale.  The wave does not make the core of the service survive its host: the memory of a long run still grows past the window of the model, and the owner of the host may kill it again -- the next agent will find a dead service and raise a new one, and that is what this wave promises.",
+  "refuted_by": "the plugin believes the service it holds although nobody listens on its socket, or the service is not raised again after the core dies, or the next agent gets no answer from the new core, or two agents of one moment raise two cores, or the control of the claim does not make the check fail by its own assertion",
+  "note": "Measurements of 2026-11-22.  The live failure: the daemon wrote 'Failed to list features for yeah' with 'ACP connection closed' 32 times between 20:38:52 and 21:48:15 UTC; the socket of the service (/tmp/yeah-1001/yeah-service-paseo.sock) was on the disk since 10:29 and nobody listened on it, and the socket of the life of the owner (/tmp/yeah-1001/yeah-life-paseo-<pid>.sock) was gone.  The reproduction: the creation of an agent of the provider 'yeah' answered 'ACP connection closed', while the creation of an agent of 'mcode' answered normally -- mcode was not broken, and the ACP error of 21:15 in the journal of the daemon belongs to another cause ('ACP steer via mcode/session/steer failed: Invalid params: Steering requires an admitted, active ACP prompt Turn for this Session').  The remedy measured: the reload of the plugin (paseo plugin reload yeah-provider) brought the provider back at once, and the agent of the provider 'yeah' answered.  The check of the wave: the honest tree is green (the check takes 1.5 s), and the control of the claim -- taken out of spec.json and applied to a copy of the tree -- bites by the assertions of the check and not by a crash: 'the plugin trusted the dead service of its cache', 'the plugin believed the service it holds, and raised nothing', 'the next agent did not get an answer from the new core' (code 1), and the words of the failure of the core are the words of the live failure: 'Socket closed before the connection was established'.  The unit test that named the old behaviour ('размещение выбирается в одном месте') was amended and not deleted: its cached service is now a LIVE socket (a real listener), because a dead one no longer passes for a live service; a new unit test ('мёртвый сервис из кэша не выдаёт себя за живой') names the new behaviour.  The tests of the plugin: 69 of 69 pass, and the typecheck of the plugin is clean."
+}
