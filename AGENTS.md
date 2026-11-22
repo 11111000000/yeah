@@ -1928,6 +1928,29 @@ work item. Never resolve it by silently making documentation more optimistic.
   list, so the branch "the file cannot be read" of that check **stays silent**; the repair of F7
   returns its refusals instead, and the old branch was left alone -- a fix of a foreign check
   without a measurement is a risk.
+- The repair of the refusal was verified by an **independent verifier** (2026-11-22, the role
+  `verifier', the report `/tmp/verifier-fix2-report.md'): **PASS with three findings, all of low
+  severity, and no defect of the code.**  All ten questions were measured: the defect was real
+  (the refusal by name did not arrive, the model read the message of the timer after 120.07
+  seconds, and **on the route of ACP an unhandled `user-error' killed the Emacs process** --
+  exit 255); the repair holds (the check is green 4 times out of 4, the model reads the refusal
+  by name in 0.08 seconds); the probe discriminates; the registered control of the claim still
+  bites; the forms of the refusal on the two paths are **bytewise the same**; the guard does not
+  catch too much (an error of the handler gives the same text on both paths); the call settles
+  once (one `tool-end', the timer cancelled, the resource released, the batch advanced); there
+  is no other uncovered path; the probe is hermetic; and the promise of the claim needs no
+  repair.  **F1** -- the ninth probe did not check that the path was really the deferred one:
+  with the guard of the dispatch taken away **and** the marking of the answerer taken away as
+  well, the check was **green** -- the probe had silently become a copy of the seventh.
+  **The repair** (`09a1371`): the probe now names its subject and refuses unless the journal of
+  the run holds **two** decisions about the permission (the deferral of the question and the
+  answer of the person); the path where the rules decide alone writes one.  **F2** -- the second
+  assertion of the probe could not fire (the window of the probe is two seconds, the bound of
+  the timer is a hundred and twenty) and was removed: every state in which the model reads the
+  message of the timer fails the first assertion as well.  **F3** -- the guard of the ninth probe
+  is not registered in `spec.json': the method holds one control per claim and the promise has
+  two subjects, so the gap is recorded and not papered over -- **the price is named**: a change
+  of that guard would not be caught by the map.
 
 ## The commands
 
