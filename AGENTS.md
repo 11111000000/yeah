@@ -2033,6 +2033,29 @@ work item. Never resolve it by silently making documentation more optimistic.
   rewritten**: the texts of the claims in `spec.json` did not change (`git diff 8290c96 --
   spec.json' is empty) -- they were **measured**.
 
+- The **independent verifier of the second round** of the package of the waves `wave-d2b` to
+  `wave-d2h` answered **PASS** (2026-11-22; the report
+  `/tmp/verifier-d2-round2-report.md`).  It measured twenty things (V-1--V-20) on copies of the
+  tree in `/tmp` and confirmed, with numbers and codes, that all six findings of the first round
+  are repaired for real -- the defect reproduces with the code 0 before the repair and bites with
+  the code 1 and a precise subject after it -- that the repairs of the parent are real (eight
+  files of checks are whole files now, and the guard of the documentation is green and bites),
+  that **no check was weakened** (the diffs show tightenings and additions only), and that the
+  **promises were not rewritten** (`git diff 8290c96 -- spec.json` is empty: the measurement was
+  repaired, not the promise).  It left **two findings of low severity**, and both were of the
+  class it had been asked to look for.  **F-1** -- the repair of L-C removed the dead code of
+  the reader and brought a new dead function with it (`yeah-diagram--words-name-all-p` was
+  declared and called by nothing): it is gone, and the header of the reader does not mention it.
+  **F-2** -- the repair of S-2 asked the note to hang on the block of the local socket, but it
+  took the alias of the **first** note and the words of **all** of them, so a picture with two
+  notes -- one that says nothing of the limit on the socket, and one that says the limit on the
+  stdio -- passed with the code 0.  The reader now returns every note with the block it hangs
+  on (`yeah-diagram--notes`), and the check measures the note that **carries** the limit of the
+  wire: a picture that spreads the limit over two notes has no note of the limit, and the words
+  of one note and the block of another note are the words of one thing and the name of another
+  one.  **The lesson is the same as the one of L-C**: a repair that adds a rule can add a dead
+  thing with it, and the count of the dead things is what tells.
+
 ## The commands
 
 ```sh
