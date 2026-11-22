@@ -1,0 +1,56 @@
+@startuml code-packages
+' Where the code of Yeah lives: the modules of `lib/' in nine packages.
+'
+' The nine packages are the nine of `docs/SITE-DIAGRAMS-PLAN.md' §8 (D8):
+' the journal and the projections, the control of a run, the adapter of the
+' model, the tools and the registry, the rights and the approvals, the
+' protocols and the wire, the interface and the product, the delegation and
+' the subagents, the placements and the plumbing.
+'
+' Every module of `lib/' is in exactly one of them and is named with the line
+' of its definition, as `file:line'.  The modules that are in no package of
+' the picture are listed in the note at the end of this file, with the reason
+' why they are not there.
+
+package "journal and projections" as journal {
+  component "the journal of the run and its projections\nlib/yeah-session.el:37\nlib/yeah-events.el:30\nlib/yeah-journal.el:33\nlib/yeah-context.el:29\nlib/yeah-compact.el:27\nlib/yeah-todo.el:46\nlib/yeah-ui.el:23\nlib/yeah-faces.el:28\nlib/yeah-session-list.el:29\nlib/yeah-sessions.el:29\nlib/yeah-org.el:28\nlib/yeah-markdown.el:22" as journal_modules
+}
+
+package "run control" as run_control {
+  component "the controller of a run\nlib/yeah-control.el:27\nlib/yeah-run.el:40\nlib/yeah-turn.el:60\nlib/yeah-loop.el:26\nlib/yeah-state.el:26\nlib/yeah-input.el:20\nlib/yeah-scheduler.el:46\nlib/yeah-runtime.el:20" as run_control_modules
+}
+
+package "model adapter" as model {
+  component "the one door to the model\nlib/yeah-gptel.el:28\nlib/yeah-model.el:37\nlib/yeah-answer.el:33" as model_modules
+}
+
+package "tools and registry" as tools {
+  component "the tools and their registry\nlib/yeah-tools.el:39\nlib/yeah-builtins.el:23\nlib/yeah-files.el:19\nlib/yeah-edit.el:24\nlib/yeah-git.el:33\nlib/yeah-process.el:21\nlib/yeah-emacs.el:26\nlib/yeah-trash.el:39\nlib/yeah-undo.el:36\nlib/yeah-untrusted.el:35\nlib/yeah-version.el:34\nlib/yeah-shell-guard.el:38\nlib/yeah-bridge.el:31\nlib/yeah-result.el:23\nlib/yeah-text.el:40" as tool_modules
+}
+
+package "rights and approvals" as rights {
+  component "the rights and the approvals\nlib/yeah-perm.el:65\nlib/yeah-risk.el:42\nlib/yeah-approval.el:59\nlib/yeah-approval-ui.el:43\nlib/yeah-diff.el:22" as rights_modules
+}
+
+package "protocols and wire" as protocols {
+  component "the protocols and the wire\nlib/yeah-acp.el:60\nlib/yeah-acp-vocabulary.el:15\nlib/yeah-mcp.el:28\nlib/yeah-mcp-client.el:28\nlib/yeah-mcp-http.el:38\nlib/yeah-session-mcp.el:40\nlib/yeah-emcp.el:31\nlib/yeah-wire.el:23\nlib/yeah-wire-socket.el:33\nlib/yeah-client.el:27" as protocol_modules
+}
+
+package "interface and product" as interface {
+  component "the interface and the product\nlib/yeah.el:25\nlib/yeah-compose.el:25\nlib/yeah-shell.el:23\nlib/yeah-doctor-ui.el:26\nlib/yeah-product.el:35" as interface_modules
+}
+
+package "delegation and subagents" as delegation {
+  component "the delegation and the child\nlib/yeah-delegate.el:65\nlib/yeah-subagent.el:50\nlib/yeah-agent.el:41" as delegation_modules
+}
+
+package "placements and plumbing" as placements {
+  component "where the harness runs\nlib/yeah-placement.el:45\nlib/yeah-service.el:34\nlib/yeah-service-ui.el:36\nlib/yeah-life.el:47\nlib/yeah-proc.el:52" as placement_modules
+}
+
+note bottom
+  The modules of lib/ that this picture does not name, and why:
+  lib/yeah-codes.el -- experimental: disabled by default and not wired into the agent loop.
+  lib/yeah-state-diagram.el -- the generator of the state diagram: a tool of the author, not a component of the harness at run time.
+end note
+@enduml

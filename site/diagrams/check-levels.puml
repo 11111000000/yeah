@@ -1,0 +1,55 @@
+@startuml check-levels
+' The four levels of verification of Yeah, from the cheapest to the strongest,
+' and the boundary of what they prove.
+'
+' A unit test proves a transition of the kernel: a pure function, a
+' validation, a projection.  A canary proves an invariant that a claim names,
+' and every canary carries a control that can make the check fail.  An
+' integration test proves that the parts of the kernel talk to each other: a
+' real gptel, a real process, a real protocol, a restart and a recovery.  A
+' live test proves that a real provider answers.
+'
+' The levels are ordered by the strength of the proof, and the boundary is on
+' the picture on purpose: no level proves the product.  A green module is not
+' a working product, and the top of the ladder is still a kernel in a
+' prototype.
+'
+' The places of the levels are the places of the tree: the directories of the
+' tests and the gate that runs them.
+
+start
+:the gate of the project runs the checks of the tree
+and binds the evidence to the claims
+scripts/gate;
+
+:unit
+(pure transitions, validation, projections, helpers)
+tests/unit;
+
+:contract / canary
+(the failure classes and the invariants named by claims,
+each with a control that can make the check fail)
+tests/checks;
+
+:integration
+(real gptel, process and protocol round trips,
+restart, recovery, the whole coding scenario)
+tests/checks and tests/live;
+
+:live / evaluation
+(pinned real providers, comparative tasks against
+opencode and pi, Emacs-native tasks)
+tests/live;
+
+:the boundary of the proof
+(every level proves its own subject,
+a green module is not a working product);
+
+note right
+  Still open at the top of the ladder:
+  no real ACP editor has finished a task,
+  the clean bootstrap does not run in CI,
+  and the bridge is off until the operator enables it.
+end note
+stop
+@enduml
