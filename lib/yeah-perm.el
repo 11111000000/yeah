@@ -330,27 +330,27 @@ names the reason as well."
 A file that is not there is a file of no rules and not an error.  A
 file that cannot be read is a refusal that names the file and the
 reason: a rule that cannot be read is never ignored."
-  (unless (file-exists-p file)
-    (return-from yeah-perm--read-rules-file nil))
-  (let* ((text (condition-case err
-                   (with-temp-buffer
-                     (insert-file-contents file)
-                     (buffer-string))
-                 (error
-                  (signal 'user-error
-                          (list (format "yeah-perm: the rules file %s cannot be read: %s"
-                                        file (error-message-string err)))))))
-         (parsed (condition-case err
-                     (json-parse-string text :object-type 'plist :array-type 'list)
+  (if (not (file-exists-p file))
+      nil
+    (let* ((text (condition-case err
+                     (with-temp-buffer
+                       (insert-file-contents file)
+                       (buffer-string))
                    (error
                     (signal 'user-error
-                            (list (format "yeah-perm: the rules file %s is broken: %s"
-                                          file (error-message-string err))))))))
-    (unless (listp parsed)
-      (signal 'user-error
-              (list (format "yeah-perm: the rules file %s is broken: it does not hold a list of rules"
-                            file))))
-    (mapcar (lambda (object) (yeah-perm--rule-from-json object file)) parsed)))
+                            (list (format "yeah-perm: the rules file %s cannot be read: %s"
+                                          file (error-message-string err)))))))
+           (parsed (condition-case err
+                       (json-parse-string text :object-type 'plist :array-type 'list)
+                     (error
+                      (signal 'user-error
+                              (list (format "yeah-perm: the rules file %s is broken: %s"
+                                            file (error-message-string err))))))))
+      (unless (listp parsed)
+        (signal 'user-error
+                (list (format "yeah-perm: the rules file %s is broken: it does not hold a list of rules"
+                              file))))
+      (mapcar (lambda (object) (yeah-perm--rule-from-json object file)) parsed))))
 
 (defun yeah-perm--rules->json (rules)
   "Return RULES as the text of a rules file.
@@ -373,7 +373,7 @@ A reader of the file never sees half of it."
   (let* ((directory (file-name-directory file))
          (temporary nil))
     (make-directory directory t)
-    (setq temporary (make-temp-file directory "yeah-rules-"))
+    (setq temporary (make-temp-file (expand-file-name "yeah-rules-" directory)))
     (unwind-protect
         (progn
           (with-temp-file temporary
