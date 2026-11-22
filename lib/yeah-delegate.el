@@ -419,6 +419,7 @@ of the child."
               :input (list (list :name "agent" :type 'string)
                            (list :name "task" :type 'string))
               :risk "write"
+              :resource "delegation"
               :handler #'yeah-delegate--delegate)
         (list :name "delegate-result"
               :description

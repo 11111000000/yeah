@@ -299,6 +299,7 @@ rules must allow the commit before anything is written."
                       (list :name "message" :type 'string)
                       (list :name "files" :type 'string :optional t))
          :risk "write"
+         :resource "repository"
          :async t
          :concurrency 'exclusive
          :handler #'yeah-git--commit)))

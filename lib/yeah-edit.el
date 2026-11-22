@@ -268,6 +268,7 @@ read."
                       (list :name "version" :type 'string :optional t))
          :kind "edit"
          :risk "write"
+         :resource "file"
          :handler #'yeah-edit--edit
          :concurrency 'exclusive)
    (list :name "write"
@@ -279,6 +280,7 @@ read."
                       (list :name "version" :type 'string :optional t))
          :kind "edit"
          :risk "write"
+         :resource "file"
          :handler #'yeah-edit--write
          :concurrency 'exclusive)))
 

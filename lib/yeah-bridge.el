@@ -243,6 +243,7 @@ happened."
          "Evaluate an Elisp expression in the attached Emacs and return the printed value."
          :input (list (list :name "expression" :type 'string))
          :risk "execute"
+         :resource "emacs"
          :handler #'yeah-bridge-eval)
    (list :name "bridge__buffer_read"
          :description

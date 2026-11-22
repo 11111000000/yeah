@@ -124,7 +124,7 @@ SPEC is a plist of shape
   (:name NAME :description DESC
    :input ((:name PARAM :type TYPE [:optional t]) ...)
    :handler FN
-   [:kind KIND] [:concurrency MODE] [:async t])
+   [:kind KIND] [:concurrency MODE] [:async t] [:resource RESOURCE])
 
 where NAME is a string, DESC is a string, PARAM is a string, TYPE
 is one of `string', `integer', `symbol', `boolean', and FN is a
@@ -156,6 +156,19 @@ Three more fields are optional and say what the tool is and how it runs:
                 may run alongside the other shared tools of the same
                 answer; an exclusive tool runs alone, and everything
                 else waits for it.
+
+  :resource     the name of what the tool touches: the files it edits,
+                the repository it writes into, the shell it runs in.  The
+                resource is a lock: two calls that declare one resource
+                never run at the same time, and the lock lasts from the
+                start of a call until the call settles.  The field is
+                optional, and the lock is switched on by the
+                declaration: a tool that declares no resource is never
+                held back by another call.  A tool that changes the
+                world says what it touches; a tool that only reads
+                declares nothing, because it needs no lock.  A resource
+                that is not a nonempty string is refused by name.
+
   :async        non-nil when the handler takes a continuation: it is
                 called as (FN ARGS DONE) and calls DONE with the
                 result. A tool that waits — on a process, on a timer —
@@ -163,14 +176,16 @@ Three more fields are optional and say what the tool is and how it runs:
 
 Signals `user-error' if SPEC is malformed, if SPEC declares a kind
 outside the vocabulary of the protocol, if SPEC declares a risk outside
-the vocabulary of the kernel, or if a tool with the same `:name' is
-already registered."
+the vocabulary of the kernel, if SPEC declares a resource that is not a
+nonempty string, or if a tool with the same `:name' is already
+registered."
   (unless (yeah-tools--spec-p spec)
     (signal 'user-error
             (list (format "yeah-tools-register: malformed spec %S" spec))))
   (let ((name (plist-get spec :name))
         (kind (plist-get spec :kind))
-        (risk (plist-get spec :risk)))
+        (risk (plist-get spec :risk))
+        (resource (plist-get spec :resource)))
     (when (and kind (not (yeah-tools-kind-known-p kind)))
       (signal 'user-error
               (list (format "yeah-tools-register: the tool %S declares the kind %S, which is not in the vocabulary of the protocol"
@@ -179,6 +194,11 @@ already registered."
       (signal 'user-error
               (list (format "yeah-tools-register: the tool %S declares the risk %S, which is not in the vocabulary of the kernel"
                              name risk))))
+    (when (and resource
+               (not (and (stringp resource) (> (length resource) 0))))
+      (signal 'user-error
+              (list (format "yeah-tools-register: the tool %S declares the resource %S, which is not a nonempty string"
+                             name resource))))
     (when (gethash name (yeah-tools--active-registry))
       (signal 'user-error
               (list (format "yeah-tools-register: %S already registered" name))))
@@ -198,6 +218,17 @@ tools of the same answer. A tool that writes something nobody else may
 touch at the same time declares itself `exclusive'."
   (let ((mode (plist-get spec :concurrency)))
     (if (memq mode '(shared exclusive)) mode 'shared)))
+
+(defun yeah-tools-resource (spec)
+  "Return the resource the tool SPEC declares, or nil when it declares none.
+The resource is the name of what the tool touches, and it is a lock: two
+calls that declare one resource never run at the same time.  A tool that
+declares no resource is never held back by another call: the lock is
+switched on by the declaration."
+  (let ((resource (plist-get spec :resource)))
+    (if (and (stringp resource) (> (length resource) 0))
+        resource
+      nil)))
 
 (defun yeah-tools-unregister (name)
   "Remove the tool registered under NAME. No-op if absent."
