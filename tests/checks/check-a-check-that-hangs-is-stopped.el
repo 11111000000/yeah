@@ -22,6 +22,25 @@
 ;; as well, the gate waited for the limit before it stopped the fixture,
 ;; and the gate answered with the third answer and not with a pass.
 ;;
+;; The output of the gate is read from a buffer that the filter of the
+;; process fills, and the death of the process is known before the tail
+;; of its output has reached that buffer: the machine reaps the child,
+;; the pipe of the child is taken out of the set of the descriptors
+;; that Emacs watches, and the bytes the child wrote before it died are
+;; left in the pipe.  A buffer that is read at that moment holds the
+;; head of the output and not its tail, and the check would refuse a
+;; gate that said exactly what it had to say.
+;;
+;; The measure therefore waits for the pipe to settle: it pumps the
+;; event loop, naming the gate, until the output of the gate stops
+;; growing, and only then does it read the buffer and judge it.  The
+;; pump is what reads the bytes that are left: Emacs reads what is left
+;; of the pipe of a process that has died when it is asked for the
+;; output of that process.  The wait is bounded -- a pipe that never
+;; goes quiet ends the wait -- and the judgement does not soften: a
+;; gate that never said the sentence still fails this check, with the
+;; same subject of refusal as before.
+;;
 ;; The measure of the subject is the process itself, by its pid, in the
 ;; tree of the processes of the system.  The check does not ask the
 ;; fixture whether it is alive: a process that answers is a process that
@@ -62,6 +81,32 @@ has died already and waits to be reaped."
   (yeah-check--await
    (lambda () (not (yeah-proc-alive-p (yeah-proc-state pid))))
    timeout))
+
+(defun yeah-check--drain (process buffer &optional timeout)
+  "Pump the event loop until the output in BUFFER stops growing.
+Return non-nil when the output was quiet for two pumps in a row.
+
+The death of a process is known before the tail of its output has
+reached the buffer that the filter of the process fills: the machine
+reaps the child, the pipe of the child is taken out of the set of the
+descriptors that Emacs watches, and the bytes the child wrote before
+it died are left in the pipe.  The measure waits for the pipe to
+settle before it reads the buffer, and the wait is bounded: a pipe
+that never goes quiet ends the wait, and the caller judges the output
+that is there.
+
+The pump names the process: Emacs reads what is left of the pipe of a
+process that has died when it is asked for the output of that
+process, and it reads it whether the pipe is watched or not."
+  (let ((deadline (+ (float-time) (or timeout 5)))
+        (last -1)
+        (quiet 0))
+    (while (and (< (float-time) deadline) (< quiet 2))
+      (accept-process-output process 0.05)
+      (let ((now (with-current-buffer buffer (buffer-size))))
+        (setq quiet (if (= now last) (1+ quiet) 0)
+              last now)))
+    (= quiet 2)))
 
 (defun yeah-check--kill-group (pid signal)
   "Send SIGNAL to the process group of PID.
@@ -171,6 +216,10 @@ and the pid of the child of the fixture."
                     (push (format "the gate answered %d to the check that hangs, the third answer is 3"
                                   (process-exit-status gate))
                           yeah-check--failures)))
+                ;; the pipe of the gate must settle before its output is
+                ;; read: the death of the gate is known before the tail of
+                ;; its output has reached the buffer of the filter
+                (yeah-check--drain gate output 5)
                 ;; and it must say why
                 (unless (with-current-buffer output
                           (goto-char (point-min))
