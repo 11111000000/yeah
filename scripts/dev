@@ -575,7 +575,12 @@ EOF
           exit 3
         }
         picture="$out/$flat-$theme.svg"
-        if ! "$d2_bin" "$wrapper" "$picture" >"$tmp/log" 2>&1; then
+        font_bin="$(find_dejavu_mono || true)"
+        if [ -z "$font_bin" ]; then
+          echo "scripts/dev diagrams: the font of the site (DejaVu Sans Mono) is not on this machine: the pictures of D2 would stand in another font" >&2
+          exit 3
+        fi
+        if ! "$d2_bin" --font-regular="$font_bin" "$wrapper" "$picture" >"$tmp/log" 2>&1; then
           echo "scripts/dev diagrams: d2 failed on $name ($theme)" >&2
           cat "$tmp/log" >&2
           exit 1
