@@ -526,8 +526,10 @@ Git is the historical record; there is no second, contradictory design corpus.
                   attached, service, batch placements
 ```
 
-The site publishes this picture as a diagram, and every block of it names the
-files that implement it (`site/diagrams/core-layers.puml`; `site/index.html`).
+The site publishes this architecture as a diagram -- in the notation of the bands,
+not in the notation of the components: what asks, what decides, what is remembered
+and what is seen -- and every leaf of that picture names the
+files that implement it (`site/diagrams/core-layers.d2`; `site/index.html`).
 The figure above and that diagram are one architecture: the drivers submit to
 the controller, the controller drives the model adapter, the tool registry and
 the policy, the scheduler runs what may run, everything that happened is

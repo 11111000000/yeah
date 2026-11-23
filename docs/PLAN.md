@@ -6244,7 +6244,7 @@ falsifier, который не может назвать дефект собст
 **Что это за волна.**  Первая волна второй части плана — часть II (волны схем, §D трека
 догоняющего плана): картина слоёв ядра нарисована в нотации компонентов вместо ASCII.
 **Код ядра волна 97 не трогает.**  Два новых файла:
-`site/diagrams/core-layers.puml` (69 строк) и
+`site/diagrams/core-layers.d2` (69 строк) и
 `tests/checks/check-the-layer-diagram-points-at-files-that-exist.el` (247 строк у писателя,
 251 после усиления родителя).
 
@@ -6381,7 +6381,7 @@ ACP-клиенты, MCP-клиенты, batch, wire) сходятся к Session
 родителем, код 1), текст, `falsifier`, `scope`, `requirements` и `id` claim'а прежние.
 
 **Картина волны 97 пришлось перепривязать — и это сделала усиленная проверка.**  Волна 98
-сдвинула строки `lib/`, и три имени картины (`site/diagrams/core-layers.puml`) уехали со своих
+сдвинула строки `lib/`, и три имени картины (`site/diagrams/core-layers.d2`) уехали со своих
 определений (`lib/yeah-perm.el:62→68`, `lib/yeah-tools.el:118→119`, `lib/yeah-delegate.el:428→430`),
 а новый модуль `lib/yeah-risk.el` не был назван.  Проверка волны 97 сказала об этом сама
 (родительское усиление от 2026-11-21: ссылка должна указывать на строку **с определением**) —
@@ -6599,7 +6599,7 @@ C1: обе касаются одной записи решения о разре
 **зомби-владельца** теперь вычищается (сокет зомби не должен мешать сервису начаться), и
 `yeah-life-adopt` больше не отказывается зомби-владельцу, как живому.  Шесть проверок спрашивают
 состояние вместо каталога; три проверки волн 100 и 101 читают процесс через модуль ядра.  Картина
-`site/diagrams/core-layers.puml` называет `lib/yeah-proc.el:69` — **полнота картины часть её обещания**.
+`site/diagrams/core-layers.d2` называет `lib/yeah-proc.el:69` — **полнота картины часть её обещания**.
 
 **Имя по конвенции, а не по постановке.**  `ELISP_BEST_PRACTICES.md` §2 (правило §2.1 раздела):
 символ, который может быть вызван из другого модуля, пишется **с одним дефисом**.  Читатель ядра
@@ -6980,7 +6980,7 @@ C1.  (8) **Область без носителя отвергается по и
 | C1d | та же мутация ещё дважды | тот же отказ, тот же текст | те же 2 строки | 1 |
 | C1e | пять соседних проверок волны | зелёные | зелёные | 0 |
 
-**Картина слоёв.**  `site/diagrams/core-layers.puml` называла четыре строки, которые волна сдвинула:
+**Картина слоёв.**  `site/diagrams/core-layers.d2` называла четыре строки, которые волна сдвинула:
 `lib/yeah-approval-ui.el:114→115`, `lib/yeah-service-ui.el:413→436`, `lib/yeah-perm.el:68→121`,
 `lib/yeah-approval.el:59→162`.  `site/` — точка сериализации родителя, писатель её не трогал и
 оставил её родителю; родитель перепривязал четыре числа, и проверка картины снова зелёная.
@@ -7489,10 +7489,10 @@ F53, §16.104).  Код обеих волн слит в `main` (`da7def9` и `86
 `the-layer-diagram-points-at-files-that-exist` отвергнут: «the diagram names `lib/yeah-risk.el:94`,
 and that line carries no definition».  **Причина — волна 106:** она добавила в `lib/yeah-risk.el`
 хранилище ошибки загрузки реестра (`yeah-risk--failure`) и функцию `yeah-risk-failure`, и определение
-уехало со строки 94 на строку 90.  Картина слоёв (`site/diagrams/core-layers.puml`) называла старую
+уехало со строки 94 на строку 90.  Картина слоёв (`site/diagrams/core-layers.d2`) называла старую
 строку, и страж картины — ровно та проверка, которая ловит такую рассинхронизацию, — её отверг.
 
-**Починка 1.**  `site/diagrams/core-layers.puml` называет теперь строку 90 (коммит `da8f6ea`).
+**Починка 1.**  `site/diagrams/core-layers.d2` называет теперь строку 90 (коммит `da8f6ea`).
 Проверка зелёная: код 0 (246 мс).
 
 **Провал 2 — widened-страж волны 107 читал чужой код.**  Claim
@@ -7710,7 +7710,7 @@ B3 — `baec0d3`, C3 — `a890509`.  После слияния — гермет�
 Картина слоёв — файл владельца, и страж картины — ровно та проверка, которая ловит такую
 рассинхронизацию, — её отверг.
 
-**Починка 1.**  `site/diagrams/core-layers.puml` называет теперь строку 259 (коммит `ca71ae7`).
+**Починка 1.**  `site/diagrams/core-layers.d2` называет теперь строку 259 (коммит `ca71ae7`).
 Проверка зелёная: код 0.
 
 **Провал 2 — гейт убитого прогона не дошёл до конца карты.**  Claim
@@ -8023,7 +8023,7 @@ was not refused by name when a person was asked: nil» — модель не п�
 ### 16.110 Пакет волн D2: семь схем сайта и страж каждой схемы — **2026-11-22**
 
 **Что это.**  Вторая часть догоняющего плана (`docs/ARCHITECTURE-CATCHUP-PLAN.md`) — волна **D2**,
-«восемь схем».  Первая схема (картина слоёв ядра, `site/diagrams/core-layers.puml`) сделана волной 97
+«восемь схем».  Первая схема (картина слоёв ядра, `site/diagrams/core-layers.d2`) сделана волной 97
 (§16.89); этот пакет сделал остальные семь и **общий страж** всех схем сайта.  Дальше по плану: **D3**
 (вставка схем в сайт и правка текстов), **D4** (проверка «диаграмма актуальна»), **E1** (решение №16 в
 `docs/SITE-DESIGN.md`), **E2** (`site/README.md`), **E3** (синхронизация `docs/ARCHITECTURE.md` §5 и §8 —
@@ -8034,11 +8034,11 @@ was not refused by name when a person was asked: nil» — модель не п�
 | волна | что нарисовано (§8 `docs/SITE-DIAGRAMS-PLAN.md`) | claim | файлы |
 |---|---|---|---|
 | `wave-d2b` | D1 — один ход агента | `the-one-turn-diagram-shows-the-turn-of-the-agent` | `site/diagrams/one-turn.puml`, 2 картинки, проверка |
-| `wave-d2c` | D3 — слой Emacs | `the-emacs-layer-diagram-shows-the-bridge-and-the-scopes` | `site/diagrams/emacs-layer.puml`, 2 картинки, проверка |
-| `wave-d2d` | D4 — размещения и протоколы | `the-placements-diagram-shows-the-placements-and-the-protocols` | `site/diagrams/placements.puml`, 2 картинки, проверка |
+| `wave-d2c` | D3 — слой Emacs | `the-emacs-layer-diagram-shows-the-bridge-and-the-scopes` | `site/diagrams/emacs-layer.d2`, 2 картинки, проверка |
+| `wave-d2d` | D4 — размещения и протоколы | `the-placements-diagram-shows-the-placements-and-the-protocols` | `site/diagrams/placements.d2`, 2 картинки, проверка |
 | `wave-d2e` | D6 — фиксированная точка Y | `the-fixed-point-diagram-shows-the-loop-of-the-delegation` | `site/diagrams/fixed-point.puml`, 2 картинки, проверка |
 | `wave-d2f` | D7 — уровни проверки | `the-check-levels-diagram-shows-the-four-levels` | `site/diagrams/check-levels.puml`, 2 картинки, проверка |
-| `wave-d2g` | D8 — пакеты кода | `the-code-packages-diagram-names-every-module-of-the-kernel` | `site/diagrams/code-packages.puml`, 2 картинки, проверка |
+| `wave-d2g` | D8 — пакеты кода | `the-code-packages-diagram-names-every-module-of-the-kernel` | `site/diagrams/code-packages.d2`, 2 картинки, проверка |
 | `wave-d2h` | страж каждой схемы | `every-diagram-points-at-files-that-exist` | `tests/checks/check-every-diagram-points-at-files-that-exist.el` |
 
 Общий ридер схем — **один**: `tests/support/yeah-diagram-files.el`.  Claim'ов в `spec.json` стало **179**
@@ -8074,7 +8074,7 @@ was not refused by name when a person was asked: nil» — модель не п�
 | **F5** | **в репозитории не было ни одной отрендеренной картинки** — `site/assets/diagrams/` держал только `.gitkeep`; **закрыто** коммитом `57910e9` (16 картинок) | `site/assets/diagrams/` |
 | **F6** | **два брифа родителя противоречили друг другу**: страж требовал от каждой картинки имя файла как `file:line', а схема уровней называет каталоги проверок (`tests/unit`, `tests/checks`, `tests/live`, `scripts/gate`) без номеров строк.  **Страж отказал честной картинке** — и был прав по записанному правилу; **починка родителя**: правило места живёт в ридере, место — это путь, первый сегмент которого есть в корне дерева | `tests/support/yeah-diagram-files.el` |
 | **F7** | **бриф и план противоречат друг другу по D8**: бриф требует назвать каждый модуль `lib/' (68 шт.), а §8 `docs/SITE-DIAGRAMS-PLAN.md` говорит «на сайт идёт огрублённая версия без лишних модулей» | `docs/SITE-DIAGRAMS-PLAN.md` §8 |
-| **F8** | **картинка пакетов широкая — 3233×444** (девять колонок, 66 ссылок); на странице текст уменьшится примерно в 3.6 раза — странице нужна прокрутка по горизонтали | `site/diagrams/code-packages.puml` |
+| **F8** | **картинка пакетов широкая — 3233×444** (девять колонок, 66 ссылок); на странице текст уменьшится примерно в 3.6 раза — странице нужна прокрутка по горизонтали | `site/diagrams/code-packages.d2` |
 
 **Решения родителя (2026-11-22; правило вне §17.2 — владелец может отменить).**
 
@@ -8318,7 +8318,7 @@ Claim'ов в `spec.json` стало **181** (было 179).
 в тексте заново как открытые.  Прочие расхождения, найденные писателем и не закрытые им: три
 компоненты начинают ход (контроль, размещение, ребёнок) против буквальной формулировки «the
 controller is the only component that advances the run» — текст теперь называет **ход** тем, кто
-двигает прогон; `\"webfetch\"` в отключённом оценщике `lib/yeah-codes.el:38`; `site/diagrams/core-layers.puml:27`
+двигает прогон; `\"webfetch\"` в отключённом оценщике `lib/yeah-codes.el:38`; `site/diagrams/core-layers.d2:27`
 ссылается на `lib/yeah-risk.el:90`, а не на словарь (файл не писателя).
 
 **Решения родителя (2026-11-22; правило вне §17.2 — владелец может отменить).**

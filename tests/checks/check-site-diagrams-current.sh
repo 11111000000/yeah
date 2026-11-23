@@ -595,7 +595,12 @@ while IFS= read -r src; do
       exit 2
     }
     picture="$out/$flat-$theme.svg"
-    if ! "$d2_bin" "$wrapper" "$picture" >"$tmp/d2.log" 2>&1; then
+    font_bin="$(find_dejavu_mono || true)"
+    if [ -z "$font_bin" ]; then
+      echo "site-diagrams: the font of the site (DejaVu Sans Mono) is not on this machine: the pictures of D2 would stand in another font" >&2
+      exit 3
+    fi
+    if ! "$d2_bin" --font-regular="$font_bin" "$wrapper" "$picture" >"$tmp/d2.log" 2>&1; then
       echo "site-diagrams: D2 cannot draw $site_src ($theme): the pictures were not drawn" >&2
       sed -n '1,8p' "$tmp/d2.log" >&2
       exit 3

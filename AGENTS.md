@@ -1464,7 +1464,7 @@ work item. Never resolve it by silently making documentation more optimistic.
 - Wave 97 drew the picture of the layers of the core in the notation of components, instead
   of in ASCII.  The source is written by hand -- `docs/SITE-DIAGRAMS-PLAN.md` names only the
   diagram of the state machine as generated out of the code -- and it is
-  `site/diagrams/core-layers.puml`: four packages (the drivers, the core, the journal and
+  `site/diagrams/core-layers.d2`: four packages (the drivers, the core, the journal and
   the projections), 15 blocks, 64 names of the form `file:line` (65 after wave 98), every one of them a
   definition of the kernel.  The picture is the picture of the ASCII figure of the site
   (`site/index.html:482-506`) and of `docs/ARCHITECTURE.md` §5.  **The completeness is part
@@ -1509,7 +1509,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   the delegation, and the text, the falsifier, the scope, the requirements and the id of that
   claim are the same.  **The picture of the wave 97 had to be re-anchored and the strengthened
   check said so**: the wave moved the lines of `lib/`, three names of
-  `site/diagrams/core-layers.puml` left their definitions and the new module was not named;
+  `site/diagrams/core-layers.d2` left their definitions and the new module was not named;
   the parent compared all 64 names with a snapshot of the state before the wave (61 did not
   move, 3 left and were re-anchored, and no signature changed) and the picture now carries 65.  **The
   remainder of B1 is named**: the list of the safe reads of the approval path
@@ -1532,7 +1532,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   places, so the socket of a zombie owner is swept away (a socket of a zombie must not keep a
   service from starting) and `yeah-life-adopt` no longer refuses a zombie owner as if it lived.
   Six checks ask the state instead of the directory, the three checks of the waves 100 and 101 read
-  the process through the module of the kernel, and the picture `site/diagrams/core-layers.puml`
+  the process through the module of the kernel, and the picture `site/diagrams/core-layers.d2`
   names `lib/yeah-proc.el:69` -- the completeness of the picture is part of its promise.  **The
   proof is a stand, and the zombie of the stand is the letter `Z`, not a living zombie**: a child
   that ends at once is reaped before the window of the check opens, and a proof that waits for that

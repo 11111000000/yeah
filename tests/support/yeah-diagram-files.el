@@ -319,12 +319,6 @@ only in the comment is not a claim of the picture."
         (push line lines)))
     (nreverse lines)))
 
-(defun yeah-diagram--d2-titles (text)
-  "Return the titles of the drawing of the picture of D2 in TEXT.
-A title is the label of a node of the picture: it is what the picture
-says about the node."
-  (mapcar (lambda (block) (nth 1 block)) (yeah-diagram--d2-blocks text)))
-
 (defun yeah-diagram--module-name-p (name)
   "Return non-nil when NAME is the name of a module of the kernel.
 A name of a module is a path of the tree: a run of names of the files and

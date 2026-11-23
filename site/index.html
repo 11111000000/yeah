@@ -521,9 +521,9 @@
             submit commands to it.
           </p>
 
-          <!-- The layers of the core, in the notation of components: the same
-               picture as the ASCII figure that stood here, and every block
-               names the files that implement it. -->
+          <!-- The layers of the core, in the notation of the bands: what
+               asks, what decides, what is remembered and what is seen.  Every
+               leaf names one file that implements it. -->
           <figure class="diagram" data-diagram="d2">
             <img class="diagram__img diagram__img--light" src="assets/diagrams/core-layers-light.svg"
                  alt="The core of Yeah in four bands: what asks (the person, the ACP and MCP clients, a batch run) hands the request to what decides (the run, the model, the registry of the tools, the policy and the approvals, the scheduler); every event is written into what is remembered (the append-only journal), and every view of it is what is seen (the context of the model, the views of the person, the sessions and the cost).">
@@ -713,7 +713,7 @@
 ./scripts/dev run
 ./scripts/dev gate</code></pre>
 
-            <!-- The modules of lib/ in nine packages. -->
+            <!-- The nine packages of the kernel: one knot, not nine layers. -->
             <figure class="diagram" data-diagram="d8">
               <img class="diagram__img diagram__img--light" src="assets/diagrams/code-packages-light.svg"
                    alt="The nine packages of the kernel of Yeah around one knot: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing. Every card says how many modules the package holds, how many packages it needs and how many packages need it: every package reaches every other one, and there is no layer to speak of.">

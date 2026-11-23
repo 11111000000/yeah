@@ -45,3 +45,19 @@ find_tool() {
   fi
   return 1
 }
+
+# The font of the pictures of the site is the font of the site: the frame of
+# Emacs writes in "DejaVu Sans Mono", and the pictures of PlantUML and the
+# pictures of D2 must stand in it as well.  D2 takes the path of the file of
+# the font, and not the name of it, so the file is looked for the same way
+# the tools are looked for.
+find_dejavu_mono() {
+  local candidate
+  for candidate in "${NIX_STORE_DIR:-/nix/store}"/*dejavu-fonts*/share/fonts/truetype/DejaVuSansMono.ttf; do
+    if [ -f "$candidate" ]; then
+      printf "%s" "$candidate"
+      return 0
+    fi
+  done
+  return 1
+}
