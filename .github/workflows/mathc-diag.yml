@@ -1,0 +1,52 @@
+name: Math Coding runtime diagnosis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: What the runner is
+        run: |
+          uname -r
+          echo "overcommit: $(cat /proc/sys/vm/overcommit_memory)"
+          echo "max_map_count: $(cat /proc/sys/vm/max_map_count)"
+          ulimit -a
+      - name: Does the kernel accept MAP_STACK
+        run: |
+          cat > /tmp/probe.c <<'C'
+          #include <stdio.h>
+          #include <sys/mman.h>
+          #include <errno.h>
+          #include <string.h>
+          #include <unistd.h>
+          int main(void) {
+            long sz = sysconf(_SC_SIGSTKSZ);
+            void *p = mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE|MAP_STACK, -1, 0);
+            if (p == MAP_FAILED) { printf("MAP_STACK FAILED errno=%d %s\n", errno, strerror(errno)); return 1; }
+            printf("MAP_STACK OK sigstksz=%ld\n", sz);
+            return 0;
+          }
+          C
+          cc -o /tmp/probe /tmp/probe.c && /tmp/probe || echo "probe failed"
+      - name: The tool under different limits
+        run: |
+          mkdir -p /tmp/mathc-bin
+          for v in v5.0.8 v6.0.0; do
+            base="https://github.com/11111000000/math-coding/releases/download/$v"
+            curl -fsSL "$base/mathc-$v-linux-x86_64" -o "/tmp/mathc-bin/mathc-$v-linux-x86_64" || continue
+            chmod +x "/tmp/mathc-bin/mathc-$v-linux-x86_64"
+          done
+          for v in v5.0.8 v6.0.0; do
+            out="$(/tmp/mathc-bin/mathc-$v-linux-x86_64 --version 2>&1 || true)"
+            if echo "$out" | grep -q '^mathc'; then echo "$v: OK"; else echo "$v: FAIL: $(echo "$out" | head -1)"; fi
+          done
