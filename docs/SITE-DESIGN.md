@@ -338,10 +338,14 @@ end of what was typed.
     messages, and that departure of the site is named here.
 16. **The pictures of the architecture are diagrams, not ASCII.** The layer
     picture of the site is drawn as a diagram: the sources are PlantUML files
-    under `site/diagrams/`, the pictures are in `site/assets/diagrams/`, one
+    and D2 files under `site/diagrams/`, the pictures are in
+    `site/assets/diagrams/`, one
     picture for the light theme and one for the dark theme of the frame, and
-    the ASCII figure that stood in the architecture section is gone. PlantUML
-    is the tool of the author, not a dependency of the site: the site ships
+    the ASCII figure that stood in the architecture section is gone. The engine
+    is chosen per picture (the decision of the owner of 23 November): PlantUML
+    draws the pictures of a process in the classic notation of UML, and D2 draws
+    the pictures of a structure as bands. The tool is a tool of the author, not a
+    dependency of the site: the site ships
     the pictures, and the page is readable with JavaScript disabled and
     without the tool. The colours of a diagram are the tokens of the frame —
     the background of a node is the background of a buffer, the arrow is the

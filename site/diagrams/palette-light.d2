@@ -1,0 +1,85 @@
+# Palette of the light theme — the faces of Emacs 30.2.
+# The colours carry the site tokens of the theme.
+#
+# The palette is prepended to the source of the picture: the variables, the
+# styles and the class of the connections live here, and the picture itself
+# lives in its own file.
+
+vars: {
+  d2-config: {
+    layout-engine: dagre
+    theme-id: 0
+    pad: 30
+  }
+  canvas: "#FFFFFF"
+  panel: "#F2F2F2"
+  card: "#FFFFFF"
+  line: "#999999"
+  ink: "#000000"
+  arrow: "#333333"
+}
+
+# The class of a connection: the arrow and its label carry the colour of the
+# theme, not the colour of the engine.
+classes: {
+  hidden: {
+    style: {
+      stroke: ${canvas}
+      font-color: ${canvas}
+    }
+  }
+  flow: {
+    style: {
+      stroke: ${arrow}
+      font-color: ${arrow}
+    }
+  }
+}
+
+# The canvas is the background of the picture, the panel is a band and a note,
+# the card is a leaf.
+style: {
+  fill: ${canvas}
+  stroke: ${line}
+  stroke-width: 2
+  font-color: ${ink}
+  font-size: 19
+  border-radius: 8
+  shadow: false
+}
+*.style: {
+  fill: ${panel}
+  stroke: ${line}
+  stroke-width: 2
+  font-color: ${ink}
+  font-size: 19
+  border-radius: 8
+  shadow: false
+}
+*.*.style: {
+  fill: ${card}
+  stroke: ${line}
+  stroke-width: 2
+  font-color: ${ink}
+  font-size: 19
+  border-radius: 8
+  shadow: false
+}
+*.*.*.style: {
+  fill: ${card}
+  stroke: ${line}
+  stroke-width: 2
+  font-color: ${ink}
+  font-size: 19
+  border-radius: 8
+  shadow: false
+}
+*.*.*.*.style: {
+  fill: ${card}
+  stroke: ${line}
+  stroke-width: 2
+  font-color: ${ink}
+  font-size: 19
+  border-radius: 8
+  shadow: false
+}

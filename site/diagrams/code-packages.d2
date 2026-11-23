@@ -1,0 +1,89 @@
+# The nine packages of the kernel of Yeah.
+#
+# The packages are one knot, not nine layers: every package reaches every
+# other one, and the graph of the requires has no level to speak of.  This
+# picture says the size of each package and how many other packages it needs
+# and is needed by; the count is the number of the packages, not the number
+# of the modules.
+#
+# The packages and the modules of each are named in the comment below.
+# file is the declaration of the packages, and the picture is its view.
+# Every module of lib/ belongs to exactly one of them, and the modules that
+# belong to none are named with the reason.
+#
+#   the name of a package, a colon, and the modules of it
+#
+# The packages and the modules of each:
+#
+#   journal and projections: lib/yeah-compact.el, lib/yeah-context.el, lib/yeah-events.el, lib/yeah-faces.el, lib/yeah-journal.el, lib/yeah-markdown.el, lib/yeah-org.el, lib/yeah-session.el, lib/yeah-session-list.el, lib/yeah-sessions.el, lib/yeah-todo.el, lib/yeah-ui.el
+#   run control: lib/yeah-control.el, lib/yeah-input.el, lib/yeah-loop.el, lib/yeah-run.el, lib/yeah-runtime.el, lib/yeah-scheduler.el, lib/yeah-state.el, lib/yeah-turn.el
+#   model adapter: lib/yeah-answer.el, lib/yeah-gptel.el, lib/yeah-model.el
+#   tools and registry: lib/yeah-bridge.el, lib/yeah-builtins.el, lib/yeah-edit.el, lib/yeah-emacs.el, lib/yeah-files.el, lib/yeah-git.el, lib/yeah-process.el, lib/yeah-result.el, lib/yeah-shell-guard.el, lib/yeah-text.el, lib/yeah-tools.el, lib/yeah-trash.el, lib/yeah-undo.el, lib/yeah-untrusted.el, lib/yeah-version.el
+#   rights and approvals: lib/yeah-approval.el, lib/yeah-approval-ui.el, lib/yeah-diff.el, lib/yeah-perm.el, lib/yeah-risk.el
+#   protocols and wire: lib/yeah-acp.el, lib/yeah-acp-vocabulary.el, lib/yeah-client.el, lib/yeah-emcp.el, lib/yeah-mcp.el, lib/yeah-mcp-client.el, lib/yeah-mcp-http.el, lib/yeah-session-mcp.el, lib/yeah-wire.el, lib/yeah-wire-socket.el
+#   interface and product: lib/yeah.el, lib/yeah-compose.el, lib/yeah-doctor-ui.el, lib/yeah-product.el, lib/yeah-shell.el
+#   placements and plumbing: lib/yeah-life.el, lib/yeah-placement.el, lib/yeah-proc.el, lib/yeah-service.el, lib/yeah-service-ui.el
+#   delegation and subagents: lib/yeah-agent.el, lib/yeah-delegate.el, lib/yeah-subagent.el
+#
+# The modules of lib/ that are in no package of this picture:
+#
+#   lib/yeah-codes.el -- experimental: disabled by default and not wired into the agent loop.
+#   lib/yeah-state-diagram.el -- the generator of the state diagram: a tool of the author, not a component of the harness at run time.
+
+knot: "the kernel\none knot of nine packages"
+
+journal_and_projections: "journal\nand projections\n12 modules\nneeds 3, needed by 7"
+run_control: "run control\n8 modules\nneeds 4, needed by 4"
+model_adapter: "model\nadapter\n3 modules\nneeds 1, needed by 5"
+tools_and_registry: "tools\nand registry\n15 modules\nneeds 2, needed by 7"
+rights_and_approvals: "rights\nand approvals\n5 modules\nneeds 2, needed by 6"
+protocols_and_wire: "protocols\nand wire\n10 modules\nneeds 7, needed by 1"
+interface_and_product: "interface\nand product\n5 modules\nneeds 7, needed by 3"
+placements_and_plumbing: "placements\nand plumbing\n5 modules\nneeds 5, needed by 2"
+delegation_and_subagents: "delegation\nand subagents\n3 modules\nneeds 5, needed by 1"
+
+knot -> journal_and_projections: {
+  class: flow
+}
+knot -> run_control: {
+  class: flow
+}
+knot -> model_adapter: {
+  class: flow
+}
+knot -> tools_and_registry: {
+  class: flow
+}
+knot -> rights_and_approvals: {
+  class: flow
+}
+knot -> protocols_and_wire: {
+  class: flow
+}
+knot -> interface_and_product: {
+  class: flow
+}
+knot -> placements_and_plumbing: {
+  class: flow
+}
+knot -> delegation_and_subagents: {
+  class: flow
+}
+journal_and_projections -> run_control: {
+  class: hidden
+}
+run_control -> model_adapter: {
+  class: hidden
+}
+tools_and_registry -> rights_and_approvals: {
+  class: hidden
+}
+rights_and_approvals -> protocols_and_wire: {
+  class: hidden
+}
+interface_and_product -> placements_and_plumbing: {
+  class: hidden
+}
+placements_and_plumbing -> delegation_and_subagents: {
+  class: hidden
+}

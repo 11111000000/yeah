@@ -1,0 +1,71 @@
+# Where Yeah runs, and who talks to it.
+#
+# The three placements of `docs/ARCHITECTURE.md' section 7 -- attached,
+# service and batch -- are three ways of giving the kernel a session, a
+# transport and an answerer; the kernel itself does not know in which of
+# them it runs.  This picture says where each of them lives and what speaks
+# to it.
+#
+# The service is the primary placement (the decision of the owner of
+# 2026-11-12): a dedicated Emacs process runs the harness, so the editing
+# Emacs never shares a thread with a long turn.
+#
+# Every block names the file that implements it, as `file:line'.
+
+direction: down
+
+machine: "your machine" {
+  attached: "The editing Emacs\nattached placement: the agent shares the process of the person\nlib/yeah-product.el:166"
+  service: "The service Emacs\nservice placement: the primary one, a dedicated process\nlib/yeah-service.el:127" {
+    acp: "The ACP server\nlib/yeah-acp.el:1314"
+    mcp: "The MCP server\nlib/yeah-mcp.el:173"
+    transports: "the two transports" {
+      stdio: "The stdio transport\none request at a time\nlib/yeah-wire.el:23"
+      socket: "The local socket transport\na connection is a process\nlib/yeah-wire-socket.el:57"
+    }
+  }
+  batch: "The batch process\nbatch placement: one process, one task\nlib/yeah-placement.el:45"
+  bridge: "The emacsclient bridge\nan approved capability, not a default\nlib/yeah-bridge.el:177"
+}
+
+acp_clients: "The ACP clients\norchestrators and editors"
+mcp_clients: "The MCP clients\ntools of the outside world"
+
+acp_clients -> machine.service.acp: {
+  class: flow
+  label: "ACP"
+}
+mcp_clients -> machine.service.mcp: {
+  class: flow
+  label: "MCP"
+}
+machine.service.acp -> machine.service.transports.stdio: {
+  class: flow
+  label: "stdio"
+}
+machine.service.acp -> machine.service.transports.socket: {
+  class: flow
+  label: "the local socket"
+}
+machine.service.mcp -> machine.service.transports.stdio: {
+  class: flow
+  label: "stdio"
+}
+machine.service.mcp -> machine.service.transports.socket: {
+  class: flow
+  label: "the local socket"
+}
+machine.service -> machine.bridge: {
+  class: flow
+  label: "asks"
+}
+machine.bridge -> machine.attached: {
+  class: flow
+  label: "evaluates in the editing Emacs"
+}
+
+note: "The honest limit of the wire:\non stdio the transport reads its input with a blocking read,\nso the event loop of Emacs does not run while a prompt is running,\nand a cancel cannot interrupt that prompt.\nOn the local socket the connection is a process, the event loop keeps\nrunning, and a cancel is handled while the prompt is still running."
+
+machine.service -> note: {
+  class: hidden
+}

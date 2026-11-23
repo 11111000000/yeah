@@ -59,6 +59,15 @@ find_plantuml() {
   find_tool PLANTUML plantuml "${NIX_STORE_DIR:-/nix/store}/*plantuml*/bin/plantuml"
 }
 
+# The search for D2 has the same shape as the search for PlantUML: the tool is
+# the instrument of the author, it is not part of the runtime of the site, and
+# the store of nix is the place where it lives when the profile of the user is
+# swept.  D2 draws the pictures of the architecture bands; PlantUML draws the
+# pictures of the classic notation.
+find_d2() {
+  find_tool D2 d2 "${NIX_STORE_DIR:-/nix/store}/*d2-*/bin/d2"
+}
+
 # The script that runs a check under a limit of time.  It lives next to
 # this script, so a clone of the repository runs the check the same way
 # whatever the working directory is.
@@ -528,6 +537,81 @@ EOF
       done
       diagrams=$((diagrams + 1))
     done <"$tmp/sources"
+    # The pictures of the diagrams of D2.  The engine is the instrument of
+    # the author, like PlantUML: the site publishes the pictures that are
+    # ready, and the site itself has no build step.  The palette of a theme
+    # goes before the picture, because D2 reads the variables and the styles
+    # of the theme before the shapes of the picture.
+    find site/diagrams -type f -name '*.d2' | LC_ALL=C sort >"$tmp/sources-d2" || {
+      echo "scripts/dev diagrams: cannot read the tree of the sources of D2" >&2
+      exit 2
+    }
+    while IFS= read -r src; do
+      [ -f "$src" ] || continue
+      name="$(basename "$src" .d2)"
+      case "$name" in
+        palette-*) continue ;;
+      esac
+      d2_bin="${d2_bin:-$(find_d2 || true)}"
+      if [ -z "$d2_bin" ] || [ ! -x "$d2_bin" ]; then
+        echo "scripts/dev diagrams: d2 is not on PATH, D2 is not set, and it is not in the store of nix" >&2
+        exit 3
+      fi
+      stem="${src#site/diagrams/}"
+      stem="${stem%.d2}"
+      flat="$(printf '%s' "$stem" | tr '/' '-')"
+      index=$((index + 1))
+      for theme in light dark; do
+        palette="site/diagrams/palette-$theme.d2"
+        if [ ! -f "$palette" ]; then
+          echo "scripts/dev diagrams: $palette does not exist" >&2
+          exit 2
+        fi
+        wrapper="$tmp/$flat-$theme.d2"
+        cat "$palette" "$src" >"$wrapper"
+        out="$tmp/out/$index-$theme"
+        mkdir -p "$out" || {
+          echo "scripts/dev diagrams: cannot make $out" >&2
+          exit 3
+        }
+        picture="$out/$flat-$theme.svg"
+        if ! "$d2_bin" "$wrapper" "$picture" >"$tmp/log" 2>&1; then
+          echo "scripts/dev diagrams: d2 failed on $name ($theme)" >&2
+          cat "$tmp/log" >&2
+          exit 1
+        fi
+        if [ ! -s "$picture" ]; then
+          echo "scripts/dev diagrams: d2 wrote no picture for $name ($theme)" >&2
+          cat "$tmp/log" >&2
+          exit 1
+        fi
+        # The picture of D2 is XML, and the engine of D2 0.7 writes a
+        # malformed picture for a map written on one line.  The browser says
+        # nothing about a broken picture, so the pipeline reads the picture
+        # itself: Emacs is the reader of the tree here.
+        emacs_bin="$(find_emacs)" || {
+          echo "scripts/dev diagrams: emacs is not on PATH and EMACS is not set" >&2
+          exit 3
+        }
+        if ! "$emacs_bin" -Q --batch --eval "(xml-parse-file \"$picture\")" >"$tmp/log" 2>&1; then
+          echo "scripts/dev diagrams: the picture of $name ($theme) is not a well-formed XML" >&2
+          cat "$tmp/log" >&2
+          exit 1
+        fi
+        target="$out_dir"
+        dir="${stem%/*}"
+        if [ "$dir" != "$stem" ]; then
+          target="$out_dir/$dir"
+          mkdir -p "$target" || {
+            echo "scripts/dev diagrams: cannot make $target" >&2
+            exit 3
+          }
+        fi
+        mv "$picture" "$target/$name-$theme.svg"
+        pictures=$((pictures + 1))
+      done
+      diagrams=$((diagrams + 1))
+    done <"$tmp/sources-d2"
     echo "diagrams: rendered $pictures picture(s) of $diagrams diagram(s) into $out_dir"
     ;;
 
