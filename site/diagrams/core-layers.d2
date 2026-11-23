@@ -1,0 +1,51 @@
+# The layers of the core of Yeah: what asks, what decides, what is
+# remembered and what is seen.
+#
+# The same picture as the component architecture of `docs/ARCHITECTURE.md'
+# section 5, in the notation of bands: the driver submits to the run
+# controller, the controller drives the model adapter, the tool registry and
+# the policy, the scheduler runs what may run, everything that happened is
+# written into one journal, and the projections read the journal.
+#
+# Every block names the file that implements it, as `file:line'.  The
+# modules of `lib/' that this picture does not name are listed in the note
+# at the end of this file, with the reason why they are not there.
+
+ask: "what asks" {
+  human: "The person\nlib/yeah.el:37"
+  clients: "The ACP and MCP clients\nlib/yeah-acp.el:401"
+  batch: "A batch run\nlib/yeah-placement.el:45"
+}
+
+decide: "what decides" {
+  run: "The run\none turn at a time\nlib/yeah-run.el:40"
+  model: "The model\nthe one door out\nlib/yeah-model.el:58"
+  registry: "The registry of the tools\nlib/yeah-tools.el:119"
+  policy: "The policy and the approvals\nlib/yeah-perm.el:213"
+  scheduler: "The scheduler\nlib/yeah-runtime.el:113"
+}
+
+memory: "what is remembered" {
+  journal: "The journal\nappend only\nlib/yeah-session.el:167"
+}
+
+seen: "what is seen" {
+  context: "The context of the model\nlib/yeah-context.el:60"
+  views: "The views of the person\nlib/yeah-ui.el:649"
+  cost: "The sessions and the cost\nlib/yeah-sessions.el:51"
+}
+
+ask -> decide: {
+  class: flow
+  label: "the request"
+}
+decide -> memory: {
+  class: flow
+  label: "every event is written"
+}
+memory -> seen: {
+  class: flow
+  label: "every view is a projection"
+}
+
+note: "The modules of lib/ that this picture does not name, and why:\nlib/yeah-codes.el -- experimental: disabled by default and not\nwired into the agent loop.\nlib/yeah-state-diagram.el -- the generator of the state diagram: a tool\nof the author, not a component of the harness at run time."

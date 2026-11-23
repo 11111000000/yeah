@@ -85,6 +85,8 @@ done
 for needed in \
   site/diagrams/palette-light.puml \
   site/diagrams/palette-dark.puml \
+  site/diagrams/palette-light.d2 \
+  site/diagrams/palette-dark.d2 \
   scripts/lib/tools.sh \
   lib/yeah-state.el \
   lib/yeah-loop.el \
@@ -107,6 +109,10 @@ HOME="${HOME:-/nonexistent}"
 
 plantuml_bin="$(find_tool PLANTUML plantuml "${NIX_STORE_DIR:-/nix/store}/*plantuml*/bin/plantuml")" || {
   echo "site-diagrams: PlantUML is not on this machine (the environment, the PATH, ~/.nix-profile, the store of nix): the pictures were not drawn" >&2
+  exit 3
+}
+d2_bin="$(find_tool D2 d2 "${NIX_STORE_DIR:-/nix/store}/*d2-*/bin/d2")" || {
+  echo "site-diagrams: D2 is not on this machine (the environment, the PATH, ~/.nix-profile, the store of nix): the pictures were not drawn" >&2
   exit 3
 }
 emacs_bin="$(find_tool EMACS emacs "${NIX_STORE_DIR:-/nix/store}/*emacs*/bin/emacs")" || {
@@ -554,6 +560,67 @@ while IFS= read -r src; do
   done
   diagrams=$((diagrams + 1))
 done <"$tmp/sources"
+
+# The pictures of the diagrams of D2.  The render of D2 is
+# deterministic: two renders of one source are one picture, byte for byte.
+# The comparison is therefore the comparison of the bytes, and the
+# normalization of the pictures of PlantUML does not touch it.
+find "$tmp/site/diagrams" -type f -name '*.d2' | LC_ALL=C sort >"$tmp/sources-d2" || {
+  echo "site-diagrams: cannot read the tree of the sources of D2" >&2
+  exit 2
+}
+
+while IFS= read -r src; do
+  [ -f "$src" ] || continue
+  rel="${src#$tmp/site/diagrams/}"
+  name="${rel%.d2}"
+  base="$(basename "$rel" .d2)"
+  case "$base" in
+    palette-*) continue ;;
+  esac
+  site_src="site/diagrams/$rel"
+  index=$((index + 1))
+  for theme in light dark; do
+    flat="$(printf '%s' "$name" | tr '/' '-')"
+    # The palette of the theme goes before the picture: D2 reads the
+    # variables and the styles of the theme before the shapes.
+    wrapper="$tmp/wrap/$flat-$theme.d2"
+    cat "$tmp/site/diagrams/palette-$theme.d2" "$src" >"$wrapper" || {
+      echo "site-diagrams: cannot make the source of $site_src ($theme)" >&2
+      exit 2
+    }
+    out="$tmp/render/$index-$theme"
+    mkdir -p "$out" || {
+      echo "site-diagrams: cannot make the directory of the render" >&2
+      exit 2
+    }
+    picture="$out/$flat-$theme.svg"
+    if ! "$d2_bin" "$wrapper" "$picture" >"$tmp/d2.log" 2>&1; then
+      echo "site-diagrams: D2 cannot draw $site_src ($theme): the pictures were not drawn" >&2
+      sed -n '1,8p' "$tmp/d2.log" >&2
+      exit 3
+    fi
+    if [ ! -s "$picture" ]; then
+      echo "site-diagrams: D2 wrote no picture for $site_src ($theme): the pictures were not drawn" >&2
+      sed -n '1,8p' "$tmp/d2.log" >&2
+      exit 3
+    fi
+    target="site/assets/diagrams/$name-$theme.svg"
+    if [ ! -s "$target" ]; then
+      echo "site-diagrams: the picture \`$target` is missing: it is not the picture of \`$site_src`" >&2
+      failures=1
+      continue
+    fi
+    if ! cmp -s "$picture" "$target"; then
+      echo "site-diagrams: the picture \`$target` is not the picture of \`$site_src`: it differs" >&2
+      diff "$picture" "$target" 2>/dev/null | sed -n '1,6p' >&2
+      failures=1
+      continue
+    fi
+    pictures=$((pictures + 1))
+  done
+  diagrams=$((diagrams + 1))
+done <"$tmp/sources-d2"
 
 # --- 6. the stand of the normalization ---------------------------------------
 

@@ -113,22 +113,32 @@ The failures are pushed onto `yeah-check--failures', and the number of
 the references and of the places the picture names is returned."
   (let* ((name (file-relative-name path root))
          (base (file-name-base path))
+         (engine (yeah-diagram--engine-of path))
          (text (yeah-diagram--text path))
-         (lines (yeah-diagram--drawing-lines text))
-         (references (yeah-diagram--references text))
+         (lines (if (equal engine "d2")
+                    (yeah-diagram--d2-drawing-lines text)
+                  (yeah-diagram--drawing-lines text)))
+         (references (yeah-diagram--references text engine))
          (places (cl-remove-if-not (lambda (place) (yeah-diagram--place-p root place))
                                    (yeah-diagram--places text)))
          (first (string-trim (or (car lines) "")))
          (last (string-trim (or (car (last lines)) ""))))
-    ;; 1. the picture is a picture of PlantUML and it is named after its file.
-    (unless (string= first (format "@startuml %s" base))
-      (push (format "the picture %s starts with %S, and the first line of a picture of the site is `@startuml %s'"
-                    name first base)
-            yeah-check--failures))
-    (unless (string= last "@enduml")
-      (push (format "the picture %s ends with %S, and the last line of a picture of the site is `@enduml'"
-                    name last)
-            yeah-check--failures))
+    ;; 1. the picture is a picture of its engine, and the picture of
+    ;;    PlantUML is named after its file.
+    (if (equal engine "d2")
+        (unless (yeah-diagram--d2-blocks text)
+          (push (format "the picture %s holds no node: it is no picture of the site"
+                        name)
+                yeah-check--failures))
+      (progn
+        (unless (string= first (format "@startuml %s" base))
+          (push (format "the picture %s starts with %S, and the first line of a picture of the site is `@startuml %s'"
+                        name first base)
+                yeah-check--failures))
+        (unless (string= last "@enduml")
+          (push (format "the picture %s ends with %S, and the last line of a picture of the site is `@enduml'"
+                        name last)
+                yeah-check--failures))))
     ;; 2. the picture says something.
     (unless (cl-some #'yeah-check--substantive-p lines)
       (push (format "the picture %s says nothing: it holds no line that says what it holds"
@@ -155,7 +165,7 @@ the references and of the places the picture names is returned."
 (let* ((root (expand-file-name default-directory))
        (reader (expand-file-name "tests/support/yeah-diagram-files.el" root))
        (pictures (expand-file-name "site/diagrams" root))
-       (paths (sort (directory-files-recursively pictures "\\.puml\\'") #'string<))
+       (paths (sort (directory-files-recursively pictures "\\.puml\\'\\|\\.d2\\'") #'string<))
        (measured (delq nil
                         (mapcar (lambda (path)
                                   (unless (string-prefix-p "palette-"

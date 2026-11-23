@@ -526,9 +526,9 @@
                names the files that implement it. -->
           <figure class="diagram" data-diagram="d2">
             <img class="diagram__img diagram__img--light" src="assets/diagrams/core-layers-light.svg"
-                 alt="The layers of the core of Yeah: the human, the ACP, MCP and batch drivers and the wire submit to the session API and run controller, the controller drives the model adapter, the tool registry, the policy and the execution scheduler, every event is written into one append-only JSONL journal, and the projections of the context, the read models and the sessions read the journal.">
+                 alt="The core of Yeah in four bands: what asks (the person, the ACP and MCP clients, a batch run) hands the request to what decides (the run, the model, the registry of the tools, the policy and the approvals, the scheduler); every event is written into what is remembered (the append-only journal), and every view of it is what is seen (the context of the model, the views of the person, the sessions and the cost).">
             <img class="diagram__img diagram__img--dark" src="assets/diagrams/core-layers-dark.svg"
-                 alt="The layers of the core of Yeah: the human, the ACP, MCP and batch drivers and the wire submit to the session API and run controller, the controller drives the model adapter, the tool registry, the policy and the execution scheduler, every event is written into one append-only JSONL journal, and the projections of the context, the read models and the sessions read the journal.">
+                 alt="The core of Yeah in four bands: what asks (the person, the ACP and MCP clients, a batch run) hands the request to what decides (the run, the model, the registry of the tools, the policy and the approvals, the scheduler); every event is written into what is remembered (the append-only journal), and every view of it is what is seen (the context of the model, the views of the person, the sessions and the cost).">
             <figcaption>Commands flow inward; events flow into one durable journal. Everything else is a projection of the journal.</figcaption>
           </figure>
 
@@ -716,10 +716,10 @@
             <!-- The modules of lib/ in nine packages. -->
             <figure class="diagram" data-diagram="d8">
               <img class="diagram__img diagram__img--light" src="assets/diagrams/code-packages-light.svg"
-                   alt="The modules of lib/ in nine packages: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing.">
+                   alt="The nine packages of the kernel of Yeah around one knot: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing. Every card says how many modules the package holds, how many packages it needs and how many packages need it: every package reaches every other one, and there is no layer to speak of.">
               <img class="diagram__img diagram__img--dark" src="assets/diagrams/code-packages-dark.svg"
-                   alt="The modules of lib/ in nine packages: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing.">
-              <figcaption>The kernel in nine packages. Every package has its own checks.</figcaption>
+                   alt="The nine packages of the kernel of Yeah around one knot: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing. Every card says how many modules the package holds, how many packages it needs and how many packages need it: every package reaches every other one, and there is no layer to speak of.">
+              <figcaption>The kernel in nine packages — one knot, not nine layers. Every package has its own checks.</figcaption>
             </figure>
 
             <p class="doc-links"><a href="https://github.com/11111000000/yeah/blob/main/docs/ENGINEERING.md" rel="noopener">C-h engineering</a></p>
