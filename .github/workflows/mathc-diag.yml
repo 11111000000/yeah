@@ -19,25 +19,41 @@ jobs:
           echo "overcommit: $(cat /proc/sys/vm/overcommit_memory)"
           echo "max_map_count: $(cat /proc/sys/vm/max_map_count)"
           ulimit -a
+      - name: Does the kernel accept MAP_STACK
+        run: |
+          cat > /tmp/probe.c <<'C'
+          #include <stdio.h>
+          #include <sys/mman.h>
+          #include <errno.h>
+          #include <string.h>
+          #include <unistd.h>
+          int main(void) {
+            long sz = sysconf(_SC_SIGSTKSZ);
+            printf("SIGSTKSZ=%ld
+", sz);
+            errno = 0;
+            void *p = mmap(NULL, 8192, PROT_READ|PROT_WRITE,
+                           MAP_ANONYMOUS|MAP_PRIVATE|MAP_STACK, -1, 0);
+            if (p == MAP_FAILED) {
+              printf("MAP_STACK mmap failed: errno=%d (%s)
+", errno, strerror(errno));
+              return 1;
+            }
+            printf("MAP_STACK mmap ok
+");
+            return 0;
+          }
+          C
+          cc -o /tmp/probe /tmp/probe.c && /tmp/probe; echo "probe exit=$?"
       - name: The tool under different limits
         run: |
-          set -u
           mkdir -p /tmp/mathc-bin
           for v in v5.0.8 v6.0.0; do
             base="https://github.com/11111000000/math-coding/releases/download/$v"
             curl -fsSL "$base/mathc-$v-linux-x86_64" -o "/tmp/mathc-bin/mathc-$v-linux-x86_64" || continue
             chmod +x "/tmp/mathc-bin/mathc-$v-linux-x86_64"
           done
-          run_case() {
-            name="$1"; shift
-            out="$( ( eval "$@" ; /tmp/mathc-bin/mathc-v6.0.0-linux-x86_64 --version ) 2>&1 )"
-            if [ $? -eq 0 ]; then echo "v6 $name: OK"; else echo "v6 $name: FAIL: $(echo "$out" | head -1)"; fi
-          }
-          run_case "plain" "true"
-          run_case "stack-8192" "ulimit -s 8192"
-          run_case "stack-65536" "ulimit -s 65536"
-          run_case "stack-unlimited" "ulimit -s unlimited"
-          run_case "vsize-unlimited" "ulimit -v unlimited"
-          run_case "stack-8192+vsize-unlimited" "ulimit -s 8192; ulimit -v unlimited"
-          out="$(/tmp/mathc-bin/mathc-v5.0.8-linux-x86_64 --version 2>&1)"
-          if [ $? -eq 0 ]; then echo "v5 plain: OK"; else echo "v5 plain: FAIL: $(echo "$out" | head -1)"; fi
+          for v in v5.0.8 v6.0.0; do
+            out="$(/tmp/mathc-bin/mathc-$v-linux-x86_64 --version 2>&1 || true)"
+            if echo "$out" | grep -q '^mathc'; then echo "$v: OK"; else echo "$v: FAIL: $(echo "$out" | head -1)"; fi
+          done
