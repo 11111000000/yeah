@@ -10,11 +10,11 @@
 > self-inspection and a fixed point where Yeah can develop and verify Yeah.
 > These are goals, not assertions about today's prototype.
 >
-> This repository is governed by **math-coding v5**: `spec.json` holds the
-> standing specification (`schema_version: 5`) and the claims, `waves/*.json`
-> holds the historical work units, and evidence comes from checks bound by
-> `mathc run`.  Version 4 is frozen and archived at `waves/spec-v4.json`;
-> its evidence is not current.
+> This repository is governed by **math-coding**, format version 6:
+> `spec.json` holds the standing specification (`schema_version: 6`) and the
+> claims, `waves/*.json` holds the historical work units, and evidence comes
+> from checks bound by `mathc run`.  Version 4 is frozen and archived at
+> `waves/spec-v4.json`; its evidence is not current.
 > `docs/PLAN.md` defines the current target sequence; do not mistake an old
 > wave number or a green module row for a working end-to-end feature.
 
@@ -2264,7 +2264,7 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-182 claim(s).
+184 claim(s).
 
 ```sh
 mathc run
