@@ -2183,7 +2183,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   живого пути, найденные при написании проверки: каталоги пресетов были связаны через `let`, а
   инструменты ребёнка исполняются в цикле событий, когда связывание исчезло («no agent named
   "reviewer"»); и у ребёнка не было инструмента `finish`, поэтому он не мог закончиться и работал вечно
-  (docs/PLAN.md §16.122).
+  (docs/PLAN.md §16.122).  **Гейт 23 ноября — зелёный:** 184 claim'а из 184 держат, `uncovered: 0`.
 
 ## The commands
 
