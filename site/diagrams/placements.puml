@@ -22,7 +22,7 @@
 
 node "Your machine" as machine {
 
-  component "Editing Emacs\nattached placement: the agent shares the process of the person\nlib/yeah-product.el:161\nlib/yeah-placement.el:45" as attached
+  component "Editing Emacs\nattached placement: the agent shares the process of the person\nlib/yeah-product.el:166\nlib/yeah-placement.el:45" as attached
 
   node "Service Emacs\nservice placement: the primary one, a dedicated process for the harness\nlib/yeah-service.el:127\nlib/yeah-placement.el:45" as service {
 
