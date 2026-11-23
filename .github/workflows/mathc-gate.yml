@@ -18,6 +18,13 @@ jobs:
         # Спецификация в порядке, страница агента актуальна, карта не содержит
         # опровергнутых claims. Код 3 (unknown) — не green, но непокрытая
         # поверхность не должна ронять сборку.
+        #
+        # Инструмент, который не стартовал на раннере, — не красная метка о
+        # проекте: измерение не состоялось, и его код — 3 (unknown), а не 1.
+        # Такой прогон печатает среду раннера и то, на чём инструмент остановился
+        # (2026-11-23: два прогона из семи на части хостов пула упали в рантайме
+        # OCaml на «Failed to allocate signal stack» — тот же бинарь на других
+        # хостах в те же минуты отработал).
         run: |
           set -euo pipefail
           version="v6.0.0"
@@ -28,7 +35,16 @@ jobs:
           (cd /tmp/mathc-bin && sha256sum -c --ignore-missing SHA256SUMS)
           chmod +x "/tmp/mathc-bin/mathc-${version}-linux-x86_64"
           mathc="/tmp/mathc-bin/mathc-${version}-linux-x86_64"
-          "$mathc" --version
+          if ! "$mathc" --version >/tmp/mathc-version.txt 2>&1; then
+            echo "::warning::Math Coding: the tool did not start on this runner — the verdict is unknown (3), not a failure of the project"
+            cat /tmp/mathc-version.txt
+            echo "--- the runner:"
+            uname -r || true
+            echo "overcommit: $(cat /proc/sys/vm/overcommit_memory || echo unknown)"
+            ulimit -a || true
+            exit 0
+          fi
+          cat /tmp/mathc-version.txt
           # doctor: любая проблема, кроме «страница устарела», роняет сборку.
           # Формат блока страницы менялся после этого релиза, поэтому бинарь
           # из GitHub может ждать прежнюю форму — это предупреждение, а не
