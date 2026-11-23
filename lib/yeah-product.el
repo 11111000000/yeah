@@ -79,11 +79,16 @@ needs no question.")
       (file-truename default-directory))))
 
 (defun yeah-product-session-root (&optional project-root)
-  "Return the durable session directory for PROJECT-ROOT."
+  "Return the durable session directory for PROJECT-ROOT.
+
+The data home IS the directory of Yeah: it holds `projects/', `Trash/'
+and `exports/'.  The sessions of a project live in `projects/<hash>/' of
+it -- once, not twice: the path of a session is what a report names, and
+a doubled segment in it misleads the reader."
   (let* ((root (file-truename (or project-root (yeah-product-project-root))))
          (hash (secure-hash 'sha256 (encode-coding-string root 'utf-8)))
          (directory (expand-file-name
-                     (format "yeah/projects/%s/" hash) yeah-data-home)))
+                     (format "projects/%s/" hash) yeah-data-home)))
     (make-directory directory t)
     (set-file-modes directory #o700)
     directory))

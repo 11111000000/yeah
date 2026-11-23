@@ -27,6 +27,7 @@
 (require 'json)
 (require 'yeah-bridge)
 (require 'yeah-placement)
+(require 'yeah-product)
 (require 'yeah-session)
 
 (defconst yeah-check--scenario "tests/support/scenario.el"
@@ -49,18 +50,20 @@ The fake model asks for one tool and then ends the run with the call of
   "Return the directory the journals are written to."
   (make-temp-file "yeah-placement-data" t))
 
-(defun yeah-check--sessions (root)
-  "Return the session objects under the data home ROOT, by placement name."
-  (let ((sessions nil)
-        (directory (expand-file-name "yeah/projects" root)))
+(defun yeah-check--sessions (project)
+  "Return the session objects of the journals of PROJECT, by placement name.
+
+The path of the sessions is asked of the kernel: a check that writes the
+path down itself measures its own copy of the rule of the path and not the
+truth of the placements."
+  (let* ((sessions nil)
+         (session-root (yeah-product-session-root project))
+         (directory (expand-file-name "sessions" session-root)))
     (when (file-directory-p directory)
-      (dolist (project (directory-files directory t))
-        (let ((sessions-directory (expand-file-name "sessions" project)))
-          (when (file-directory-p sessions-directory)
-            (dolist (file (directory-files sessions-directory t "\\.jsonl\\'"))
-              (push (cons (file-name-base file)
-                          (yeah-session-open (file-name-base file) project))
-                    sessions))))))
+      (dolist (file (directory-files directory t "\\.jsonl\\'"))
+        (push (cons (file-name-base file)
+                    (yeah-session-open (file-name-base file) session-root))
+              sessions)))
     (sort sessions (lambda (left right) (string< (car left) (car right))))))
 
 (defun yeah-check--placement (id)
@@ -142,7 +145,7 @@ The fake model asks for one tool and then ends the run with the call of
                   failures)))
 
         ;; --- the three truths are one truth ---
-        (let* ((sessions (yeah-check--sessions data-home))
+        (let* ((sessions (yeah-check--sessions project))
                (projections (mapcar (lambda (entry)
                                        (yeah-check--canonical (cdr entry)))
                                      sessions))

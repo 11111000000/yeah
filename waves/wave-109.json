@@ -1,0 +1,28 @@
+{
+  "id": "wave-109",
+  "title": "the sessions live in one place, and the table of the plan stops lying",
+  "intent": "Three small debts that piled up and made the state of the project hard to read.  FIRST: the summary table of the catch-up plan (docs/ARCHITECTURE-CATCHUP-PLAN.md section 1) marked A0, A1, A3, B1, B4, D0-D4 and E1-E3 as done and stayed silent about B2, B3, C1, C2 and C3 -- waves delivered on 21-22 November (the package wave-b2, wave-b3, wave-c1, wave-c2, wave-c3; docs/PLAN.md 16.98 and 16.107).  A reader of the plan saw work ahead that was already done; the rows now name the wave, the date and the section of the plan.  SECOND: the data home of Yeah IS the directory of Yeah (it holds projects/, Trash/ and exports/), but the sessions of a project were placed in yeah/projects/<hash>/ relative to it -- the doubled segment ~/.local/share/yeah/yeah/projects/... that docs/PASEO-INTEGRATION-PLAN.md 3.12 named as a wart.  The session root is now projects/<hash>/ of the data home: one segment.  The claim is the-sessions-of-a-run-live-in-one-place, and the check measures the shape of the path AND the end of it -- a live run (a service with a fake model) writes its journal under that root.  THIRD: the judgment claim the-owner-decided-the-order-of-the-next-waves held the map at 'unknown' -- its materials (docs/PLAN.md, docs/ARCHITECTURE-CATCHUP-PLAN.md) changed seventy times since the owner's record of 19 November, and the evidence went stale.  A judgment of a person is not an edit of the code: the owner's decision was recorded by the method (mathc record ... owner --by az --outcome pass) after the owner took it.",
+  "touches": [
+    "lib/yeah-product.el",
+    "tests/checks/check-the-sessions-of-a-run-live-in-one-place.el",
+    "docs/ARCHITECTURE-CATCHUP-PLAN.md",
+    "docs/PLAN.md",
+    "AGENTS.md",
+    "spec.json",
+    "waves/wave-109.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev check tests/checks/check-the-sessions-of-a-run-live-in-one-place.el",
+    "./scripts/dev check tests/checks/check-a-probe-of-the-catalog-leaves-no-empty-session.el",
+    "./scripts/dev check tests/checks/check-the-documentation-points-at-files-that-exist.el",
+    "./scripts/dev ert tests/unit/*.el"
+  ],
+  "claims": [
+    "the-sessions-of-a-run-live-in-one-place"
+  ],
+  "commitment": [],
+  "objection": "The wave moves the path of the sessions of every install, and the journals of the host were moved with it: 604 files from ~/.local/share/yeah/yeah/projects/ to ~/.local/share/yeah/projects/ (a move, not a deletion; the count of journals is 604 before and after, and the empty doubled directory was removed).  A reader who wants the old path back moves the directory back and the old composition returns -- the wave does not keep a compatibility shim, and the price of the shim is a second place where a journal can lie.  The wave does not establish why the core of the service died on 22 November (docs/PLAN.md 16.120), does not touch the journal that lies in the working tree (the model can erase it -- an open defect named in AGENTS.md), and does not establish the cause of the flake of wave 59.  The record of the owner's judgment is not the agent's decision: the owner took it, and the agent recorded what the owner took -- the AGENTS.md and the protocol of the laboratory both say so, and the record says who.",
+  "refuted_by": "the session root of a project is not under `projects/' of the data home, or the path of the session root carries a doubled segment, or the journal of a run is not written under that root, or the control of the claim does not make the check fail by its own assertion",
+  "note": "Measurements of 2026-11-23.  The check of the wave passes on the honest tree (1.8 s).  The control of the claim -- taken out of spec.json and applied to a copy of the tree -- bites by the assertions of the check and not by a crash: 'the session root is not `projects/<hash>/' of the data home', 'the path of the session root carries a doubled segment: yeah/projects/6875ee9c.../', 'the journal of the session is not under `projects/' of the data home: /tmp/yeah-placewQiuOp/yeah/projects/6875ee9c.../sessions/session-1-f419e3.jsonl' (code 1).  The data of the host: 604 journals before the move and 604 after it.  The check of the documentation is green, and the unit tests of the kernel are green."
+}

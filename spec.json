@@ -3654,6 +3654,47 @@
       "waiver": null
     },
     {
+      "id": "the-sessions-of-a-run-live-in-one-place",
+      "text": "The sessions of a run live in one place: the durable session directory of a project is `projects/<hash>/' of the data home of Yeah, once and not twice -- the data home IS the directory of Yeah, and a doubled segment in the path of a session misleads every reader of a report that names it.  The journal of a run is written under that root.",
+      "scope": [
+        "lib/yeah-product.el",
+        "tests/checks/check-the-sessions-of-a-run-live-in-one-place.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-sessions-of-a-run-live-in-one-place.el"
+        }
+      ],
+      "falsifier": "the session root of a project is not under `projects/' of the data home, or the path of the session root carries a doubled segment, or the journal of the session is not under `projects/' of the data home, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(format \"projects/%s/\" hash)|(format \"yeah/projects/%s/\" hash)|' lib/yeah-product.el",
+      "waiver": null
+    },
+    {
+      "id": "two-children-run-in-one-turn-of-the-parent",
+      "text": "A turn of the parent may hold two children, not one: the model asks for a delegation twice in that turn, the journal of the parent holds the spawn of two children with different short ids, both children are alive when the turn of the parent is over, and both children end on their own, later.  The turn of the parent goes on and does not wait for the children.",
+      "scope": [
+        "lib/yeah-delegate.el",
+        "lib/yeah-subagent.el",
+        "tests/checks/check-two-children-run-in-one-turn-of-the-parent.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-two-children-run-in-one-turn-of-the-parent.el"
+        }
+      ],
+      "falsifier": "the journal of the parent holds one spawn of a child where the model asked for two, or the two children carry the same short id, or a child is not alive when the turn of the parent is over, or a child does not end on its own, or the parent ends its turn between the two delegations, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|(depth (1+ (yeah-delegate--depth-of session)))|(depth (+ 1 (yeah-delegate--depth-of session) (length (yeah-delegate--children-of session))))|' lib/yeah-delegate.el",
+      "waiver": null
+    },
+    {
       "id": "the-diagram-on-the-site-is-current",
       "text": "The pictures of the site are the pictures of their sources: every diagram of the tree of `site/diagrams/' is drawn again in both of its themes, the source of the diagram of the state machine is written out of the code of the kernel and not read from the file of the repository, and the picture that the site publishes in `site/assets/diagrams/' is the picture that the render of that source gives.  The comparison is a comparison of pictures and not of bytes: both pictures are put into one canonical form first, and the canonical form drops the noise of a picture (the metadata of the render, the order of the attributes of a tag, the whitespace) and keeps its content (the names of the tags, their order, the colours, the texts, the geometry).",
       "scope": [
