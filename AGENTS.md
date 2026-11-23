@@ -2238,13 +2238,13 @@ function or module.
 
 Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client
 
-153 claim(s).
+182 claim(s).
 
 ```sh
 mathc run
 ```
 
-Every verb: mathc help mathc init mathc goal mathc add mathc run mathc map mathc next mathc context mathc waive mathc record mathc install mathc doctor mathc adopt mathc import-adr mathc import-junit mathc authorize mathc re-evaluate mathc review-source mathc mcp
+Every verb: mathc help mathc init mathc goal mathc add mathc run mathc map mathc next mathc context mathc waive mathc record mathc install mathc doctor mathc adopt mathc import-adr mathc import-junit mathc authorize mathc approve mathc re-evaluate mathc review-source mathc review-decision mathc migrate mathc mcp
 <!-- math-coding:end -->
 
 ## Task recording for the Math Coding field pilot
