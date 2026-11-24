@@ -22,7 +22,7 @@ skip is not a pass, and a skip never turns into a claim.
 | `tests/live/live-child-on-the-model-of-its-preset.el` | a child of a live provider runs on the model of its preset and not on the model of its parent: the parent runs on one model, the preset names another, the journal of the parent names the model of the preset in the spawn of the child, the journal of the child names the same model, and the child ends on its own through the `finish` tool | provider key | `emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-child-on-the-model-of-its-preset.el` | 2026-11-24 02:47 UTC, on the code of wave 112, with MiniMax-M2.7 (the parent) and MiniMax-M2.5 (the preset of the child) — pass (exit 0): the spawn of `sub-1` at 02:47:34 names MiniMax-M2.5, the record of where the child stands in the tree of the delegations names the same model, and the child ended through the `finish` tool at 02:47:38.  The first attempt failed on two defects of the check itself: the journal of the child was read with a helper of two arguments and the check crashed, and the child had the tools `read` and `grep` besides `finish`, so the model searched the tree instead of finishing ||
 | `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-16 13:11 UTC, against the published repository (revision `a0259e6`), on the code of wave 38 — pass: "the clean installation works" ||
 | `tests/pixel/check-interface-is-seen.sh` | the interface is really on the screen: Emacs itself draws the journal and the approval view under a frame server, the screen is photographed, and the pictures are compared with each other and with the same buffer without the interface | a frame server (Xvfb), a terminal emulator, ImageMagick, Emacs — **no provider key** | `YEAH_XVFB=… YEAH_XTERM=… YEAH_MAGICK=… ./scripts/dev pixel` | 2026-11-15, pass — "the interface is on the screen: 767 colours, 16953 pixels between the journal and the approval view" |
-| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-16 13:12 UTC, on the code of wave 38, with MiniMax-M2.7 and pi: Yeah passed 1 of 3 tasks and 2 failed, pi passed 3 of 3 — **not a verdict about parity** (the threshold is a decision of the owner, the sample is three tasks); the row of each failed task names the shape of the run ("the model answered with an empty message 3 times and the run ended without an effect"), which is what wave 38 added (see "The live checks and the pilot after wave 38") ||
+| `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-24 03:06 UTC, on the code of wave 112, with MiniMax-M3.1-Flash and pi: **Yeah passed 10 of 10 tasks and pi passed 10 of 10** — **not a verdict about parity** (the threshold is a decision of the owner; the sample is ten tasks, and the numbers move with the noise of the provider: the pilot of 02:17 the same day measured 9 of 10 for Yeah and 10 of 10 for pi).  Five of the ten turns of Yeah ended in the state `failed` while the check of the task passed — the check is the arbiter (see "The pilot of ten tasks — 2026-11-24").  The pilot of wave 38 on three tasks measured 1 of 3 for Yeah and 3 of 3 for pi ||
 
 ## The environment
 
@@ -3373,6 +3373,44 @@ of every *request* of the child: the journal names the model of the preset and
 the transport of the child is built from it (the offline check measures that
 handover), and the journal does not say which model answered which request.
 
+## The pilot of ten tasks — 2026-11-24 (02:17 and 02:51–03:06 UTC)
+
+The task set of the benchmark has ten tasks (`bench/manifest.el`), and two pilots were
+measured on the same day.  Both gave the same task, the same workspace and the same model to
+the two participants, and the check of the task — not the state of the run — decided every
+outcome.
+
+**The pilot of 02:17 (the tree of `main`): Yeah 9 of 10, pi 10 of 10.**  The task
+`refactor-with-callers` failed for Yeah: the model read the files, described its next step
+three times, called thirteen tools, and the run never finished — the row names the shape of it,
+as wave 38 has made the rows do.  The model of the Yeah side of that pilot is written nowhere
+in its artifacts: the runner writes the task, the harness, the status and the reason, and not
+the model.  The sessions of the other harness name their side (`MiniMax-M3.1-Flash`, provider
+`minimax_coding_plan`), and nothing names the other one.
+
+**The pilot of 02:51–03:06 (the tree of wave 112): Yeah 10 of 10, pi 10 of 10.**  Its
+configuration is in the command and not in a guess:
+
+```sh
+YEAH_TEST_MODEL=MiniMax-M3.1-Flash            # the side of Yeah
+YEAH_BENCH_EXTERNAL_COMMAND='pi -p --model minimax_coding_plan/MiniMax-M3.1-Flash %prompt%'
+YEAH_BENCH_GPTEL_PATH=/home/az/Projects/emacs-agents-research/gptel
+./scripts/dev bench --run
+```
+
+The results are in `bench/results/20261124T025101Z.jsonl` (twenty rows), and the journals of
+the runs of Yeah are next to it, in `bench/results/20261124T025101Z/sessions/`.
+
+What the second pilot shows besides the numbers: **five of the ten turns of Yeah ended in the
+state `failed` while the check of the task passed** (`read-answer`, `fix-failing-test`,
+`write-documentation`, `emacs-introspection`, `implement-with-tests`).  The state of a run is
+not the outcome of the work — the check of the task is the arbiter — and the row of the pilot
+says so.
+
+The numbers are a measurement and not a verdict about parity: the threshold is a decision of
+the owner (`docs/PLAN.md` §13), the sample is ten tasks, and the same code measured 9 of 10 two
+hours earlier.  Nobody may quote the pilot as a verdict about parity.
+
 ## What is still open
 
 - A control that bites for the wrong reason is green for the method.  The
@@ -3414,20 +3452,22 @@ handover), and the journal does not say which model answered which request.
   day-to-day use: the live daemon is checked, the daily use is not.
 - The picture of the interface is compared with itself and with the same
   buffer without the interface, not with a stored golden picture.
-- The parity with other harnesses is measured on three tasks only.  The
-  threshold is not decided (`docs/PLAN.md` §13) and the sample is small, so
-  the parity of the last run is not measured either.  The run of wave 38
-  measured 1 of 3 for Yeah and 3 of 3 for pi, and two tasks of Yeah failed
-  after the model had gone silent three times; the run of wave 37 measured
-  2 of 3 for Yeah and 3 of 3 for pi, and the third task of Yeah failed after
-  the model had gone silent twice; the run of wave 36 measured 2 of 3 for
-  Yeah and 3 of 3 for pi, and the third task of Yeah failed after the
-  provider had silenced the model three times; the run of wave 35 measured
-  2 of 3 for Yeah and 3 of 3 for pi, and the third task of Yeah was blocked
-  by the provider; the run of wave 34 measured 1 of 3 for Yeah and 3 of 3
-  for pi, the run of wave 33 measured 2 of 3 and 3 of 3.  The difference the
-  runs found was not the quality of the work but a model that announced the
-  fix and called no tool.
+- The parity with other harnesses is measured on ten tasks, and the threshold
+  is not decided (`docs/PLAN.md` §13), so the parity of the last run is not
+  measured either.  The pilot of 2026-11-24 03:06 measured 10 of 10 for
+  Yeah and 10 of 10 for pi, and the pilot of 02:17 the same day measured 9 of
+  10 for Yeah and 10 of 10 for pi: the numbers move with the noise of the
+  provider.  The run of wave 38 measured 1 of 3 for Yeah and 3 of 3 for pi,
+  and two tasks of Yeah failed after the model had gone silent three times;
+  the run of wave 37 measured 2 of 3 for Yeah and 3 of 3 for pi, and the third
+  task of Yeah failed after the model had gone silent twice; the run of wave
+  36 measured 2 of 3 for Yeah and 3 of 3 for pi, and the third task of Yeah
+  failed after the provider had silenced the model three times; the run of
+  wave 35 measured 2 of 3 for Yeah and 3 of 3 for pi, and the third task of
+  Yeah was blocked by the provider; the run of wave 34 measured 1 of 3 for
+  Yeah and 3 of 3 for pi, the run of wave 33 measured 2 of 3 and 3 of 3.  The
+  difference the runs found was not the quality of the work but a model that
+  announced the fix and called no tool.
 - A run that the provider silenced and a run that the provider failed are not
   told apart by the runner: the silence is not an error record of the
   journal, so the runner records it as a failure of the agent, and a run that

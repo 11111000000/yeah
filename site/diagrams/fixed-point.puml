@@ -51,7 +51,7 @@ if (does the task need a child?) then (yes)
     the time of a child is bounded,
     the budget of a child is bounded
     lib/yeah-subagent.el:156
-    lib/yeah-subagent.el:313
+    lib/yeah-subagent.el:319
   end note
 else (no)
   :the agent keeps the tools of its own;
