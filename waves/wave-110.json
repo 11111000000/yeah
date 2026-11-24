@@ -14,7 +14,7 @@
   "checks": [
     "./scripts/dev byte-compile-all",
     "./scripts/dev check tests/checks/check-two-children-run-in-one-turn-of-the-parent.el",
-    "./scripts/dev check tests/checks/check-a-delegation-runs-in-its-own-session.el",
+    "./scripts/dev ert tests/unit/test-yeah-delegate-journal.el",
     "./scripts/dev ert tests/unit/*.el"
   ],
   "claims": [
