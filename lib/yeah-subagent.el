@@ -155,7 +155,7 @@ reason is what the parent needs: a child that ran out of time says so."
 
 (cl-defun yeah-subagent-spawn (parent-session role prompt
                                   &key depth transport tools budget timeout
-                                       answerer short-id)
+                                       answerer short-id model)
   "Spawn a child sub-agent and return its record.
 
 PARENT-SESSION is the session of the parent.  ROLE names what the child
@@ -168,7 +168,10 @@ in seconds: the child is cancelled when the time is up, and the parent is
 told that the child ran out of time.  A child without a time may work for
 ever.  SHORT-ID is the id the parent calls the child by; it is written into
 the journal of the parent and into the journal of the child, so that the
-child is found after a restart of the harness.
+child is found after a restart of the harness.  MODEL is the model the
+child runs on: it is written into the journal of the parent and into the
+journal of the child, so that a reader of the journals can tell which
+model answered the child and not the parent.
 The child runs in its own session, whose id carries the lineage:
 `<parent-id>.sub-<n>'.  The spawn is asynchronous: the record comes
 back with the status `running', and `yeah-subagent-wait' waits for the
@@ -196,18 +199,21 @@ Signals `user-error' when the depth of the child would reach
                           :turn nil
                           :parent-id parent-id
                           :parent-session-id parent-id
-                          :tools tools))
+                          :tools tools
+                          :model model))
       (puthash child-id record yeah-subagent--active)
       (puthash child-id parent-session yeah-subagent--sessions)
       (apply #'yeah-events-write parent-session "spawn"
              (append (list :child child-session-id :role role :depth child-depth)
-                     (when short-id (list :short-id short-id))))
+                     (when short-id (list :short-id short-id))
+                     (when model (list :model model))))
       ;; The child says where it stands in the tree of delegations, in its own
       ;; journal: a restart of the harness must not make a child of depth
       ;; three look like a root.
       (apply #'yeah-events-write child-session "child-start"
              (append (list :parent parent-id :depth child-depth :role role)
-                     (when short-id (list :short-id short-id))))
+                     (when short-id (list :short-id short-id))
+                     (when model (list :model model))))
       (let ((context (yeah-run-context-create
                       :placement 'service
                       :session child-session

@@ -1,0 +1,32 @@
+{
+  "id": "wave-112",
+  "title": "the journal names the model of a child",
+  "intent": "The open work of the delegation (docs/PLAN.md §17.1): the model of the child is the model of the preset, and the preset names it -- and no child of a live provider had run on a model other than the model of its parent.  The code built the transport of the child from the model of the preset, but the JOURNALS said nothing: the spawn of a child carried no model, and the child never named the model it runs on.  A reader of the journal of a run could not tell which model answered the child, and the client of the orchestrator, which is told the model of a session, was told nothing about the children of the run.  The wave binds the promise: the spawn of the child in the journal of the parent carries the model of the preset, the journal of the child carries the same model in the record of where the child stands in the tree of the delegations, and the model the journal names is the model the child runs on -- the transport of the child is built from it -- and it is not the model of the parent.  The check is offline (the parent asks for two delegations and the children answer after a delay) and the claim is bound to it; the live check measures the same thing against a real provider: the parent runs on one model, the preset of the child names another, and the journals of the two runs are read afterwards.",
+  "touches": [
+    "lib/yeah-delegate.el",
+    "lib/yeah-events.el",
+    "lib/yeah-subagent.el",
+    "tests/checks/check-the-journal-names-the-model-of-a-child.el",
+    "tests/live/live-child-on-the-model-of-its-preset.el",
+    "spec.json",
+    "docs/PLAN.md",
+    "docs/LIVE-EVIDENCE.md",
+    "docs/STATUS.md",
+    "AGENTS.md",
+    "waves/wave-112.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev check tests/checks/check-the-journal-names-the-model-of-a-child.el",
+    "./scripts/dev check tests/checks/check-two-children-run-in-one-turn-of-the-parent.el",
+    "./scripts/dev check tests/checks/check-a-delegation-runs-in-its-own-session.el",
+    "./scripts/dev ert tests/unit/*.el"
+  ],
+  "claims": [
+    "the-journal-names-the-model-of-a-child"
+  ],
+  "commitment": [],
+  "objection": "The offline check measures the kernel with a fake transport, and the fake is what the model of the child reaches: the check proves that the transport of the child is BUILT with the model of the preset, and not that the provider answered with it.  The live check measures the world, and the world answered: a child of a live provider ran on the model of its preset (MiniMax-M2.5) while the parent ran on another model (MiniMax-M2.7), and the journals of the two runs named MiniMax-M2.5 in both places -- the spawn of the child in the journal of the parent and the record of where the child stands in the tree of the delegations in the journal of the child.  The journal still does not name the model of every REQUEST: a reader cannot tell from the journal alone which model answered which request of the child, and the wave does not add that.  The live check does not force one delegation: the model of the parent repeated its delegation and the kernel started two children, and the claim covers a call that is already RUNNING -- the delegate answers at once, so the repeat was not a repeat of a running call.  The check therefore asserts the model of every spawn and not their number.  The wave does not touch the depth of the tree of the children, does not make the child of a live provider survive a restart of the harness, and does not decide the budget of the supervision of a child (that is the decision of the owner, docs/PLAN.md §17.2).",
+  "refuted_by": "the spawn of a child in the journal of the parent names no model, or names a model that is not the model of the preset, or the journal of the child names no model or names another one, or the transport of a child is built with another model than the one the journal names, or a child runs on the model of its parent, or the control of the claim does not make the check fail by its own assertion",
+  "note": "PLACEHOLDER"
+}

@@ -19,6 +19,7 @@ skip is not a pass, and a skip never turns into a claim.
 | `tests/live/live-service-path.el` | the primary deployment against a live provider: a clean service Emacs, a file asked over ACP, the write approved through `session/request_permission`, the file appears | provider key, network | `emacs -Q --batch -L lib -l tests/live/live-service-path.el` | 2026-11-16 16:08 UTC, on the code of wave 39 — pass on the first attempt ("the primary path works with a live model"): the harness nudges the model that only announced the file, the write is approved over the wire, and the file holds `42`.  The run of 14:34 UTC (wave 38) failed with `end_turn` and nothing done: the budget of the supervision of the kernel was zero, and the run of a model that only announced its next step was marked finished (§ "The live checks of the ACP route") ||
 | `tests/live/live-fixed-point.el` | the fixed point: a child of Yeah repairs a Yeah canary and the canary passes afterwards | provider key | `emacs -Q --batch -L lib -l tests/live/live-fixed-point.el` | 2026-11-16 13:10 UTC, on the code of wave 38, with MiniMax-M2.7 — pass on the first attempt ("the child repaired the canary") ||
 | `tests/live/live-two-children.el` | two children in one turn of a live parent: the model is asked for two delegations in one turn, the journal of the parent holds the spawn of two children with different short ids, the finish of the parent comes after them, and both children end on their own | provider key | `emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-two-children.el` | 2026-11-23 10:28 UTC, on the code of wave 110, with MiniMax-M2.7 — pass (exit 0): the spawn of `sub-1` and `sub-2` at 10:28:04 UTC in the turn `turn-2`, the finish of the parent at 10:28:18, and the end of both children on their own.  The first attempt failed on two defects of the path: the directories of the presets were bound with `let` and the tools of a child run in the event loop, long after the binding was gone ("no agent named \"reviewer\""), and the child had no tool `finish`, so it could never end and worked for ever ||
+| `tests/live/live-child-on-the-model-of-its-preset.el` | a child of a live provider runs on the model of its preset and not on the model of its parent: the parent runs on one model, the preset names another, the journal of the parent names the model of the preset in the spawn of the child, the journal of the child names the same model, and the child ends on its own through the `finish` tool | provider key | `emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-child-on-the-model-of-its-preset.el` | 2026-11-24 02:47 UTC, on the code of wave 112, with MiniMax-M2.7 (the parent) and MiniMax-M2.5 (the preset of the child) — pass (exit 0): the spawn of `sub-1` at 02:47:34 names MiniMax-M2.5, the record of where the child stands in the tree of the delegations names the same model, and the child ended through the `finish` tool at 02:47:38.  The first attempt failed on two defects of the check itself: the journal of the child was read with a helper of two arguments and the check crashed, and the child had the tools `read` and `grep` besides `finish`, so the model searched the tree instead of finishing ||
 | `tests/live/live-clean-install.el` | the published repository installs into a clean Emacs: the documented bootstrap runs in a throwaway HOME, the installed package loads, and `yeah`, `yeah-ask` and `yeah-doctor` are bound | network | `emacs -Q --batch -L lib -l tests/live/live-clean-install.el` | 2026-11-16 13:11 UTC, against the published repository (revision `a0259e6`), on the code of wave 38 — pass: "the clean installation works" ||
 | `tests/pixel/check-interface-is-seen.sh` | the interface is really on the screen: Emacs itself draws the journal and the approval view under a frame server, the screen is photographed, and the pictures are compared with each other and with the same buffer without the interface | a frame server (Xvfb), a terminal emulator, ImageMagick, Emacs — **no provider key** | `YEAH_XVFB=… YEAH_XTERM=… YEAH_MAGICK=… ./scripts/dev pixel` | 2026-11-15, pass — "the interface is on the screen: 767 colours, 16953 pixels between the journal and the approval view" |
 | `bench/run-bench.el` | the parity with another harness is measured rather than claimed: the same task, the same workspace and the same model are given to Yeah and to the second harness, and the outcome of both is recorded | provider key, a second harness | `YEAH_BENCH_TASKS=… ./scripts/dev bench --run` | 2026-11-16 13:12 UTC, on the code of wave 38, with MiniMax-M2.7 and pi: Yeah passed 1 of 3 tasks and 2 failed, pi passed 3 of 3 — **not a verdict about parity** (the threshold is a decision of the owner, the sample is three tasks); the row of each failed task names the shape of the run ("the model answered with an empty message 3 times and the run ended without an effect"), which is what wave 38 added (see "The live checks and the pilot after wave 38") ||
@@ -3322,6 +3323,55 @@ to do - declared evidence is current and the tree is covered`.
 pass and that their controls bite.  It says nothing about the promises of the
 package beyond what those checks measure, and it says nothing about the live
 route: the package of the waves D3, D4, E1, E2 and E3 was measured offline.
+
+## The child that ran on the model of its preset — wave 112 (2026-11-24, 02:30–02:48 UTC)
+
+The open work of the delegation (`docs/PLAN.md` §17.1) said: "The model of
+the child is the model of the preset, and the preset names it; no child of a
+live provider has run yet on a model other than the model of its parent."
+The wave binds the promise to the journals: the spawn of the child in the
+journal of the parent names the model of the preset, the journal of the child
+names the same model, and the transport of the child is built from it — so the
+model the journal names is the model the child runs on.
+
+**The first attempt (02:30–02:37) found three things, and two of them were
+defects of the check, not of the harness.**  The check read the journal of the
+child with a helper of two arguments and crashed with
+`wrong-number-of-arguments`: the check was broken, and the failure said
+nothing about the subject.  The child of the preset had the tools `read` and
+`grep` besides `finish`, so the model of the child went looking for the text
+it was asked to review (fourteen calls of tools, a grep through the whole
+checkout) and never called `finish`; the child ended "unfinished" with the
+record "the model answered with an empty message 7 times, called 14 tools, and
+the run never finished".  The parent of that run (MiniMax-M3.1-Flash) called
+twenty-two tools before it delegated at all.
+
+**The second attempt (02:44), with the child given one tool (`finish`) and a
+text to review: the child called `finish` with its answer.**  The check still
+failed, on its own assertion: the parent had spawned **two** children
+(`sub-1` and `sub-2`) — the model repeated the delegation — and the check
+demanded exactly one spawn.  The promise of the claim covers a call that is
+already *running* (`the-same-tool-call-does-not-run-twice`), and the delegate
+answers at once: the second delegation was not a repeat of a running call.  The
+check was changed to assert the model of every spawn and not their number, and
+the number is printed instead.
+
+**The third attempt (02:47:34–02:47:38) is the measurement:**
+
+| What | Measured |
+|---|---|
+| the model of the parent | MiniMax-M2.7 |
+| the model of the preset of the child | MiniMax-M2.5 |
+| the spawn of the child in the journal of the parent | `sub-1`, model `MiniMax-M2.5`, 02:47:34 |
+| the record of where the child stands in the tree of the delegations | the journal of the child, model `MiniMax-M2.5`, 02:47:34 |
+| the end of the child | `child-end`, `ok t`, 02:47:38 |
+| the end of the child through the tool | `finish` with the review of the text |
+| the turn of the parent | `completed` |
+
+The exit code of the check is 0.  What the run does not measure is the model
+of every *request* of the child: the journal names the model of the preset and
+the transport of the child is built from it (the offline check measures that
+handover), and the journal does not say which model answered which request.
 
 ## What is still open
 
