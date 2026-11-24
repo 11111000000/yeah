@@ -16,6 +16,11 @@ Y-combinator, and it names the shape the project aims at: bounded delegation,
 runtime self-inspection, and a fixed point at which Yeah can develop and
 verify Yeah itself.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/assets/diagrams/fixed-point-dark.svg">
+  <img alt="The fixed point of the Y: the person gives a task to the environment, the environment holds the files, the buffers and the checks of the project, the agent reads the environment and calls the tools of the kernel, the change is the new environment, the agent delegates a child when the task needs one, and then the agent runs the check of the environment and repairs it until the check passes." src="site/assets/diagrams/fixed-point-light.svg" width="100%" style="width:100%;height:auto">
+</picture>
+
 The website is <https://11111000000.github.io/yeah/>: the frame of Emacs
 30.2, with the diagrams of the architecture.
 
@@ -26,10 +31,13 @@ themselves in. Decades of community packages, a configuration sharpened for
 years, workflows fitted to their hands. An agent that starts from nothing has
 to rebuild all of that before it can help.
 
-Yeah starts from it instead. The harness reaches the live buffers of the
-person, including the unsaved ones; the documentation and the introspection
-of the system it lives in; the diagnostics of the LSP the person configured;
-and the undo of Emacs, which is the undo of the editor itself.
+Yeah starts from it instead. The harness reaches what the environment already
+holds:
+
+- the live buffers of the person, including the unsaved ones;
+- the documentation and the introspection of the system it lives in;
+- the diagnostics of the LSP the person configured;
+- the undo of Emacs, which is the undo of the editor itself.
 
 The reasoning is in [`docs/VISION.md`](docs/VISION.md), in Russian in
 [`docs/VISION.ru.md`](docs/VISION.ru.md).
