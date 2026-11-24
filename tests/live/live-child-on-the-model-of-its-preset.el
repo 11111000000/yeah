@@ -7,33 +7,42 @@
 
 ;;; Commentary:
 ;;
-;; The offline canary of wave 110 proves that the kernel can hold two children
-;; in one turn of the parent.  This check is the part that only a real model
-;; can do: the model of the parent is asked for TWO delegations in one turn,
-;; against a real provider, and the check reads the journal of the parent and
-;; the journals of the children.
+;; This check is the part of the delegation that only a real model can do: the
+;; parent runs on one model, the preset of the child names another, and the
+;; check reads the journal of the parent and the journal of the child
+;; afterwards.
 ;;
 ;; What it measures:
 ;;
-;; 1. the journal of the parent holds the spawn of two children, and their
-;;    short ids differ -- the model asked for two delegations and the kernel
-;;    started two children;
-;; 2. the finish of the parent comes after the two spawns -- both delegations
-;;    happened in ONE turn of the parent;
-;; 3. both children end on their own -- the children of a live provider end,
-;;    and the journal of the parent holds the end of each of them.
+;; 1. the journal of the parent holds the spawn of a child, and every spawn
+;;    names the model of the preset -- the model the child runs on, and not the
+;;    model of the parent;
+;; 2. the short ids of the children differ -- two children are two children;
+;; 3. the journal of the child holds the record of where the child stands in
+;;    the tree of the delegations, and that record names the same model;
+;; 4. the child ends on its own, through the tool `finish' -- the child of a
+;;    live provider really works.
+;;
+;; The child of the preset has ONE tool: `finish'.  A model that is asked to
+;; finish and may also search is a model that searches, and the run of the
+;; child is then a run that never ends -- the first attempt of this check
+;; measured exactly that (fourteen calls of tools and no end).
 ;;
 ;; The model is real and the provider is real.  The configuration comes from
 ;; the environment, so that no key is ever written into this repository:
 ;;
-;;   YEAH_TEST_KEY    the API key; without it the check skips
-;;   YEAH_TEST_HOST   the API host, for example api.minimax.io
-;;   YEAH_TEST_MODEL  the model, for example MiniMax-M2.7
+;;   YEAH_TEST_KEY          the API key; without it the check skips
+;;   YEAH_TEST_HOST         the API host, for example api.minimax.io
+;;   YEAH_TEST_MODEL        the model of the parent, for example MiniMax-M2.7
+;;   YEAH_TEST_CHILD_MODEL  the model of the preset of the child; it must be
+;;                          another model than the model of the parent, or
+;;                          there is nothing to measure
 ;;
 ;; This check lives OUTSIDE the map of the method: it needs a provider, and a
 ;; provider is not a proof that the kernel can be trusted.
 ;;
-;; Exit codes: 0 — two children ran in one turn of a live parent; 1 — they did not.
+;; Exit codes: 0 — a child of a live provider ran on the model of its preset;
+;; 1 — it did not; 2 — the model of the child is the model of the parent.
 
 ;;; Code:
 
