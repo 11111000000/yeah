@@ -88,6 +88,9 @@ these words are named in §4.
 - The child has its own session, its own permissions and its own journal, and
   the tree of the children is in the journal of the run. A restart of the
   harness finds the children of a run again.
+- The journal of a run names the model of every child it started: the spawn
+  of the child carries the model of the preset, the journal of the child
+  carries the same model, and that model is the model the child runs on.
 
 ### The installation and the integration
 
@@ -111,11 +114,12 @@ list:
 - **The provider.** A provider that is overloaded or that drops a request
   ends a run in ways the runner of the benchmark does not tell apart: a run
   the provider stopped is blocked, and not a failure of the agent.
-- **The delegation.** Several children in one turn of the parent work, but no
-  live turn of a parent with two children of a live provider has been
-  measured, and no child of a live provider has run on a model other than the
-  model of its parent. A child that was running when the Emacs died is not
-  brought back to life.
+- **The delegation.** A live turn of a parent with two children of a live
+  provider was measured on 2026-11-23, and a child of a live provider ran
+  on a model other than the model of its parent on 2026-11-24. A child that
+  was running when the Emacs died is not brought back to life, and the
+  budget of the supervision of a child is a decision of the owner
+  (`docs/PLAN.md` §17.2).
 - **The product.** A real editor against a live provider is not checked yet;
   the bridge is verified against a live Emacs server and not against a
   person's Emacs in day-to-day use; the picture of the interface is compared
@@ -166,11 +170,13 @@ The live checks are not part of CI and are not a part of the numbers above.
 What each of them proves, how to run it and when it was last recorded is in
 `docs/LIVE-EVIDENCE.md`.
 
-The parity with other harnesses was piloted against `pi` on three tasks with
-a live provider. The sample is small, the numbers differ between runs with the
-noise of the provider, and the threshold of the parity is a decision of the
-owner (`docs/PLAN.md` §13). Nobody may quote the pilot as a verdict about
-parity.
+The parity with other harnesses was piloted against `pi` on ten tasks with a
+live provider and the same model on both sides (`MiniMax-M3.1-Flash`): the
+pilot of 2026-11-24 03:06 measured 10 of 10 for Yeah and 10 of 10 for `pi`,
+and the pilot of 02:17 the same day measured 9 of 10 for Yeah and 10 of 10
+for `pi`. The sample is small, the numbers differ between runs with the noise
+of the provider, and the threshold of the parity is a decision of the owner
+(`docs/PLAN.md` §13). Nobody may quote the pilot as a verdict about parity.
 
 ## 5. How to refresh this file
 

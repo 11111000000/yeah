@@ -73,10 +73,10 @@
      :required (:payload))
     (:type "spawn"
      :required (:child :role :depth)
-     :optional (:short-id))
+     :optional (:short-id :model))
     (:type "child-start"
      :required (:parent :depth)
-     :optional (:short-id :role))
+     :optional (:short-id :role :model))
     (:type "child-end"
      :required (:child :role :ok :summary))
     (:type "input-queued"

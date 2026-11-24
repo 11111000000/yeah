@@ -235,6 +235,7 @@ Return the record of the child."
                   :budget (yeah-delegate--budget preset)
                   :timeout (yeah-delegate--timeout preset)
                   :short-id (yeah-delegate--short-id ordinal)
+                  :model model
                   :transport (yeah-delegate--transport model system tools)))
     (setq record (plist-put record :short-id (yeah-delegate--short-id ordinal)))
     (setq record (plist-put record :ordinal ordinal))

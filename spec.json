@@ -3657,6 +3657,26 @@
       "waiver": null
     },
     {
+      "id": "the-journal-names-the-model-of-a-child",
+      "text": "The journal of a run names the model of every child it started: the spawn of the child in the journal of the parent carries the model of the preset, and the journal of the child carries the same model in the record of where the child stands in the tree of the delegations.  The model the journal names is the model the child runs on -- the transport of the child is built from the model of the preset -- and it is not the model of the parent.  A reader of the journals can tell which model answered the child and not the parent.",
+      "scope": [
+        "lib/yeah-subagent.el", "lib/yeah-delegate.el", "lib/yeah-events.el",
+        "tests/checks/check-the-journal-names-the-model-of-a-child.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-journal-names-the-model-of-a-child.el"
+        }
+      ],
+      "falsifier": "the spawn of a child in the journal of the parent names no model, or names a model that is not the model of the preset, or the journal of the child names no model or names another one, or the transport of a child is built with another model than the one the journal names, or a child runs on the model of its parent, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's|:transport (yeah-delegate--transport model system tools)|:transport (yeah-delegate--transport \"another-model\" system tools)|' lib/yeah-delegate.el",
+      "waiver": null
+    },
+    {
       "id": "the-site-shows-the-diagrams-of-the-architecture",
       "text": "The page of the site shows the eight diagrams of the architecture: each of them is a figure of the page that carries a picture of the light theme and a picture of the dark theme, every picture points at a file that is on disk and carries a text that says what the picture is, every figure carries a caption, the ASCII figure of the architecture is gone from the page and from the stylesheet, the pictures are scaled into the column of the page, the theme of the frame chooses the picture -- the light one stands when the page has no JavaScript -- and the stylesheet prints the pictures.",
       "scope": [
