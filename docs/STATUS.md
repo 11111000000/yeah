@@ -144,19 +144,23 @@ working product.
    control can bite, and their green says nothing about the claims of the
    specification.
 
-What was measured on 2026-11-24, on the tree of the commit `94f5dda`:
+What was measured on 2026-11-24, on the tree of that day:
 
 | What | Measured | Command |
 |---|---|---|
 | The unit tests of the kernel | 463 tests, 463 results as expected, 0 unexpected | `./scripts/dev ert tests/unit/*.el` |
-| The claims of the standing specification | 185 claims, of which 140 are bound to a canary and 42 to the unit tests | `spec.json` |
-| The verdict of the method | unknown: 184 claims hold, one is outdated | `./scripts/dev map` |
+| The claims of the standing specification | 185 claims: 140 of them are bound to a canary, 42 to the unit tests, one is a decision of the owner | `spec.json` |
+| The verdict of the method | unknown: 184 claims hold, one is not established | `./scripts/dev gate` |
 
-The claim that is outdated is `the-documentation-points-at-files-that-exist`:
-the documentation changed after the check was last run. Unknown is not pass,
-and the run of the gate in CI does not fail on it either: the workflow warns
-about an unknown verdict and keeps the colour of the CI separate from the
-verdict of the method.
+The claim that is not established is
+`the-owner-decided-the-order-of-the-next-waves`: a decision of the owner is
+not a fact that a check can establish, and the map answers unknown until the
+owner records it. Unknown is not pass.
+
+The runner of CI has no evidence trail of its own, so the map answers unknown
+there as well, and the workflow warns about it instead of failing the build.
+The colour of the CI and the verdict of the method are two different things,
+and this file names the second one.
 
 The live checks are not part of CI and are not a part of the numbers above.
 What each of them proves, how to run it and when it was last recorded is in

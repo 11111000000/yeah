@@ -102,9 +102,11 @@ run `M-x yeah-doctor`, and start with `M-x yeah`.
   <img alt="The four levels of the verification of Yeah: unit tests of pure transitions, contract and canary checks with a control that can make them fail, integration tests of real round trips and restarts, and live tests against real providers — each level proves its own subject, and a green module is not a working product." src="site/assets/diagrams/check-levels-light.svg" width="100%" style="width:100%;height:auto">
 </picture>
 
-- **Verified in this checkout:** the unit tests and the canaries pass, every
-  module of `lib/` byte-compiles without warnings, and `./scripts/dev gate`
-  is the verdict of the project.
+- **Verified in this checkout:** the unit tests pass, the canaries pass with
+  their controls, and every module of `lib/` byte-compiles without warnings.
+  `./scripts/dev gate` is the verdict of the project, and it answers
+  `unknown` today: one claim of the specification is a decision of the owner
+  and not a fact that a check can establish.
 - **Verified against a live provider:** a model completes the coding task,
   drives the interactive path (cancel, restart, resume, recovery of a pending
   input), and a delegated child repairs a Yeah canary.
@@ -114,6 +116,20 @@ run `M-x yeah-doctor`, and start with `M-x yeah`.
 
 [`docs/STATUS.md`](docs/STATUS.md) holds the ledger: what works, what is
 open, and the numbers with the command that measured them.
+
+## Non-goals
+
+Deliberately not built:
+
+- a second kernel of the agent in another language;
+- destructive compaction or a history of snapshots — the journal is
+  append-only;
+- unrestricted evaluation presented as safe: the evaluation of the project is
+  experimental, off by default, and not a security boundary;
+- the internals of gptel treated as architecture: the adapter is checked
+  against the real contracts of gptel;
+- telemetry, a lock-in to one provider, or a cloud-only operation;
+- a parallel ecosystem of plugins that duplicates the registries.
 
 ## Documentation
 
@@ -143,7 +159,7 @@ The pictures of the architecture are drawn from `site/diagrams/`.
 Emacs has to be on `PATH` (or in `EMACS`); the map and the gate also need a
 `mathc` that can read the specification of the project. The checks against a
 live provider need credentials in the environment and are not part of CI:
-[`docs/ENGINEERING.md`](docs/ENGINEERING.md) §8 describes how to run them.
+[`docs/ENGINEERING.md`](docs/ENGINEERING.md) §8.1 describes how to run them.
 
 ## Author
 
