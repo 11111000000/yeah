@@ -206,6 +206,46 @@ cancellation races and secret-redaction checks.
 A placeholder that returns success is a failed implementation. Tests must
 exercise observable behavior, not merely the presence of a function.
 
+### 8.1 The checks against a live provider
+
+The live checks need credentials in the environment and are not part of CI.
+They prove what a real provider does; a check that needs a key has no control,
+so its green says nothing about the claims of the specification.
+
+```sh
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
+  emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-model-call.el
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
+  emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-coding-task.el
+YEAH_TEST_KEY=... YEAH_TEST_MODEL=MiniMax-M2.7 EMACS=... \
+  emacs -Q --batch -L /path/to/gptel -L lib -l tests/live/live-fixed-point.el
+```
+
+`YEAH_TEST_KEY` is the key of the provider, `YEAH_TEST_HOST` and
+`YEAH_TEST_MODEL` choose the endpoint and the model, and `EMACS` names the
+Emacs that runs the tests of the project. No key belongs in this repository,
+in a session log or in the documentation: keep the credentials in the
+environment, a private file outside the checkout is enough.
+
+The model matters: with `MiniMax-M3` and `MiniMax-M3.1-Flash` the same
+provider answers with an empty message through `gptel` — even a plain model
+call — and those checks then fail for the provider and not for the harness.
+`MiniMax-M2.7` is the model the live evidence was recorded with.
+
+The second check runs a real coding task against a real provider: the harness
+reads the project, edits the file with a guarded edit, saves it, and the test
+of the project passes. The third one is the fixed point: a child agent repairs
+a Yeah canary and the canary passes afterwards. What each of them proves, how
+to run it and when it was last recorded is in `docs/LIVE-EVIDENCE.md`.
+
+### 8.2 The picture of the interface
+
+`./scripts/dev pixel` photographs the real interface and compares two
+pictures. It needs a frame server, a terminal emulator and ImageMagick
+(`YEAH_XVFB`, `YEAH_XTERM`, `YEAH_MAGICK`); without them the result is
+blocked, not pass. The pictures land in `tests/artifacts/` and are not kept
+in git.
+
 ## 9. Performance and operability
 
 Measure before optimizing. Use `benchmark-run`, `elp` or process timing and

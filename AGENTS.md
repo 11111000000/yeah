@@ -20,25 +20,30 @@
 
 ## Read first, in this order
 
-1. `README.md` — actual current status and explicit limitations.
-2. `docs/ARCHITECTURE.md` — the normative target: purpose, ten decisions,
+1. `README.md` — the introduction and the explicit limitations of the
+   product, for a reader who arrives for the first time.
+2. `docs/STATUS.md` — the state of the project: what works today, what is
+   open, and the numbers with the command that measured them.  Every number
+   of that file carries a date and a command; a number without them is a
+   memory, and a memory is not evidence.
+3. `docs/ARCHITECTURE.md` — the normative target: purpose, ten decisions,
    contracts, security, placements and non-goals.
-3. `docs/PLAN.md` — the detailed eight-stage execution plan and release gates.
-4. `docs/ENGINEERING.md` — binding dependency, infrastructure, library,
+4. `docs/PLAN.md` — the detailed eight-stage execution plan and release gates.
+5. `docs/ENGINEERING.md` — binding dependency, infrastructure, library,
    process, security, testing and packaging practices.
-5. `spec.json` — the standing machine-checked specification.
-6. `waves/*.json` — existing math-coding units, with intent, check, promise
+6. `spec.json` — the standing machine-checked specification.
+7. `waves/*.json` — existing math-coding units, with intent, check, promise
    and objection.
-7. `ELISP_BEST_PRACTICES.md` — kernel Elisp conventions; §11 is the trap log.
-8. `lib/yeah-*.el` — the implementation, one feature per file.
-9. `docs/PASEO-INTEGRATION-PLAN.md` — the state of the integration with the
+8. `ELISP_BEST_PRACTICES.md` — kernel Elisp conventions; §11 is the trap log.
+9. `lib/yeah-*.el` — the implementation, one feature per file.
+10. `docs/PASEO-INTEGRATION-PLAN.md` — the state of the integration with the
    orchestrator Paseo, the gaps of the ACP surface and the order of the work;
    the plugin of Paseo lives in `plugin/yeah-provider/` (TypeScript, outside
    `lib/`, which stays Elisp only).
-10. `docs/PLAN.md` §19 — the order of the work on the integration: the waves,
+11. `docs/PLAN.md` §19 — the order of the work on the integration: the waves,
     the four points outside the plan of the owner, and the decisions that only
     the owner may make.
-11. `docs/ARCHITECTURE-CATCHUP-PLAN.md` — the order of the waves that bring
+12. `docs/ARCHITECTURE-CATCHUP-PLAN.md` — the order of the waves that bring
     the code up to the architecture: the tracks A, B and C of the code, the
     waves of the diagrams (D) and of the documentation (E), and the decision
     of the owner of 2026-11-20 that named that order.
