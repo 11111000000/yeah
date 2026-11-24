@@ -104,9 +104,10 @@ run `M-x yeah-doctor`, and start with `M-x yeah`.
 
 - **Verified in this checkout:** the unit tests pass, the canaries pass with
   their controls, and every module of `lib/` byte-compiles without warnings.
-  `./scripts/dev gate` is the verdict of the project, and it answers
-  `unknown` today: one claim of the specification is a decision of the owner
-  and not a fact that a check can establish.
+  `./scripts/dev gate` is the verdict of the project, and it answers `green`
+  today: every claim of the specification holds, and the control of every one
+  of them was shown to bite. The numbers, with the command that measured
+  them, are in [`docs/STATUS.md`](docs/STATUS.md) §4.
 - **Verified against a live provider:** a model completes the coding task,
   drives the interactive path (cancel, restart, resume, recovery of a pending
   input), and a delegated child repairs a Yeah canary.

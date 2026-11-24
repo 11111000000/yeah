@@ -148,18 +148,21 @@ working product.
    control can bite, and their green says nothing about the claims of the
    specification.
 
-What was measured on 2026-11-24, on the tree of that day:
+What was measured on 2026-11-24, on the tree that carries this file:
 
 | What | Measured | Command |
 |---|---|---|
 | The unit tests of the kernel | 463 tests, 463 results as expected, 0 unexpected | `./scripts/dev ert tests/unit/*.el` |
-| The claims of the standing specification | 185 claims: 140 of them are bound to a canary, 42 to the unit tests, one is a decision of the owner | `spec.json` |
-| The verdict of the method | unknown: 184 claims hold, one is not established | `./scripts/dev gate` |
+| The claims of the standing specification | 186 claims: 141 of them are bound to a canary, 42 to the unit tests, one to the byte-compilation, two to the benchmark, one to the picture of the interface, and one is the judgment of the owner | `./scripts/dev map` |
+| The verdict of the method | green: every one of the 186 claims holds, and the control of every one of them was shown to bite | `./scripts/dev gate` |
 
-The claim that is not established is
-`the-owner-decided-the-order-of-the-next-waves`: a decision of the owner is
-not a fact that a check can establish, and the map answers unknown until the
-owner records it. Unknown is not pass.
+One of the claims is a judgment and not a fact:
+`the-owner-decided-the-order-of-the-next-waves` is the order of the waves,
+and no check can establish it. It holds on the strength of the record of the
+owner — the waves `wave-109.json` and `wave-112.json` name the decision, and
+the trail of the method holds the review of the person (`producer: human`,
+`independence: external`) — and not on the strength of a check. Unknown is
+not pass, and a judgment is not a check.
 
 The runner of CI has no evidence trail of its own, so the map answers unknown
 there as well, and the workflow warns about it instead of failing the build.
