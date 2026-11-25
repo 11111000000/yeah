@@ -916,6 +916,11 @@ code {
   margin-inline: auto;
   padding: clamp(0.6rem, 2vw, 1.4rem);
 }
+/* The picture opens at its own size: a picture the page has scaled down is
+   a picture the person can open one to one, and the anchor carries the same
+   file the page shows. */
+.diagram__open { display: block; }
+.diagram__open:hover .diagram__img { opacity: 0.85; }
 /* The dark picture stands only when the page says that it is dark: the
    light one stands by default, and the page reads without JavaScript. */
 .diagram__img--dark { display: none; }

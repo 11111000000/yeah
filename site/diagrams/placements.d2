@@ -15,17 +15,18 @@
 direction: down
 
 machine: "your machine" {
-  attached: "The editing Emacs\nattached placement: the agent shares the process of the person\nlib/yeah-product.el:166"
-  service: "The service Emacs\nservice placement: the primary one, a dedicated process\nlib/yeah-service.el:127" {
+  attached: "The editing Emacs\nattached placement: the agent\nshares the process of the person\nlib/yeah-product.el:166"
+  service: "The service Emacs\nservice placement: the primary\none, a dedicated process\nlib/yeah-service.el:127" {
+    class: subject
     acp: "The ACP server\nlib/yeah-acp.el:1314"
     mcp: "The MCP server\nlib/yeah-mcp.el:173"
     transports: "the two transports" {
-      stdio: "The stdio transport\none request at a time\nlib/yeah-wire.el:23"
-      socket: "The local socket transport\na connection is a process\nlib/yeah-wire-socket.el:57"
+      stdio: "The stdio transport\none request\nat a time\nlib/yeah-wire.el:23"
+      socket: "The local socket transport\na connection\nis a process\nlib/yeah-wire-socket.el:57"
     }
   }
-  batch: "The batch process\nbatch placement: one process, one task\nlib/yeah-placement.el:45"
-  bridge: "The emacsclient bridge\nan approved capability, not a default\nlib/yeah-bridge.el:177"
+  batch: "The batch process\nbatch placement: one process,\none task\nlib/yeah-placement.el:45"
+  bridge: "The emacsclient bridge\nan approved capability,\nnot a default\nlib/yeah-bridge.el:177"
 }
 
 acp_clients: "The ACP clients\norchestrators and editors"
@@ -56,15 +57,15 @@ machine.service.mcp -> machine.service.transports.socket: {
   label: "the local socket"
 }
 machine.service -> machine.bridge: {
-  class: flow
+  class: capability
   label: "asks"
 }
 machine.bridge -> machine.attached: {
-  class: flow
+  class: capability
   label: "evaluates in the editing Emacs"
 }
 
-note: "The honest limit of the wire:\non stdio the transport reads its input with a blocking read,\nso the event loop of Emacs does not run while a prompt is running,\nand a cancel cannot interrupt that prompt.\nOn the local socket the connection is a process, the event loop keeps\nrunning, and a cancel is handled while the prompt is still running."
+note: "The honest limit of the wire:\non stdio the transport reads its\ninput with a blocking read, so the\nevent loop of Emacs does not run\nwhile a prompt is running, and a\ncancel cannot interrupt that prompt.\nOn the local socket the connection\nis a process, the event loop keeps\nrunning, and a cancel is handled\nwhile the prompt is still running."
 
 machine.service -> note: {
   class: hidden

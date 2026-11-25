@@ -349,11 +349,11 @@
                light one stands when the page does not say that it is
                dark, so the page reads without JavaScript. -->
           <figure class="diagram" data-diagram="d6">
-            <img class="diagram__img diagram__img--light" src="assets/diagrams/fixed-point-light.svg"
-                 alt="The Y-combinator as a loop: the person gives the task to the environment, the environment holds the files, the buffers and the checks, the agent reads the environment and calls the tools of the kernel, a delegated child runs with its own journal, its own tools and its own depth, and the check of the environment decides whether the agent changes it again.">
-            <img class="diagram__img diagram__img--dark" src="assets/diagrams/fixed-point-dark.svg"
-                 alt="The Y-combinator as a loop: the person gives the task to the environment, the environment holds the files, the buffers and the checks, the agent reads the environment and calls the tools of the kernel, a delegated child runs with its own journal, its own tools and its own depth, and the check of the environment decides whether the agent changes it again.">
-            <figcaption>The Y is a fixed point: the agent starts from what the environment already holds, and the environment is what the agent changes.</figcaption>
+            <a class="diagram__open" href="assets/diagrams/fixed-point-light.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--light" src="assets/diagrams/fixed-point-light.svg"
+                 alt="The Y-combinator as a loop: the person gives the task to the environment, the environment holds the files, the buffers and the checks, the agent reads the environment and calls the tools of the kernel, a delegated child runs with its own journal, its own tools and its own depth, and the check of the environment decides whether the agent changes it again."></a>
+            <a class="diagram__open" href="assets/diagrams/fixed-point-dark.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--dark" src="assets/diagrams/fixed-point-dark.svg"
+                 alt="The Y-combinator as a loop: the person gives the task to the environment, the environment holds the files, the buffers and the checks, the agent reads the environment and calls the tools of the kernel, a delegated child runs with its own journal, its own tools and its own depth, and the check of the environment decides whether the agent changes it again."></a>
+            <figcaption>The Y is a fixed point: the agent starts from what the environment already holds, and the environment is what the agent changes. The picture shows the bounded loop; it does not show a child that was running when Emacs died — the journal says what was delegated, and its work is lost.</figcaption>
           </figure>
 
           <p class="note"><span class="face-comment">;;</span> A check that cannot fail is a comment; unknown is not pass. <a href="https://github.com/11111000000/yeah/blob/main/docs/VISION.md" rel="noopener">Read the whole vision.</a></p>
@@ -405,11 +405,11 @@
           <!-- One turn of the agent loop, end to end: the model proposes, the
                registry and the policy decide, the journal remembers. -->
           <figure class="diagram" data-diagram="d1">
-            <img class="diagram__img diagram__img--light" src="assets/diagrams/one-turn-light.svg"
-                 alt="One turn of the agent loop: the model proposes a tool call, the registry checks the type, the name and the arguments, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened, and the result goes back to the model.">
-            <img class="diagram__img diagram__img--dark" src="assets/diagrams/one-turn-dark.svg"
-                 alt="One turn of the agent loop: the model proposes a tool call, the registry checks the type, the name and the arguments, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened, and the result goes back to the model.">
-            <figcaption>One turn. The model proposes; the registry and the policy decide; the journal remembers. The states in the diagram are the states of the kernel (<code>lib/yeah-state.el</code>). The names of the tools in the diagrams are the names the model calls them by.</figcaption>
+            <a class="diagram__open" href="assets/diagrams/one-turn-light.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--light" src="assets/diagrams/one-turn-light.svg"
+                 alt="One turn of the agent loop: the model proposes a tool call, the registry checks the type, the name and the arguments, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened, and the result goes back to the model."></a>
+            <a class="diagram__open" href="assets/diagrams/one-turn-dark.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--dark" src="assets/diagrams/one-turn-dark.svg"
+                 alt="One turn of the agent loop: the model proposes a tool call, the registry checks the type, the name and the arguments, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened, and the result goes back to the model."></a>
+            <figcaption>One turn. The model proposes; the registry and the policy decide; the journal remembers. The states in the diagram are the states of the kernel (<code>lib/yeah-state.el</code>). The names of the tools in the diagrams are the names the model calls them by. One turn is shown, not a run: the supervision that nudges a model that only plans, and the retries of a dropped request, live in the machine of states beside this picture.</figcaption>
           </figure>
 
           <aside class="y-note" aria-labelledby="y-title">
@@ -492,11 +492,11 @@
           <!-- The Emacs layer: the person, the editor's Emacs, the agent's
                Emacs and the bridge between them. -->
           <figure class="diagram" data-diagram="d3">
-            <img class="diagram__img diagram__img--light" src="assets/diagrams/emacs-layer-light.svg"
-                 alt="The Emacs layer of Yeah: the person writes the prompt in the editing Emacs and answers the requests of approval there, the kernel runs in the agent's Emacs, and the bridge is the only path from the kernel to the live buffers, the introspection and the edits of the editor.">
-            <img class="diagram__img diagram__img--dark" src="assets/diagrams/emacs-layer-dark.svg"
-                 alt="The Emacs layer of Yeah: the person writes the prompt in the editing Emacs and answers the requests of approval there, the kernel runs in the agent's Emacs, and the bridge is the only path from the kernel to the live buffers, the introspection and the edits of the editor.">
-            <figcaption>Your Emacs, the agent's Emacs, and the bridge between them. The bridge is a capability, not a default.</figcaption>
+            <a class="diagram__open" href="assets/diagrams/emacs-layer-light.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--light" src="assets/diagrams/emacs-layer-light.svg"
+                 alt="The Emacs layer of Yeah: the person writes the prompt in the editing Emacs and answers the requests of approval there, the kernel runs in the agent's Emacs, and the bridge is the only path from the kernel to the live buffers, the introspection and the edits of the editor."></a>
+            <a class="diagram__open" href="assets/diagrams/emacs-layer-dark.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--dark" src="assets/diagrams/emacs-layer-dark.svg"
+                 alt="The Emacs layer of Yeah: the person writes the prompt in the editing Emacs and answers the requests of approval there, the kernel runs in the agent's Emacs, and the bridge is the only path from the kernel to the live buffers, the introspection and the edits of the editor."></a>
+            <figcaption>Your Emacs, the agent's Emacs, and the bridge between them. The bridge is a capability, not a default. The picture shows the two Emacses; where each of them runs is the picture of the install section, and the bridge asks the person for its approval.</figcaption>
           </figure>
 
           <p class="note"><span class="face-comment">;;</span> Parity with mature harnesses is a goal to measure by completed tasks, not a feature to claim by checklist.</p>
@@ -525,21 +525,21 @@
                asks, what decides, what is remembered and what is seen.  Every
                leaf names one file that implements it. -->
           <figure class="diagram" data-diagram="d2">
-            <img class="diagram__img diagram__img--light" src="assets/diagrams/core-layers-light.svg"
-                 alt="The core of Yeah in four bands: what asks (the person, the ACP and MCP clients, a batch run) hands the request to what decides (the run, the model, the registry of the tools, the policy and the approvals, the scheduler); every event is written into what is remembered (the append-only journal), and every view of it is what is seen (the context of the model, the views of the person, the sessions and the cost).">
-            <img class="diagram__img diagram__img--dark" src="assets/diagrams/core-layers-dark.svg"
-                 alt="The core of Yeah in four bands: what asks (the person, the ACP and MCP clients, a batch run) hands the request to what decides (the run, the model, the registry of the tools, the policy and the approvals, the scheduler); every event is written into what is remembered (the append-only journal), and every view of it is what is seen (the context of the model, the views of the person, the sessions and the cost).">
-            <figcaption>Commands flow inward; events flow into one durable journal. Everything else is a projection of the journal.</figcaption>
+            <a class="diagram__open" href="assets/diagrams/core-layers-light.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--light" src="assets/diagrams/core-layers-light.svg"
+                 alt="The core of Yeah in four bands: what asks (the person, the ACP and MCP clients, a batch run) hands the request to what decides (the run, the model, the registry of the tools, the policy and the approvals, the scheduler); every event is written into what is remembered (the append-only journal), and every view of it is what is seen (the context of the model, the views of the person, the sessions and the cost)."></a>
+            <a class="diagram__open" href="assets/diagrams/core-layers-dark.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--dark" src="assets/diagrams/core-layers-dark.svg"
+                 alt="The core of Yeah in four bands: what asks (the person, the ACP and MCP clients, a batch run) hands the request to what decides (the run, the model, the registry of the tools, the policy and the approvals, the scheduler); every event is written into what is remembered (the append-only journal), and every view of it is what is seen (the context of the model, the views of the person, the sessions and the cost)."></a>
+            <figcaption>Commands flow inward; events flow into one durable journal. Everything else is a projection of the journal. The bands name one file per block; the picture does not show the nine packages of the kernel — that is the picture of the development section.</figcaption>
           </figure>
 
           <!-- The machine of the states of a run, written out of the tables of
                the kernel. -->
           <figure class="diagram" data-diagram="d5">
-            <img class="diagram__img diagram__img--light" src="assets/diagrams/state-machine-light.svg"
-                 alt="The machine of the states of a run: idle, deciding, post-decide, awaiting-tool, awaiting-user-permission, accumulating, compacting and blocked-on-rate, and the three ends of a run — completed, failed and interrupted — with the event that moves a run from one state to another.">
-            <img class="diagram__img diagram__img--dark" src="assets/diagrams/state-machine-dark.svg"
-                 alt="The machine of the states of a run: idle, deciding, post-decide, awaiting-tool, awaiting-user-permission, accumulating, compacting and blocked-on-rate, and the three ends of a run — completed, failed and interrupted — with the event that moves a run from one state to another.">
-            <figcaption>The states of a run. A run ends in one of three: completed, failed, interrupted.</figcaption>
+            <a class="diagram__open" href="assets/diagrams/state-machine-light.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--light" src="assets/diagrams/state-machine-light.svg"
+                 alt="The machine of the states of a run: idle, deciding, post-decide, awaiting-tool, awaiting-user-permission, accumulating, compacting and blocked-on-rate, and the three ends of a run — completed, failed and interrupted — with the event that moves a run from one state to another."></a>
+            <a class="diagram__open" href="assets/diagrams/state-machine-dark.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--dark" src="assets/diagrams/state-machine-dark.svg"
+                 alt="The machine of the states of a run: idle, deciding, post-decide, awaiting-tool, awaiting-user-permission, accumulating, compacting and blocked-on-rate, and the three ends of a run — completed, failed and interrupted — with the event that moves a run from one state to another."></a>
+            <figcaption>The states of a run. A run ends in one of three: completed, failed, interrupted. The machine is the table of the code, not a trace of a run: a run that never meets a busy provider never takes <code>blocked-on-rate</code>.</figcaption>
           </figure>
 
           <div class="doc-links">
@@ -623,11 +623,11 @@
           <!-- The four levels of the verification, and the boundary of what
                each of them proves. -->
           <figure class="diagram" data-diagram="d7">
-            <img class="diagram__img diagram__img--light" src="assets/diagrams/check-levels-light.svg"
-                 alt="The four levels of the verification of Yeah: unit tests of pure transitions, contract and canary checks with a control that can make them fail, integration tests of real round trips and restarts, and live tests against real providers — each level proves its own subject, and a green module is not a working product.">
-            <img class="diagram__img diagram__img--dark" src="assets/diagrams/check-levels-dark.svg"
-                 alt="The four levels of the verification of Yeah: unit tests of pure transitions, contract and canary checks with a control that can make them fail, integration tests of real round trips and restarts, and live tests against real providers — each level proves its own subject, and a green module is not a working product.">
-            <figcaption>Four levels of verification. A green module is not a working product.</figcaption>
+            <a class="diagram__open" href="assets/diagrams/check-levels-light.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--light" src="assets/diagrams/check-levels-light.svg"
+                 alt="The four levels of the verification of Yeah: unit tests of pure transitions, contract and canary checks with a control that can make them fail, integration tests of real round trips and restarts, and live tests against real providers — each level proves its own subject, and a green module is not a working product."></a>
+            <a class="diagram__open" href="assets/diagrams/check-levels-dark.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--dark" src="assets/diagrams/check-levels-dark.svg"
+                 alt="The four levels of the verification of Yeah: unit tests of pure transitions, contract and canary checks with a control that can make them fail, integration tests of real round trips and restarts, and live tests against real providers — each level proves its own subject, and a green module is not a working product."></a>
+            <figcaption>Four levels of verification. A green module is not a working product. The levels prove their own subjects; none of them proves the product, and the live level needs a key, so its green is not on the map.</figcaption>
           </figure>
 
           <p class="note"><span class="face-comment">;;</span> Machine-checked claims live in <code>spec.json</code> and <code>./scripts/dev map</code>. This page is documentation, not a substitute for evidence.</p>
@@ -682,11 +682,11 @@
 
           <!-- Where the harness runs and who speaks to it. -->
           <figure class="diagram" data-diagram="d4">
-            <img class="diagram__img diagram__img--light" src="assets/diagrams/placements-light.svg"
-                 alt="Where Yeah runs: the attached placement shares the process of the person, the service Emacs is the primary placement and speaks ACP and MCP over stdio and over a local socket, the batch placement is one process and one task, and the bridge connects the service Emacs to the editing one.">
-            <img class="diagram__img diagram__img--dark" src="assets/diagrams/placements-dark.svg"
-                 alt="Where Yeah runs: the attached placement shares the process of the person, the service Emacs is the primary placement and speaks ACP and MCP over stdio and over a local socket, the batch placement is one process and one task, and the bridge connects the service Emacs to the editing one.">
-            <figcaption>Where it runs and who talks to it: the editing Emacs reaches the service Emacs through the bridge, and the orchestrators speak ACP or MCP to the same one.</figcaption>
+            <a class="diagram__open" href="assets/diagrams/placements-light.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--light" src="assets/diagrams/placements-light.svg"
+                 alt="Where Yeah runs: the attached placement shares the process of the person, the service Emacs is the primary placement and speaks ACP and MCP over stdio and over a local socket, the batch placement is one process and one task, and the bridge connects the service Emacs to the editing one."></a>
+            <a class="diagram__open" href="assets/diagrams/placements-dark.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--dark" src="assets/diagrams/placements-dark.svg"
+                 alt="Where Yeah runs: the attached placement shares the process of the person, the service Emacs is the primary placement and speaks ACP and MCP over stdio and over a local socket, the batch placement is one process and one task, and the bridge connects the service Emacs to the editing one."></a>
+            <figcaption>Where it runs and who talks to it: the editing Emacs reaches the service Emacs through the bridge, and the orchestrators speak ACP or MCP to the same one. The honest limit of the wire is on the picture: on stdio a cancel cannot interrupt a running prompt — the local socket can.</figcaption>
           </figure>
 
           <p class="note"><span class="face-comment">;;</span> The bootstrap installs the supported gptel revision and Yeah through package-vc. Report failures before treating the published-repository installation as supported.</p>
@@ -715,11 +715,11 @@
 
             <!-- The nine packages of the kernel: one knot, not nine layers. -->
             <figure class="diagram" data-diagram="d8">
-              <img class="diagram__img diagram__img--light" src="assets/diagrams/code-packages-light.svg"
-                   alt="The nine packages of the kernel of Yeah around one knot: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing. Every card says how many modules the package holds, how many packages it needs and how many packages need it: every package reaches every other one, and there is no layer to speak of.">
-              <img class="diagram__img diagram__img--dark" src="assets/diagrams/code-packages-dark.svg"
-                   alt="The nine packages of the kernel of Yeah around one knot: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing. Every card says how many modules the package holds, how many packages it needs and how many packages need it: every package reaches every other one, and there is no layer to speak of.">
-              <figcaption>The kernel in nine packages — one knot, not nine layers. Every package has its own checks.</figcaption>
+              <a class="diagram__open" href="assets/diagrams/code-packages-light.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--light" src="assets/diagrams/code-packages-light.svg"
+                   alt="The nine packages of the kernel of Yeah around one knot: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing. Every card says how many modules the package holds, how many packages it needs and how many packages need it: every package reaches every other one, and there is no layer to speak of."></a>
+              <a class="diagram__open" href="assets/diagrams/code-packages-dark.svg" title="Open the picture in full size"><img class="diagram__img diagram__img--dark" src="assets/diagrams/code-packages-dark.svg"
+                   alt="The nine packages of the kernel of Yeah around one knot: the journal and its projections, the control of a run, the model adapter, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, and the placements and the plumbing. Every card says how many modules the package holds, how many packages it needs and how many packages need it: every package reaches every other one, and there is no layer to speak of."></a>
+              <figcaption>The kernel in nine packages — one knot, not nine layers. Every package has its own checks. The picture says how many modules every package holds and how many packages need it; it does not draw the thirty-six edges between the packages.</figcaption>
             </figure>
 
             <p class="doc-links"><a href="https://github.com/11111000000/yeah/blob/main/docs/ENGINEERING.md" rel="noopener">C-h engineering</a></p>

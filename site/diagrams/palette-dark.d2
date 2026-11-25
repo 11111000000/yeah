@@ -34,6 +34,23 @@ classes: {
       font-color: ${arrow}
     }
   }
+  # The subject of the picture: the one block the picture is about.  Colour
+  # never carries the meaning alone, so the subject is the border that is
+  # heavier than the rest, and its name says what it is.
+  subject: {
+    style: {
+      stroke-width: 3
+    }
+  }
+  # A path the person approves on purpose: the bridge is a capability and
+  # not a default, and a dashed line says so in every theme.
+  capability: {
+    style: {
+      stroke-dash: 4
+      stroke: ${arrow}
+      font-color: ${arrow}
+    }
+  }
 }
 
 # The canvas is the background of the picture, the panel is a band and a note,
