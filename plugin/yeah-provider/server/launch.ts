@@ -26,6 +26,8 @@ export interface YeahLaunch {
   models: readonly string[];
   /** Хост провайдера. */
   host: string;
+  /** Эндпоинт провайдера. */
+  endpoint: string;
   /** Профиль разрешений: `plan` запрещает, `build` спрашивает человека. */
   profile: "plan" | "build" | "auto";
   /** Каталог данных Yeah; пусто — умолчание ядра. */
@@ -39,6 +41,7 @@ export const ENV = {
   model: "YEAH_ACP_MODEL",
   models: "YEAH_ACP_MODELS",
   host: "YEAH_ACP_HOST",
+  endpoint: "YEAH_ACP_ENDPOINT",
   key: "YEAH_ACP_KEY",
   profile: "YEAH_ACP_PROFILE",
   dataHome: "YEAH_ACP_DATA_HOME",
@@ -76,8 +79,10 @@ const CORE_SETUP = `  (dolist (dir (list (getenv "${ENV.lib}") (getenv "${ENV.gp
       (setq yeah-data-home home)))
   (require 'gptel)
   (require 'gptel-openai)
+  (require 'gptel-openai-responses)
   (let ((model (getenv "${ENV.model}"))
         (host (getenv "${ENV.host}"))
+        (endpoint (getenv "${ENV.endpoint}"))
         (profile (getenv "${ENV.profile}"))
         (key (getenv "${ENV.key}"))
         (names (let ((raw (getenv "${ENV.models}")))
@@ -86,13 +91,23 @@ const CORE_SETUP = `  (dolist (dir (list (getenv "${ENV.lib}") (getenv "${ENV.gp
                                 nil)))
                    (if split
                        split
-                     (list "MiniMax-M3.1-Flash"))))))
+                     (list "glm-5.3-flash"))))))
     (setq gptel-backend
-          (gptel-make-openai "paseo"
-            :host (if (and host (not (string-empty-p host))) host "api.minimax.io")
-            :endpoint "/v1/chat/completions"
-            :key key
-            :models (mapcar #'intern names)))
+          (let ((api-host (if (and host (not (string-empty-p host))) host "api.z.ai"))
+                (api-endpoint (if (and endpoint (not (string-empty-p endpoint)))
+                                  endpoint
+                                "/api/v1/responses")))
+            (if (string-match-p "responses" api-endpoint)
+                (gptel-make-openai-responses "paseo"
+                  :host api-host
+                  :endpoint api-endpoint
+                  :key key
+                  :models (mapcar #'intern names))
+              (gptel-make-openai "paseo"
+                :host api-host
+                :endpoint api-endpoint
+                :key key
+                :models (mapcar #'intern names)))))
     (setq gptel-model
           (intern (if (and model (not (string-empty-p model)))
                      model
@@ -151,6 +166,7 @@ export function launchEnv(
   env[ENV.model] = launch.model;
   env[ENV.models] = launch.models.join(",");
   env[ENV.host] = launch.host;
+  env[ENV.endpoint] = launch.endpoint;
   env[ENV.key] = key;
   env[ENV.profile] = launch.profile;
   env[ENV.dataHome] = launch.dataHome;

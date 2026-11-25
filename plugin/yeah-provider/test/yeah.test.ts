@@ -24,6 +24,7 @@ const launch: YeahLaunch = {
   model: "MiniMax-M3.1-Flash",
   models: ["MiniMax-M3.1-Flash", "MiniMax-M2"],
   host: "api.minimax.io",
+  endpoint: "/v1/chat/completions",
   profile: "build",
   dataHome: "",
 };
@@ -38,7 +39,7 @@ test("команда ACP — это Emacs в пакетном режиме и ф
 });
 
 test("форма запуска берёт живое из окружения, а не из текста команды", () => {
-  for (const name of [ENV.lib, ENV.gptel, ENV.model, ENV.models, ENV.host, ENV.key, ENV.profile]) {
+  for (const name of [ENV.lib, ENV.gptel, ENV.model, ENV.models, ENV.host, ENV.endpoint, ENV.key, ENV.profile]) {
     assert.ok(LAUNCH_FORM.includes(name), `форма не читает ${name}`);
   }
   assert.ok(!LAUNCH_FORM.includes("MiniMax-M3.1-Flash\n"), "модель вшита в форму");
@@ -49,6 +50,11 @@ test("бэкенд знает все модели, на которых серв�
   // которую знает его бэкенд: список моделей — это то, что бэкенд принял.
   assert.ok(LAUNCH_FORM.includes(":models (mapcar #'intern names)"), "бэкенд знает одну модель");
   assert.ok(LAUNCH_FORM.includes(ENV.models), "форма не читает список моделей");
+});
+
+test("эндпоинт выбирает Responses API, когда он про responses", () => {
+  assert.ok(LAUNCH_FORM.includes("gptel-make-openai-responses"), "форма не знает Responses API");
+  assert.ok(LAUNCH_FORM.includes(ENV.endpoint), "форма не читает эндпоинт");
 });
 
 test("пустая переменная окружения — это отсутствие значения", () => {
