@@ -28,7 +28,9 @@ Settings live in the host settings of Paseo under Yeah:
 | `gptelPath` | directory of the gptel build; empty means the freshest one under `~/.emacs.d/elpa` |
 | `emacsPath` | path to Emacs; empty means the usual places are searched |
 | `model` | model the provider uses |
+| `models` | models offered to Paseo |
 | `host` | host of the model backend |
+| `endpoint` | endpoint of the model backend; GLM uses the Responses API of Z.ai |
 | `profile` | permission profile of the process: `build` asks the person, `plan` forbids edits, `auto` allows everything; the mode of the session is a different thing (below) |
 | `serviceMode` | placement of the kernel: `spawn` raises one Emacs per connection, `service` keeps one Emacs for every agent and the sessions come to it over a socket |
 | `serviceName` | name of the service, which is the name of its socket; services with different names do not get in each other's way |

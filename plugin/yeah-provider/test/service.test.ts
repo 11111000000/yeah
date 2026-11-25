@@ -26,6 +26,7 @@ const launch: YeahLaunch = {
   model: "MiniMax-M3.1-Flash",
   models: ["MiniMax-M3.1-Flash"],
   host: "api.minimax.io",
+  endpoint: "/v1/chat/completions",
   profile: "build",
   dataHome: "",
 };

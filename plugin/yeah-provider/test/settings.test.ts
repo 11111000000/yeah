@@ -9,6 +9,7 @@ const base: YeahSettingsValues = {
   model: "MiniMax-M3.1-Flash",
   models: "",
   host: "api.minimax.io",
+  endpoint: "/v1/chat/completions",
   profile: "build",
   serviceMode: "spawn",
   serviceName: "paseo",

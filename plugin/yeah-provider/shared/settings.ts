@@ -25,16 +25,26 @@ export const yeahSettings = defineSettings({
     /** Путь к Emacs; пусто — искать в известных местах. */
     emacsPath: z.string().max(4096).default(""),
     /** Имя модели провайдера: на ней сервер стартует. */
-    model: z.string().max(200).default("MiniMax-M3.1-Flash"),
+    model: z.string().max(200).default("glm-5.3-flash"),
     /**
      * Модели провайдера: список через запятую.
      *
      * Модель сессии меняется по проводу, и gptel берёт только ту модель,
      * которую знает его бэкенд.  Пустой список — одна модель из `model`.
      */
-    models: z.string().max(2000).default(""),
+    models: z
+      .string()
+      .max(2000)
+      .default("glm-5.3-flash,glm-5.3,glm-5.4,glm-5-turbo"),
     /** Хост провайдера. */
-    host: z.string().max(200).default("api.minimax.io"),
+    host: z.string().max(200).default("api.z.ai"),
+    /**
+     * Эндпоинт провайдера.
+     *
+     * Для GLM это Responses API Z.ai. Для OpenAI-совместимых провайдеров можно
+     * вернуть `/v1/chat/completions`.
+     */
+    endpoint: z.string().max(4096).default("/api/v1/responses"),
     /** Профиль разрешений: `build` спрашивает человека, `plan` запрещает, `auto` никого не спрашивает. */
     profile: z.union([z.literal("plan"), z.literal("build"), z.literal("auto")]).default("build"),
     /**

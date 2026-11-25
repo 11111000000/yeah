@@ -39,8 +39,10 @@ paseo plugin install /home/az/Projects/yeah/plugin/yeah-provider
 | `repoPath` | `YEAH_REPO_PATH` или `/home/az/Projects/yeah` | корень ядра; `lib/` оттуда грузится |
 | `gptelPath` | `""` | каталог сборки gptel; пусто — свежайшая в `~/.emacs.d/elpa` |
 | `emacsPath` | `""` | путь к Emacs; пусто — ищется в известных местах |
-| `model` | `MiniMax-M3.1-Flash` | модель провайдера |
-| `host` | `api.minimax.io` | хост провайдера |
+| `model` | `glm-5.3-flash` | модель провайдера |
+| `models` | `glm-5.3-flash,glm-5.3,glm-5.4,glm-5-turbo` | модели, доступные в списке Paseo |
+| `host` | `api.z.ai` | хост провайдера |
+| `endpoint` | `/api/v1/responses` | эндпоинт провайдера; для GLM используется Responses API Z.ai |
 | `profile` | `build` | `build` спрашивает человека, `plan` запрещает правки, `auto` разрешает всё без вопроса (профиль процесса, а не режим сессии — см. «Профиль без человека») |
 | `serviceMode` | `spawn` | размещение ядра: `spawn` — свой Emacs на соединение, `service` — один Emacs на всех агентов, сессии приходят к нему по сокету |
 | `serviceName` | `paseo` | имя сервиса: имя его сокета; сервисы с разным именем не мешают друг другу |
@@ -55,8 +57,8 @@ Paseo. Он лежит в файле окружения вне дерева ре
 ```sh
 # ~/.config/yeah/live.env
 export YEAH_TEST_KEY=...
-export YEAH_TEST_HOST=api.minimax.io
-export YEAH_TEST_MODEL=MiniMax-M3.1-Flash
+export YEAH_TEST_HOST=api.z.ai
+export YEAH_TEST_MODEL=glm-5.3-flash
 ```
 
 Плагин читает `YEAH_ACP_KEY` или `YEAH_TEST_KEY` из этого файла (путь

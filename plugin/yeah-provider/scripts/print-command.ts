@@ -15,9 +15,10 @@ const launch: YeahLaunch = {
   emacs: resolveEmacs(),
   lib: path.join(repoPathFromEnv(), "lib"),
   gptel: resolveGptelDir(),
-  model: values.YEAH_TEST_MODEL ?? "MiniMax-M3.1-Flash",
-  models: [values.YEAH_TEST_MODEL ?? "MiniMax-M3.1-Flash"],
-  host: values.YEAH_TEST_HOST ?? "api.minimax.io",
+  model: values.YEAH_TEST_MODEL ?? "glm-5.3-flash",
+  models: [values.YEAH_TEST_MODEL ?? "glm-5.3-flash"],
+  host: values.YEAH_TEST_HOST ?? "api.z.ai",
+  endpoint: "/api/v1/responses",
   profile: "build",
   dataHome: "",
 };
