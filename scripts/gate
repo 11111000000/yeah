@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/gate — the gate of the project, in the foreground.
 #
-#   scripts/gate [--limit SECONDS] [--attempts N]
+#   scripts/gate [--limit SECONDS] [--attempts N] [--changed]
 #
 # The gate is a run of the method and the map that follows it.  The old way
 # around the death of a run was a watchdog: a detached process that read a
@@ -16,6 +16,12 @@
 # process.  Nothing is polled here -- no log is read, and this script holds
 # no command that sleeps.  The map is written when the run ends, so the map
 # always says how far the run came.
+
+# The changed gate is the gate of the development loop: it asks the method
+# for the partial run (--changed) -- the claims whose binding still holds
+# keep the observations they already have -- and it trades the patience of
+# the full gate for an answer: one attempt, five minutes.  The full gate
+# stays the default, because the release ritual is not partial.
 #
 # The tree of the run is owned by the runner of the pilot (scripts/live-
 # pilot): the run of the method, its children and the group of the run are
@@ -33,7 +39,7 @@
 set -u
 
 usage() {
-  echo "scripts/gate: usage: scripts/gate [--limit SECONDS] [--attempts N]" >&2
+  echo "scripts/gate: usage: scripts/gate [--limit SECONDS] [--attempts N] [--changed]" >&2
   exit 2
 }
 
@@ -45,25 +51,42 @@ root="$(cd "$dir/.." && pwd)"
 # method is a statement, and a statement is not repeated.
 limit="${YEAH_GATE_TIMEOUT:-1800}"
 attempts="${YEAH_GATE_ATTEMPTS:-3}"
+changed=0
+
+# A caller that names its bounds keeps them, whatever the gate it runs:
+# an explicit flag or an explicit environment variable wins over the
+# defaults of the changed gate.
+limit_given=0
+attempts_given=0
+[ -n "${YEAH_GATE_TIMEOUT:-}" ] && limit_given=1
+[ -n "${YEAH_GATE_ATTEMPTS:-}" ] && attempts_given=1
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --limit)
       [ $# -ge 2 ] || usage
       limit="$2"
+      limit_given=1
       shift 2
       ;;
     --limit=*)
       limit="${1#--limit=}"
+      limit_given=1
       shift
       ;;
     --attempts)
       [ $# -ge 2 ] || usage
       attempts="$2"
+      attempts_given=1
       shift 2
       ;;
     --attempts=*)
       attempts="${1#--attempts=}"
+      attempts_given=1
+      shift
+      ;;
+    --changed)
+      changed=1
       shift
       ;;
     *)
@@ -91,6 +114,18 @@ fi
 if [ "$attempts" -lt 1 ]; then
   echo "scripts/gate: there must be at least one attempt" >&2
   exit 2
+fi
+
+# The changed gate answers instead of restarting: a partial run is the
+# work of seconds, and a partial run that was killed says unknown.  The
+# caller who wants the patience of the full gate names it.
+if [ "$changed" = 1 ]; then
+  if [ "$limit_given" = 0 ]; then
+    limit=300
+  fi
+  if [ "$attempts_given" = 0 ]; then
+    attempts=1
+  fi
 fi
 
 # The knowledge of /proc lives in one place, and the place of the method
@@ -135,8 +170,13 @@ verdict=3
 attempt=1
 while :; do
   # The run is a child of the gate and the gate waits for it: the wait is
-  # the whole of the watching.
-  "$dir/live-pilot" --limit "$limit" -- "$mathc_bin" --root . run &
+  # the whole of the watching.  The changed gate asks the method for the
+  # partial run; the full gate asks for every claim.
+  mathc_args=(--root . run)
+  if [ "$changed" = 1 ]; then
+    mathc_args+=(--changed)
+  fi
+  "$dir/live-pilot" --limit "$limit" -- "$mathc_bin" "${mathc_args[@]}" &
   pilot_pid=$!
   wait "$pilot_pid"
   rc=$?

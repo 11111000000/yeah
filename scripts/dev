@@ -13,6 +13,7 @@
 #   map                   — the standing specification: claims, states, uncovered
 #   run                   — execute the checks, bind the evidence, write the trail
 #   gate                  — the gate of the project (scripts/gate); the exit code is the verdict
+#   gate-fast             — the gate of the development loop (scripts/gate --changed)
 #   help                  — this text
 #
 # Exit codes (the method's scale, A13/A14):
@@ -176,6 +177,9 @@ Subcommands:
   map                   — the standing specification: claims, states, uncovered
   run                   — execute the checks, bind the evidence, write the trail
   gate                  — the gate of the project (scripts/gate); the exit code is the verdict
+  gate-fast             — the gate of the development loop: only the changed
+                          claims, one attempt, five minutes, every line
+                          stamped with the time it arrived
   help                  — this text
 
 Exit codes:
@@ -204,9 +208,11 @@ Environment:
          — the limit of one attempt of the run of the gate, in seconds
            (default: 1800).  A run that passed the limit is stopped, and
            the gate answers with the third answer (3, unknown).
+           In the changed gate the default is 300.
   YEAH_GATE_ATTEMPTS
          — the number of attempts of the gate (default: 3).  A run that
            was killed is started again; a run that answered is not.
+           In the changed gate the default is 1.
 EOF
     ;;
 
@@ -660,6 +666,30 @@ EOF
       exit 3
     fi
     exec "$script_dir/gate" "$@"
+    ;;
+
+  gate-fast)
+    # The gate of the development loop is the changed gate of the project:
+    # one runner and one flag, not a second gate.  Every line of the output
+    # is stamped with the time it arrived, so a run that is slow says where
+    # it was slow, and a line that arrives late says so itself.
+    if [ ! -x "$script_dir/gate" ]; then
+      echo "scripts/dev gate-fast: scripts/gate is missing" >&2
+      exit 3
+    fi
+    if ! command -v awk >/dev/null 2>&1; then
+      echo "scripts/dev gate-fast: awk is not on PATH" >&2
+      exit 3
+    fi
+    # The verdict of the gate is the exit code of the pipeline, not the
+    # exit code of the stamp: pipefail gives the wrapper the answer of the
+    # gate even when the stamp is the last process of the pipeline.
+    set -o pipefail
+    "$script_dir/gate" --changed "$@" 2>&1 | awk '{
+      printf "[%s] %s\n", strftime("%H:%M:%S"), $0
+      fflush()
+    }'
+    exit $?
     ;;
 
   *)
