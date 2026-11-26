@@ -132,6 +132,7 @@ export default function contribute(server: PluginServerContext) {
     label: "Yeah",
     description:
       "The Yeah kernel: an Emacs Lisp agent harness that runs inside Emacs",
+    icon: "yeah-icon.svg",
     // Соединитель, а не команда: процесс ACP поднимает плагин, и его
     // окружение (путь к ядру, gptel и ключ) доезжает до Emacs целиком.
     connector: async () => {

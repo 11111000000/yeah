@@ -42,8 +42,9 @@
      ;; the run waits for the person: a tool that may not run yet asks a
      ;; question, and the question waits for the answer
      (awaiting-tool  permission-ask  . awaiting-user-permission)
-     (awaiting-user-permission answer  . awaiting-tool)
-     (awaiting-user-permission timeout . awaiting-tool)
+	     (awaiting-user-permission answer  . awaiting-tool)
+	     (awaiting-user-permission tool-end . awaiting-user-permission)
+	     (awaiting-user-permission timeout . awaiting-tool)
      ;; the run waits for the provider: it was busy, and the request is
      ;; asked again
      (deciding       rate-blocked    . blocked-on-rate)
@@ -71,8 +72,8 @@ Each cell has the shape (FROM LABEL . TO). The runtime
 transition table is built from this list at load time so that
 the count can be checked.")
 
-(unless (= 31 (length yeah-loop--raw-transitions))
-  (error "yeah-loop: transition count drift; expected 31, got %d"
+(unless (= 32 (length yeah-loop--raw-transitions))
+  (error "yeah-loop: transition count drift; expected 32, got %d"
          (length yeah-loop--raw-transitions)))
 
 (defvar yeah-loop-transitions yeah-loop--raw-transitions

@@ -255,7 +255,8 @@ correlates the request with its journal events without changing the existing
 
 (defconst yeah-approval-safe-read-actions
   '("read" "glob" "grep" "introspect" "buffer-read" "elisp-check"
-    "diagnostics" "job-status" "job-read")
+    "diagnostics" "job-status" "job-read" "git_status" "git_diff"
+    "todo_list")
   "Read-oriented actions that need no question from the person.
 A safe read only looks: it changes nothing.  The rules still decide what
 they name, and an explicit refusal of a safe read stays a refusal.")
