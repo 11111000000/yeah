@@ -1096,6 +1096,13 @@ ended by the noise of the provider."
         (yeah-turn--tick turn 'no-tool-calls)
         (yeah-turn--mark-done turn))))))
 
+(defun yeah-turn--write-reasoning (turn text)
+  "Write the bounded reasoning TEXT of TURN into the journal."
+  (yeah-turn--write
+   turn "reasoning"
+   (yeah-turn--context turn nil (yeah-turn-turn-event-id turn))
+   :payload (yeah-turn--reason-text text)))
+
 (defun yeah-turn--answer (turn answer answerer &optional transport info)
   "Handle the model's ANSWER in TURN. The ANSWERER answers requests."
   (unless (yeah-turn-done turn)
@@ -1144,11 +1151,9 @@ ended by the noise of the provider."
 	      ;; render it as Thinking. A chunk is bounded because a provider may
 	      ;; hand back a long explanation; the journal keeps records, not
 	      ;; conversations.
-	      (when (eq (car answer) 'reasoning)
-	        (yeah-turn--write
-	         turn "reasoning"
-	         (yeah-turn--context turn nil (yeah-turn-turn-event-id turn))
-	         :payload (yeah-turn--reason-text (cdr answer))))
+	        (when (eq (car answer) 'reasoning)
+	          (yeah-turn--write-reasoning
+	           turn (cdr answer)))
 	      nil)
      ((and (consp answer) (eq (car answer) 'tool-call))
       (yeah-turn--take-calls turn answerer transport (cdr answer)))

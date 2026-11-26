@@ -4242,7 +4242,7 @@
       ],
       "falsifier": "the journal holds no reasoning record or loses its text, the wire sends no thought chunk or sends an answer chunk instead, or a reasoning callback ends the run",
       "register": "fact",
-      "control": "sed -i 's|\"agent_thought_chunk\"|\"agent_message_chunk\"|' lib/yeah-acp.el",
+      "control": "sed -i 's|:payload (yeah-turn--reason-text text)|:payload (yeah-turn--reason-text (concat text \" dropped\"))|' lib/yeah-turn.el",
       "waiver": null
     },
     {
@@ -4257,7 +4257,7 @@
       "requirements": [
         {
           "kind": "verifier",
-          "spec": "cd plugin/yeah-provider && npm run typecheck && npm test"
+          "spec": "cd plugin/yeah-provider && npm ci --ignore-scripts && npm run typecheck && npm test"
         }
       ],
       "falsifier": "a pending Bash, Read, Grep, Read buffer, introspection, diagnostics or Git call reaches Paseo with only the tool name as its title, or a long command is not bounded",
