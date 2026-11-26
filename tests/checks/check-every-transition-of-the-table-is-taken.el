@@ -10,7 +10,7 @@
 ;;; Commentary:
 ;;
 ;; The table of the machine (`lib/yeah-loop.el') names the moves a run can
-;; make: thirty-one cells, seventeen labels and eleven states.  The promise is
+;; make: thirty-two cells, eighteen labels and eleven states.  The promise is
 ;; that every one of those cells is a move the runtime really takes -- and not
 ;; that every label of the table is taken somewhere.
 ;;
@@ -423,14 +423,14 @@ The kinds are these.
                       code.")
 
 (defconst yeah-check--expected-measurement
-  '((:cells . 31)
-    (:labels . 17)
+  '((:cells . 32)
+    (:labels . 18)
     (:states . 11)
-    (:places . 23)
-    (:live-places . 23)
+    (:places . 24)
+    (:live-places . 24)
     (:places-without-a-definition . 0)
     (:places-of-a-dead-definition . 0)
-    (:places-naming-the-state . 14)
+    (:places-naming-the-state . 15)
     (:places-not-naming-the-state . 9)
     (:labels-without-a-place-that-names-the-state . 8)
     (:cells-resting-on-a-silent-place . 15)

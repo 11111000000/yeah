@@ -24,6 +24,7 @@ accumulating --> compacting : budget-overflow
 compacting --> post_decide : compact-done
 awaiting_tool --> awaiting_user_permission : permission-ask
 awaiting_user_permission --> awaiting_tool : answer
+awaiting_user_permission --> awaiting_user_permission : parallel-tool-end
 awaiting_user_permission --> awaiting_tool : timeout
 deciding --> blocked_on_rate : rate-blocked
 blocked_on_rate --> deciding : rate-relief

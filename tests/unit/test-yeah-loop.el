@@ -101,11 +101,11 @@ and the run waits for it."
 	  (should (eq (yeah-loop-tick 'awaiting-user-permission 'timeout)
 	              'awaiting-tool)))
 
-(ert-deftest yeah-loop-tick-tool-end-preserves-the-wait ()
+(ert-deftest yeah-loop-tick-parallel-tool-end-preserves-the-wait ()
   "A tool from the same batch can settle while another tool waits for
 the person: the run keeps waiting and does not mistake that tool-end for
 the end of the whole batch."
-  (should (eq (yeah-loop-tick 'awaiting-user-permission 'tool-end)
+  (should (eq (yeah-loop-tick 'awaiting-user-permission 'parallel-tool-end)
               'awaiting-user-permission)))
 
 (ert-deftest yeah-loop-tick-rate-block-recovers ()
