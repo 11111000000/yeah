@@ -4081,7 +4081,7 @@
     },
     {
       "id": "a-workspace-grant-asks-once-and-stays-inside",
-      "text": "The default workspace mode asks once for work inside the session directory; an affirmative remembered answer becomes a workspace-wide grant for that scope. The grant does not cover a path below another root or the shell escape hatch: those ask separately, and shell work is covered only by an exact shell grant. Safe reads inside the workspace need no question.",
+      "text": "In Build with workspace trust on, one remembered answer covers later work inside the session directory; a Bash answer names the workspace shell, so it also covers later Bash commands there. The grants do not cover a path below another root. Turning workspace trust off restores Build's per-call questions, and safe reads need no question.",
       "scope": [
         "lib/yeah-acp.el",
         "lib/yeah-perm.el",
@@ -4096,7 +4096,7 @@
           "spec": "./scripts/dev ert tests/unit/test-yeah-acp.el"
         }
       ],
-      "falsifier": "the first remembered answer inside the workspace does not allow the next inside action, the workspace grant silently covers a path outside the session directory, the workspace grant silently covers bash, or a safe read inside the workspace is asked",
+      "falsifier": "the first remembered inside answer does not allow the next inside action, one remembered Bash answer does not allow the next Bash command in the session directory, the workspace grant silently covers a path outside the session directory, or turning the toggle off does not restore per-call questions",
       "register": "fact",
       "control": "sed -i 's|(yeah-acp--workspace-granted-p session-id request t)|(nil)|' lib/yeah-acp.el",
       "waiver": null

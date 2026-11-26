@@ -100,7 +100,7 @@ rules in a file and the rules of the process."
             (yeah-perm-rules-list)
             (plist-get state :rules))))
 
-(defconst yeah-acp--default-mode "workspace"
+(defconst yeah-acp--default-mode "build"
   "The mode a session is in when the client has not chosen another one.
 The mode asks once for work in the session's workspace and then keeps
 that grant.  Work outside the workspace and work of the shell ask their
@@ -108,7 +108,6 @@ own grants.")
 
 (defconst yeah-acp--mode-names
   '(("plan" "Plan" "the agent may look at the world, but not change it")
-    ("workspace" "Workspace" "one grant for work in this workspace; outside paths and shell commands ask separately")
     ("build" "Build" "the agent may change the world, and the person decides each step")
     ("auto" "Auto" "the agent may change the world, and nobody is there to answer"))
   "The name and the description of every mode of a session.
@@ -128,7 +127,7 @@ list of objects does not serialize, and the wire of ACP carries an array."
               (list :id id
                     :name (if entry (nth 1 entry) id)
                     :description (if entry (nth 2 entry)))))
-          (yeah-perm-profiles))))
+          '("plan" "build" "auto"))))
 
 (defun yeah-acp--mode-state (mode-id)
   "Return the state of the modes of a session in MODE-ID.
@@ -162,7 +161,12 @@ the person: a mode that forbids an action refuses it without asking."
 (defconst yeah-acp--model-option-id "model"
   "The id of the configuration option of the model.
 ACP names the option by its id, and the client of Paseo looks for the
-option whose category is `model'.")
+  option whose category is `model'.")
+
+(defconst yeah-acp--workspace-option-id "workspaceTrust"
+  "The id of the workspace-trust configuration option.
+ACP spells the option as a boolean: on means Build asks once for work in
+the session directory; off restores the old per-call questions.")
 
 (defun yeah-acp--session-model (state)
   "Return the name of the model the session of STATE runs on.
@@ -185,11 +189,30 @@ of objects does not serialize and the wire of ACP carries an array."
                         (mapcar (lambda (name) (list :value name :name name))
                                 (yeah-model-names)))))
 
-(defun yeah-acp--config-options (model)
+(defun yeah-acp--workspace-trust-option (state)
+  "Return the workspace-trust option of session STATE."
+  (list :id yeah-acp--workspace-option-id
+        :name "Workspace trust"
+        :category "permissions"
+        :type "boolean"
+        :currentValue (yeah-acp--workspace-trust-p state)))
+
+(defun yeah-acp--workspace-trust-p (state)
+  "Return non-nil when Build trusts one grant for the workspace of STATE.
+The legacy sessions that were opened in the short-lived Workspace mode
+keep that meaning: their journal says workspace, and Build plus trust is
+the behaviour they had."
+  (or (equal (plist-get state :mode) "workspace")
+      (not (eq (plist-get state :workspace-trust) :false))))
+
+(defun yeah-acp--config-options (model &optional state)
   "Return the configuration options of a session that runs on MODEL.
 The options travel as a vector: a list of objects does not serialize, and
 the wire of ACP carries an array."
-  (vector (yeah-acp--model-option model)))
+  (if state
+      (vector (yeah-acp--model-option model)
+              (yeah-acp--workspace-trust-option state))
+    (vector (yeah-acp--model-option model))))
 
 (defun yeah-acp--option-kind (answer)
   "Return the kind of the ACP option that offers ANSWER.
@@ -223,11 +246,14 @@ project and global -- and the refusal.  The scope travels in the option
 id: the kind of the option stays inside the vocabulary of ACP.  The
 question itself is kept, so that the answer reaches the turn that asked
 and may be remembered."
-  (let* ((state (yeah-acp--session-state session-id))
-         (workspace (and state
-                         (equal (or (plist-get state :mode) yeah-acp--default-mode)
-                                "workspace")
-                         (eq (yeah-acp--workspace-class state request) :inside)))
+	  (let* ((state (yeah-acp--session-state session-id))
+	         (class (and state (yeah-acp--workspace-class state request)))
+	         (trusted (and state (yeah-acp--workspace-trust-p state)
+	                       (member (or (plist-get state :mode) yeah-acp--default-mode)
+	                               '("workspace" "build"))))
+	         (workspace (and trusted (eq class :inside)))
+	         (workspace-shell (and trusted (eq class :shell)
+	                               (equal (plist-get request :action) "bash")))
          (request-id (yeah-acp--fresh-id "perm"))
          (params (list :sessionId session-id
                        :toolCall (list :toolCallId request-id
@@ -241,8 +267,9 @@ and may be remembered."
 	    (puthash request-id
 	             (list :session-id session-id
 	                   :action (plist-get request :action)
-	                   :resource (plist-get request :resource)
-	                   :workspace workspace)
+		                   :resource (plist-get request :resource)
+		                   :workspace workspace
+		                   :workspace-shell workspace-shell)
 	             yeah-acp--pending-permissions)
     (funcall output (json-serialize
                      (list :jsonrpc "2.0" :id request-id
@@ -334,7 +361,8 @@ question is asked of the connection the session belongs to."
                               (plist-get request :action))))
 	       ((eq (yeah-acp--mode-effect mode request) 'allow)
 	        (yeah-acp--mode-allows state request))
-	       ((equal (or mode yeah-acp--default-mode) "workspace")
+	       ((and (yeah-acp--workspace-trust-p state)
+	             (member (or mode yeah-acp--default-mode) '("workspace" "build")))
 	        (yeah-acp--workspace-answerer state request))
 	       (t
         (funcall (or yeah-acp--answerer
@@ -345,6 +373,13 @@ question is asked of the connection the session belongs to."
 (defun yeah-acp--workspace-root (state)
   "Return the project root of the workspace session STATE."
   (file-truename (or (plist-get state :cwd) default-directory)))
+
+(defun yeah-acp--workspace-shell-resource (state)
+  "Return the resource name of one shell grant for the root of STATE.
+The resource names the place where commands start, not a command string:
+one answer for Bash in this workspace must allow the next Bash command
+there as well."
+  (concat "workspace:" (yeah-acp--workspace-root state)))
 
 (defun yeah-acp--workspace-inside-p (state path)
   "Return non-nil when PATH names a file below the root of STATE.
@@ -368,7 +403,12 @@ person says otherwise."
          (directory (plist-get named :directory))
          (path (or (plist-get named :path) directory)))
     (cond
-     ((member action '("bash" "job-cancel")) :shell)
+     ((member action '("bash" "job-cancel"))
+      (if (and (stringp directory)
+               (not (string-empty-p directory))
+               (not (yeah-acp--workspace-inside-p state directory)))
+          :outside
+        :shell))
      ((equal action "delegate") :outside)
      ((and (stringp path) (not (string-empty-p path)))
       (if (yeah-acp--workspace-inside-p state path) :inside :outside))
@@ -394,6 +434,18 @@ exact rule of this request is enough as well."
      (wildcard-only wildcard)
      (t (or wildcard exact)))))
 
+(defun yeah-acp--workspace-shell-granted-p (state)
+  "Return non-nil when session rules grant Bash in the root of STATE.
+The grant is the workspace shell resource, not one exact command: one
+answer for Bash there has to cover the next command there too."
+  (let ((resource (yeah-acp--workspace-shell-resource state)))
+    (seq-some
+     (lambda (rule)
+       (and (eq (plist-get rule :effect) 'allow)
+            (equal (plist-get rule :action) "bash")
+            (equal (plist-get rule :resource) resource)))
+     (yeah-acp--session-rules (plist-get state :id)))))
+
 (defun yeah-acp--workspace-answerer (state request)
   "Answer REQUEST in the workspace mode of STATE.
 Inside work is allowed by one workspace-wide grant for the session,
@@ -405,10 +457,10 @@ user.  A safe read inside the workspace needs no question."
          (class (yeah-acp--workspace-class state request))
          (ask (yeah-acp--client-answerer session-id (yeah-acp--output-for state))))
     (cond
-     ((eq class :shell)
-      (if (yeah-acp--workspace-granted-p session-id request nil t)
-          (list :effect :allow :reply :once
-                :reason "the shell grant allows this command")
+	     ((eq class :shell)
+	      (if (yeah-acp--workspace-shell-granted-p state)
+	          (list :effect :allow :reply :once
+	                :reason "the shell grant allows this command")
         (funcall ask request)))
      ((eq class :outside)
       (if (yeah-acp--workspace-granted-p session-id request nil t)
@@ -734,8 +786,8 @@ editor learns the queue from the journal and keeps no state of its own."
      ;; The model of a session is its state in the same way: the journal
      ;; names it, and the client learns it from the replay of the journal.
      (list :sessionUpdate "config_option_update"
-           :configOptions (yeah-acp--config-options
-                           (plist-get fields :model))))
+	   :configOptions (yeah-acp--config-options
+	                           (plist-get fields :model))))
     (_ nil)))
 
 (defconst yeah-acp--outcome-types '("nudge" "unfinished" "error")
@@ -863,7 +915,8 @@ its turn and its queue."
          (state (list :id id :session session :cwd cwd :listener nil
                       :output yeah-acp--output
                       :connection yeah-acp--connection
-                      :model nil
+                     :model nil
+                      :workspace-trust t
                       :rules nil
                       :mcp-tools tools
                       :mcp-servers servers))
@@ -903,7 +956,7 @@ servers did not answer is not opened at all."
     (list :sessionId (plist-get session :id)
           :modes (yeah-acp--mode-state yeah-acp--default-mode)
           :configOptions (yeah-acp--config-options
-                          (yeah-acp--session-model state)))))
+                          (yeah-acp--session-model state) state))))
 
 (defun yeah-acp--journal-mode (session)
   "Return the mode the journal of SESSION names, or nil.
@@ -961,7 +1014,7 @@ the mode it is in, and the model it names is the model it runs on."
             :replayed (yeah-acp--replay state session)
             :modes (yeah-acp--mode-state mode)
             :configOptions (yeah-acp--config-options
-                            (yeah-acp--session-model state))))))
+                            (yeah-acp--session-model state) state)))))
 
 (defun yeah-acp--prompt-text (blocks)
   "Return prompt text from ACP content BLOCKS.
@@ -1074,10 +1127,11 @@ each one of them.  The answer is empty, as ACP says, and the client learns
 the new mode from the journal of the session, which names it."
   (let* ((session-id (plist-get request :sessionId))
          (mode-id (plist-get request :modeId)))
-    (unless (stringp session-id)
-      (signal 'user-error (list "session/set_mode needs sessionId")))
-    (unless (and (stringp mode-id) (member mode-id (yeah-perm-profiles)))
-      (signal 'user-error
+	    (unless (stringp session-id)
+	      (signal 'user-error (list "session/set_mode needs sessionId")))
+	  (unless (and (stringp mode-id)
+	               (member mode-id '("plan" "build" "auto")))
+	      (signal 'user-error
               (list (format "session/set_mode: unknown mode %S" mode-id))))
     (let* ((state (yeah-acp--session-state session-id t))
            (session (plist-get state :session)))
@@ -1087,12 +1141,13 @@ the new mode from the journal of the session, which names it."
 
 (defun yeah-acp-session-set-config-option (request)
   "Set the configuration option named by REQUEST and answer with the options.
-REQUEST carries the `sessionId', the `configId' and the `value'.  The only
-option the kernel offers now is the model: the client names the model the
-session runs on, and the model of the session is bound around the call of
-the transport, so the next run of the session goes to that model.  A model
-that no session may run on is refused: the catalog of the kernel names the
-models that can really run.
+REQUEST carries the `sessionId', the `configId' and the `value'.  The
+model option names the model the session runs on; the model of the
+session is bound around the call of the transport, so the next run of the
+session goes to that model.  The workspace-trust option is the separate
+Build toggle: on means one answer covers later work in this directory;
+off means Build asks per call.  A model that no session may run on is
+refused: the catalog of the kernel names the models that can really run.
 
 The answer carries every option of the session with its new value, as ACP
 says, and the journal of the session names the model it was left in."
@@ -1101,18 +1156,30 @@ says, and the journal of the session names the model it was left in."
          (value (plist-get request :value)))
     (unless (stringp session-id)
       (signal 'user-error (list "session/set_config_option needs sessionId")))
-    (unless (equal yeah-acp--model-option-id config-id)
+    (unless (member config-id
+                    (list yeah-acp--model-option-id
+                          yeah-acp--workspace-option-id))
       (signal 'user-error
               (list (format "session/set_config_option: unknown option %S"
                             config-id))))
-    (unless (yeah-model-known-p value)
-      (signal 'user-error
-              (list (format "session/set_config_option: unknown model %S" value))))
     (let* ((state (yeah-acp--session-state session-id t))
            (session (plist-get state :session)))
-      (plist-put state :model value)
-      (yeah-events-write session "session-model" :model value)
-      (list :configOptions (yeah-acp--config-options value)))))
+      (if (equal config-id yeah-acp--workspace-option-id)
+          (progn
+            (unless (memq value '(:true :false))
+              (signal 'user-error
+                      (list (format "session/set_config_option: %S is not a boolean"
+                                    value))))
+            (plist-put state :workspace-trust (eq value :true))
+            (yeah-events-write session "session-workspace-trust"
+                               :enabled (eq value :true)))
+        (unless (yeah-model-known-p value)
+          (signal 'user-error
+                  (list (format "session/set_config_option: unknown model %S" value))))
+        (plist-put state :model value)
+        (yeah-events-write session "session-model" :model value))
+      (list :configOptions (yeah-acp--config-options
+                            (yeah-acp--session-model state) state)))))
 
 (defun yeah-acp-session-close (request)
   "Close the session named by REQUEST and answer that it is closed.
@@ -1284,11 +1351,16 @@ names another scope is refused by name instead of being written into the
 rules of the session."
   (let* ((scoped (yeah-approval-scope-decision decision yeah-acp--carrier))
          (session-id (plist-get question :session-id))
-         (request (if (and (plist-get question :workspace)
-                           (equal (yeah-acp--session-mode session-id) "workspace"))
-                      (list :action "*" :resource "*")
+         (state (yeah-acp--session-state session-id))
+         (request (cond
+                   ((plist-get question :workspace-shell)
+                    (list :action "bash"
+                          :resource (yeah-acp--workspace-shell-resource state)))
+                   ((plist-get question :workspace)
+                    (list :action "*" :resource "*"))
+                   (t
                     (list :action (plist-get question :action)
-                          :resource (plist-get question :resource)))))
+                          :resource (plist-get question :resource))))))
     (when-let ((rule (yeah-approval-remember-rule
                       request
                       scoped)))

@@ -227,11 +227,12 @@ and not a check that waits for an hour."
 	                                        :mcpServers nil))
 	                                 :sessionId))
                      ;; This section measures the generic scope vocabulary.
-                     ;; The new default workspace mode deliberately turns a
+                     ;; Build plus workspace trust deliberately turns a
                      ;; remembered inside answer into a workspace-wide grant,
-                     ;; so the legacy exact-rule question uses Build here.
-                     (_ (plist-put (yeah-acp--session-state session-id)
-                                   :mode "build"))
+                     ;; so the legacy exact-rule question turns trust off.
+                     (_ (let ((state (yeah-acp--session-state session-id)))
+                          (plist-put state :mode "build")
+                          (plist-put state :workspace-trust :false)))
 	                     (answerer (yeah-acp--client-answerer
                                 session-id
                                 (lambda (text) (setq question-text text))))

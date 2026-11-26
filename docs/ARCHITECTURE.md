@@ -464,16 +464,16 @@ its own journal, so a child of depth one does not look like a root after a
 restart and is refused the delegation that would go deeper than the agent of
 the child allows. The promises above are kept and made explicit, not relaxed.*
 
-### D9 — Plan, Workspace, Build and Auto are permission profiles
+### D9 — Plan, Build and Auto are permission profiles
 
 Plan mode is a read-oriented rule profile. Build mode enables the normal
 approved effect set. Switching modes is a journal event. PlanExit is an
 approval operation, not a second execution engine.
 
-Workspace mode is the default of the ACP route. It asks once for work below
-the session directory; an affirmative remembered answer becomes a
-workspace-wide grant. The grant does not cross the session boundary: paths
-below another root and the shell escape hatch ask separately. It is a
+Build carries a separate workspace-trust toggle. With the toggle on, one
+remembered answer covers later work below the session directory. Bash has a
+separate workspace-shell grant, so one answer covers later Bash commands
+there, not one command. Paths below another root ask separately. This is a
 permission boundary over named tool arguments, not an operating-system
 sandbox.
 

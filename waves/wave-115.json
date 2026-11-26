@@ -1,0 +1,35 @@
+{
+  "id": "wave-115",
+  "title": "workspace trust is a Build toggle and one Bash answer covers the workspace",
+  "intent": "The user still saw Build ask before every Bash command. The cause was exact-rule memory: the request resource of Bash is the command text, so Allow for this session remembered one command. The wave makes workspace trust a separate Build toggle instead of a fourth mode. With the toggle on, one remembered answer covers later work inside the session directory. A Bash answer carries a separate workspace-shell grant named by the session root, so one answer covers later Bash commands started there; paths outside the root still ask. The ACP catalog returns Plan, Build and Auto plus the workspaceTrust boolean.",
+  "touches": [
+    "lib/yeah-acp.el",
+    "spec.json",
+    "docs/PLAN.md",
+    "docs/STATUS.md",
+    "docs/ARCHITECTURE.md",
+    "tests/unit/test-yeah-acp.el",
+    "tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
+    "tests/checks/check-the-question-offers-the-scope.el",
+    "plugin/yeah-provider/shared/settings.ts",
+    "plugin/yeah-provider/index.server.ts",
+    "plugin/yeah-provider/server/launch.ts",
+    "plugin/yeah-provider/README.md",
+    "plugin/yeah-provider/OVERVIEW.md",
+    "waves/wave-115.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
+    "./scripts/dev check tests/checks/check-the-question-offers-the-scope.el",
+    "cd plugin/yeah-provider && npm run typecheck && npm test"
+  ],
+  "claims": [
+    "a-workspace-grant-asks-once-and-stays-inside"
+  ],
+  "commitment": [],
+  "objection": "The shell grant is a permission grant, not a sandbox: after the person allows Bash in the workspace, a command can address the machine with the user's rights. The boundary checks the tool's declared directory and named paths; it cannot enumerate every way a shell command may name a path. The ACP config option exposes the toggle, but whether every orchestrator renders booleans is a client question.",
+  "refuted_by": "Build asks again for a different Bash command in the same directory after Allow for this session/project/global, the grant covers a path declared outside the session directory, or turning workspaceTrust off does not restore per-call Build questions",
+  "note": "Targeted offline checks pass: byte-compilation, 468 ERT tests, wire mode check, scope check, TypeScript check and 70 plugin tests. A live ACP probe against GLM-5.3-Flash publishes Build, three modes, and workspaceTrust=true; it stops at the expected first Bash permission because its scripted client cannot answer."
+}

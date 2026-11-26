@@ -115,7 +115,7 @@ const CORE_SETUP = `  (dolist (dir (list (getenv "${ENV.lib}") (getenv "${ENV.gp
     (require 'yeah-perm)
     (require 'yeah-acp)
 	    (dolist (rule (yeah-perm-profile (if (and profile (not (string-empty-p profile)))
-	                                         profile "workspace")))
+	                                         profile "build")))
       (yeah-perm-rules-add rule)))
 `;
 

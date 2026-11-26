@@ -100,8 +100,10 @@ these words are named in §4.
   `plugin/yeah-provider/`: the provider is registered, an agent of it runs in
   the workspace that is open in Paseo, its text reaches the timeline and its
   permissions reach the person.
-- The default ACP mode is `workspace`: one remembered grant covers work below
-  the session directory; paths outside it and shell commands ask separately.
+- The default ACP mode is `build`, with workspace trust on by default: one
+  remembered grant covers work below the session directory. Bash has a
+  separate workspace-shell grant, so one answer covers later Bash commands
+  there; paths outside the directory ask separately.
   The ACP system prompt names the session directory and asks the model to stay
   inside it unless the person explicitly asks for another place.
 
