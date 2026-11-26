@@ -16,7 +16,7 @@
 start
 :one turn of the agent
 (the model is asked, the tools are dispatched)
-lib/yeah-turn.el:1471
+lib/yeah-turn.el:1473
 (the picture does not show the machinery
 of the run: the supervision that nudges
 a model that announces and does not act,
@@ -26,7 +26,7 @@ of the states of a run is the picture
 beside this one);
 :the model proposes a tool call
 (read, edit, bash, git_status, todo_list)
-lib/yeah-turn.el:1097;
+lib/yeah-turn.el:1099;
 :the registry checks the call
 (type, name, arguments)
 lib/yeah-tools.el:435;

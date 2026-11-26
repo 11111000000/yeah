@@ -43,7 +43,7 @@
      ;; question, and the question waits for the answer
      (awaiting-tool  permission-ask  . awaiting-user-permission)
 	     (awaiting-user-permission answer  . awaiting-tool)
-	     (awaiting-user-permission tool-end . awaiting-user-permission)
+	     (awaiting-user-permission parallel-tool-end . awaiting-user-permission)
 	     (awaiting-user-permission timeout . awaiting-tool)
      ;; the run waits for the provider: it was busy, and the request is
      ;; asked again
