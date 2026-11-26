@@ -100,6 +100,10 @@ these words are named in §4.
   `plugin/yeah-provider/`: the provider is registered, an agent of it runs in
   the workspace that is open in Paseo, its text reaches the timeline and its
   permissions reach the person.
+- The default ACP mode is `workspace`: one remembered grant covers work below
+  the session directory; paths outside it and shell commands ask separately.
+  The ACP system prompt names the session directory and asks the model to stay
+  inside it unless the person explicitly asks for another place.
 
 ## 3. What is open
 
@@ -148,13 +152,13 @@ working product.
    control can bite, and their green says nothing about the claims of the
    specification.
 
-What was measured on 2026-11-24, on the tree that carries this file:
+What was measured on 2026-11-26, on the tree that carries this file:
 
 | What | Measured | Command |
 |---|---|---|
-| The unit tests of the kernel | 463 tests, 463 results as expected, 0 unexpected | `./scripts/dev ert tests/unit/*.el` |
-| The claims of the standing specification | 186 claims: 141 of them are bound to a canary, 42 to the unit tests, one to the byte-compilation, two to the benchmark, one to the picture of the interface, and one is the judgment of the owner | `./scripts/dev map` |
-| The verdict of the method | green: every one of the 186 claims holds, and the control of every one of them was shown to bite | `./scripts/dev gate` |
+| The unit tests of the kernel | 467 tests, 467 results as expected, 0 unexpected | `./scripts/dev ert tests/unit/*.el` |
+| The claims of the standing specification | 188 claims: 141 of them are bound to a canary, 43 to the unit tests, one to the byte-compilation, two to the benchmark, and one is the judgment of the owner | `./scripts/dev map` |
+| The verdict of the method | unknown: every one of the 187 factual claims is expected to hold and its control to bite, while the one judgment of the owner awaits a fresh human review | `./scripts/dev gate` |
 
 One of the claims is a judgment and not a fact:
 `the-owner-decided-the-order-of-the-next-waves` is the order of the waves,

@@ -43,7 +43,7 @@ paseo plugin install /home/az/Projects/yeah/plugin/yeah-provider
 | `models` | `glm-5.3-flash,glm-5.3,glm-5.4,glm-5-turbo` | модели, доступные в списке Paseo |
 | `host` | `api.z.ai` | хост провайдера |
 | `endpoint` | `/api/v1/responses` | эндпоинт провайдера; для GLM используется Responses API Z.ai |
-| `profile` | `build` | `build` спрашивает человека, `plan` запрещает правки, `auto` разрешает всё без вопроса (профиль процесса, а не режим сессии — см. «Профиль без человека») |
+| `profile` | `workspace` | `workspace` один раз спрашивает о работе в каталоге задачи, отдельно — о путях снаружи и shell; `build` спрашивает каждое действие, `plan` запрещает правки, `auto` разрешает всё без вопроса |
 | `serviceMode` | `spawn` | размещение ядра: `spawn` — свой Emacs на соединение, `service` — один Emacs на всех агентов, сессии приходят к нему по сокету |
 | `serviceName` | `paseo` | имя сервиса: имя его сокета; сервисы с разным именем не мешают друг другу |
 | `keyFile` | `~/.config/yeah/live.env` | файл окружения с ключом провайдера |

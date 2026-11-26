@@ -100,13 +100,15 @@ rules in a file and the rules of the process."
             (yeah-perm-rules-list)
             (plist-get state :rules))))
 
-(defconst yeah-acp--default-mode "build"
+(defconst yeah-acp--default-mode "workspace"
   "The mode a session is in when the client has not chosen another one.
-The mode is the permission profile of the session: in `build' the tools
-that change the world are asked about, one by one.")
+The mode asks once for work in the session's workspace and then keeps
+that grant.  Work outside the workspace and work of the shell ask their
+own grants.")
 
 (defconst yeah-acp--mode-names
   '(("plan" "Plan" "the agent may look at the world, but not change it")
+    ("workspace" "Workspace" "one grant for work in this workspace; outside paths and shell commands ask separately")
     ("build" "Build" "the agent may change the world, and the person decides each step")
     ("auto" "Auto" "the agent may change the world, and nobody is there to answer"))
   "The name and the description of every mode of a session.
@@ -221,7 +223,12 @@ project and global -- and the refusal.  The scope travels in the option
 id: the kind of the option stays inside the vocabulary of ACP.  The
 question itself is kept, so that the answer reaches the turn that asked
 and may be remembered."
-  (let* ((request-id (yeah-acp--fresh-id "perm"))
+  (let* ((state (yeah-acp--session-state session-id))
+         (workspace (and state
+                         (equal (or (plist-get state :mode) yeah-acp--default-mode)
+                                "workspace")
+                         (eq (yeah-acp--workspace-class state request) :inside)))
+         (request-id (yeah-acp--fresh-id "perm"))
          (params (list :sessionId session-id
                        :toolCall (list :toolCallId request-id
                                        :title (format "%s on %s"
@@ -231,11 +238,12 @@ and may be remembered."
                                        (yeah-acp--jsonable-args
                                         (plist-get request :args)))
                        :options (yeah-acp--permission-options))))
-    (puthash request-id
-             (list :session-id session-id
-                   :action (plist-get request :action)
-                   :resource (plist-get request :resource))
-             yeah-acp--pending-permissions)
+	    (puthash request-id
+	             (list :session-id session-id
+	                   :action (plist-get request :action)
+	                   :resource (plist-get request :resource)
+	                   :workspace workspace)
+	             yeah-acp--pending-permissions)
     (funcall output (json-serialize
                      (list :jsonrpc "2.0" :id request-id
                            :method "session/request_permission"
@@ -316,21 +324,103 @@ question to the person.  The rules of the session decide next; what
 they do not name is asked of the client as a
 `session/request_permission', and the call waits for the answer.  The
 question is asked of the connection the session belongs to."
-  (lambda (request)
-    (let ((mode (plist-get state :mode)))
-      (cond
-       ((yeah-acp--mode-denies-p mode request)
+	  (lambda (request)
+	    (let ((mode (plist-get state :mode)))
+	      (cond
+	       ((yeah-acp--mode-denies-p mode request)
         (list :effect :deny :reply :reject
               :reason (format "the %s mode does not allow %s"
                               (or mode yeah-acp--default-mode)
                               (plist-get request :action))))
-       ((eq (yeah-acp--mode-effect mode request) 'allow)
-        (yeah-acp--mode-allows state request))
-       (t
+	       ((eq (yeah-acp--mode-effect mode request) 'allow)
+	        (yeah-acp--mode-allows state request))
+	       ((equal (or mode yeah-acp--default-mode) "workspace")
+	        (yeah-acp--workspace-answerer state request))
+	       (t
         (funcall (or yeah-acp--answerer
                      (yeah-acp--client-answerer (plist-get state :id)
                                                  (yeah-acp--output-for state)))
-                  request))))))
+	                  request))))))
+
+(defun yeah-acp--workspace-root (state)
+  "Return the project root of the workspace session STATE."
+  (file-truename (or (plist-get state :cwd) default-directory)))
+
+(defun yeah-acp--workspace-inside-p (state path)
+  "Return non-nil when PATH names a file below the root of STATE.
+A nil or empty PATH names no place outside the workspace: the tool
+falls back to the session directory, and that directory is inside."
+  (or (not (stringp path))
+      (string-empty-p path)
+      (file-in-directory-p (expand-file-name path (yeah-acp--workspace-root state))
+                           (yeah-acp--workspace-root state))))
+
+(defun yeah-acp--workspace-class (state request)
+  "Return where REQUEST acts in the workspace mode of STATE.
+`:shell' is the escape hatch to the whole machine: it always has its own
+grant, even after the workspace itself was granted.  `:outside' is a
+path below another root.  `:inside' is work below the root of the
+session.  Everything else is treated as inside work unless a rule or a
+person says otherwise."
+  (let* ((action (plist-get request :action))
+         (args (plist-get request :args))
+         (named (yeah-tools-named-args action args))
+         (directory (plist-get named :directory))
+         (path (or (plist-get named :path) directory)))
+    (cond
+     ((member action '("bash" "job-cancel")) :shell)
+     ((equal action "delegate") :outside)
+     ((and (stringp path) (not (string-empty-p path)))
+      (if (yeah-acp--workspace-inside-p state path) :inside :outside))
+     (t :inside))))
+
+(defun yeah-acp--workspace-granted-p
+    (session-id request &optional wildcard-only exact-only)
+  "Return non-nil when the session rules allow REQUEST.
+WILDCARD-ONLY asks only for the workspace-wide grant; otherwise an
+exact rule of this request is enough as well."
+  (let* ((rules (yeah-acp--session-rules session-id))
+         (wildcard (eq (yeah-perm-effect "*" "*" rules) 'allow))
+         (exact (seq-some
+                 (lambda (rule)
+                   (and (eq (plist-get rule :effect) 'allow)
+                        (equal (plist-get rule :action)
+                               (plist-get request :action))
+                        (equal (plist-get rule :resource)
+                               (plist-get request :resource))))
+                 rules)))
+    (cond
+     (exact-only exact)
+     (wildcard-only wildcard)
+     (t (or wildcard exact)))))
+
+(defun yeah-acp--workspace-answerer (state request)
+  "Answer REQUEST in the workspace mode of STATE.
+Inside work is allowed by one workspace-wide grant for the session,
+project or user.  Work below another root and shell work are never
+covered by that grant: the first asks separately, and the person may
+answer once for this call, for the session, for the project or for the
+user.  A safe read inside the workspace needs no question."
+  (let* ((session-id (plist-get state :id))
+         (class (yeah-acp--workspace-class state request))
+         (ask (yeah-acp--client-answerer session-id (yeah-acp--output-for state))))
+    (cond
+     ((eq class :shell)
+      (if (yeah-acp--workspace-granted-p session-id request nil t)
+          (list :effect :allow :reply :once
+                :reason "the shell grant allows this command")
+        (funcall ask request)))
+     ((eq class :outside)
+      (if (yeah-acp--workspace-granted-p session-id request nil t)
+          (list :effect :allow :reply :once
+                :reason "the outside grant allows this path")
+        (funcall ask request)))
+     ((yeah-acp--workspace-granted-p session-id request t)
+      (list :effect :allow :reply :once
+            :reason "the workspace grant allows this action"))
+     (t
+      (or (yeah-approval-safe-read-decision request)
+          (funcall ask request))))))
 
 (defun yeah-acp--session-transport (state)
   "Return the transport of the session of STATE.
@@ -341,11 +431,23 @@ time do not see each other's model.  The transport keeps its shape -- it
 takes a prompt and a callback."
   (let ((base (or yeah-acp--transport yeah-acp-default-transport
                     (and (fboundp 'yeah-gptel-request) #'yeah-gptel-request))))
-    (if base
-        (lambda (prompt callback)
-          (let ((yeah-model--current (yeah-acp--session-model state)))
-            (funcall base prompt callback)))
-      base)))
+	  (if base
+	        (lambda (prompt callback)
+	          (let ((yeah-model--current (yeah-acp--session-model state)))
+	            (if (eq base #'yeah-gptel-request)
+	                (funcall base prompt callback
+	                         :system (yeah-acp--session-system-prompt state))
+	              (funcall base prompt callback))))
+	  base)))
+
+(defun yeah-acp--session-system-prompt (state)
+  "Return the model system prompt for the session STATE.
+The model is told where the session lives, because a model that does not
+know its directory guesses -- and a guess may walk through every project
+under the parent directory."
+  (concat yeah-gptel-prelude
+          (format "\nYou are working in the directory %s.\nStay inside this directory unless the person explicitly asks for another place.\n"
+                  (yeah-acp--workspace-root state))))
 
 (defun yeah-acp--make-control (state)
   "Return the controller of STATE.
@@ -1181,10 +1283,14 @@ project, the file of the user for the scope of the user.  An answer that
 names another scope is refused by name instead of being written into the
 rules of the session."
   (let* ((scoped (yeah-approval-scope-decision decision yeah-acp--carrier))
-         (session-id (plist-get question :session-id)))
+         (session-id (plist-get question :session-id))
+         (request (if (and (plist-get question :workspace)
+                           (equal (yeah-acp--session-mode session-id) "workspace"))
+                      (list :action "*" :resource "*")
+                    (list :action (plist-get question :action)
+                          :resource (plist-get question :resource)))))
     (when-let ((rule (yeah-approval-remember-rule
-                      (list :action (plist-get question :action)
-                            :resource (plist-get question :resource))
+                      request
                       scoped)))
       (let ((state (yeah-acp--session-state session-id)))
         (yeah-perm-rule-store

@@ -289,17 +289,20 @@ refusal."
 
 (defun yeah-perm-profiles ()
   "Return the names of the permission profiles."
-  '("plan" "build" "auto"))
+  '("plan" "workspace" "build" "auto"))
 
 (defun yeah-perm-profile (name)
   "Return the rules of the permission profile NAME, or nil.
 
 `plan' denies the tools that change the world: the agent may look, but
-not touch.  `build' asks for them: the person decides each one, and
-the profile decides nothing else.  `auto' allows them: there is nobody
-to ask, and the mode says so before anybody is asked.  A profile is a
-mode of work, not a policy of the person, so its rules are not added to
-the persistent ruleset.
+not touch.  `workspace' asks for them, but the route that carries the
+profile may turn one affirmative answer into a workspace-wide grant;
+the profile itself asks on every call and decides nothing else.
+`build' asks for them: the person decides each one, and the profile
+decides nothing else.  `auto' allows them: there is nobody to ask, and
+the mode says so before anybody is asked.  A profile is a mode of work,
+not a policy of the person, so its rules are not added to the
+persistent ruleset.
 
 The rule asks by the declaration of the tool and not by a list of names:
 the tools that change the world are the tools that declare a risk other
@@ -307,6 +310,8 @@ than `read', and a tool that declares no risk is one of them."
   (pcase name
     ("plan" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'deny))
                     (yeah-perm--mutating-tools)))
+    ("workspace" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'ask))
+                         (yeah-perm--mutating-tools)))
     ("build" (mapcar (lambda (tool) (yeah-perm-rule-make tool "*" 'ask))
                      (yeah-perm--mutating-tools)))
     ("auto" (list (yeah-perm-rule-make "*" "*" 'allow)))

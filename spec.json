@@ -3800,7 +3800,7 @@
       ],
       "falsifier": "the picture names a file, a line or a definition that is not there, it drops one of the seven steps of the turn or puts the steps in another order, it drops one of the six modules that hold the turn together, it has no line that names the five answers of the person, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
-      "control": "sed -i 's|lib/yeah-perm.el:523||' site/diagrams/one-turn.puml",
+      "control": "sed -i 's|lib/yeah-perm.el:528||' site/diagrams/one-turn.puml",
       "waiver": null
     },
     {
@@ -4077,6 +4077,28 @@
       "falsifier": "a picture of the site is not the picture of its source, or a picture of the site is missing, or the source of the diagram of the state machine is not written out of the code of the kernel, or the canonical form drops the colour of a picture, or the canonical form drops the text of a picture, or the canonical form drops the elements of a picture, or the canonical form keeps the noise of a picture, or the control of the claim does not make the check fail by its own assertion",
       "register": "fact",
       "control": "sed -i 's|:the call is refused|:the call is turned away|' site/diagrams/one-turn.puml",
+      "waiver": null
+    },
+    {
+      "id": "a-workspace-grant-asks-once-and-stays-inside",
+      "text": "The default workspace mode asks once for work inside the session directory; an affirmative remembered answer becomes a workspace-wide grant for that scope. The grant does not cover a path below another root or the shell escape hatch: those ask separately, and shell work is covered only by an exact shell grant. Safe reads inside the workspace need no question.",
+      "scope": [
+        "lib/yeah-acp.el",
+        "lib/yeah-perm.el",
+        "tests/unit/test-yeah-acp.el",
+        "tests/unit/test-yeah-perm.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-acp.el"
+        }
+      ],
+      "falsifier": "the first remembered answer inside the workspace does not allow the next inside action, the workspace grant silently covers a path outside the session directory, the workspace grant silently covers bash, or a safe read inside the workspace is asked",
+      "register": "fact",
+      "control": "sed -i 's|(yeah-acp--workspace-granted-p session-id request t)|(nil)|' lib/yeah-acp.el",
       "waiver": null
     },
     {
