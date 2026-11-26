@@ -1,0 +1,40 @@
+{
+  "id": "wave-113",
+  "title": "the pictures of the site are readable in the column",
+  "intent": "The question of the owner of 25 November: how the diagrams of the site can be made more stylish, clearer and deeper.  The analysis measured what nothing had measured: the guards keep the pictures TRUE, and nothing keeps them READABLE.  The widest picture (the Emacs layer, 2206 px) was scaled by the stylesheet into a column of about 1190 px, and its smallest words were read at 8.6 px while the prose of the page is 16 px -- the guards proved what a reader could not read.  The wave binds the promise: every picture of the site, rendered at the width of the frame, is read without a word smaller than twelve pixels, and the check computes the column out of the stylesheet the way a browser computes it.  The pictures were brought to the rule: the widest three were re-laid out (the Emacs layer and the placements in the elk engine with the long lines of every leaf wrapped, the state machine with the size and the separations named in the palette, the fixed point with its notes merged into the blocks they describe), and the PlantUML palette names the size of the type (defaultFontSize 16) for every picture it draws.  The escape hatch is part of the page now: every picture is an anchor to its own file, so a picture the page has scaled down can be opened one to one.  The focus and the boundary are in the sources: one block of every picture of a structure carries a heavier border (the journal of the layers, the bridge of the Emacs layer, the service of the placements, the knot of the packages), the path the person approves on purpose is drawn as a dashed capability line, and every caption carries one sentence of what the picture does not show.",
+  "touches": [
+    "site/diagrams/palette-light.d2",
+    "site/diagrams/palette-dark.d2",
+    "site/diagrams/palette-light.puml",
+    "site/diagrams/palette-dark.puml",
+    "site/diagrams/core-layers.d2",
+    "site/diagrams/emacs-layer.d2",
+    "site/diagrams/placements.d2",
+    "site/diagrams/code-packages.d2",
+    "site/diagrams/fixed-point.puml",
+    "site/assets/diagrams/",
+    "site/index.html",
+    "site/styles.css",
+    "tests/checks/check-the-pictures-are-readable-in-the-column.el",
+    "spec.json",
+    "docs/PLAN.md",
+    "AGENTS.md",
+    "waves/wave-113.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev check tests/checks/check-the-pictures-are-readable-in-the-column.el",
+    "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-the-fixed-point-diagram-shows-the-loop-of-the-delegation.el",
+    "./scripts/dev check tests/checks/check-the-site-shows-the-diagrams.el",
+    "./scripts/dev check tests/checks/check-site-diagrams-current.sh",
+    "./scripts/dev ert tests/unit/*.el"
+  ],
+  "claims": [
+    "every-picture-of-the-site-is-readable-in-the-column"
+  ],
+  "commitment": [],
+  "objection": "The floor of the check is twelve pixels, and twelve is the honest minimum the tree holds today, not the answer to the question of the owner: the owner named 12, 14 or 16 among the decisions of the owner, and the primary text of every picture is above fourteen today only because the widest pictures were re-laid out -- a narrower floor would not have forced that work.  The check computes the column out of the stylesheet at the width of the frame, and does not measure the page in a browser: a narrower window, where the gutters and the padding shrink, is outside its subject, and the pixel check of the interface does not read the pictures of the architecture at all.  The boundary of a picture lives in the CAPTION and not in the picture: a note widens an activity diagram, and a picture that carried its own boundary would break the floor it states -- the one exception is the honest limit that was already on the picture of the placements.  The reader of the activity diagrams does not split the escaped newlines of a block, and a word that stands right after such a newline is read glued to it: the first re-layout of the fixed point put `journal' and `fixed' after a line break and the check of the loop refused the picture -- the words were moved into the lines.  The control of the claim names the width of one picture in a sed, and a re-layout of that picture kills the control the way a renaming kills any control of this tree.",
+  "refuted_by": "a picture of the site is wider than the column and its smallest word is read below the floor of twelve pixels, or the stylesheet stops naming the sizes the check reads, or the check cannot find a picture of the site, or the control of the claim does not make the check fail by its own assertion",
+  "note": "Measurements of 2026-11-25.  The check of the wave passes on the honest tree: the smallest word of every picture of the site is 13.1 px in the column of the page, and the floor is 12.0 px.  The control of the claim -- taken out of spec.json and applied to a copy of the tree -- stretches the viewBox of the Emacs layer to 3333 px and bites by the assertion of the check and not by a crash: \"emacs-layer-light.svg is read at 5.7 px in the column of the page (3333 px wide, scaled 0.36)\" (code 1).  A defect of the FIRST version of the check was found by the verifier of this wave: the column read the first `padding: clamp(...)' of the stylesheet, and the first one belongs to another element (line 881), not to the picture (line 917) -- the column was 1170 px instead of 1192, pessimistic today, and one edit of an unrelated rule would have moved it silently.  The check now reads the border and the padding out of the rules that name them (.diagram and .diagram__img), and both falsifiers of that hand were measured: a stylesheet whose picture padding is not a clamp fails the check by name, and a .diagram without a border fails it the same way.  The same verifier measured the floor of the tree before the wave: the smallest word of the widest picture was 8.6 px.  The gate of the project on this tree: 187 claims, 186 of them hold (the map answers unknown and not green, because the one claim that is not established is a decision of the owner, the-owner-decided-the-order-of-the-next-waves); uncovered: 0; the run of the method executed 187 claims in 1488 s.  Two earlier gate runs of the same tree were killed from the outside (SIGTERM at 85 and at 58 of 187 claims) when the session that owned them was restarted -- the tree was never edited during a run, and the third run finished."
+}

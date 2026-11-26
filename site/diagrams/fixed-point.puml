@@ -13,59 +13,46 @@
 '
 ' The fixed point is the last step of the picture: the agent changes the code
 ' and the check that hold it, and the check passes afterwards.
+'
+' Every line of the drawing is wrapped at twenty-eight characters or so: the
+' picture must fit the column of the page at the font size the palette names,
+' and a wider picture is scaled down until its words are smaller than the
+' words of the page (the check
+' `check-the-pictures-are-readable-in-the-column.el' measures it).
 
 |Human|
 start
-:give the task to the environment;
+:give the task\nto the environment;
 
 |Environment|
-:holds the files, the buffers\nand the checks of the project;
+:holds the files,\nthe buffers\nand the checks\nof the project;
 
 |Agent|
 :read the environment;
-:call the tools of the kernel\n(read, edit, bash, git_status, todo_list);
-:change the environment;
-note right
-  The live state of Emacs is read
-  and written here
-  lib/yeah-emacs.el:62
-  lib/yeah-emacs.el:120
-end note
+:call the tools of the kernel\n(read, edit, bash,\ngit_status, todo_list);
+:change the environment\n(the live state of Emacs\nis read and written here)\nlib/yeah-emacs.el:62\nlib/yeah-emacs.el:120;
 
 |Environment|
-:the change is the new environment;
+:the change is\nthe new environment;
 
 |Agent|
-if (does the task need a child?) then (yes)
-  :delegate names an agent preset;
-  note right
-    The preset is a file: a name, a model,
-    the tools and the depth
-    lib/yeah-agent.el:131
-    lib/yeah-delegate.el:219
-  end note
-  :the child runs in a session of its own,\nwith its own journal, its own tools\nand its own depth;
-  :the child changes the environment too;
-  note right
-    The depth of the tree is bounded,
-    the time of a child is bounded,
-    the budget of a child is bounded
-    lib/yeah-subagent.el:156
-    lib/yeah-subagent.el:319
-  end note
+if (does the task\nneed a child?) then (yes)
+  :delegate names an agent preset\n(the preset is a file:\na name, a model,\nthe tools, the depth)\nlib/yeah-agent.el:131\nlib/yeah-delegate.el:219;
+  :the child runs in a session of\nits own, with a journal of its\nown, its own tools and its own\ndepth (the tree depth, the time\nand the budget of a child are\nbounded)\nlib/yeah-subagent.el:156\nlib/yeah-subagent.el:319;
+  :the child changes\nthe environment too;
 else (no)
-  :the agent keeps the tools of its own;
+  :the agent keeps\nthe tools of its own;
 endif
 
 |Human|
-:see what the environment holds;
+:see what\nthe environment holds;
 
 |Agent|
 :run the check of the environment;
 if (does the check fail?) then (yes)
-  :read the failure\nand change the environment again;
+  :read the failure\nand change the\nenvironment again;
 else (no)
-  :the environment holds the repair:\nthe agent fixed its own code\nand its own check;
+  :the environment holds the\nrepair: the agent fixed its\nown code and its own check;
 endif
 stop
 @enduml

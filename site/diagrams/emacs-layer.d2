@@ -19,21 +19,34 @@
 
 direction: down
 
+# The engine of this one picture is elk: its layout stacks the editor's
+# leaves and the harness's leaves into columns that fit the column of the
+# page, and dagre spreads them into rows that the page would scale down
+# until the words of the picture are smaller than the words of the page.
+vars: {
+  d2-config: {
+    layout-engine: elk
+  }
+}
+
 person: "the person\nM-x yeah\nlib/yeah.el:37"
 
 editor: "the editor's Emacs -- the environment of the person" {
-  buffers: "BUFFERS\nunsaved edits are context\nlib/yeah-bridge.el:210"
-  compose: "COMPOSE\nyour tools remain your tools\nlib/yeah-compose.el:83"
-  diagnose: "DIAGNOSE\nno second build system\nlib/yeah-doctor-ui.el:148"
-  approval: "The approval view\nlib/yeah-approval-ui.el:43"
+  buffers: "BUFFERS\nunsaved edits\nare context\nlib/yeah-bridge.el:210"
+  compose: "COMPOSE\nyour tools remain\nyour tools\nlib/yeah-compose.el:83"
+  diagnose: "DIAGNOSE\nno second\nbuild system\nlib/yeah-doctor-ui.el:148"
+  approval: "The approval\nview\nlib/yeah-approval-ui.el:43"
 }
 
 harness: "the agent's Emacs -- the harness" {
-  kernel: "The kernel\none turn of the agent\nlib/yeah-turn.el:1471"
-  introspect: "INTROSPECT\nthe runtime explains itself\nlib/yeah-emacs.el:62"
-  edit: "EDIT\nchanges respect the buffer\nlib/yeah-diff.el:64"
-  recover: "RECOVER\nhistory outlives the interface\nlib/yeah-session.el:167"
-  bridge: "The bridge -- emacsclient\nlib/yeah-bridge.el:177"
+  kernel: "The kernel\none turn of\nthe agent\nlib/yeah-turn.el:1471"
+  introspect: "INTROSPECT\nthe runtime\nexplains itself\nlib/yeah-emacs.el:62"
+  edit: "EDIT\nchanges respect\nthe buffer\nlib/yeah-diff.el:64"
+  recover: "RECOVER\nhistory outlives\nthe interface\nlib/yeah-session.el:167"
+}
+
+bridge: "The bridge\nemacsclient\nlib/yeah-bridge.el:177" {
+  class: subject
 }
 
 person -> editor.compose: {
@@ -50,15 +63,15 @@ person -> editor.approval: {
 }
 editor.approval -> harness.kernel: {
   class: flow
-  label: "the answer decides what may run"
+  label: "the answer decides\nwhat may run"
 }
-harness.kernel -> harness.bridge: {
+harness.kernel -> bridge: {
   class: flow
-  label: "the only path to the live state"
+  label: "the only path\nto the live state"
 }
-harness.bridge -> editor.buffers: {
-  class: flow
-  label: "a capability you approve on purpose"
+bridge -> editor.buffers: {
+  class: capability
+  label: "a capability you\napprove on purpose"
 }
 harness.kernel -> harness.introspect: {
   class: flow

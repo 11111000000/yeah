@@ -11,6 +11,17 @@
 # modules of `lib/' that this picture does not name are listed in the note
 # at the end of this file, with the reason why they are not there.
 
+# The engine of this one picture is elk: its layout packs the leaves of
+# every band tighter than dagre, and a picture that is wider than the column
+# of the page is scaled down until its words are smaller than the words of
+# the page (the check
+# `check-the-pictures-are-readable-in-the-column.el' measures it).
+vars: {
+  d2-config: {
+    layout-engine: elk
+  }
+}
+
 ask: "what asks" {
   human: "The person\nlib/yeah.el:37"
   clients: "The ACP and MCP clients\nlib/yeah-acp.el:401"
@@ -20,13 +31,15 @@ ask: "what asks" {
 decide: "what decides" {
   run: "The run\none turn at a time\nlib/yeah-run.el:40"
   model: "The model\nthe one door out\nlib/yeah-model.el:58"
-  registry: "The registry of the tools\nlib/yeah-tools.el:119"
-  policy: "The policy and the approvals\nlib/yeah-perm.el:213"
+  registry: "The registry\nof the tools\nlib/yeah-tools.el:119"
+  policy: "The policy\nand the approvals\nlib/yeah-perm.el:213"
   scheduler: "The scheduler\nlib/yeah-runtime.el:113"
 }
 
 memory: "what is remembered" {
-  journal: "The journal\nappend only\nlib/yeah-session.el:167"
+  journal: "The journal\nappend only\nlib/yeah-session.el:167" {
+    class: subject
+  }
 }
 
 seen: "what is seen" {
@@ -48,4 +61,4 @@ memory -> seen: {
   label: "every view is a projection"
 }
 
-note: "The modules of lib/ that this picture does not name:\nlib/yeah-codes.el -- experimental: off by default\nand not wired into the agent loop.\nlib/yeah-state-diagram.el -- the generator of the\nstate diagram: a tool of the author, not a part of\nthe harness at run time."
+note: "The modules of lib/ that\nthis picture does not name:\nlib/yeah-codes.el -- experimental:\noff by default and not wired\ninto the agent loop.\nlib/yeah-state-diagram.el -- the\ngenerator of the state diagram:\na tool of the author, not a\npart of the harness at run time."

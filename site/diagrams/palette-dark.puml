@@ -25,3 +25,14 @@ skinparam activityBorderColor #646464
 skinparam activityFontColor #FFFFFF
 skinparam noteBackgroundColor #1E1E1E
 skinparam noteBorderColor #646464
+
+' The size of the type is a rule of the page, not a taste of a picture: the
+' picture must be read in the column of the page, and a picture that is wider
+' than the column is scaled down until its words are smaller than the words of
+' the page.  `defaultFontSize 16' is the size the reader reads; `nodesep' and
+' `ranksep' keep the boxes of a state diagram close enough that the picture
+' stays inside the column at that size.  The check
+' `check-the-pictures-are-readable-in-the-column.el' measures it on the tree.
+skinparam defaultFontSize 16
+skinparam nodesep 5
+skinparam ranksep 30
