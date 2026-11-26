@@ -120,15 +120,22 @@ Returns a list of failures; an empty list means the turn behaved."
                       (yeah-turn-states turn))
               failures))
       (unless (equal (yeah-check--types records)
-                     '("header" "user-message" "tool-request"
+                     '("header" "user-message" "reasoning" "tool-request"
                        "permission-request" "permission-decision"
                        "tool-end" "tool-request" "permission-request"
                        "permission-decision" "tool-end" "finish"))
         (push (format "the log holds the wrong records: %S"
                       (yeah-check--types records))
               failures))
-      (unless (equal (plist-get (nth 5 records) :tool) "probe")
-        (push "the logged tool is not the one that ran" failures)))
+      (unless (equal (plist-get (nth 6 records) :tool) "probe")
+        (push "the logged tool is not the one that ran" failures))
+      (let ((reasoning (nth 2 records)))
+        (unless (equal "reasoning" (plist-get reasoning :type))
+          (push "the model's reasoning is not in the log" failures))
+        (unless (equal "the model is thinking"
+                       (plist-get reasoning :payload))
+          (push "the logged reasoning is not the model's reasoning"
+                failures))))
     (ignore-errors (delete-directory root t t))
     failures))
 
@@ -162,7 +169,7 @@ Returns a list of failures; an empty list means the turn behaved."
         (push "the run that did not finish is not in the log" failures))
       (when (>= (length records) 6)
         (unless (equal "deny: probe on /tmp/probe-target"
-                       (plist-get (nth 5 records) :payload))
+                       (plist-get (nth 6 records) :payload))
           (push (format "the refusal was not logged as one: %S"
                         (plist-get (nth 2 records) :payload))
                 failures))))

@@ -1096,6 +1096,13 @@ ended by the noise of the provider."
         (yeah-turn--tick turn 'no-tool-calls)
         (yeah-turn--mark-done turn))))))
 
+(defun yeah-turn--write-reasoning (turn text)
+  "Write the bounded reasoning TEXT of TURN into the journal."
+  (yeah-turn--write
+   turn "reasoning"
+   (yeah-turn--context turn nil (yeah-turn-turn-event-id turn))
+   :payload (yeah-turn--reason-text text)))
+
 (defun yeah-turn--answer (turn answer answerer &optional transport info)
   "Handle the model's ANSWER in TURN. The ANSWERER answers requests."
   (unless (yeah-turn-done turn)
@@ -1138,10 +1145,16 @@ ended by the noise of the provider."
         ;; to settle and ends the run then, instead of breaking it.
         (setf (yeah-turn-pending-answer turn) answer)
         nil))
-     ((and (consp answer) (memq (car answer) '(reasoning tool-result)))
-      ;; Not the answer: the model is still thinking, or the tools were
-      ;; run and their results are on their way. The answer comes later.
-      nil)
+	     ((and (consp answer) (memq (car answer) '(reasoning tool-result)))
+	      ;; The reasoning is not the answer, but it is part of the visible
+	      ;; run: the person sees the road the model took, and a client can
+	      ;; render it as Thinking. A chunk is bounded because a provider may
+	      ;; hand back a long explanation; the journal keeps records, not
+	      ;; conversations.
+	        (when (eq (car answer) 'reasoning)
+	          (yeah-turn--write-reasoning
+	           turn (cdr answer)))
+	      nil)
      ((and (consp answer) (eq (car answer) 'tool-call))
       (yeah-turn--take-calls turn answerer transport (cdr answer)))
      ((and (consp answer) (eq (car answer) 'error))

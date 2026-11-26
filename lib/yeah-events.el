@@ -42,6 +42,8 @@
      :required (:payload))
     (:type "assistant-message"
      :required (:payload))
+    (:type "reasoning"
+     :required (:payload))
     (:type "tool-request"
      :required (:tool :args)
      :optional (:kind :named_args))

@@ -841,6 +841,15 @@ another root still reach the client."
       (remhash session-id yeah-acp--sessions)
       (ignore-errors (delete-directory root t))))))
 
+(ert-deftest yeah-acp-reasoning-is-a-thought-chunk ()
+  "A reasoning record reaches ACP as agent_thought_chunk, not as the answer."
+  (let ((update (yeah-acp--update-for
+                 "reasoning" (list :payload "the road to the answer") 12 nil)))
+    (should (equal "agent_thought_chunk"
+                   (plist-get update :sessionUpdate)))
+    (should (equal (list :type "text" :text "the road to the answer")
+                   (plist-get update :content)))))
+
 (ert-deftest yeah-acp-the-session-system-prompt-names-its-directory ()
   "The model is told the session directory and the default boundary."
   (let* ((root (make-temp-file "yeah-workspace" t))

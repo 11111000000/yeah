@@ -168,6 +168,27 @@ test("инструмент без известного рода остаётся
   assert.equal(snapshot.kind, undefined);
 });
 
+test("трансформер делает богатый title для вызова", () => {
+  const cases: Array<{name: string; input: Record<string, string>; title: string}> = [
+    {name: "bash", input: {command: "git status --short"}, title: "git status --short"},
+    {name: "read", input: {path: "lib/yeah-turn.el"}, title: "lib/yeah-turn.el"},
+    {name: "grep", input: {pattern: "defun.*tool", directory: "/tmp/proj"}, title: "defun.*tool in /tmp/proj"},
+    {name: "buffer-read", input: {name: "*scratch*"}, title: "*scratch*"},
+    {name: "diagnostics", input: {}, title: "current buffer"},
+  ];
+  for (const entry of cases) {
+    const snapshot = yeahToolCallTransformer({
+      id: "rich",
+      title: entry.name,
+      status: "pending",
+      input: entry.input,
+      output: null,
+      locations: [],
+    });
+    assert.equal(snapshot.title, entry.title);
+  }
+});
+
 test("имена аргументов правки переводятся в имена клиента", () => {
   const snapshot = yeahToolCallTransformer({
     id: "call-4",

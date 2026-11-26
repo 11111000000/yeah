@@ -1,0 +1,34 @@
+{
+  "id": "wave-118",
+  "title": "rich tool titles and visible Thinking on the ACP wire",
+  "intent": "Paseo collapsed tool calls looked uniform because Yeah sent only the tool name as title, although rawInput was present. The provider now derives a bounded human title from declared input: Bash shows the command, Read and edit show the path, Grep and Glob show the pattern, and Emacs/Git capabilities show the buffer, symbol or directory. Reasoning was another display gap: gptel delivered reasoning chunks, but Yeah dropped them. The turn now writes a bounded reasoning journal record and ACP projects it as agent_thought_chunk, which Paseo renders as Thinking.",
+  "touches": [
+    "lib/yeah-turn.el",
+    "lib/yeah-events.el",
+    "lib/yeah-acp.el",
+    "plugin/yeah-provider/server/yeah.ts",
+    "spec.json",
+    "tests/checks/check-model-turn-runs.el",
+    "tests/unit/test-yeah-acp.el",
+    "plugin/yeah-provider/test/yeah.test.ts",
+    "docs/PLAN.md",
+    "docs/STATUS.md",
+    "waves/wave-118.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-model-turn-runs.el",
+    "./scripts/dev check tests/checks/check-events-are-typed.el",
+    "./scripts/dev check tests/checks/check-acp-third-party-client.el",
+    "cd plugin/yeah-provider && npm run typecheck && npm test"
+  ],
+  "claims": [
+    "a-reasoning-chunk-is-a-thought",
+    "a-tool-call-title-carries-its-work"
+  ],
+  "commitment": [],
+  "objection": "A rich title is a projection, not additional execution data; rawInput remains the source of exact arguments. A reasoning chunk may be provider-specific: if gptel or the model sends none, there is nothing to show. The journal record is bounded and is not a prompt to continue reasoning as an answer.",
+  "refuted_by": "Paseo receives a known tool call whose collapsed title is only the tool name, a reasoning callback is absent from the journal, the wire sends reasoning as an agent message, or a reasoning callback completes the run",
+  "note": null
+}

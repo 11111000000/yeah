@@ -149,6 +149,70 @@ const EDIT_ARGUMENT_NAMES: Record<string, string> = {
   new_str: "newString",
 };
 
+const TITLE_LENGTH = 160;
+
+function inputRecordOf(toolCall: AcpToolCallSnapshot): Record<string, unknown> {
+  const input = toolCall.input as unknown;
+  return typeof input === "object" && input !== null && !Array.isArray(input)
+    ? (input as Record<string, unknown>)
+    : {};
+}
+
+function firstString(record: Record<string, unknown>, ...keys: readonly string[]): string {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function titleTail(text: string): string {
+  const compact = text.replace(/\s+/g, " ").trim();
+  return compact.length <= TITLE_LENGTH
+    ? compact
+    : `${compact.slice(0, TITLE_LENGTH - 1)}…`;
+}
+
+function titleOf(
+  toolCall: AcpToolCallSnapshot,
+  input: Record<string, unknown>,
+): string {
+  const name = toolNameOf(toolCall);
+  const command = firstString(input, "command");
+  const path = firstString(input, "path", "filePath");
+  const pattern = firstString(input, "pattern");
+  const directory = firstString(input, "directory");
+  const place = (value: string): string =>
+    directory ? `${value} in ${directory}` : value;
+  switch (name) {
+    case "bash":
+      return command || name;
+    case "read":
+      return path || name;
+    case "glob":
+      return place(pattern || name);
+    case "grep":
+      return place(pattern || name);
+    case "edit":
+    case "write":
+      return path || name;
+    case "buffer-read":
+      return firstString(input, "name") || name;
+    case "introspect":
+      return firstString(input, "symbol") || name;
+    case "elisp-check":
+      return path || name;
+    case "diagnostics":
+      return path || "current buffer";
+    case "git_status":
+      return directory || name;
+    case "git_diff":
+      return path ? `diff ${path} in ${directory}` : directory || name;
+    default:
+      return toolCall.title || name;
+  }
+}
+
 /** Имя инструмента в снимке: ядро шлёт его в заголовке. */
 export function toolNameOf(toolCall: AcpToolCallSnapshot): string {
   const candidates = [toolCall.name, toolCall.title];
@@ -198,7 +262,9 @@ export function yeahToolCallTransformer(
         return kind ? { ...toolCall, kind } : toolCall;
       })();
   const input = yeahEditArguments(withKind);
-  return input === withKind.input ? withKind : { ...withKind, input };
+  const withInput = input === withKind.input ? withKind : { ...withKind, input };
+  const title = titleTail(titleOf(withInput, inputRecordOf(withInput)));
+  return title === withInput.title ? withInput : { ...withInput, title };
 }
 
 /**
@@ -268,4 +334,3 @@ export function yeahOutcomeNotification(notification: {
   if (description !== undefined) notice.description = description;
   return { type: "notice", notice };
 }
-
