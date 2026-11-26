@@ -53,7 +53,7 @@ export const yeahSettings = defineSettings({
         z.literal("build"),
         z.literal("auto"),
       ])
-      .default("workspace"),
+      .default("build"),
     /**
      * Размещение ядра: `spawn` — свой Emacs на соединение, `service` — один
      * Emacs на всех агентов, сессии приходят к нему по сокету.

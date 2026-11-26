@@ -605,8 +605,8 @@ their names to the person."
                           :mcpServers nil)))
            (modes (plist-get answer :modes))
            (available (plist-get modes :availableModes)))
-      (should (equal "workspace" (plist-get modes :currentModeId)))
-      (should (equal '("auto" "build" "plan" "workspace")
+      (should (equal "build" (plist-get modes :currentModeId)))
+      (should (equal '("auto" "build" "plan")
                      (sort (mapcar (lambda (mode) (plist-get mode :id)) available)
                            #'string<)))
       (should (cl-every (lambda (mode) (stringp (plist-get mode :name)))
@@ -749,12 +749,13 @@ client decide."
               (setq asked (1+ asked))
               (list :effect :allow :reply :once)))
       (let ((decide (yeah-acp--session-answerer state)))
-        (plist-put state :mode "plan")
+	      (plist-put state :mode "plan")
         (let ((decision (funcall decide (list :action "write"
                                                 :resource "written.txt"))))
           (should (eq :deny (plist-get decision :effect)))
           (should (equal 0 asked)))
         (plist-put state :mode "build")
+        (plist-put state :workspace-trust :false)
         (let ((decision (funcall decide (list :action "write"
                                                 :resource "written.txt"))))
           (should (eq :allow (plist-get decision :effect)))
@@ -803,6 +804,42 @@ another root still reach the client."
                 (should (= 1 asked))))
         (remhash session-id yeah-acp--sessions)
         (ignore-errors (delete-directory root t)))))))
+
+(ert-deftest yeah-acp-one-shell-answer-covers-the-next-command ()
+  "One remembered Bash answer names the workspace shell, not one command."
+  (let* ((root (make-temp-file "yeah-workspace" t))
+         (session-id "session-test")
+         (state (list :id session-id :cwd root :mode "build"
+                      :workspace-trust t :rules nil)))
+    (puthash session-id state yeah-acp--sessions)
+    (unwind-protect
+        (let ((decide (yeah-acp--session-answerer state))
+              (asked 0))
+          (cl-letf (((symbol-function 'yeah-acp--client-answerer)
+                     (lambda (_session-id _output)
+                       (lambda (_request)
+                         (setq asked (1+ asked))
+                         (list :effect :defer :defer "question")))))
+            (let ((first (funcall decide
+                                  (list :action "bash"
+                                        :resource "git status"
+                                        :args (list "git status")))))
+              (should (eq :defer (plist-get first :effect)))
+              (plist-put
+               state :rules
+               (list (yeah-perm-rule-make
+                      "bash"
+                      (yeah-acp--workspace-shell-resource state)
+                      'allow
+                      :session)))
+              (let ((second (funcall decide
+                                     (list :action "bash"
+                                           :resource "ls tests"
+                                           :args (list "ls tests")))))
+                (should (eq :allow (plist-get second :effect)))
+                (should (= 1 asked)))))
+      (remhash session-id yeah-acp--sessions)
+      (ignore-errors (delete-directory root t))))))
 
 (ert-deftest yeah-acp-the-session-system-prompt-names-its-directory ()
   "The model is told the session directory and the default boundary."
