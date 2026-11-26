@@ -47,7 +47,7 @@ const DEFAULTS: YeahSettingsValues = {
   models: "glm-5.3-flash,glm-5.3,glm-5.4,glm-5-turbo",
   host: "api.z.ai",
   endpoint: "/api/v1/responses",
-  profile: "build",
+  profile: "workspace",
   keyFile: "~/.config/yeah/live.env",
   dataHome: "",
   serviceMode: "spawn",

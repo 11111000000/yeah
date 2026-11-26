@@ -23,7 +23,7 @@ const launch: YeahLaunch = {
   models: [values.YEAH_TEST_MODEL ?? "glm-5.3-flash"],
   host: values.YEAH_TEST_HOST ?? "api.z.ai",
   endpoint: "/api/v1/responses",
-  profile: "build",
+  profile: "workspace",
   dataHome: "",
 };
 

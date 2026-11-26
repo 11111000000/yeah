@@ -605,8 +605,8 @@ their names to the person."
                           :mcpServers nil)))
            (modes (plist-get answer :modes))
            (available (plist-get modes :availableModes)))
-      (should (equal "build" (plist-get modes :currentModeId)))
-      (should (equal '("auto" "build" "plan")
+      (should (equal "workspace" (plist-get modes :currentModeId)))
+      (should (equal '("auto" "build" "plan" "workspace")
                      (sort (mapcar (lambda (mode) (plist-get mode :id)) available)
                            #'string<)))
       (should (cl-every (lambda (mode) (stringp (plist-get mode :name)))
@@ -759,6 +759,61 @@ client decide."
                                                 :resource "written.txt"))))
           (should (eq :allow (plist-get decision :effect)))
           (should (equal 1 asked)))))))
+
+(ert-deftest yeah-acp-workspace-class-follows-the-session-directory ()
+  "A path below the session directory is inside; a sibling tree is outside."
+  (let* ((root (make-temp-file "yeah-workspace" t))
+         (outside (make-temp-file "yeah-outside" t))
+         (state (list :id "test" :cwd root :mode "workspace")))
+    (unwind-protect
+        (should (eq :inside
+                    (yeah-acp--workspace-class
+                     state (list :action "write" :args (list "file.txt" "text")))))
+      (ignore-errors (delete-directory root t))
+      (ignore-errors (delete-directory outside t)))))
+
+(ert-deftest yeah-acp-workspace-grant-covers-inside-not-shell-or-outside ()
+  "One workspace grant covers work below the root; shell and paths below
+another root still reach the client."
+  (yeah-acp-test--with-server
+    (let* ((root (make-temp-file "yeah-workspace" t))
+           (session-id "session-test")
+           (state (list :id session-id :cwd root :mode "workspace"
+                        :rules (list (yeah-perm-rule-make "*" "*" 'allow
+                                                          :session)))))
+      (puthash session-id state yeah-acp--sessions)
+      (unwind-protect
+          (let ((decide (yeah-acp--session-answerer state))
+                (asked 0))
+            (cl-letf (((symbol-function 'yeah-acp--client-answerer)
+                       (lambda (_session-id _output)
+                         (lambda (_request)
+                           (setq asked (1+ asked))
+                           (list :effect :defer :defer "question")))))
+              (let ((inside (funcall decide
+                                     (list :action "write"
+                                           :resource "file.txt"
+                                           :args (list "file.txt" "text"))))
+                    (shell (funcall decide
+                                    (list :action "bash"
+                                          :resource "ls"
+                                          :args (list "ls")))))
+                (should (eq :allow (plist-get inside :effect)))
+                (should (eq :defer (plist-get shell :effect)))
+                (should (= 1 asked))))
+        (remhash session-id yeah-acp--sessions)
+        (ignore-errors (delete-directory root t)))))))
+
+(ert-deftest yeah-acp-the-session-system-prompt-names-its-directory ()
+  "The model is told the session directory and the default boundary."
+  (let* ((root (make-temp-file "yeah-workspace" t))
+         (prompt (yeah-acp--session-system-prompt
+                  (list :cwd root :mode "workspace"))))
+    (unwind-protect
+        (progn
+          (should (string-match-p (regexp-quote root) prompt))
+          (should (string-match-p "Stay inside this directory" prompt)))
+      (ignore-errors (delete-directory root t)))))
 
 (provide 'test-yeah-acp)
 ;;; test-yeah-acp.el ends here

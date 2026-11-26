@@ -29,7 +29,7 @@ export interface YeahLaunch {
   /** Эндпоинт провайдера. */
   endpoint: string;
   /** Профиль разрешений: `plan` запрещает, `build` спрашивает человека. */
-  profile: "plan" | "build" | "auto";
+  profile: "plan" | "workspace" | "build" | "auto";
   /** Каталог данных Yeah; пусто — умолчание ядра. */
   dataHome: string;
 }
@@ -114,8 +114,8 @@ const CORE_SETUP = `  (dolist (dir (list (getenv "${ENV.lib}") (getenv "${ENV.gp
                    (car names))))
     (require 'yeah-perm)
     (require 'yeah-acp)
-    (dolist (rule (yeah-perm-profile (if (and profile (not (string-empty-p profile)))
-                                         profile "build")))
+	    (dolist (rule (yeah-perm-profile (if (and profile (not (string-empty-p profile)))
+	                                         profile "workspace")))
       (yeah-perm-rules-add rule)))
 `;
 

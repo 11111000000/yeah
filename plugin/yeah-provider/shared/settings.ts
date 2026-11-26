@@ -46,7 +46,14 @@ export const yeahSettings = defineSettings({
      */
     endpoint: z.string().max(4096).default("/api/v1/responses"),
     /** Профиль разрешений: `build` спрашивает человека, `plan` запрещает, `auto` никого не спрашивает. */
-    profile: z.union([z.literal("plan"), z.literal("build"), z.literal("auto")]).default("build"),
+    profile: z
+      .union([
+        z.literal("plan"),
+        z.literal("workspace"),
+        z.literal("build"),
+        z.literal("auto"),
+      ])
+      .default("workspace"),
     /**
      * Размещение ядра: `spawn` — свой Emacs на соединение, `service` — один
      * Emacs на всех агентов, сессии приходят к нему по сокету.

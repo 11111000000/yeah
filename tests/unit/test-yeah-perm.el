@@ -139,11 +139,19 @@ world and says nothing about the others."
     (should (eq 'ask (yeah-perm-effect "edit" "/tmp/x" rules)))
     (should (eq 'ask (yeah-perm-effect "read" "/tmp/x" rules)))))
 
+(ert-deftest yeah-perm-profile-workspace-asks-for-the-tools-that-change-the-world ()
+  "The workspace profile starts as ask-only; the route remembers the
+person's workspace-wide answer."
+  (let ((rules (yeah-perm-profile "workspace")))
+    (should (eq 'ask (yeah-perm-effect "edit" "/tmp/x" rules)))
+    (should (eq 'ask (yeah-perm-effect "read" "/tmp/x" rules)))))
+
 (ert-deftest yeah-perm-profile-of-an-unknown-name-is-nil ()
   "A profile that does not exist is not a profile."
   (should-not (yeah-perm-profile "rewrite"))
-  (should (member "plan" (yeah-perm-profiles)))
-  (should (member "build" (yeah-perm-profiles)))
+	  (should (member "plan" (yeah-perm-profiles)))
+	  (should (member "workspace" (yeah-perm-profiles)))
+	  (should (member "build" (yeah-perm-profiles)))
   (should (member "auto" (yeah-perm-profiles))))
 
 (ert-deftest yeah-perm-profile-auto-allows-everything ()

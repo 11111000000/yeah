@@ -1,0 +1,38 @@
+{
+  "id": "wave-113",
+  "title": "the default workspace mode asks once and stays inside",
+  "intent": "The ACP default mode was build, so an orchestrator session asked before every mutating tool. The wave adds the workspace profile and makes it the default: one remembered grant covers work below the session directory, while paths outside that directory and shell commands ask separately. The ACP transport also tells the model the session directory and asks it to stay inside unless the person explicitly asks for another place; without that sentence the model could treat the parent of the workspace as 'the project' and walk through neighbouring repositories.",
+  "touches": [
+    "lib/yeah-acp.el",
+    "lib/yeah-perm.el",
+    "plugin/yeah-provider/shared/settings.ts",
+    "plugin/yeah-provider/server/launch.ts",
+    "plugin/yeah-provider/index.server.ts",
+    "tests/unit/test-yeah-acp.el",
+    "tests/unit/test-yeah-perm.el",
+    "tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
+    "spec.json",
+    "docs/PLAN.md",
+    "docs/STATUS.md",
+    "docs/ARCHITECTURE.md",
+    "plugin/yeah-provider/README.md",
+    "plugin/yeah-provider/OVERVIEW.md",
+    "waves/wave-113.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
+    "./scripts/dev check tests/checks/check-a-session-may-work-without-a-person.el",
+    "./scripts/dev check tests/checks/check-a-tool-declares-its-own-risk.el",
+    "cd plugin/yeah-provider && npm run typecheck && npm test"
+  ],
+  "claims": [
+    "a-workspace-grant-asks-once-and-stays-inside"
+  ],
+  "commitment": [],
+  "objection": "The boundary is a permission boundary over named path arguments and the separate shell grant; it is not an operating-system sandbox. A granted shell command still runs as the user and can address the machine in ways the textual guard cannot enumerate. The unit check proves the route's classification and grant logic with a fake client; the live Paseo probe proves that the wire publishes the workspace mode, but a human answer and a second tool call must be observed in the orchestrator before this is called a product release gate.",
+  "refuted_by": "the default mode is build, a second inside mutation asks again after a remembered workspace answer, the workspace grant allows an outside path or bash, the model prompt does not name the session directory, or the control does not make the unit verifier fail by assertion",
+  "note": "The offline targeted ERT and three wire/risk checks pass. The plugin typecheck and 70 plugin tests pass. A live probe against GLM-5.3-Flash publishes currentModeId workspace and Workspace among available modes; the probe stops at the expected first permission question because its scripted client cannot answer.",
+  "refuted_by_control": null
+}

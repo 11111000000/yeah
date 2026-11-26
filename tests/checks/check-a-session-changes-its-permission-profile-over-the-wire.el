@@ -87,13 +87,13 @@ session and the update, and the update names the mode."
                (result (plist-get answer :result))
                (modes (plist-get result :modes))
                (available (plist-get modes :availableModes)))
-          (unless (equal "build" (plist-get modes :currentModeId))
+          (unless (equal "workspace" (plist-get modes :currentModeId))
             (push (format "the session did not publish the mode it is in: it published %S"
                           (plist-get modes :currentModeId))
                   yeah-check--failures))
           (unless (and (listp available)
                        (equal (sort (yeah-check--mode-ids available) #'string<)
-                              '("auto" "build" "plan")))
+                              '("auto" "build" "plan" "workspace")))
             (push (format "the session did not publish the modes it may be in: %S"
                           available)
                   yeah-check--failures))

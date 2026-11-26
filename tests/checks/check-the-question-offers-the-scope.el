@@ -220,13 +220,19 @@ and not a check that waits for an hour."
               (yeah-perm-rules-reset-for-test)
 
               ;; --- 3. the question over the wire ------------------------
-              (let* ((question-text nil)
-                     (session-id
-                      (plist-get (yeah-acp-session-new
-                                  (list :cwd (file-truename data)
-                                        :mcpServers nil))
-                                 :sessionId))
-                     (answerer (yeah-acp--client-answerer
+	              (let* ((question-text nil)
+	                     (session-id
+	                      (plist-get (yeah-acp-session-new
+	                                  (list :cwd (file-truename data)
+	                                        :mcpServers nil))
+	                                 :sessionId))
+                     ;; This section measures the generic scope vocabulary.
+                     ;; The new default workspace mode deliberately turns a
+                     ;; remembered inside answer into a workspace-wide grant,
+                     ;; so the legacy exact-rule question uses Build here.
+                     (_ (plist-put (yeah-acp--session-state session-id)
+                                   :mode "build"))
+	                     (answerer (yeah-acp--client-answerer
                                 session-id
                                 (lambda (text) (setq question-text text))))
                      (deferral (funcall answerer request)))
