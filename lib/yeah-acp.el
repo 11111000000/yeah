@@ -743,6 +743,11 @@ editor learns the queue from the journal and keeps no state of its own."
     ("assistant-message"
      (yeah-acp--content-chunk "agent_message_chunk"
                               (plist-get fields :payload)))
+    ("reasoning"
+     ;; The road to the answer is visible too: ACP has a thought chunk, and
+     ;; Paseo renders it as Thinking. The journal keeps the same bounded text.
+     (yeah-acp--content-chunk "agent_thought_chunk"
+                              (plist-get fields :payload)))
     ("finish"
      ;; The summary of a finished run is the answer of the agent: the model
      ;; writes it for the human, and the editor shows it as the answer of the

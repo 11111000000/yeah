@@ -4221,6 +4221,49 @@
       "register": "fact",
       "control": "sed -i '/Prefer the purpose-built tool to a shell one-liner\\./,+7d' lib/yeah-gptel.el",
       "waiver": null
+    },
+    {
+      "id": "a-reasoning-chunk-is-a-thought",
+      "text": "A reasoning chunk from the model is visible as Thinking: the turn writes a bounded reasoning record into the journal, the ACP wire projects it as one agent_thought_chunk content block, and it does not end the run or masquerade as the answer.",
+      "scope": [
+        "lib/yeah-turn.el",
+        "lib/yeah-events.el",
+        "lib/yeah-acp.el",
+        "tests/checks/check-model-turn-runs.el",
+        "tests/unit/test-yeah-acp.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-model-turn-runs.el"
+        }
+      ],
+      "falsifier": "the journal holds no reasoning record or loses its text, the wire sends no thought chunk or sends an answer chunk instead, or a reasoning callback ends the run",
+      "register": "fact",
+      "control": "sed -i 's|\"agent_thought_chunk\"|\"agent_message_chunk\"|' lib/yeah-acp.el",
+      "waiver": null
+    },
+    {
+      "id": "a-tool-call-title-carries-its-work",
+      "text": "The Paseo provider gives every known Yeah tool call a human-readable title from its declared input: Bash carries the command, Read and edit carry the path, Grep and Glob carry the pattern, Emacs capabilities carry the buffer, symbol or path, and Git review carries the directory. The title is bounded and preserves the raw input separately.",
+      "scope": [
+        "plugin/yeah-provider/server/yeah.ts",
+        "plugin/yeah-provider/test/yeah.test.ts"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "cd plugin/yeah-provider && npm run typecheck && npm test"
+        }
+      ],
+      "falsifier": "a pending Bash, Read, Grep, Read buffer, introspection, diagnostics or Git call reaches Paseo with only the tool name as its title, or a long command is not bounded",
+      "register": "fact",
+      "control": "sed -i 's|const title = titleTail(titleOf(withInput, inputRecordOf(withInput)));|const title = withInput.title;|' plugin/yeah-provider/server/yeah.ts",
+      "waiver": null
     }
   ]
 }
