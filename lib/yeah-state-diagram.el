@@ -69,12 +69,19 @@ table comes from."
       (error "yeah-state-diagram: the state %S of the first cell is not a state of the machine" start))
     (push "@startuml state-machine" lines)
     (push "' The machine of the kernel: the states of `yeah-state-list' and the cells of `yeah-loop--raw-transitions'." lines)
+    ;; The subject of the picture is the state where the person decides:
+    ;; the human is an asynchronous master, and the machine waits there.
+    ;; The wash of the subject is SUBJECT_BG, a token that the palette of
+    ;; a theme defines -- the picture itself names no colour of its own.
     (dolist (state states)
-      (let ((name (symbol-name state))
-            (id (cdr (assq state by-state))))
-        (push (if (string= name id)
-                  (format "state %s" name)
-                (format "state \"%s\" as %s" name id))
+      (let* ((name (symbol-name state))
+             (id (cdr (assq state by-state)))
+             (line (if (string= name id)
+                       (format "state %s" name)
+                     (format "state \"%s\" as %s" name id))))
+        (push (if (eq state 'awaiting-user-permission)
+                  (concat line " SUBJECT_BG")
+                line)
               lines)))
     (when start
       (push (format "[*] --> %s" (cdr (assq start by-state))) lines))
@@ -84,6 +91,16 @@ table comes from."
                     (cdr (assq (nthcdr 2 cell) by-state))
                     (nth 1 cell))
             lines))
+    ;; The boundary of the picture hangs under the subject: the machine is
+    ;; the declared table, and a run that never meets a busy provider never
+    ;; takes blocked-on-rate.  The cells are measured as places of a tick,
+    ;; and not as runs.
+    (let ((subject (cdr (assq 'awaiting-user-permission by-state))))
+      (push (format "note bottom of %s" (or subject "failed")) lines)
+      (push "  The machine is the declared table: a" lines)
+      (push "  run that never meets a busy provider" lines)
+      (push "  never takes blocked-on-rate." lines)
+      (push "end note" lines))
     (push "@enduml" lines)
     (concat (mapconcat #'identity (reverse lines) "\n") "\n")))
 

@@ -49,15 +49,15 @@ seen: "what is seen" {
 }
 
 ask -> decide: {
-  class: flow
+  class: request
   label: "the request"
 }
 decide -> memory: {
-  class: flow
+  class: write
   label: "every event is written"
 }
 memory -> seen: {
-  class: flow
+  class: project
   label: "every view is a projection"
 }
 

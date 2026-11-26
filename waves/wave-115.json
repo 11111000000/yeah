@@ -1,35 +1,48 @@
 {
   "id": "wave-115",
-  "title": "workspace trust is a Build toggle and one Bash answer covers the workspace",
-  "intent": "The user still saw Build ask before every Bash command. The cause was exact-rule memory: the request resource of Bash is the command text, so Allow for this session remembered one command. The wave makes workspace trust a separate Build toggle instead of a fourth mode. With the toggle on, one remembered answer covers later work inside the session directory. A Bash answer carries a separate workspace-shell grant named by the session root, so one answer covers later Bash commands started there; paths outside the root still ask. The ACP catalog returns Plan, Build and Auto plus the workspaceTrust boolean.",
+  "title": "the edges carry their kinds, every picture names what it does not show, and the machine names where the person decides",
+  "intent": "The wave of readability (2026-11-25) gave every picture a subject, a full-size anchor and a caption that names the boundary of the picture -- and the boundary lived in the prose of the page, not in the picture itself: a screenshot of the picture carried no boundary at all.  The arrows of the structural pictures carried no kind either: eleven arrows drawn one way tell the reader nothing about which of them ask, which write and which reach the live state of the editor on an approved capability.  The wave binds two promises.  First: an edge that crosses a boundary of responsibility carries its kind -- the label names the kind in words and the dash of the line carries it a second time, and the palettes hold the five dashes apart, because two kinds that share one dash are one line.  Second: every picture of the site names what it does not show -- the boundary moved from the caption into the picture itself (inline in the boxes of the activity pictures, where the wave of readability had already merged its notes, a note of D2 where the picture has headroom under the floor of readability, and a note the generator of the state machine emits, because the source of that picture is a function of the code).  The wave binds a third promise, taken from the second line that worked on the same subject: the machine of the states names where the person decides -- awaiting-user-permission is the subject of the picture, the machine waits there, and the human is an asynchronous master.  The wash of the subject is a token of the theme: the stylesheet names it for both frames, the palettes define it for the pictures they draw, the source of the machine carries it on the subject state, and the rendered picture of every theme draws it.",
   "touches": [
-    "lib/yeah-acp.el",
+    "site/diagrams/palette-light.d2",
+    "site/diagrams/palette-dark.d2",
+    "site/diagrams/core-layers.d2",
+    "site/diagrams/emacs-layer.d2",
+    "site/diagrams/placements.d2",
+    "site/diagrams/code-packages.d2",
+    "site/diagrams/one-turn.puml",
+    "site/diagrams/fixed-point.puml",
+    "site/diagrams/state-machine.puml",
+    "lib/yeah-state-diagram.el",
+    "tests/checks/check-the-edges-of-a-picture-carry-their-kind.el",
+    "tests/checks/check-every-diagram-names-what-it-does-not-show.el",
     "spec.json",
     "docs/PLAN.md",
-    "docs/STATUS.md",
-    "docs/ARCHITECTURE.md",
-    "tests/unit/test-yeah-acp.el",
-    "tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
-    "tests/checks/check-the-question-offers-the-scope.el",
-    "plugin/yeah-provider/shared/settings.ts",
-    "plugin/yeah-provider/index.server.ts",
-    "plugin/yeah-provider/server/launch.ts",
-    "plugin/yeah-provider/README.md",
-    "plugin/yeah-provider/OVERVIEW.md",
-    "waves/wave-115.json"
+    "AGENTS.md",
+    "waves/wave-115.json",
+    "site/styles.css",
+    "site/diagrams/palette-light.puml",
+    "site/diagrams/palette-dark.puml",
+    "site/assets/diagrams/state-machine-light.svg",
+    "site/assets/diagrams/state-machine-dark.svg",
+    "tests/checks/check-the-machine-names-where-the-person-decides.el"
   ],
   "checks": [
     "./scripts/dev byte-compile-all",
-    "./scripts/dev ert tests/unit/*.el",
-    "./scripts/dev check tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el",
-    "./scripts/dev check tests/checks/check-the-question-offers-the-scope.el",
-    "cd plugin/yeah-provider && npm run typecheck && npm test"
+    "./scripts/dev check tests/checks/check-the-edges-of-a-picture-carry-their-kind.el",
+    "./scripts/dev check tests/checks/check-the-machine-names-where-the-person-decides.el",
+    "./scripts/dev check tests/checks/check-every-diagram-names-what-it-does-not-show.el",
+    "./scripts/dev check tests/checks/check-every-diagram-points-at-files-that-exist.el",
+    "./scripts/dev check tests/checks/check-the-pictures-are-readable-in-the-column.el",
+    "./scripts/dev check tests/checks/check-site-diagrams-current.sh",
+    "./scripts/dev ert tests/unit/*.el"
   ],
   "claims": [
-    "a-workspace-grant-asks-once-and-stays-inside"
+    "the-edges-of-a-picture-carry-their-kind",
+    "every-picture-of-the-site-names-what-it-does-not-show",
+    "the-machine-names-where-the-person-decides"
   ],
   "commitment": [],
-  "objection": "The shell grant is a permission grant, not a sandbox: after the person allows Bash in the workspace, a command can address the machine with the user's rights. The boundary checks the tool's declared directory and named paths; it cannot enumerate every way a shell command may name a path. The ACP config option exposes the toggle, but whether every orchestrator renders booleans is a client question.",
-  "refuted_by": "Build asks again for a different Bash command in the same directory after Allow for this session/project/global, the grant covers a path declared outside the session directory, or turning workspaceTrust off does not restore per-call Build questions",
-  "note": "Targeted offline checks pass: byte-compilation, 468 ERT tests, wire mode check, scope check, TypeScript check and 70 plugin tests. A live ACP probe against GLM-5.3-Flash publishes Build, three modes, and workspaceTrust=true; it stops at the expected first Bash permission because its scripted client cannot answer."
+  "objection": "The kind of an edge is carried by its label first and by its dash second: the engine of D2 accepts a dash only as one number between zero and ten, so the dashes of five kinds are five numbers (0, 2, 8, 6, 4) and a reader who does not know the palette reads the dash as texture, not as a kind -- the label is the carrier the reader can actually use, and the check holds the numbers apart so that the texture at least stays consistent.  The kind of the edges inside one band of responsibility stays flow: the picture of the Emacs layer draws the kernel's calls of its own tools as plain flow, and a reader who wanted every edge kinded would want a picture with no default at all.  The boundaries repeat the sentences the captions of the page have carried since the wave of readability: the caption keeps its sentence, and the picture now carries its own -- a screenshot of the picture alone is self-contained.  The boundary of the machine of the states is emitted by the generator, and the check of the generation compares the file the generator writes with the file of the repository -- the boundary drifts with the code or the check goes red.  The wash of the subject of the machine departs from the rule of the wave of readability -- the subject of a structural picture is a border, not a fill -- and the departure is named: PlantUML gives a state a background of its own and no border of its own, so the subject of the machine is carried by the wash of the theme token, by the name of the state and by the note of the boundary under it; the structural pictures keep the border.  The second line that worked on the same subject carried the kinds as colours of the font-lock scale and a fill for the subjects of the structural pictures; that line was not taken -- six colours make colour the only carrier of a kind, and a fill on every subject silently overturns the recorded rule -- but its subject of the machine and the anchor of the machine's boundary under the subject are taken from it.",
+  "refuted_by": "a kind of the palette is missing, or two kinds of one palette share a dash, or an edge whose label names a kind is drawn as another kind, or a picture of the site carries no boundary this check can find, or a boundary names what the code does not hold, or the control of a claim does not make its check fail by its own assertion, or the machine of the states carries the wash of the subject on no state, or a palette of a theme names another value than the stylesheet names",
+  "note": "Measurements of 2026-11-26.  All twelve guards of the pictures are green, and the smallest word of every picture is 13.1 px in the column of the page (the floor is 12.0 px).  The three controls bite by the assertions of their checks and not by a crash: the dash of answer set to the dash of write -- \"the palette site/diagrams/palette-light.d2 draws answer and write with one dash: two kinds that share a dash are one line\" (code 1); the boundary erased from the picture of the turn -- \"the prose holds no 'does not show the machinery of the run'\" (code 1); the define of the wash deleted from the palette of the light theme -- \"the palette of the light theme defines no SUBJECT_BG\" (code 1).  A defect of the FIRST version of the subject check was found on the honest tree: the palette parse read the value of the define with a regular expression whose [^[:space:]] crossed the end of the line in this build of Emacs, and string-trim inside the comparison clobbered the match data before the message read it -- the parse is rewritten to lines and tokens, the capture is bound in a let before the message reads it, and both hands were measured on copies of the tree.  The synthesis: the second line that worked on the same subject carried the kinds as colours of the font-lock scale and a fill for the subjects of the structural pictures; the kinds-as-colours and the structural fills were not taken, and its subject of the machine and the anchor of the machine's boundary under the subject were taken.  The gate of the project on this tree: 191 claims, 190 of them hold (the map answers unknown and not green, because the one claim that is not established is a decision of the owner, the-owner-decided-the-order-of-the-next-waves); uncovered: 0; the run of the method executed 191 claims in 1445 s."
 }

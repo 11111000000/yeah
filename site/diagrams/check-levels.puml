@@ -46,10 +46,12 @@ tests/live;
 a green module is not a working product);
 
 note right
-  Still open at the top of the ladder:
-  no real ACP editor has finished a task,
-  the clean bootstrap does not run in CI,
-  and the bridge is off until the operator enables it.
+  This picture does not show the work the
+  levels ran on.  Still open at the top of
+  the ladder: no real ACP editor has
+  finished a task, the clean bootstrap does
+  not run in CI, and the bridge is off
+  until the operator enables it.
 end note
 stop
 @enduml

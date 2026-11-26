@@ -4,7 +4,7 @@ state idle
 state deciding
 state "post-decide" as post_decide
 state "awaiting-tool" as awaiting_tool
-state "awaiting-user-permission" as awaiting_user_permission
+state "awaiting-user-permission" as awaiting_user_permission SUBJECT_BG
 state accumulating
 state compacting
 state "blocked-on-rate" as blocked_on_rate
@@ -43,4 +43,9 @@ awaiting_user_permission --> interrupted : interrupt
 accumulating --> interrupted : interrupt
 compacting --> interrupted : interrupt
 blocked_on_rate --> interrupted : interrupt
+note bottom of awaiting_user_permission
+  The machine is the declared table: a
+  run that never meets a busy provider
+  never takes blocked-on-rate.
+end note
 @enduml

@@ -4121,6 +4121,84 @@
       "register": "fact",
       "control": "sed -i 's/viewBox=\"0 0 1389 /viewBox=\"0 0 3333 /' site/assets/diagrams/emacs-layer-light.svg",
       "waiver": null
+    },
+    {
+      "id": "the-edges-of-a-picture-carry-their-kind",
+      "text": "An edge of a picture of the site that crosses a boundary of responsibility carries its kind: the label of the edge names the kind in words -- the request of the person, the answer of the person, an event written into the journal, a view projected out of it, the live state of the editor reached on an approved capability -- and the dash of the line carries the kind a second time.  The palette of every theme defines the five kinds and holds their dashes apart: no two kinds of one palette share a dash, and the check reads the three structural pictures against the kinds their labels say.  Two kinds that share one dash are one line, and a picture that draws them tells the reader nothing.",
+      "scope": [
+        "site/diagrams/palette-light.d2",
+        "site/diagrams/palette-dark.d2",
+        "site/diagrams/core-layers.d2",
+        "site/diagrams/emacs-layer.d2",
+        "site/diagrams/placements.d2",
+        "tests/checks/check-the-edges-of-a-picture-carry-their-kind.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-edges-of-a-picture-carry-their-kind.el"
+        }
+      ],
+      "falsifier": "a kind of the palette is missing, or two kinds of one palette share a dash, or an edge whose label names a kind is drawn as another kind, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's/stroke-dash: 2/stroke-dash: 8/' site/diagrams/palette-light.d2",
+      "waiver": null
+    },
+    {
+      "id": "every-picture-of-the-site-names-what-it-does-not-show",
+      "text": "Every picture of the site names what it does not show: the picture of the turn does not show the machinery of the run -- the supervision, the retries and the compaction are the run, and the machine of the states of a run is the neighbouring picture; the picture of the fixed point does not show the cancellation of a child that ran out of its time; the machine of the states does not show that a run which never meets a busy provider never takes blocked-on-rate; the picture of the packages does not show the edges between the packages; the picture of the Emacs layer does not show the paths the bridge does not take; the picture of the layers names the modules that are out of its scope; the picture of the placements names the honest limit of the wire; and the picture of the levels of the check names what is still open at the top of the ladder.  A picture that hides its own boundary tells the reader more than the code holds.",
+      "scope": [
+        "site/diagrams/one-turn.puml",
+        "site/diagrams/fixed-point.puml",
+        "site/diagrams/state-machine.puml",
+        "site/diagrams/code-packages.d2",
+        "site/diagrams/emacs-layer.d2",
+        "site/diagrams/core-layers.d2",
+        "site/diagrams/placements.d2",
+        "site/diagrams/check-levels.puml",
+        "lib/yeah-state-diagram.el",
+        "tests/checks/check-every-diagram-names-what-it-does-not-show.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-every-diagram-names-what-it-does-not-show.el"
+        }
+      ],
+      "falsifier": "a picture of the site carries no boundary this check can find, or a boundary names what the code does not hold, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i 's/the picture does not show the machinery/the picture is a picture of the turn/' site/diagrams/one-turn.puml",
+      "waiver": null
+    },
+    {
+      "id": "the-machine-names-where-the-person-decides",
+      "text": "The machine of the states names the state where the person decides: awaiting-user-permission is the subject of the picture -- the machine waits there, and the human is an asynchronous master.  The wash of the subject is a token of the theme: the stylesheet of the site names it for the light and for the dark frame, the palette of every theme defines the same value for the pictures it draws, the source of the machine carries the wash on the subject state, and the rendered picture of every theme draws it.  A subject that only the reader's imagination carries is a subject the picture does not name.",
+      "scope": [
+        "site/styles.css",
+        "site/diagrams/palette-light.puml",
+        "site/diagrams/palette-dark.puml",
+        "lib/yeah-state-diagram.el",
+        "site/diagrams/state-machine.puml",
+        "site/assets/diagrams/state-machine-light.svg",
+        "site/assets/diagrams/state-machine-dark.svg",
+        "tests/checks/check-the-machine-names-where-the-person-decides.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-machine-names-where-the-person-decides.el"
+        }
+      ],
+      "falsifier": "the stylesheet names no wash of the subject for a frame, or a palette of a theme names another value than the stylesheet, or the source of the machine carries the wash on no state, or the rendered picture of a theme draws no wash, or the control of the claim does not make the check fail by its own assertion",
+      "register": "fact",
+      "control": "sed -i '/^!define SUBJECT_BG/d' site/diagrams/palette-light.puml",
+      "waiver": null
     }
   ]
 }

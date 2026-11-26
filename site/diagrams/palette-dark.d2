@@ -47,6 +47,45 @@ classes: {
   capability: {
     style: {
       stroke-dash: 4
+      stroke-width: 2
+      stroke: ${arrow}
+      font-color: ${arrow}
+    }
+  }
+  # The kinds of an edge that crosses a boundary of responsibility.  The
+  # label of the edge names the kind in words, and the style of the line
+  # carries it again -- colour never carries the meaning alone.  The styles
+  # are distinct on purpose, and the check
+  # `check-the-edges-of-a-picture-carry-their-kind.el' holds them apart:
+  # two kinds that share one style are one kind.
+  request: {
+    style: {
+      stroke-dash: 0
+      stroke-width: 3
+      stroke: ${arrow}
+      font-color: ${arrow}
+    }
+  }
+  answer: {
+    style: {
+      stroke-dash: 2
+      stroke-width: 2
+      stroke: ${arrow}
+      font-color: ${arrow}
+    }
+  }
+  write: {
+    style: {
+      stroke-dash: 8
+      stroke-width: 3
+      stroke: ${arrow}
+      font-color: ${arrow}
+    }
+  }
+  project: {
+    style: {
+      stroke-dash: 6
+      stroke-width: 2
       stroke: ${arrow}
       font-color: ${arrow}
     }

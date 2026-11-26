@@ -2,6 +2,9 @@
 ' The colours carry the site tokens: --face-default-bg, --face-default-fg,
 ' --face-fringe-bg, --face-divider and --face-prose.
 ' The values are taken from site/styles.css, the :root block (lines 20-87).
+' The wash of the subject of a picture: the state where the person
+' decides.  The value is the token of the site (--diagram-subject-bg).
+!define SUBJECT_BG #EAF4EA
 skinparam nodeStyle rectangle
 skinparam stateStyle rectangle
 skinparam componentStyle rectangle
