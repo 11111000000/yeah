@@ -184,8 +184,15 @@ Every change runs the relevant existing tests; the standard final gates are:
 ./scripts/dev byte-compile-all
 ./scripts/dev ert tests/unit/*.el
 ./scripts/dev check tests/checks/*
+./scripts/dev gate-fast
 ./scripts/dev gate
 ```
+
+`gate-fast` is the gate of the development loop: it asks the method for the
+partial run (`--changed`), one attempt bounded by five minutes, so an
+iteration pays for the claims it touched and not for the whole standing
+specification. `gate` stays the standard final gate: every claim, three
+attempts, thirty minutes — the release ritual is not partial.
 
 If `mathc` is unavailable or incompatible, report the map/gate as blocked.
 Do not replace a failing standard check with a custom success command.

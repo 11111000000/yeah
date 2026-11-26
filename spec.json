@@ -3,16 +3,8 @@
   "goal": {
     "text": "Yeah is an Emacs Lisp agent harness: the harness runs in a dedicated Emacs process (the service placement); the model goes through gptel, every tool goes through the registry and the permission system, the session log stays append-only, and the editor reaches it through the bridge or an ACP/MCP client",
     "scope": [
-      "lib/",
-      "tests/",
-      "scripts/",
-      "schemas/",
-      "docs/",
-      "AGENTS.md",
-      "README.md",
-      "ELISP_BEST_PRACTICES.md",
-      "site/",
-      "install/"
+      "lib/", "tests/", "scripts/", "schemas/", "docs/", "AGENTS.md",
+      "README.md", "ELISP_BEST_PRACTICES.md", "site/", "install/"
     ],
     "by": "p.b.kosov@yandex.ru",
     "at": 1794485971,
@@ -22,17 +14,11 @@
     {
       "id": "lib-byte-compiles-clean",
       "text": "every file under lib/ byte-compiles without errors and without warnings",
-      "scope": [
-        "lib/",
-        "scripts/dev"
-      ],
+      "scope": [ "lib/", "scripts/dev" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev byte-compile-all"
-        }
+        { "kind": "verifier", "spec": "./scripts/dev byte-compile-all" }
       ],
       "falsifier": "the byte-compilation of lib/ fails or reports a warning",
       "register": "fact",
@@ -42,17 +28,11 @@
     {
       "id": "unit-tests-pass",
       "text": "all ERT unit tests pass",
-      "scope": [
-        "lib/",
-        "tests/unit/"
-      ],
+      "scope": [ "lib/", "tests/unit/" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev ert tests/unit/*.el"
-        }
+        { "kind": "verifier", "spec": "./scripts/dev ert tests/unit/*.el" }
       ],
       "falsifier": "an ERT unit test fails",
       "register": "fact",
@@ -63,8 +43,7 @@
       "id": "wire-cancel-preempts",
       "text": "a session/cancel on the socket transport stops a running prompt",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-wire-socket.el",
+        "lib/yeah-acp.el", "lib/yeah-wire-socket.el",
         "tests/checks/check-wire-cancel-preempts.el"
       ],
       "source": null,
@@ -84,8 +63,7 @@
       "id": "bridge-live-server",
       "text": "the emacsclient bridge reads and edits the live buffers of a real Emacs server",
       "scope": [
-        "lib/yeah-bridge.el",
-        "tests/checks/check-bridge-live-server.el"
+        "lib/yeah-bridge.el", "tests/checks/check-bridge-live-server.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -104,9 +82,7 @@
       "id": "concurrent-sessions",
       "text": "two sessions in one Emacs run at once without cross-talk, and cancelling one leaves the other",
       "scope": [
-        "lib/yeah-run.el",
-        "lib/yeah-session.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-run.el", "lib/yeah-session.el", "lib/yeah-turn.el",
         "tests/checks/check-concurrent-sessions.el"
       ],
       "source": null,
@@ -126,9 +102,7 @@
       "id": "wire-stdio",
       "text": "the ACP and MCP servers answer over stdio with the real protocol",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-acp-vocabulary.el",
-        "lib/yeah-mcp.el",
+        "lib/yeah-acp.el", "lib/yeah-acp-vocabulary.el", "lib/yeah-mcp.el",
         "tests/checks/check-wire-speaks-over-stdio.el"
       ],
       "source": null,
@@ -168,8 +142,7 @@
       "id": "product-installs",
       "text": "the package entry declares the supported Emacs and gptel versions, and the bootstrap installs from lib/ with a pinned gptel",
       "scope": [
-        "lib/yeah.el",
-        "install/yeah-bootstrap.el",
+        "lib/yeah.el", "install/yeah-bootstrap.el",
         "tests/checks/check-product-installs.el"
       ],
       "source": null,
@@ -189,11 +162,8 @@
       "id": "run-registries-are-isolated",
       "text": "a run starts from a snapshot of the registry; a tool one run registers is not advertised to another run or the shared registry",
       "scope": [
-        "lib/yeah-tools.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-run.el",
-        "lib/yeah-acp.el",
-        "tests/checks/check-run-registries.el"
+        "lib/yeah-tools.el", "lib/yeah-turn.el", "lib/yeah-run.el",
+        "lib/yeah-acp.el", "tests/checks/check-run-registries.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -212,9 +182,7 @@
       "id": "service-lifecycle",
       "text": "a service Emacs starts, serves a prompt over the socket, writes the turn to its journal and stops",
       "scope": [
-        "lib/yeah-service.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-wire-socket.el",
+        "lib/yeah-service.el", "lib/yeah-acp.el", "lib/yeah-wire-socket.el",
         "tests/checks/check-service-lifecycle.el"
       ],
       "source": null,
@@ -234,8 +202,7 @@
       "id": "client-drives-service",
       "text": "the editor client connects to a service Emacs and drives a prompt over the socket, seeing the streamed updates",
       "scope": [
-        "lib/yeah-client.el",
-        "lib/yeah-service.el",
+        "lib/yeah-client.el", "lib/yeah-service.el",
         "tests/checks/check-client-drives-service.el"
       ],
       "source": null,
@@ -255,10 +222,8 @@
       "id": "service-ui-drives-service",
       "text": "M-x yeah-service opens a buffer that drives a service Emacs: the question, the streamed answer and the stop reason are rendered",
       "scope": [
-        "lib/yeah-service-ui.el",
-        "lib/yeah-service.el",
-        "lib/yeah-client.el",
-        "tests/checks/check-service-ui.el"
+        "lib/yeah-service-ui.el", "lib/yeah-service.el",
+        "lib/yeah-client.el", "tests/checks/check-service-ui.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -277,8 +242,7 @@
       "id": "nudge-only-for-plans",
       "text": "an answer that only announces the next step, an answer that says nothing, or a result no tool backs, is nudged into the action; the run itself ends through the `finish' tool, and a result in words alone ends nothing.  The two claims of the completion path were in contradiction until wave 53: this one read the words of the model as the end of the run, and `finish-is-the-only-completion-path' read them as not an end at all.  The stricter reading won, because the architecture and the prelude of the harness both say that the run ends through the call of `finish'.",
       "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el",
+        "lib/yeah-turn.el", "tests/unit/test-yeah-control.el",
         "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
       ],
       "source": null,
@@ -298,8 +262,7 @@
       "id": "late-answer-does-not-break-the-run",
       "text": "an answer that arrives while the harness waits for a tool waits for the tools and ends the run instead of failing it",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-loop.el",
+        "lib/yeah-turn.el", "lib/yeah-loop.el",
         "tests/unit/test-yeah-control.el"
       ],
       "source": null,
@@ -319,9 +282,7 @@
       "id": "service-permissions",
       "text": "the standing permissions the person grants a service reach it: a tool the rules allow is allowed there, and a tool they do not name is asked of the client over the wire",
       "scope": [
-        "lib/yeah-service.el",
-        "lib/yeah-perm.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-service.el", "lib/yeah-perm.el", "lib/yeah-acp.el",
         "tests/checks/check-service-permissions.el"
       ],
       "source": null,
@@ -341,8 +302,7 @@
       "id": "registry-async-isolation",
       "text": "a tool that registers another tool while it runs lands in the registry of the run, not in the shared one; the async-continuation path is documented, not silently wrong",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-tools.el",
+        "lib/yeah-turn.el", "lib/yeah-tools.el",
         "tests/checks/check-registry-async.el"
       ],
       "source": null,
@@ -362,9 +322,7 @@
       "id": "finish-is-the-only-completion-path",
       "text": "with supervision, the model ends the run by calling the finish tool; a text answer alone is not a completion.  A run that answers in words after its tools have run is nudged into the call of `finish', and a run that spends its budget without that call ends as a failed run that says it did not finish.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-builtins.el",
-        "lib/yeah-events.el",
+        "lib/yeah-turn.el", "lib/yeah-builtins.el", "lib/yeah-events.el",
         "tests/unit/test-yeah-control.el",
         "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
       ],
@@ -389,9 +347,7 @@
       "id": "tool-descriptions-are-unambiguous",
       "text": "the descriptions of the built-in tools are unambiguous: read reads a file from disk by its path, buffer-read reads the content of a live Emacs buffer by its buffer name, every tool names the thing it works on, and no two tools share one description",
       "scope": [
-        "lib/yeah-files.el",
-        "lib/yeah-emacs.el",
-        "lib/yeah-edit.el",
+        "lib/yeah-files.el", "lib/yeah-emacs.el", "lib/yeah-edit.el",
         "tests/checks/check-tool-descriptions.el"
       ],
       "source": null,
@@ -411,9 +367,7 @@
       "id": "todo-is-a-journal-projection",
       "text": "the task list of a run is a projection of its journal: the tools todo_add, todo_update and todo_list change the list through todo events of the session log, and a restart that reads the log again finds the same list",
       "scope": [
-        "lib/yeah-todo.el",
-        "lib/yeah-events.el",
-        "lib/yeah-builtins.el",
+        "lib/yeah-todo.el", "lib/yeah-events.el", "lib/yeah-builtins.el",
         "tests/checks/check-todo.el"
       ],
       "source": null,
@@ -433,8 +387,7 @@
       "id": "git-tools-for-review",
       "text": "the git tools show the status and the difference of a project, and write a commit only when the rules allow it",
       "scope": [
-        "lib/yeah-git.el",
-        "lib/yeah-builtins.el",
+        "lib/yeah-git.el", "lib/yeah-builtins.el",
         "tests/checks/check-git-tools.el"
       ],
       "source": null,
@@ -454,8 +407,7 @@
       "id": "read-shows-the-tick-to-the-model",
       "text": "a read of a file open in a buffer gives the model the modification tick it needs for a guarded edit",
       "scope": [
-        "lib/yeah-result.el",
-        "lib/yeah-files.el",
+        "lib/yeah-result.el", "lib/yeah-files.el",
         "tests/unit/test-yeah-files.el"
       ],
       "source": null,
@@ -475,9 +427,7 @@
       "id": "wire-permission-request",
       "text": "the service asks the client before an effect the rules do not name",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-service.el",
+        "lib/yeah-acp.el", "lib/yeah-turn.el", "lib/yeah-service.el",
         "tests/checks/check-wire-permission.el"
       ],
       "source": null,
@@ -497,9 +447,7 @@
       "id": "service-ui-answers-permission",
       "text": "the editor answers the service's permission request over the wire",
       "scope": [
-        "lib/yeah-service-ui.el",
-        "lib/yeah-client.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-service-ui.el", "lib/yeah-client.el", "lib/yeah-acp.el",
         "tests/checks/check-service-ui-permission.el"
       ],
       "source": null,
@@ -539,8 +487,7 @@
       "id": "client-sees-service-death",
       "text": "the client notices when the service is gone",
       "scope": [
-        "lib/yeah-client.el",
-        "lib/yeah-service-ui.el",
+        "lib/yeah-client.el", "lib/yeah-service-ui.el",
         "tests/checks/check-client-sees-service-death.el"
       ],
       "source": null,
@@ -560,9 +507,7 @@
       "id": "service-model-comes-from-init-file",
       "text": "a clean service takes its model from the init file alone",
       "scope": [
-        "lib/yeah-service.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-service-ui.el",
+        "lib/yeah-service.el", "lib/yeah-acp.el", "lib/yeah-service-ui.el",
         "tests/checks/check-service-init-file.el"
       ],
       "source": null,
@@ -602,8 +547,7 @@
       "id": "sessions-have-a-tree",
       "text": "The sessions of a project form a tree: an index lists every run under a root with its cost, and continuing a run from an earlier record keeps the abandoned path instead of deleting it.",
       "scope": [
-        "lib/yeah-sessions.el",
-        "lib/yeah-session.el",
+        "lib/yeah-sessions.el", "lib/yeah-session.el",
         "tests/checks/check-sessions-have-a-tree.el"
       ],
       "source": null,
@@ -623,9 +567,7 @@
       "id": "session-exports-to-org",
       "text": "A session exports to Org for the person: one heading per event, event fields as upper-case Org properties, and event text inside example blocks that Org cannot mistake for syntax, with the journal header excluded.",
       "scope": [
-        "lib/yeah-org.el",
-        "lib/yeah-events.el",
-        "lib/yeah-session.el",
+        "lib/yeah-org.el", "lib/yeah-events.el", "lib/yeah-session.el",
         "tests/checks/check-session-exports-to-org.el"
       ],
       "source": null,
@@ -645,12 +587,8 @@
       "id": "interactive-journey",
       "text": "The journey of a person works end to end without a network: ask, watch the work in the view, steer a busy run, quit and restart with pending inputs intact, withdraw a steering, recover a pending input explicitly, and cancel a run — with each step journaled.",
       "scope": [
-        "lib/yeah-control.el",
-        "lib/yeah-input.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-session.el",
-        "lib/yeah-tools.el",
-        "lib/yeah-ui.el",
+        "lib/yeah-control.el", "lib/yeah-input.el", "lib/yeah-turn.el",
+        "lib/yeah-session.el", "lib/yeah-tools.el", "lib/yeah-ui.el",
         "tests/checks/check-interactive-journey.el"
       ],
       "source": null,
@@ -670,11 +608,8 @@
       "id": "interface-renders-events",
       "text": "The interface renders the run from the event stream and nothing else: the view built from the log records shows the transcript in order, each tool call with its final state and result, the approvals still waiting, and the counted cost.",
       "scope": [
-        "lib/yeah-ui.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-tools.el",
-        "lib/yeah-perm.el",
-        "lib/yeah-session.el",
+        "lib/yeah-ui.el", "lib/yeah-turn.el", "lib/yeah-tools.el",
+        "lib/yeah-perm.el", "lib/yeah-session.el",
         "tests/checks/check-interface-renders-events.el"
       ],
       "source": null,
@@ -714,8 +649,7 @@
       "id": "acp-server-speaks-to-a-third-party-client",
       "text": "The ACP server completes the handshake, session creation, and an asynchronous prompt — including streamed session/update notifications and the end_turn stop reason — when driven by a third-party client (xenodium/acp.el) rather than by Yeah itself.",
       "scope": [
-        "lib/yeah-acp.el",
-        "tests/checks/check-acp-third-party-client.el"
+        "lib/yeah-acp.el", "tests/checks/check-acp-third-party-client.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -734,10 +668,8 @@
       "id": "approvals-have-reply-kinds",
       "text": "A permission request is answered once, for the session, for the project, for the user or reject: once allows only this call, reject refuses only this call, the other three are written into the rules so they outlive the question — the rule of the answer session in the carrier of the path that asks, the rule of the answer project in the file of the project and the rule of the answer global in the file of the user — and every answer carries the scope its rule lives in; the legacy name `always' is read as the answer `session'; any other answer is refused, and an unattended run's policy allows exactly what the rules allow.",
       "scope": [
-        "lib/yeah-approval.el",
-        "lib/yeah-perm.el",
-        "lib/yeah-approval-ui.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-approval.el", "lib/yeah-perm.el",
+        "lib/yeah-approval-ui.el", "lib/yeah-acp.el",
         "lib/yeah-service-ui.el",
         "tests/checks/check-approvals-have-reply-kinds.el",
         "tests/checks/check-the-question-offers-the-scope.el"
@@ -759,8 +691,7 @@
       "id": "emcp-registry-matches-schema",
       "text": "The MCP tool registry in lib/yeah-emcp.el and the published schema schemas/emcp-v1.json name the same tools, with identical descriptions, inputs and outputs, and agree on which tools are published by default.",
       "scope": [
-        "lib/yeah-emcp.el",
-        "schemas/emcp-v1.json",
+        "lib/yeah-emcp.el", "schemas/emcp-v1.json",
         "tests/checks/check-emcp-registry-matches-schema.el"
       ],
       "source": null,
@@ -780,9 +711,7 @@
       "id": "events-are-typed",
       "text": "Every record written to the session log is one of the declared event types and carries exactly the fields its type declares; the writer refuses events of unknown type or with undeclared fields, and the todo event carries the tasks it changes and the operation that changed them.",
       "scope": [
-        "lib/yeah-events.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-session.el",
+        "lib/yeah-events.el", "lib/yeah-turn.el", "lib/yeah-session.el",
         "tests/checks/check-events-are-typed.el"
       ],
       "source": null,
@@ -802,8 +731,7 @@
       "id": "no-global-gptel-hooks",
       "text": "No Yeah kernel module installs or removes a global gptel hook; every gptel request is configured privately, per request.",
       "scope": [
-        "lib/",
-        "tests/checks/check-gptel-hooks-live-in-one-module.sh"
+        "lib/", "tests/checks/check-gptel-hooks-live-in-one-module.sh"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -822,8 +750,7 @@
       "id": "gptel-is-the-only-call-site",
       "text": "The model is called in exactly one place, yeah-gptel-request in lib/yeah-gptel.el; no other kernel module calls gptel-request directly, and the turn reaches the model through that single bridge.",
       "scope": [
-        "lib/yeah-gptel.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-gptel.el", "lib/yeah-turn.el",
         "tests/checks/check-gptel-is-the-only-call-site.el"
       ],
       "source": null,
@@ -843,8 +770,7 @@
       "id": "gptel-request-shape-is-preserved",
       "text": "yeah-gptel-request delivers the prompt unchanged, passes the caller's callback and the private system prompt to gptel, disables ambient gptel editor context, and returns the model's answer through the callback.",
       "scope": [
-        "lib/yeah-gptel.el",
-        "tests/checks/check-gptel-request-shape.el"
+        "lib/yeah-gptel.el", "tests/checks/check-gptel-request-shape.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -863,11 +789,8 @@
       "id": "three-placements-write-the-same-truth",
       "text": "The same task runs in all three placements — attached, service and batch — and each writes the same canonical projection of events to its session journal; a service run cannot see the editor's bridge tools without an operator decision.",
       "scope": [
-        "lib/yeah-placement.el",
-        "lib/yeah-run.el",
-        "lib/yeah-session.el",
-        "lib/yeah-bridge.el",
-        "tests/support/scenario.el",
+        "lib/yeah-placement.el", "lib/yeah-run.el", "lib/yeah-session.el",
+        "lib/yeah-bridge.el", "tests/support/scenario.el",
         "tests/checks/check-three-placements.el"
       ],
       "source": null,
@@ -907,8 +830,7 @@
       "id": "ptc-evaluator-restricts-forbidden-forms",
       "text": "The experimental PTC evaluator refuses every form while disabled, runs ordinary registry tools through the permission system when explicitly enabled, and rejects direct and higher-order-function bypasses before anything is evaluated.",
       "scope": [
-        "lib/yeah-codes.el",
-        "tests/checks/check-ptc-sandbox-restricts.el"
+        "lib/yeah-codes.el", "tests/checks/check-ptc-sandbox-restricts.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -927,11 +849,8 @@
       "id": "the-agent-loop-is-wired",
       "text": "The pieces of the agent loop are actually wired together: yeah-loop-tick, yeah-perm-evaluate, yeah-tools-call and yeah-session-append are each called from at least one module outside the module that defines them.",
       "scope": [
-        "lib/yeah-gptel.el",
-        "lib/yeah-loop.el",
-        "lib/yeah-perm.el",
-        "lib/yeah-tools.el",
-        "lib/yeah-session.el",
+        "lib/yeah-gptel.el", "lib/yeah-loop.el", "lib/yeah-perm.el",
+        "lib/yeah-tools.el", "lib/yeah-session.el",
         "tests/checks/check-agent-loop-wired.sh"
       ],
       "source": null,
@@ -951,8 +870,7 @@
       "id": "client-disconnect-cancels-the-run",
       "text": "a client that dies with a pending permission request does not hang the run: the service cancels it and writes the reason into the journal",
       "scope": [
-        "lib/yeah-wire-socket.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-wire-socket.el", "lib/yeah-acp.el",
         "tests/checks/check-client-disconnect-during-permission.el"
       ],
       "source": null,
@@ -992,8 +910,7 @@
       "id": "runtime-never-blocks",
       "text": "The runtime retries a failing command a bounded number of times, cuts a hanging command at its timeout and flags it as a timeout, detects doom loops of identical mutating calls while allowing repeated read-only inspection, and never holds the main loop.",
       "scope": [
-        "lib/yeah-runtime.el",
-        "tests/checks/check-runtime-never-blocks.el"
+        "lib/yeah-runtime.el", "tests/checks/check-runtime-never-blocks.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1012,11 +929,8 @@
       "id": "model-turn-runs",
       "text": "A turn asks the model, runs the permitted tool calls through the permission system and the registry, appends what happened to the session log, and refuses a denied call without running it, logging the refusal.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-tools.el",
-        "lib/yeah-perm.el",
-        "lib/yeah-session.el",
-        "tests/checks/check-model-turn-runs.el"
+        "lib/yeah-turn.el", "lib/yeah-tools.el", "lib/yeah-perm.el",
+        "lib/yeah-session.el", "tests/checks/check-model-turn-runs.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1035,9 +949,7 @@
       "id": "turn-handles-tool-failures",
       "text": "Malformed arguments, handler exceptions, duplicate async callbacks and nil results become bounded string failures handed to the model once — the turn never wedges, never logs a failure as a success, and never settles one call twice.",
       "scope": [
-        "lib/yeah-scheduler.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-tools.el",
+        "lib/yeah-scheduler.el", "lib/yeah-turn.el", "lib/yeah-tools.el",
         "lib/yeah-result.el",
         "tests/checks/check-turn-handles-tool-failures.el"
       ],
@@ -1058,8 +970,7 @@
       "id": "turn-compacts-asynchronously",
       "text": "When the context overflows, the turn enters the compacting state without blocking, waits for the asynchronously arriving summary, commits it as a compaction record before the continued answer, and keeps the source tool events.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-compact.el",
+        "lib/yeah-turn.el", "lib/yeah-compact.el",
         "tests/checks/check-turn-compacts-asynchronously.el"
       ],
       "source": null,
@@ -1079,12 +990,8 @@
       "id": "coding-tools-end-to-end",
       "text": "The built-in coding tools work end to end on a real temporary project: read, glob and grep find content, a fresh modification tick guards a real buffer edit, elisp-check validates the result, async bash settles through its continuation, introspection answers, and every built-in tool is registered.",
       "scope": [
-        "lib/yeah-tools.el",
-        "lib/yeah-builtins.el",
-        "lib/yeah-edit.el",
-        "lib/yeah-files.el",
-        "lib/yeah-process.el",
-        "lib/yeah-emacs.el",
+        "lib/yeah-tools.el", "lib/yeah-builtins.el", "lib/yeah-edit.el",
+        "lib/yeah-files.el", "lib/yeah-process.el", "lib/yeah-emacs.el",
         "tests/checks/check-coding-tools-end-to-end.el"
       ],
       "source": null,
@@ -1104,9 +1011,7 @@
       "id": "compaction-is-a-model-call",
       "text": "Context usage is counted, overflow is detected, the summary is written by the model and not by a placeholder, compaction appends its record while keeping the summarised sources on disk, and pruning marks old outputs without deleting records.",
       "scope": [
-        "lib/yeah-context.el",
-        "lib/yeah-compact.el",
-        "lib/yeah-session.el",
+        "lib/yeah-context.el", "lib/yeah-compact.el", "lib/yeah-session.el",
         "tests/checks/check-compaction-is-a-model-call.el"
       ],
       "source": null,
@@ -1126,8 +1031,7 @@
       "id": "compaction-keeps-sources",
       "text": "Compaction is a projection, not a deletion: the on-disk log after a compaction holds exactly the source records plus one appended compaction record, with every source byte-for-byte untouched.",
       "scope": [
-        "lib/yeah-compact.el",
-        "lib/yeah-session.el",
+        "lib/yeah-compact.el", "lib/yeah-session.el",
         "tests/checks/check-compaction-keeps-sources.el"
       ],
       "source": null,
@@ -1147,9 +1051,7 @@
       "id": "ux-correlates-tools-by-stable-id",
       "text": "The person-facing projection correlates parallel same-name tool calls, approvals and terminal results by stable tool-call id, and never guesses when an id is ambiguous.",
       "scope": [
-        "lib/yeah-ui.el",
-        "lib/yeah-events.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-ui.el", "lib/yeah-events.el", "lib/yeah-turn.el",
         "tests/unit/test-yeah-ui.el"
       ],
       "source": null,
@@ -1169,10 +1071,8 @@
       "id": "ux-journal-preserves-reading-and-text",
       "text": "The shared journal preserves the person's reading position while it updates, and every semantic label keeps readable text when optional icons are unavailable.",
       "scope": [
-        "lib/yeah-journal.el",
-        "lib/yeah-faces.el",
-        "tests/unit/test-yeah-journal.el",
-        "tests/unit/test-yeah-faces.el"
+        "lib/yeah-journal.el", "lib/yeah-faces.el",
+        "tests/unit/test-yeah-journal.el", "tests/unit/test-yeah-faces.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1191,10 +1091,8 @@
       "id": "ux-attached-and-service-share-the-journal",
       "text": "Attached and service placements show the same question, answer and terminal state in the same shared read-only journal; the service path is driven through a real Emacs process and a real client connection.",
       "scope": [
-        "lib/yeah-journal.el",
-        "lib/yeah-product.el",
-        "lib/yeah-service-ui.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-journal.el", "lib/yeah-product.el",
+        "lib/yeah-service-ui.el", "lib/yeah-acp.el",
         "tests/checks/check-service-ui.el"
       ],
       "source": null,
@@ -1213,10 +1111,7 @@
     {
       "id": "nudge-names-the-next-call",
       "text": "A narration nudge names the exact next call: the unused path tool, the file the model named, and on a repeat it requires the next answer to contain the tool call, not another plan.",
-      "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -1234,8 +1129,7 @@
       "id": "bridge-keeps-the-answer",
       "text": "The bridge does not lose the answer of the attached Emacs: a process that exits before its last chunk reaches the filter still delivers the answer.",
       "scope": [
-        "lib/yeah-bridge.el",
-        "tests/checks/check-bridge-keeps-the-answer.el"
+        "lib/yeah-bridge.el", "tests/checks/check-bridge-keeps-the-answer.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1275,8 +1169,7 @@
       "id": "supervised-run-says-it-did-not-finish",
       "text": "A supervised run whose nudge budget is spent without the model finishing writes the unfinished event: a run that ends without the effect must not look done.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-events.el",
+        "lib/yeah-turn.el", "lib/yeah-events.el",
         "tests/unit/test-yeah-control.el"
       ],
       "source": null,
@@ -1296,11 +1189,8 @@
       "id": "unfinished-is-visible",
       "text": "A supervised run that ended without the effect is visible where the person looks: the view says unfinished, the journal shows the reason, and the run is never shown as finished.",
       "scope": [
-        "lib/yeah-ui.el",
-        "lib/yeah-journal.el",
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-ui.el",
-        "tests/unit/test-yeah-journal.el"
+        "lib/yeah-ui.el", "lib/yeah-journal.el", "lib/yeah-turn.el",
+        "tests/unit/test-yeah-ui.el", "tests/unit/test-yeah-journal.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1319,11 +1209,8 @@
       "id": "one-approval-surface",
       "text": "The question of the permission is asked in one place: the shared approval view, which names the action, the resource it acts on, the arguments it would run with and the diff of the change, and which offers the four scopes of an answer — once, session, project and global — and the refusal, each named by what it allows; the attached and the service path both answer there.",
       "scope": [
-        "lib/yeah-approval-ui.el",
-        "lib/yeah-approval.el",
-        "lib/yeah-product.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-service-ui.el",
+        "lib/yeah-approval-ui.el", "lib/yeah-approval.el",
+        "lib/yeah-product.el", "lib/yeah-acp.el", "lib/yeah-service-ui.el",
         "tests/unit/test-yeah-interaction.el",
         "tests/checks/check-the-question-offers-the-scope.el"
       ],
@@ -1344,8 +1231,7 @@
       "id": "compose-sends-one-prompt-with-its-context",
       "text": "the Yeah composer turns its buffer into one prompt: sending passes the trimmed text and the explicit file/buffer context to the target, and the prompt is remembered in a bounded newest-first history",
       "scope": [
-        "lib/yeah-compose.el",
-        "tests/unit/test-yeah-interaction.el"
+        "lib/yeah-compose.el", "tests/unit/test-yeah-interaction.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1363,10 +1249,7 @@
     {
       "id": "diff-previews-a-change-without-touching-the-file",
       "text": "a Yeah edit or write is previewed as a unified diff of the proposed change, and previewing changes neither the file on disk nor the modification tick or the undo list of a visited buffer",
-      "scope": [
-        "lib/yeah-diff.el",
-        "tests/unit/test-yeah-interaction.el"
-      ],
+      "scope": [ "lib/yeah-diff.el", "tests/unit/test-yeah-interaction.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -1384,8 +1267,7 @@
       "id": "doctor-ui-reports-checks-without-leaking-secrets",
       "text": "Yeah's doctor reports more than five local checks in a readable buffer and prints no API key and no bearer token",
       "scope": [
-        "lib/yeah-doctor-ui.el",
-        "tests/unit/test-yeah-interaction.el"
+        "lib/yeah-doctor-ui.el", "tests/unit/test-yeah-interaction.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1404,8 +1286,7 @@
       "id": "session-list-shows-and-opens-a-project-session",
       "text": "the Yeah session list shows the sessions of one project and hands the id of the selected session to its opener, and it never deletes or rewrites a session",
       "scope": [
-        "lib/yeah-session-list.el",
-        "tests/unit/test-yeah-interaction.el"
+        "lib/yeah-session-list.el", "tests/unit/test-yeah-interaction.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1423,10 +1304,7 @@
     {
       "id": "markdown-fontifies-only-face-properties",
       "text": "the optional Markdown adapter fontifies a copy of the region and copies only face properties into the target buffer, leaving its text, major mode, narrowing, read-only state and modification tick untouched; without the package it is a plain-text no-op",
-      "scope": [
-        "lib/yeah-markdown.el",
-        "tests/unit/test-yeah-markdown.el"
-      ],
+      "scope": [ "lib/yeah-markdown.el", "tests/unit/test-yeah-markdown.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -1444,11 +1322,8 @@
       "id": "safe-reads-need-no-question",
       "text": "A read that changes nothing is not asked about: the permission layer answers it and says why, in the profile of a run and over the wire alike.",
       "scope": [
-        "lib/yeah-approval.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-run.el",
-        "tests/unit/test-yeah-approval.el",
-        "tests/unit/test-yeah-run.el"
+        "lib/yeah-approval.el", "lib/yeah-acp.el", "lib/yeah-run.el",
+        "tests/unit/test-yeah-approval.el", "tests/unit/test-yeah-run.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1467,9 +1342,7 @@
       "id": "always-is-remembered-for-the-session",
       "text": "An answer of always is remembered: the rule of the decision reaches the rules of the run or the session, so the same question is not asked again.",
       "scope": [
-        "lib/yeah-approval.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-run.el",
+        "lib/yeah-approval.el", "lib/yeah-acp.el", "lib/yeah-run.el",
         "tests/unit/test-yeah-acp.el"
       ],
       "source": null,
@@ -1489,8 +1362,7 @@
       "id": "pending-queue-is-in-the-journal",
       "text": "The pending queue of a session is a projection of the journal: every input that is queued, starts a run, is recovered or is withdrawn is written into the session log with its id, and the pending list of the editor agrees with the queue of the controller.",
       "scope": [
-        "lib/yeah-control.el",
-        "lib/yeah-events.el",
+        "lib/yeah-control.el", "lib/yeah-events.el",
         "tests/checks/check-input-queue-events.el"
       ],
       "source": null,
@@ -1510,8 +1382,7 @@
       "id": "an-answer-may-come-later",
       "text": "A permission request is written into the journal before the question is asked, and an answer that comes later settles the question exactly once.",
       "scope": [
-        "lib/yeah-approval.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-approval.el", "lib/yeah-turn.el",
         "tests/checks/check-approval-answers-later.el"
       ],
       "source": null,
@@ -1531,9 +1402,7 @@
       "id": "the-wire-carries-the-control",
       "text": "The ACP wire carries the control of a session: a client steers a running turn, withdraws a pending input, recovers one, opens the session again with its journal replayed, and the pending queue of the session reaches the client that asked for the queue events as session/update notifications.",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-control.el",
-        "schemas/acp-v1.json",
+        "lib/yeah-acp.el", "lib/yeah-control.el", "schemas/acp-v1.json",
         "tests/checks/check-wire-control.el"
       ],
       "source": null,
@@ -1552,18 +1421,11 @@
     {
       "id": "bench-task-set-is-measurable",
       "text": "The self-check proves every task of the task set has a prompt and an executable check that fails on an untouched workspace, and the runner records a harness that could not run as skipped or not-available, never as a pass.",
-      "scope": [
-        "bench/manifest.el",
-        "bench/run-bench.el",
-        "bench/tasks/"
-      ],
+      "scope": [ "bench/manifest.el", "bench/run-bench.el", "bench/tasks/" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev bench"
-        }
+        { "kind": "verifier", "spec": "./scripts/dev bench" }
       ],
       "falsifier": "a check of the task set passes on an untouched workspace, or a harness that could not run is recorded as a pass",
       "register": "fact",
@@ -1574,8 +1436,7 @@
       "id": "yeah-opens-the-service",
       "text": "The command `M-x yeah' opens the service placement, and falls back to the attached placement when the service cannot start.",
       "scope": [
-        "lib/yeah.el",
-        "tests/checks/check-yeah-opens-the-service.el"
+        "lib/yeah.el", "tests/checks/check-yeah-opens-the-service.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1594,8 +1455,7 @@
       "id": "the-service-carries-the-control",
       "text": "The editor sends the control requests of a service session — steer, withdraw and recover — over the wire, and the queue notifications that arrive populate its pending-input view.",
       "scope": [
-        "lib/yeah-service-ui.el",
-        "lib/yeah-client.el",
+        "lib/yeah-service-ui.el", "lib/yeah-client.el",
         "tests/checks/check-service-control.el"
       ],
       "source": null,
@@ -1615,8 +1475,7 @@
       "id": "the-editor-finds-the-service",
       "text": "The editor finds a service through a Unix-domain socket on Unix and through a numeric port file on a loopback TCP port when IPv4 is selected.",
       "scope": [
-        "lib/yeah-client.el",
-        "lib/yeah-service.el",
+        "lib/yeah-client.el", "lib/yeah-service.el",
         "tests/checks/check-service-tcp.el"
       ],
       "source": null,
@@ -1635,10 +1494,7 @@
     {
       "id": "an-empty-answer-does-not-end-the-run",
       "text": "An answer of the model that says nothing is not a result: with supervision the run nudges the model into the action, and without supervision the run fails instead of ending as a finished job.",
-      "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -1655,10 +1511,7 @@
     {
       "id": "a-silence-nudge-carries-the-state-of-the-work",
       "text": "A nudge that follows an empty answer carries the state of the work — the tools the run already called and the results they returned — and does not name an unused tool as the next call, so that the model continues instead of starting the work over.",
-      "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -1675,10 +1528,7 @@
     {
       "id": "a-guessed-tick-does-not-refuse-an-unchanged-file",
       "text": "An edit of a file that no buffer visits is not refused because of a tick the model could not have read: only a buffer that visits the file hands out a tick, so a tick for a file nobody had open is a guess, and the guard keeps the ticks that a read handed out.",
-      "scope": [
-        "lib/yeah-edit.el",
-        "tests/unit/test-yeah-edit.el"
-      ],
+      "scope": [ "lib/yeah-edit.el", "tests/unit/test-yeah-edit.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -1695,16 +1545,11 @@
     {
       "id": "a-provider-failure-is-not-a-failure-of-the-agent",
       "text": "A run that the provider or the transport to it stopped is recorded as blocked and not as a failure of the agent: a provider that fails is not an agent that fails, and the measurement of nothing is not a failure.",
-      "scope": [
-        "bench/run-bench.el"
-      ],
+      "scope": [ "bench/run-bench.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
-        {
-          "kind": "verifier",
-          "spec": "./scripts/dev bench"
-        }
+        { "kind": "verifier", "spec": "./scripts/dev bench" }
       ],
       "falsifier": "the runner records a run that the provider stopped as a failure of the agent or as a pass",
       "register": "fact",
@@ -1714,10 +1559,7 @@
     {
       "id": "a-decision-that-arrives-while-the-tools-run-does-not-break-the-run",
       "text": "A decision that arrives while the tools of the previous decision are still running waits for them: the run does not break, the decision is not lost, and the model sees the results of every batch together.",
-      "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -1734,10 +1576,7 @@
     {
       "id": "the-same-tool-call-does-not-run-twice",
       "text": "A tool call that is already running is not run again: the model that says the same thing twice runs the tool once, because a tool that runs twice repeats its side effect.",
-      "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el"
-      ],
+      "scope": [ "lib/yeah-turn.el", "tests/unit/test-yeah-control.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -1755,11 +1594,8 @@
       "id": "an-edit-does-not-land-on-a-file-that-changed-under-the-model",
       "text": "A read hands the model a version token of the file it read, and an edit that presents that token is refused when the file changed after the read: an edit never lands on a file the model did not read.",
       "scope": [
-        "lib/yeah-version.el",
-        "lib/yeah-files.el",
-        "lib/yeah-edit.el",
-        "lib/yeah-result.el",
-        "tests/unit/test-yeah-files.el",
+        "lib/yeah-version.el", "lib/yeah-files.el", "lib/yeah-edit.el",
+        "lib/yeah-result.el", "tests/unit/test-yeah-files.el",
         "tests/unit/test-yeah-edit.el"
       ],
       "source": null,
@@ -1779,9 +1615,7 @@
       "id": "a-dropped-decision-is-in-the-journal",
       "text": "A tool call that is dropped as a repeat is written into the journal: a reader of the log tells a repeated decision from a decision that never came.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-events.el",
-        "lib/yeah-ui.el",
+        "lib/yeah-turn.el", "lib/yeah-events.el", "lib/yeah-ui.el",
         "tests/unit/test-yeah-control.el"
       ],
       "source": null,
@@ -1801,8 +1635,7 @@
       "id": "a-version-token-is-short-enough-to-copy",
       "text": "The version token that a read hands out is short enough for a model to copy it back unchanged: the token of the pilot of 2026-11-15 was 64 characters of hex, and the model presented 58 of them.",
       "scope": [
-        "lib/yeah-version.el",
-        "lib/yeah-files.el",
+        "lib/yeah-version.el", "lib/yeah-files.el",
         "tests/unit/test-yeah-version.el"
       ],
       "source": null,
@@ -1822,8 +1655,7 @@
       "id": "an-edit-refuses-a-wrong-token-with-the-current-one",
       "text": "An edit that presents a version token which is not the version of the file now is refused, and the refusal names the token and reports the current one: a token that was copied wrong does not mean that the file changed, and the retry with the reported token lands.",
       "scope": [
-        "lib/yeah-edit.el",
-        "lib/yeah-version.el",
+        "lib/yeah-edit.el", "lib/yeah-version.el",
         "tests/unit/test-yeah-version-guard.el"
       ],
       "source": null,
@@ -1843,8 +1675,7 @@
       "id": "an-edit-never-lands-on-a-file-with-unsaved-changes",
       "text": "An edit of a file that Emacs holds unsaved changes of is refused, with a version or without one: a read of the file shows the disk and cannot show the changes of the person, so the edit would overwrite them with text the model never read.",
       "scope": [
-        "lib/yeah-edit.el",
-        "tests/unit/test-yeah-unsaved-guard.el"
+        "lib/yeah-edit.el", "tests/unit/test-yeah-unsaved-guard.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -1863,8 +1694,7 @@
       "id": "a-write-never-lands-on-a-file-that-changed",
       "text": "A write that replaces a file presents the version of the read that it follows and is refused when the file changed since that read: a write never lands on a file the model did not read.",
       "scope": [
-        "lib/yeah-edit.el",
-        "lib/yeah-version.el",
+        "lib/yeah-edit.el", "lib/yeah-version.el",
         "tests/unit/test-yeah-write-guard.el"
       ],
       "source": null,
@@ -1884,8 +1714,7 @@
       "id": "an-edit-never-runs-the-local-variables-of-the-project",
       "text": "An edit of a file of the project does not run the local variables of that file and does not run the directory-local variables of its directory: the project is untrusted input, and the harness does not run the code of the project in the Emacs of the person.",
       "scope": [
-        "lib/yeah-untrusted.el",
-        "lib/yeah-edit.el",
+        "lib/yeah-untrusted.el", "lib/yeah-edit.el",
         "tests/unit/test-yeah-untrusted.el"
       ],
       "source": null,
@@ -1905,9 +1734,7 @@
       "id": "a-child-runs-with-the-model-and-the-tools-of-its-preset",
       "text": "A delegated child runs on the model of the preset that named it, with the tools of that preset and with the instructions of that preset, and every tool outside the preset is refused to it: a child of Yeah never reaches further than the agent it was given.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-agent.el",
-        "lib/yeah-subagent.el",
+        "lib/yeah-delegate.el", "lib/yeah-agent.el", "lib/yeah-subagent.el",
         "tests/unit/test-yeah-delegate-preset.el"
       ],
       "source": null,
@@ -1927,8 +1754,7 @@
       "id": "a-delegation-does-not-hold-the-turn-of-its-parent",
       "text": "A delegation answers at once with the id of the child, and the turn of the parent goes on while the child works: the child answers on its own, later, and the journal of the parent says what became of it.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-subagent.el",
+        "lib/yeah-delegate.el", "lib/yeah-subagent.el",
         "tests/unit/test-yeah-delegate-asynchronous.el"
       ],
       "source": null,
@@ -1948,8 +1774,7 @@
       "id": "the-plan-profile-denies-a-delegation",
       "text": "The Plan profile denies a delegation: a plan reaches the world through no child, and the denial of the profile is what the journal of the run says.",
       "scope": [
-        "lib/yeah-perm.el",
-        "lib/yeah-delegate.el",
+        "lib/yeah-perm.el", "lib/yeah-delegate.el",
         "tests/unit/test-yeah-delegate-plan-profile.el"
       ],
       "source": null,
@@ -1969,9 +1794,7 @@
       "id": "a-delegation-is-written-into-the-journal-of-its-own-run",
       "text": "A delegation is written into the journal of the run that asked for it, and into no other journal: the child of a delegation belongs to the run whose model asked for it, and the record of the delegation -- that the child was started and what became of it -- is in the journal of that run.",
       "scope": [
-        "lib/yeah-session.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-delegate.el",
+        "lib/yeah-session.el", "lib/yeah-turn.el", "lib/yeah-delegate.el",
         "tests/unit/test-yeah-delegate-journal.el"
       ],
       "source": null,
@@ -1991,8 +1814,7 @@
       "id": "a-child-is-found-by-a-short-id",
       "text": "The id of a child is short enough for a model to copy back without losing a character of it, and the harness finds the child by that id: the model asks for the child by the id that the delegate tool gave it, and the answer names the child.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "tests/unit/test-yeah-delegate-short-id.el"
+        "lib/yeah-delegate.el", "tests/unit/test-yeah-delegate-short-id.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -2031,9 +1853,7 @@
       "id": "a-child-ends-when-its-time-is-up",
       "text": "A child of a delegation has a time of its own: when the time is up the child is cancelled and the parent is told that the child ran out of time, so that a child that never ends does not work for ever and does not leave the parent waiting for an answer that never comes.",
       "scope": [
-        "lib/yeah-subagent.el",
-        "lib/yeah-delegate.el",
-        "lib/yeah-agent.el",
+        "lib/yeah-subagent.el", "lib/yeah-delegate.el", "lib/yeah-agent.el",
         "tests/unit/test-yeah-delegate-deadline.el"
       ],
       "source": null,
@@ -2053,9 +1873,7 @@
       "id": "a-child-is-found-after-the-harness-restarts",
       "text": "The children of a run and what became of them belong in the journal of that run: a restart of the harness forgets the children that the Emacs delegated, and the child is found again by the id the model was given, and the answer tells what became of it, and a child the journal holds no end of is not reported as a child that still works.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-subagent.el",
-        "lib/yeah-events.el",
+        "lib/yeah-delegate.el", "lib/yeah-subagent.el", "lib/yeah-events.el",
         "tests/unit/test-yeah-delegate-restart.el"
       ],
       "source": null,
@@ -2075,9 +1893,7 @@
       "id": "a-session-knows-its-depth-from-the-journal",
       "text": "A child knows where it stands in the tree of the delegations from its own journal: a restart of the harness does not make a child of depth one look like a root, and a child that reads its depth as zero is refused the delegation that would go deeper than the agent of the child allows.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-subagent.el",
-        "lib/yeah-events.el",
+        "lib/yeah-delegate.el", "lib/yeah-subagent.el", "lib/yeah-events.el",
         "tests/unit/test-yeah-delegate-depth-journal.el"
       ],
       "source": null,
@@ -2117,8 +1933,7 @@
       "id": "supervision-is-the-default",
       "text": "The kernel supervises a run by default: the budget of the completion supervision is positive, a run that takes the default budget and whose model only describes its next step is nudged, and such a run ends as a failed run and not as a finished job.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-product.el",
+        "lib/yeah-turn.el", "lib/yeah-product.el",
         "tests/checks/check-supervision-is-the-default.el"
       ],
       "source": null,
@@ -2138,8 +1953,7 @@
       "id": "a-run-that-did-not-finish-is-not-a-success",
       "text": "A run that spends its nudge budget without an effect is not a success: the turn ends in the state 'failed', and the ACP wire answers such a run with the stop reason 'refusal' and never with 'end_turn'.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-turn.el", "lib/yeah-acp.el",
         "tests/checks/check-a-run-that-did-not-finish-is-not-a-success.el"
       ],
       "source": null,
@@ -2159,8 +1973,7 @@
       "id": "the-live-stand-waits-for-an-answer",
       "text": "The live stand waits for an answer and does not mistake the empty string of a reasoning model for one: text with content and a tool call are answers, and the empty string, the streaming sentinel and the reasoning are not.  The decision lives in the kernel (lib/yeah-answer.el) and not in the stand: the run loop and the compaction of the context meet the same shapes of the provider, and the stand of the tests follows the kernel.",
       "scope": [
-        "lib/yeah-answer.el",
-        "tests/live/live-model-call.el",
+        "lib/yeah-answer.el", "tests/live/live-model-call.el",
         "tests/support/yeah-live-answer.el",
         "tests/unit/test-yeah-answer.el",
         "tests/unit/test-yeah-live-answer.el"
@@ -2182,10 +1995,8 @@
       "id": "the-wire-speaks-acp",
       "text": "The wire of Yeah speaks ACP: every session/update names a kind that the ACP schema declares, and the content of a chunk is one content block, not an array of blocks.",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-acp-vocabulary.el",
-        "schemas/acp-v1.json",
-        "tests/checks/check-wire-speaks-acp.el"
+        "lib/yeah-acp.el", "lib/yeah-acp-vocabulary.el",
+        "schemas/acp-v1.json", "tests/checks/check-wire-speaks-acp.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -2204,10 +2015,8 @@
       "id": "the-queue-events-travel-where-they-were-asked-for",
       "text": "Yeah’s own queue events travel only to the client that asked for them: a client announces them in the _meta of its capabilities at initialize, and a client that announces nothing is served plain ACP.",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-acp-vocabulary.el",
-        "lib/yeah-service-ui.el",
-        "tests/checks/check-wire-speaks-acp.el"
+        "lib/yeah-acp.el", "lib/yeah-acp-vocabulary.el",
+        "lib/yeah-service-ui.el", "tests/checks/check-wire-speaks-acp.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -2225,10 +2034,7 @@
     {
       "id": "the-answer-of-the-agent-reaches-the-client",
       "text": "The words of the agent reach the client: the summary of a finished run travels as the message of the agent (agent_message_chunk), because a model that answers only through the finish tool says nothing else.",
-      "scope": [
-        "lib/yeah-acp.el",
-        "tests/checks/check-wire-speaks-acp.el"
-      ],
+      "scope": [ "lib/yeah-acp.el", "tests/checks/check-wire-speaks-acp.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -2245,10 +2051,7 @@
     {
       "id": "a-tool-call-carries-its-input-and-its-output",
       "text": "The call of a tool travels with what the tool was called with and what it returned: rawInput holds the arguments of the call as values, and rawOutput holds the result.",
-      "scope": [
-        "lib/yeah-acp.el",
-        "tests/unit/test-yeah-acp.el"
-      ],
+      "scope": [ "lib/yeah-acp.el", "tests/unit/test-yeah-acp.el" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -2266,9 +2069,7 @@
       "id": "the-text-on-the-wire-is-the-text-the-model-wrote",
       "text": "The text on the wire is the text the model wrote: the bytes of a message are the UTF-8 of that text, so a client that reads them sees the same words and not a Latin-1 reading of the same bytes.",
       "scope": [
-        "lib/yeah-wire.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-mcp.el",
+        "lib/yeah-wire.el", "lib/yeah-acp.el", "lib/yeah-mcp.el",
         "tests/checks/check-wire-carries-the-text.el"
       ],
       "source": null,
@@ -2288,8 +2089,7 @@
       "id": "the-wire-check-decides-its-verdict-by-construction",
       "text": "the check of the wire gives the same verdict on twenty consecutive runs of the control, and the control bites on each of them",
       "scope": [
-        "lib/yeah-wire.el",
-        "tests/checks/check-wire-carries-the-text.el",
+        "lib/yeah-wire.el", "tests/checks/check-wire-carries-the-text.el",
         "tests/checks/check-wire-check-decides-its-verdict-by-construction.el"
       ],
       "source": null,
@@ -2308,10 +2108,7 @@
     {
       "id": "the-owner-decided-the-order-of-the-next-waves",
       "text": "the owner named the order of the next waves on 2026-11-16, on 2026-11-19 and on 2026-11-20 (the catch-up plan: A0, then A1 or A2, then A3, then D, then E), and the plan of the project follows those orders",
-      "scope": [
-        "docs/PLAN.md",
-        "docs/ARCHITECTURE-CATCHUP-PLAN.md"
-      ],
+      "scope": [ "docs/PLAN.md", "docs/ARCHITECTURE-CATCHUP-PLAN.md" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -2330,8 +2127,7 @@
       "id": "the-text-of-the-harness-is-always-text",
       "text": "The text of the harness is always text: the output of a tool and the text of the model are multibyte strings that JSON accepts, and a byte that is not valid UTF-8 stands as the replacement character.",
       "scope": [
-        "lib/yeah-text.el",
-        "lib/yeah-result.el",
+        "lib/yeah-text.el", "lib/yeah-result.el",
         "tests/unit/test-yeah-text.el",
         "tests/checks/check-tool-output-is-valid-text.el"
       ],
@@ -2372,9 +2168,7 @@
       "id": "a-tool-that-returns-bytes-does-not-kill-the-harness",
       "text": "A tool that returns bytes that are not text does not kill the harness: the process lives, the journal holds the record of the tool, and the broken byte stands as the replacement character.",
       "scope": [
-        "lib/yeah-process.el",
-        "lib/yeah-result.el",
-        "lib/yeah-session.el",
+        "lib/yeah-process.el", "lib/yeah-result.el", "lib/yeah-session.el",
         "lib/yeah-scheduler.el",
         "tests/checks/check-a-tool-that-returns-bytes-does-not-kill-the-harness.el"
       ],
@@ -2395,8 +2189,7 @@
       "id": "a-run-degrades-when-the-summary-does-not-arrive",
       "text": "A run whose summary does not arrive degrades instead of dying: the journal says that the summary did not arrive, the old outputs of the tools are pruned, and the run goes on.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-context.el",
+        "lib/yeah-turn.el", "lib/yeah-context.el",
         "tests/checks/check-compaction-degrades-when-the-summary-is-missing.el"
       ],
       "source": null,
@@ -2476,8 +2269,7 @@
       "id": "the-model-is-told-what-the-run-has-done",
       "text": "The model is told what the run has done: every request of the harness carries the transcript of the run before the prompt, so a model that answers with a plan instead of an action does not start the task over.",
       "scope": [
-        "lib/yeah-turn.el",
-        "tests/checks/check-the-model-sees-the-run.el"
+        "lib/yeah-turn.el", "tests/checks/check-the-model-sees-the-run.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -2496,8 +2288,7 @@
       "id": "the-transcript-is-a-projection-and-not-a-second-copy-of-the-run",
       "text": "The transcript of a run is a projection of the journal and not a second copy of the run: the journal keeps the plain message the run was written with, and the transcript is put together when the model is asked.",
       "scope": [
-        "lib/yeah-turn.el",
-        "tests/checks/check-the-model-sees-the-run.el"
+        "lib/yeah-turn.el", "tests/checks/check-the-model-sees-the-run.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -2576,9 +2367,7 @@
       "id": "the-compaction-waits-for-an-answer",
       "text": "The compaction of the context waits for the answer of the provider: the thinking of a model is the road to the answer and not the end of the request, so a run that meets a provider that thinks first keeps its summary instead of degrading for nothing.",
       "scope": [
-        "lib/yeah-answer.el",
-        "lib/yeah-context.el",
-        "lib/yeah-compact.el",
+        "lib/yeah-answer.el", "lib/yeah-context.el", "lib/yeah-compact.el",
         "tests/checks/check-the-compaction-waits-for-an-answer.el"
       ],
       "source": null,
@@ -2598,9 +2387,7 @@
       "id": "the-outcome-of-a-compaction-arrives-once",
       "text": "The outcome of a compaction is delivered once: a provider that answers the same request twice does not compact the context twice, and a run that meets such a provider is not broken by the second answer.",
       "scope": [
-        "lib/yeah-context.el",
-        "lib/yeah-compact.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-context.el", "lib/yeah-compact.el", "lib/yeah-turn.el",
         "tests/checks/check-the-compaction-waits-for-an-answer.el"
       ],
       "source": null,
@@ -2620,8 +2407,7 @@
       "id": "a-text-answer-does-not-end-a-supervised-run",
       "text": "A supervised run ends through the `finish' tool: a text answer that reports a result is not a completion, the run nudges the model into the call that ends it and carries the state of the work, and a model that never calls `finish' spends the budget of the nudges and ends as a failed run that says it did not finish.",
       "scope": [
-        "lib/yeah-turn.el",
-        "tests/unit/test-yeah-control.el",
+        "lib/yeah-turn.el", "tests/unit/test-yeah-control.el",
         "tests/checks/check-a-text-answer-does-not-end-a-supervised-run.el"
       ],
       "source": null,
@@ -2661,8 +2447,7 @@
       "id": "a-session-runs-in-its-own-directory",
       "text": "The tools of a session run in the directory of the session: the `cwd' that the client sent in `session/new' is the directory the tools of that session work in, a relative path of a tool is counted from it, and the file of the task is found there.",
       "scope": [
-        "lib/yeah-session.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-session.el", "lib/yeah-acp.el",
         "tests/checks/check-a-session-runs-in-its-own-directory.el"
       ],
       "source": null,
@@ -2682,9 +2467,7 @@
       "id": "a-tool-call-carries-its-kind",
       "text": "The call of a tool on the wire of ACP carries the kind of the call: the `tool_call' and the `tool_call_update' name the kind of the tool -- a read, a search, an edit, a shell -- and a client that renders the call by its kind does not see only the name of the tool.",
       "scope": [
-        "lib/yeah-tools.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-tools.el", "lib/yeah-acp.el", "lib/yeah-turn.el",
         "tests/checks/check-a-tool-call-carries-its-kind.el"
       ],
       "source": null,
@@ -2704,9 +2487,7 @@
       "id": "a-tool-call-carries-named-arguments",
       "text": "The call of a tool on the wire of ACP carries its arguments under the names the tool declared: `rawInput' is an object with a field for every argument of the call, so that a client that looks for `path' or `old_str' finds them, and not a list of values in the order they came.",
       "scope": [
-        "lib/yeah-tools.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-tools.el", "lib/yeah-acp.el", "lib/yeah-turn.el",
         "tests/checks/check-a-tool-call-carries-named-arguments.el"
       ],
       "source": null,
@@ -2726,9 +2507,7 @@
       "id": "a-session-changes-its-permission-profile-over-the-wire",
       "text": "The permission profile of a session changes over the wire: the method `session/set_mode' of ACP is answered, the profile of the session changes with it, and a tool that the profile forbids is refused without a question to the client.",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-perm.el",
-        "lib/yeah-events.el",
+        "lib/yeah-acp.el", "lib/yeah-perm.el", "lib/yeah-events.el",
         "tests/checks/check-a-session-changes-its-permission-profile-over-the-wire.el"
       ],
       "source": null,
@@ -2748,9 +2527,7 @@
       "id": "a-session-changes-its-model-over-the-wire",
       "text": "The model of a session changes over the wire: the answer of `session/new' names the models the session may run on and the one it runs on, the method `session/set_config_option' of ACP is answered, and the run of the session goes to the model the client chose.",
       "scope": [
-        "lib/yeah-model.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-gptel.el",
+        "lib/yeah-model.el", "lib/yeah-acp.el", "lib/yeah-gptel.el",
         "lib/yeah-events.el",
         "tests/checks/check-a-session-changes-its-model-over-the-wire.el"
       ],
@@ -2771,11 +2548,8 @@
       "id": "the-mcp-servers-of-a-session-reach-the-model",
       "text": "The MCP servers of a session reach the model: the servers a client names in `session/new' are connected, their tools become the tools of the runs of that session, the model finds one of them and calls it, and the call of the model reaches the server with the environment the client named.",
       "scope": [
-        "lib/yeah-session-mcp.el",
-        "lib/yeah-mcp-client.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-control.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-session-mcp.el", "lib/yeah-mcp-client.el",
+        "lib/yeah-acp.el", "lib/yeah-control.el", "lib/yeah-turn.el",
         "tests/checks/check-the-mcp-servers-of-a-session-reach-the-model.el"
       ],
       "source": null,
@@ -2795,10 +2569,8 @@
       "id": "the-mcp-servers-of-a-session-speak-http",
       "text": "The MCP servers of a session speak HTTP: a server a client names over HTTP is connected, its tools become the tools of the runs of that session, the model finds one of them and calls it, and the call of the model reaches the server with the headers the client named.",
       "scope": [
-        "lib/yeah-mcp-http.el",
-        "lib/yeah-mcp-client.el",
-        "lib/yeah-session-mcp.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-mcp-http.el", "lib/yeah-mcp-client.el",
+        "lib/yeah-session-mcp.el", "lib/yeah-acp.el",
         "tests/support/yeah-mcp-http-server.el",
         "tests/checks/check-the-mcp-servers-of-a-session-speak-http.el"
       ],
@@ -2819,8 +2591,7 @@
       "id": "the-probe-of-the-catalog-leaves-no-empty-session",
       "text": "A probe of the catalog leaves no empty session in the journal: the orchestrator opens a session to read the models and the modes, never runs anything in it and never closes it; such a session leaves no file in the journal of the project, and the session that did work leaves a journal whose first line is its header.",
       "scope": [
-        "lib/yeah-session.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-session.el", "lib/yeah-acp.el",
         "tests/checks/check-a-probe-of-the-catalog-leaves-no-empty-session.el"
       ],
       "source": null,
@@ -2840,8 +2611,7 @@
       "id": "the-server-does-not-spin-when-the-provider-is-silent",
       "text": "A server whose provider went silent costs less than one per cent of a core over ten seconds: waiting for an answer that never comes is not working.",
       "scope": [
-        "lib/yeah-wire.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-wire.el", "lib/yeah-acp.el",
         "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el",
         "lib/yeah-proc.el"
       ],
@@ -2862,9 +2632,7 @@
       "id": "the-server-does-not-outlive-its-owner",
       "text": "A server that speaks over a socket does not outlive the process that started it: when the owner of the service is killed, the server of the service and the socket of the service are gone within ten seconds.",
       "scope": [
-        "lib/yeah-life.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-service.el",
+        "lib/yeah-life.el", "lib/yeah-acp.el", "lib/yeah-service.el",
         "lib/yeah-wire-socket.el",
         "tests/checks/check-a-server-left-behind-is-gone.el"
       ],
@@ -2885,11 +2653,8 @@
       "id": "the-check-leaves-no-server-behind",
       "text": "A check that is killed leaves no server behind: the servers that the check started watch the life of the check, and when the check is killed the servers and their sockets are gone within ten seconds.",
       "scope": [
-        "lib/yeah-life.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-service.el",
-        "scripts/dev",
-        "tests/support/yeah-check-server-fixture.el",
+        "lib/yeah-life.el", "lib/yeah-acp.el", "lib/yeah-service.el",
+        "scripts/dev", "tests/support/yeah-check-server-fixture.el",
         "tests/checks/check-a-check-that-is-killed-leaves-no-server.el"
       ],
       "source": null,
@@ -2909,9 +2674,7 @@
       "id": "the-gate-stops-a-check-that-hangs",
       "text": "A check that hangs does not eat the gate: the gate stops the check at its limit of time, stops the children of the check as well, answers with the third answer (unknown) and not with a refutation, and says that the check passed its limit.",
       "scope": [
-        "scripts/dev-timeout",
-        "scripts/lib/tree.sh",
-        "scripts/dev",
+        "scripts/dev-timeout", "scripts/lib/tree.sh", "scripts/dev",
         "tests/support/yeah-hanging-check-fixture.el",
         "tests/checks/check-a-check-that-hangs-is-stopped.el"
       ],
@@ -2932,8 +2695,7 @@
       "id": "the-interrupted-pilot-leaves-no-server-behind",
       "text": "A pilot that is interrupted leaves no server behind: the runner of the pilot stops the tree of the pilot and the group of the pilot, the server of the pilot is gone within fifteen seconds of the interruption, and the runner answers the interruption as an interruption.",
       "scope": [
-        "scripts/live-pilot",
-        "scripts/lib/tree.sh",
+        "scripts/live-pilot", "scripts/lib/tree.sh",
         "tests/support/yeah-pilot-fixture.el",
         "tests/checks/check-a-pilot-that-is-interrupted-leaves-no-server.el"
       ],
@@ -2954,8 +2716,7 @@
       "id": "the-pilot-that-runs-out-of-time-leaves-no-server-behind",
       "text": "A pilot that ran out of time leaves no server behind: the runner of the pilot stops the pilot when the limit passes, the server of the pilot is dead within fifteen seconds of the limit -- a zombie is dead, and the speed of the host is not the measure of it -- and the runner answers the third answer (unknown) and not a refutation.",
       "scope": [
-        "scripts/live-pilot",
-        "scripts/lib/tree.sh",
+        "scripts/live-pilot", "scripts/lib/tree.sh",
         "tests/support/yeah-pilot-fixture.el",
         "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
         "lib/yeah-proc.el"
@@ -2977,11 +2738,8 @@
       "id": "a-gate-run-needs-no-watchdog",
       "text": "The gate of the project needs no watchdog: the gate itself waits for the run of the method, a run that was killed is started again by the gate itself, the map of the project is written when the run ends, and nothing of the run is left behind when the gate answers.",
       "scope": [
-        "scripts/gate",
-        "scripts/live-pilot",
-        "scripts/lib/method.sh",
-        "scripts/dev",
-        "tests/support/yeah-fake-method.sh",
+        "scripts/gate", "scripts/live-pilot", "scripts/lib/method.sh",
+        "scripts/dev", "tests/support/yeah-fake-method.sh",
         "tests/checks/check-a-killed-gate-run-restarts-and-reaches-the-end.el"
       ],
       "source": null,
@@ -3001,9 +2759,7 @@
       "id": "the-killed-run-leaves-no-copy-behind",
       "text": "A killed run of the method leaves no copy behind: after the run the gate removes the copies of the runs that are gone, and the copy of a run that is alive stays.",
       "scope": [
-        "scripts/lib/copies.sh",
-        "scripts/gate",
-        "scripts/dev",
+        "scripts/lib/copies.sh", "scripts/gate", "scripts/dev",
         "tests/support/yeah-fake-method.sh",
         "tests/checks/check-a-killed-run-leaves-no-copy-behind.el"
       ],
@@ -3024,8 +2780,7 @@
       "id": "the-support-fixtures-load",
       "text": "The fixtures of the support load: every fixture of the support that does not start a server is loaded in a child Emacs and ends, the three fixtures that start a server are there, and the check leaves no process behind.",
       "scope": [
-        "tests/support",
-        "tests/checks/check-the-support-fixtures-load.el"
+        "tests/support", "tests/checks/check-the-support-fixtures-load.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -3044,8 +2799,7 @@
       "id": "the-live-tests-are-whole-files",
       "text": "The live tests are whole files: every live test is read to its end, its parentheses match, and it has the header and the footer of a file of the project.",
       "scope": [
-        "tests/live",
-        "tests/checks/check-the-live-tests-are-whole-files.el"
+        "tests/live", "tests/checks/check-the-live-tests-are-whole-files.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -3063,9 +2817,7 @@
     {
       "id": "the-interface-is-seen",
       "text": "The interface of the project is seen: the picture check draws the journal and the approval view in a terminal under a frame server, photographs the screen and finds the interface in the picture.",
-      "scope": [
-        "tests/pixel"
-      ],
+      "scope": [ "tests/pixel" ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
       "requirements": [
@@ -3083,8 +2835,7 @@
       "id": "the-site-shows-the-current-version",
       "text": "The site shows the project as it is: the page shows one version and it is the version of the project, and every file of the repository the page points at is on disk.",
       "scope": [
-        "site",
-        "VERSION",
+        "site", "VERSION",
         "tests/checks/check-the-site-shows-the-current-version.el"
       ],
       "source": null,
@@ -3104,11 +2855,7 @@
       "id": "the-documentation-points-at-files-that-exist",
       "text": "The documentation points at what is there: every name of a file of this repository that a document mentions leads to a file that is on disk, and every section it names is a heading of that file. The records of the waves are documents as well, the guard reads them as well, and the rule of the file does not apply to them: a record is a document of the past, it names the files of the day of its wave, and a file that has moved or is gone since that day is named by the record and is not a defect of the record.",
       "scope": [
-        "docs",
-        "AGENTS.md",
-        "README.md",
-        "ELISP_BEST_PRACTICES.md",
-        "waves",
+        "docs", "AGENTS.md", "README.md", "ELISP_BEST_PRACTICES.md", "waves",
         "tests/checks/check-the-documentation-points-at-files-that-exist.el"
       ],
       "source": null,
@@ -3128,8 +2875,7 @@
       "id": "the-wire-tells-how-the-run-ended",
       "text": "The wire tells the orchestrator how the run ended: a client that asked for the outcome of a run in the `_meta' of its capabilities receives the nudge that pushed the run and the run that ended without an effect, and a client that asked for nothing receives nothing.",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-acp-vocabulary.el",
+        "lib/yeah-acp.el", "lib/yeah-acp-vocabulary.el",
         "tests/checks/check-the-wire-tells-the-orchestrator-how-the-run-ended.el"
       ],
       "source": null,
@@ -3149,8 +2895,7 @@
       "id": "the-journal-writes-a-list-as-an-array",
       "text": "The journal keeps a record that holds a list: a list in a record is written as an array, every other field of the record survives, and the record is not a stand-in; only a value that JSON cannot hold at all is written as a stand-in.",
       "scope": [
-        "lib/yeah-session.el",
-        "tests/unit/test-yeah-session.el",
+        "lib/yeah-session.el", "tests/unit/test-yeah-session.el",
         "tests/checks/check-a-list-in-a-record-is-written-as-an-array.el"
       ],
       "source": null,
@@ -3170,8 +2915,7 @@
       "id": "the-prompt-response-carries-the-usage-of-the-turn",
       "text": "The answer to `session/prompt' carries the usage of the run it answered: the tokens the provider reported for that run, as `inputTokens', `outputTokens' and `totalTokens'. The usage of an answer is the usage of its turn and not the usage of the session, and a run whose provider reported nothing carries no usage at all: the kernel does not guess the tokens of a provider that said nothing.",
       "scope": [
-        "lib/yeah-acp.el",
-        "schemas/acp-v1.json",
+        "lib/yeah-acp.el", "schemas/acp-v1.json",
         "tests/support/yeah-session-usage-model.el",
         "tests/checks/check-the-prompt-response-carries-the-usage-of-the-turn.el"
       ],
@@ -3192,8 +2936,7 @@
       "id": "the-journal-holds-the-usage-of-a-request-once",
       "text": "The journal holds the usage of a request once: the road to the answer -- the reasoning of the model, the result of a tool that ran, the sentinel of a stream that is over -- carries the same tokens as the answer and does not write them again.",
       "scope": [
-        "lib/yeah-answer.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-answer.el", "lib/yeah-turn.el",
         "tests/support/yeah-session-usage-model.el",
         "tests/checks/check-the-journal-holds-the-usage-of-a-request-once.el"
       ],
@@ -3214,8 +2957,7 @@
       "id": "the-orchestrator-sees-the-usage-of-the-turn",
       "text": "The orchestrator sees the usage of the turn: the tokens of a turn travel from the kernel to the counter of the agent, and the client that asked for nothing sees nothing.",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-acp-vocabulary.el",
+        "lib/yeah-acp.el", "lib/yeah-acp-vocabulary.el",
         "plugin/yeah-provider/server/usage.ts",
         "plugin/yeah-provider/server/yeah.ts",
         "plugin/yeah-provider/index.server.ts",
@@ -3338,9 +3080,7 @@
       "id": "a-session-may-work-without-a-person",
       "text": "A session of a person who is not there may work: the mode `auto' allows the tools that change the world without a question, because nobody would answer the question, and the client of the orchestrator is not asked at all.",
       "scope": [
-        "lib/yeah-perm.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-approval.el",
+        "lib/yeah-perm.el", "lib/yeah-acp.el", "lib/yeah-approval.el",
         "tests/checks/check-a-session-may-work-without-a-person.el",
         "tests/support/yeah-bash-model.el"
       ],
@@ -3361,10 +3101,8 @@
       "id": "a-delete-goes-to-the-trash",
       "text": "A deletion of the agent is a move that can be taken back: the rm of the shell of the agent moves what it is given into the trash of the user instead of removing it, the delete tool of the agent moves a path the same way, and the commands that destroy in place and cannot be caught that way are refused by name.",
       "scope": [
-        "lib/yeah-trash.el",
-        "lib/yeah-shell-guard.el",
-        "lib/yeah-process.el",
-        "lib/yeah-builtins.el",
+        "lib/yeah-trash.el", "lib/yeah-shell-guard.el",
+        "lib/yeah-process.el", "lib/yeah-builtins.el",
         "tests/checks/check-a-delete-goes-to-the-trash.el",
         "tests/unit/test-yeah-trash.el"
       ],
@@ -3385,14 +3123,10 @@
       "id": "a-run-waits-in-a-state",
       "text": "A run that waits for the answer of a person, or for a provider that was too busy, says so in its state: the run waits in `awaiting-user-permission' or in `blocked-on-rate', it leaves that state when the answer comes, and every move the runtime made is a cell of the table of the machine.",
       "scope": [
-        "lib/yeah-loop.el",
-        "lib/yeah-state.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-approval.el",
-        "lib/yeah-faces.el",
+        "lib/yeah-loop.el", "lib/yeah-state.el", "lib/yeah-turn.el",
+        "lib/yeah-approval.el", "lib/yeah-faces.el",
         "tests/checks/check-a-run-waits-in-a-state.el",
-        "tests/unit/test-yeah-loop.el",
-        "tests/unit/test-yeah-state.el"
+        "tests/unit/test-yeah-loop.el", "tests/unit/test-yeah-state.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -3456,11 +3190,9 @@
       "id": "the-diagram-pipeline-renders-both-themes",
       "text": "The pipeline of the diagrams renders every diagram in both themes and draws the pictures of two engines: `scripts/dev diagrams` finds PlantUML and D2 by itself — every step of the chain of the search works alone (the environment, PATH, the profile of the user, the store of nix), and the chain of the search lives in one place in `scripts/`: `scripts/dev` reads it from `scripts/lib/tools.sh`, calls it, and writes no step of the search of a tool by itself; no other script of `scripts/` defines the chain or carries a copy of its body, and a copy of the body that is rewritten in other words is not seen — the searches of the checks themselves are their own, by design — and the chain is proved by the behaviour of the pipeline and not by its wording: in a copy of the tree whose chain hands out a decoy instrument the pipeline draws the pictures of the decoy, so a pipeline that takes the instrument from anywhere but the chain of the search is seen — answers with the code 3 when the tool is not there, answers with the code 1 when PlantUML fails or writes no picture, and writes two pictures for every diagram of the tree into `site/assets/diagrams/` — the light one and the dark one — each picture drawn from the whole of its own source, with the skin of the site, whose colours are the tokens of the site.  The decoy is measured in the environment of a normal run, where every step of the chain of the search resolves — the variable of the environment, the command on the PATH, the binary of the profile of the user and the glob of the store of nix — and the boundary of the probe is named: the decoy sees a copy that resolves the instrument in the environment of the decoy, and it does not see a copy that resolves it in a place that the environment of the decoy does not provide.",
       "scope": [
-        "scripts/dev",
-        "scripts/lib/tools.sh",
+        "scripts/dev", "scripts/lib/tools.sh",
         "site/diagrams/palette-light.puml",
-        "site/diagrams/palette-dark.puml",
-        "site/diagrams/palette-light.d2",
+        "site/diagrams/palette-dark.puml", "site/diagrams/palette-light.d2",
         "site/diagrams/palette-dark.d2",
         "tests/checks/check-the-diagram-pipeline-renders-both-themes.sh"
       ],
@@ -3481,11 +3213,8 @@
       "id": "the-state-diagram-comes-from-the-code",
       "text": "The diagram of the state machine of the site is generated out of the code of the kernel and not drawn by hand: `scripts/dev diagrams` reads `yeah-state-list` and `yeah-loop--raw-transitions` from a live Emacs and writes `site/diagrams/state-machine.puml` before it draws anything, the file of the repository is byte-equal to the file that the generator writes from the current code, every cell of the table is an arrow of the diagram with its own ends -- the state it leads from, the state it leads to and the label of the cell -- and every state of the machine is a state of it, a cell that the table of the machine names twice is named a duplicate and not an absent cell, a cell whose label the diagram carries nowhere is named an absent cell and not a cell that is led elsewhere, a cell whose label the diagram carries on the ends of the arrows of the other cells is named a cell that is led elsewhere and not an absent cell, and an arrow that the table of the machine does not name is named as such, the pipeline `scripts/dev diagrams` in a tree without the kernel answers with the code 3 and draws no picture at all, and a table that changed and a diagram that was not regenerated is a defect the check names.",
       "scope": [
-        "lib/yeah-state-diagram.el",
-        "lib/yeah-loop.el",
-        "lib/yeah-state.el",
-        "scripts/dev",
-        "site/diagrams/state-machine.puml",
+        "lib/yeah-state-diagram.el", "lib/yeah-loop.el", "lib/yeah-state.el",
+        "scripts/dev", "site/diagrams/state-machine.puml",
         "tests/checks/check-the-state-diagram-comes-from-the-code.sh"
       ],
       "source": null,
@@ -3505,8 +3234,7 @@
       "id": "the-layer-diagram-points-at-files-that-exist",
       "text": "The picture of the layers of the core is drawn in the notation of the bands -- what asks, what decides, what is remembered and what is seen -- and every leaf of it names one file of the code that implements it, and every name it gives points at what is there: every reference of the form `file:line' of `site/diagrams/core-layers.d2' names a file of this repository, a line of that file and a line that carries a definition -- an empty line names no code, a line that holds nothing but a comment names no code either, and a line that holds code and no definition names no definition -- a reference to a path that leaves the repository names nothing of this repository, every module of `lib/' is named by the picture or listed in the note of the modules the picture does not name with the reason why it is not there, the note names no module that is not there, names no module without a reason and names no module that the picture names as well, every block of the picture names at least one file, and the four layers of the picture -- the drivers, the core, the journal and the projections -- are there.",
       "scope": [
-        "site/diagrams/core-layers.d2",
-        "lib",
+        "site/diagrams/core-layers.d2", "lib",
         "tests/checks/check-the-layer-diagram-points-at-files-that-exist.el"
       ],
       "source": null,
@@ -3526,18 +3254,10 @@
       "id": "a-tool-declares-its-own-risk",
       "text": "A tool declares whether it changes the world: the field is `:risk', its values come from the vocabulary of the kernel (`read', `write', `execute' or `destroy'), and the permission rule asks by that declaration and not by the name of a tool in a list. The declaration of a tool agrees with what its handler does -- the set of the tools that change the world is measured by following the calls of every handler of the core and is not taken from a constant -- the category the declaration names is one of the categories the measurement found, the profiles name exactly the tools the measurement found among the tools the registry holds, a tool that declares no risk is asked about because a risk that is not known changes the world, and an action that no rule names is asked about and is never allowed.",
       "scope": [
-        "lib/yeah-risk.el",
-        "lib/yeah-tools.el",
-        "lib/yeah-perm.el",
-        "lib/yeah-builtins.el",
-        "lib/yeah-files.el",
-        "lib/yeah-edit.el",
-        "lib/yeah-process.el",
-        "lib/yeah-emacs.el",
-        "lib/yeah-git.el",
-        "lib/yeah-todo.el",
-        "lib/yeah-trash.el",
-        "lib/yeah-delegate.el",
+        "lib/yeah-risk.el", "lib/yeah-tools.el", "lib/yeah-perm.el",
+        "lib/yeah-builtins.el", "lib/yeah-files.el", "lib/yeah-edit.el",
+        "lib/yeah-process.el", "lib/yeah-emacs.el", "lib/yeah-git.el",
+        "lib/yeah-todo.el", "lib/yeah-trash.el", "lib/yeah-delegate.el",
         "lib/yeah-bridge.el",
         "tests/checks/check-a-tool-declares-its-own-risk.el"
       ],
@@ -3558,8 +3278,7 @@
       "id": "a-refusal-names-its-cause",
       "text": "A refusal of the rule names the cause of the refusal: the rule refuses when the declarations of the tools are not known, and the refusal says why they are not known -- the error of the load of the registry of the tools, with the name of the file that failed to load -- so that the person can act on the cause and not only on the fact that the registry is absent.",
       "scope": [
-        "lib/yeah-risk.el",
-        "lib/yeah-perm.el",
+        "lib/yeah-risk.el", "lib/yeah-perm.el",
         "tests/checks/check-a-refusal-names-its-cause.el"
       ],
       "source": null,
@@ -3579,8 +3298,7 @@
       "id": "a-check-that-reads-a-gone-process-decides-and-does-not-crash",
       "text": "A check that reads the state of a process decides and does not die on the filesystem: the reader of the tree of the processes lives in one place in the kernel (`lib/yeah-proc.el`), it catches the error of the file and nothing else, a process that is gone answers nil and not an error and not the number zero, a PID that names no process answers nil, a process that lives is read -- its state is a letter and its ticks are the ticks of the kernel --, the answer of the reader of the ticks is the ticks of the process and not the number zero, the checks that read a process read it through that reader and not by a path of their own -- the check that proves this claim is the one exception, and it reads the stat file of its own process to compare the answer of the reader with the truth --, and a server that is gone is a failure that the check names and not a measurement of zero ticks.",
       "scope": [
-        "lib/yeah-proc.el",
-        "tests/support",
+        "lib/yeah-proc.el", "tests/support",
         "tests/checks/check-a-check-that-reads-a-gone-process-decides-and-does-not-crash.el",
         "tests/checks/check-a-pilot-that-runs-out-of-time-leaves-no-server.el",
         "tests/checks/check-the-server-does-not-spin-when-the-provider-is-silent.el"
@@ -3602,8 +3320,7 @@
       "id": "a-process-that-is-dead-is-dead-everywhere",
       "text": "A process that is dead is dead everywhere: the rule of the life of a process lives in the kernel, in one place (`lib/yeah-proc.el'), and it answers by the state of the process -- `S' and `R' live, `Z' is a zombie and a zombie is dead, every other letter does not run, and the state `nil' is a process that is not there at all.  The existence of the directory of the process tells nothing, because the directory of a zombie is there as well, and a check that reads \"the process is alive\" by that existence can refute a claim that holds.  The kernel asks the rule in both of its places (`lib/yeah-life.el'), so the socket of a zombie owner is swept away and a zombie owner is not adopted as if it lived, and the checks of `tests/checks/' read the process through the one reader and not by a path of their own -- the check that proves the claim of the wave 100 is the one exception, and it reads the stat file of its own process to compare the answer of the reader with the truth --.",
       "scope": [
-        "lib/yeah-proc.el",
-        "lib/yeah-life.el",
+        "lib/yeah-proc.el", "lib/yeah-life.el",
         "tests/checks/check-a-process-that-is-dead-is-dead-everywhere.el"
       ],
       "source": null,
@@ -3663,14 +3380,9 @@
       "id": "an-answer-carries-a-scope",
       "text": "An answer of a person names the scope its rule lives in, the rule that the answer writes carries that same scope, and the journal records it.",
       "scope": [
-        "lib/yeah-perm.el",
-        "lib/yeah-approval.el",
-        "lib/yeah-run.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-events.el",
-        "lib/yeah-service-ui.el",
-        "lib/yeah-approval-ui.el",
+        "lib/yeah-perm.el", "lib/yeah-approval.el", "lib/yeah-run.el",
+        "lib/yeah-acp.el", "lib/yeah-turn.el", "lib/yeah-events.el",
+        "lib/yeah-service-ui.el", "lib/yeah-approval-ui.el",
         "tests/checks/check-an-answer-carries-a-scope.el"
       ],
       "source": null,
@@ -3690,9 +3402,7 @@
       "id": "two-calls-on-one-resource-do-not-overlap",
       "text": "A tool declares the resource it touches; two calls of the same tool on the same resource never overlap — the second call waits for the first — and a tool that declares no resource is not serialized by the lock of a resource.",
       "scope": [
-        "lib/yeah-tools.el",
-        "lib/yeah-scheduler.el",
-        "lib/yeah-turn.el",
+        "lib/yeah-tools.el", "lib/yeah-scheduler.el", "lib/yeah-turn.el",
         "tests/checks/check-two-calls-on-one-resource-do-not-overlap.el"
       ],
       "source": null,
@@ -3712,12 +3422,8 @@
       "id": "a-tool-declares-its-own-limits",
       "text": "A tool declares the limits it has: the field `:timeout` is the upper bound of the work one call of the tool may start, in seconds, and the field `:output-limit` is the upper bound of the output one call of the tool may hand to the model, in characters. The registry refuses a limit that is not a positive integer and refuses the timeout of a synchronous tool, both by name; a call that asks for a duration longer than the timeout its tool declares is refused by name; the bound of the output that applies is the smaller of the declared one and the global one (`yeah-result-output-limit`), so a declaration never raises the global limit, and the text that does not fit lies in a private artifact while the model reads the tail of it; a call that crossed the timeout of its tool is closed by a failure that names the bound, and the model reads that failure.",
       "scope": [
-        "lib/yeah-tools.el",
-        "lib/yeah-result.el",
-        "lib/yeah-scheduler.el",
-        "lib/yeah-turn.el",
-        "lib/yeah-process.el",
-        "lib/yeah-files.el",
+        "lib/yeah-tools.el", "lib/yeah-result.el", "lib/yeah-scheduler.el",
+        "lib/yeah-turn.el", "lib/yeah-process.el", "lib/yeah-files.el",
         "lib/yeah-git.el",
         "tests/checks/check-a-tool-declares-its-own-limits.el"
       ],
@@ -3738,9 +3444,7 @@
       "id": "a-scope-decides-where-the-rule-lives",
       "text": "The scope of a rule says where the rule lives: every scope of the dictionary has exactly one carrier, the rule of a scope is written into the carrier of that scope and into no other, a rule that is saved in a file is read back when the permission is computed, and a scope that holds no rule is refused by name.",
       "scope": [
-        "lib/yeah-perm.el",
-        "lib/yeah-approval.el",
-        "lib/yeah-run.el",
+        "lib/yeah-perm.el", "lib/yeah-approval.el", "lib/yeah-run.el",
         "lib/yeah-acp.el",
         "tests/checks/check-a-scope-decides-where-the-rule-lives.el"
       ],
@@ -3761,11 +3465,8 @@
       "id": "the-question-offers-the-scope",
       "text": "The question of the permission offers the four scopes of the answer — once, session, project and global — and the refusal; the client answers with one of them; the answer that comes back over the wire carries the scope it named, and the rule the answer writes carries the scope of the carrier that holds it.",
       "scope": [
-        "lib/yeah-approval.el",
-        "lib/yeah-approval-ui.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-service-ui.el",
-        "schemas/acp-v1.json",
+        "lib/yeah-approval.el", "lib/yeah-approval-ui.el", "lib/yeah-acp.el",
+        "lib/yeah-service-ui.el", "schemas/acp-v1.json",
         "tests/checks/check-the-question-offers-the-scope.el"
       ],
       "source": null,
@@ -3785,8 +3486,7 @@
       "id": "the-one-turn-diagram-shows-the-turn-of-the-agent",
       "text": "The picture of one turn of the agent shows the turn: the model proposes a call of a tool, the registry checks the call, the policy decides whether the call may run, the person answers when the rules ask, the scheduler runs what may run, the journal keeps what happened and the result goes back to the model. Every reference of the picture of the form `file:line' names a file of this repository, a line of that file and a line that carries a definition -- an empty line names no code, a line that holds nothing but a comment names no code either, and a line that holds code and no definition names no definition -- the picture names the six modules that hold the turn together -- `lib/yeah-turn.el', `lib/yeah-tools.el', `lib/yeah-perm.el', `lib/yeah-approval.el', `lib/yeah-scheduler.el' and `lib/yeah-session.el' -- and one line of the picture names the five answers the person may give: `:once', `:session', `:project', `:global' and `:reject'.",
       "scope": [
-        "site/diagrams/one-turn.puml",
-        "lib",
+        "site/diagrams/one-turn.puml", "lib",
         "tests/checks/check-the-one-turn-diagram-shows-the-turn-of-the-agent.el",
         "tests/support/yeah-diagram-files.el"
       ],
@@ -3807,8 +3507,7 @@
       "id": "the-emacs-layer-diagram-shows-the-bridge-and-the-scopes",
       "text": "The picture of the Emacs layer is drawn in the notation of the bands and shows the person, the editor's Emacs, the agent's Emacs and the bridge between them: the bridge is the only path to the live state of the editor's Emacs, and it is a capability the person approves on purpose. The six capabilities of the layer -- BUFFERS, INTROSPECT, EDIT, DIAGNOSE, COMPOSE and RECOVER -- are in the picture, every reference of the picture of the form `file:line' names a file of this repository, a line of that file and a line that carries a definition, every block of the picture names a file, the block of the bridge names `lib/yeah-bridge.el', the picture names the five modules that hold the layer together -- `lib/yeah-emacs.el', `lib/yeah-bridge.el', `lib/yeah-compose.el', `lib/yeah-doctor-ui.el' and `lib/yeah-approval-ui.el' -- and one line of the picture names the five answers the person may give: `:once', `:session', `:project', `:global' and `:reject'.",
       "scope": [
-        "site/diagrams/emacs-layer.d2",
-        "lib",
+        "site/diagrams/emacs-layer.d2", "lib",
         "tests/checks/check-the-emacs-layer-diagram-shows-the-bridge-and-the-scopes.el",
         "tests/support/yeah-diagram-files.el"
       ],
@@ -3831,14 +3530,9 @@
       "scope": [
         "site/diagrams/placements.d2",
         "tests/checks/check-the-placements-diagram-shows-the-placements-and-the-protocols.el",
-        "tests/support/yeah-diagram-files.el",
-        "lib/yeah-placement.el",
-        "lib/yeah-product.el",
-        "lib/yeah-service.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-mcp.el",
-        "lib/yeah-wire.el",
-        "lib/yeah-wire-socket.el",
+        "tests/support/yeah-diagram-files.el", "lib/yeah-placement.el",
+        "lib/yeah-product.el", "lib/yeah-service.el", "lib/yeah-acp.el",
+        "lib/yeah-mcp.el", "lib/yeah-wire.el", "lib/yeah-wire-socket.el",
         "lib/yeah-bridge.el"
       ],
       "source": null,
@@ -3860,11 +3554,8 @@
       "scope": [
         "site/diagrams/fixed-point.puml",
         "tests/checks/check-the-fixed-point-diagram-shows-the-loop-of-the-delegation.el",
-        "tests/support/yeah-diagram-files.el",
-        "lib/yeah-delegate.el",
-        "lib/yeah-subagent.el",
-        "lib/yeah-agent.el",
-        "lib/yeah-emacs.el"
+        "tests/support/yeah-diagram-files.el", "lib/yeah-delegate.el",
+        "lib/yeah-subagent.el", "lib/yeah-agent.el", "lib/yeah-emacs.el"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -3883,11 +3574,8 @@
       "id": "the-check-levels-diagram-shows-the-four-levels",
       "text": "The picture of the levels of the verification shows the four levels of `docs/ARCHITECTURE.md' §10 and the boundary of what they prove: the unit, the contract (the canary), the integration and the live (the evaluation), in the order of the strength of their proof; every level is named as a word of its own -- a name that is only a part of a path is not the name of a level; the place of every level is named in the picture -- `tests/unit', `tests/checks', `tests/live' and `scripts/gate' -- and every one of them is there in the tree; the picture is an activity, it begins and it ends; and the boundary of the proof is on the picture: it says what a level proves and where the proof of a level ends, because no level proves the product and a green module is not a working product.",
       "scope": [
-        "site/diagrams/check-levels.puml",
-        "tests/unit",
-        "tests/checks",
-        "tests/live",
-        "scripts/gate",
+        "site/diagrams/check-levels.puml", "tests/unit", "tests/checks",
+        "tests/live", "scripts/gate",
         "tests/checks/check-the-check-levels-diagram-shows-the-four-levels.el",
         "tests/support/yeah-diagram-files.el"
       ],
@@ -3908,8 +3596,7 @@
       "id": "the-code-packages-diagram-names-every-module-of-the-kernel",
       "text": "The picture of the packages of the code is the knot of the code -- the nine packages around the kernel -- and it shows where the code lives: the declaration of the picture, in the comment of its source, names the modules of every package, and the card of every package says how many modules the package holds, how many packages it needs and how many packages need it; `lib/' is in exactly nine packages -- the journal and the projections, the control of a run, the adapter of the model, the tools and the registry, the rights and the approvals, the protocols and the wire, the interface and the product, the delegation and the subagents, the placements and the plumbing -- and the composition of the nine packages is the decision of the writer of the wave and not a claim that `lib/' is divided so -- and every module of `lib/' is named in one of them, or is excluded with the reason why it is in none; a module is named in one package and not in two; the card of every package says the number of the modules of the package, the number of the packages it needs and the number of the packages that need it, and these numbers are the numbers the code holds; and the declaration excludes no module that is not there, excludes every module with a reason, and excludes no module that a package names as well.",
       "scope": [
-        "site/diagrams/code-packages.d2",
-        "lib",
+        "site/diagrams/code-packages.d2", "lib",
         "tests/checks/check-the-code-packages-diagram-names-every-module-of-the-kernel.el",
         "tests/support/yeah-diagram-files.el"
       ],
@@ -3930,8 +3617,7 @@
       "id": "every-diagram-points-at-files-that-exist",
       "text": "Every diagram of the site points at what is there: the check walks `site/diagrams/' and measures every picture it finds there -- the pictures of the skins of the themes (`palette-*') are not pictures of the site and are not measured -- the picture of PlantUML is named after its file and ends with `@enduml', the picture of D2 holds nodes, the picture says something -- a comment says nothing, an empty line says nothing and a `skinparam' is the skin of a theme and not a part of the picture -- and every reference of the form `file:line' names a file of this repository, at a line of that file and, for a file of Elisp, at a line that carries a definition: an empty line names no code, a line that holds nothing but a comment names no code either, and a line that holds code that is not a definition names no definition. Every picture names at least one place of the repository -- a place is named with a line or without one, a place of the repository is one whose first segment is an entry at the root of the tree -- and every place it names is there in the tree. The one exception of the rule of naming a place -- the machine of the states, which is written out of the code by `lib/yeah-state-diagram.el' -- is named in the code of the check and cannot outlive its reason: the check asks for the generator of the picture to be there.",
       "scope": [
-        "site/diagrams",
-        "lib",
+        "site/diagrams", "lib",
         "tests/checks/check-every-diagram-points-at-files-that-exist.el",
         "tests/support/yeah-diagram-files.el"
       ],
@@ -3952,8 +3638,7 @@
       "id": "the-packages-picture-is-the-knot-of-the-code",
       "text": "The picture of the packages of the kernel is one knot and not nine layers: the nine packages are drawn around one node, every package of the declaration is a card of the picture, and the numbers of the card are the numbers the code holds -- the number of the modules of the package, the number of the packages it needs and the number of the packages that need it.  The graph of the requires has no level to speak of: every package reaches every other one, and a picture that says otherwise says the opposite of the truth.",
       "scope": [
-        "site/diagrams/code-packages.d2",
-        "lib",
+        "site/diagrams/code-packages.d2", "lib",
         "tests/checks/check-the-code-packages-diagram-names-every-module-of-the-kernel.el",
         "tests/support/yeah-diagram-files.el"
       ],
@@ -3974,9 +3659,7 @@
       "id": "the-journal-names-the-model-of-a-child",
       "text": "The journal of a run names the model of every child it started: the spawn of the child in the journal of the parent carries the model of the preset, and the journal of the child carries the same model in the record of where the child stands in the tree of the delegations.  The model the journal names is the model the child runs on -- the transport of the child is built from the model of the preset -- and it is not the model of the parent.  A reader of the journals can tell which model answered the child and not the parent.",
       "scope": [
-        "lib/yeah-subagent.el",
-        "lib/yeah-delegate.el",
-        "lib/yeah-events.el",
+        "lib/yeah-subagent.el", "lib/yeah-delegate.el", "lib/yeah-events.el",
         "tests/checks/check-the-journal-names-the-model-of-a-child.el"
       ],
       "source": null,
@@ -3996,8 +3679,7 @@
       "id": "the-site-shows-the-diagrams-of-the-architecture",
       "text": "The page of the site shows the eight diagrams of the architecture: each of them is a figure of the page that carries a picture of the light theme and a picture of the dark theme, every picture points at a file that is on disk and carries a text that says what the picture is, every figure carries a caption, the ASCII figure of the architecture is gone from the page and from the stylesheet, the pictures are scaled into the column of the page, the theme of the frame chooses the picture -- the light one stands when the page has no JavaScript -- and the stylesheet prints the pictures.",
       "scope": [
-        "site/index.html",
-        "site/styles.css",
+        "site/index.html", "site/styles.css",
         "tests/checks/check-the-site-shows-the-diagrams.el"
       ],
       "source": null,
@@ -4037,8 +3719,7 @@
       "id": "two-children-run-in-one-turn-of-the-parent",
       "text": "A turn of the parent may hold two children, not one: the model asks for a delegation twice in that turn, the journal of the parent holds the spawn of two children with different short ids, both children are alive when the turn of the parent is over, and both children end on their own, later.  The turn of the parent goes on and does not wait for the children.",
       "scope": [
-        "lib/yeah-delegate.el",
-        "lib/yeah-subagent.el",
+        "lib/yeah-delegate.el", "lib/yeah-subagent.el",
         "tests/checks/check-two-children-run-in-one-turn-of-the-parent.el"
       ],
       "source": null,
@@ -4058,13 +3739,9 @@
       "id": "the-diagram-on-the-site-is-current",
       "text": "The pictures of the site are the pictures of their sources: every diagram of the tree of `site/diagrams/' is drawn again in both of its themes, the source of the diagram of the state machine is written out of the code of the kernel and not read from the file of the repository, and the picture that the site publishes in `site/assets/diagrams/' is the picture that the render of that source gives.  The comparison of the pictures of PlantUML is a comparison of pictures and not of bytes: both pictures are put into one canonical form first, and the canonical form drops the; the pictures of D2 are compared as the bytes of the render, because the render of D2 is deterministic: two renders of one source are one picture, byte for byte; noise of a picture (the metadata of the render, the order of the attributes of a tag, the whitespace) and keeps its content (the names of the tags, their order, the colours, the texts, the geometry).",
       "scope": [
-        "site/diagrams",
-        "site/assets/diagrams",
-        "lib/yeah-state.el",
-        "lib/yeah-loop.el",
-        "lib/yeah-state-diagram.el",
-        "scripts/lib/tools.sh",
-        "tests/checks/check-site-diagrams-current.sh"
+        "site/diagrams", "site/assets/diagrams", "lib/yeah-state.el",
+        "lib/yeah-loop.el", "lib/yeah-state-diagram.el",
+        "scripts/lib/tools.sh", "tests/checks/check-site-diagrams-current.sh"
       ],
       "source": null,
       "owner": "p.b.kosov@yandex.ru",
@@ -4083,9 +3760,7 @@
       "id": "a-workspace-grant-asks-once-and-stays-inside",
       "text": "In Build with workspace trust on, one remembered answer covers later work inside the session directory; a Bash answer names the workspace shell, so it also covers later Bash commands there. The grants do not cover a path below another root. Turning workspace trust off restores Build's per-call questions, and safe reads need no question.",
       "scope": [
-        "lib/yeah-acp.el",
-        "lib/yeah-perm.el",
-        "tests/unit/test-yeah-acp.el",
+        "lib/yeah-acp.el", "lib/yeah-perm.el", "tests/unit/test-yeah-acp.el",
         "tests/unit/test-yeah-perm.el"
       ],
       "source": null,
@@ -4105,8 +3780,7 @@
       "id": "every-picture-of-the-site-is-readable-in-the-column",
       "text": "Every picture of the site, rendered at the width of the frame of the page, is read without a word smaller than twelve pixels: the column of the page is computed out of the stylesheet of the site (the width of the frame, the fringe, the two gutters, the border of a figure and the padding of a picture, a clamp resolved at the width of the frame), the sizes of the type are read out of the SVG of every picture, the effective size of a word is the size of the type times the column divided by the width of the picture, and the smallest effective size of every picture is at or above the floor of the check.  A picture whose words the reader of the site cannot read is a picture whose truth the guards prove to nobody.",
       "scope": [
-        "site/styles.css",
-        "site/assets/diagrams/",
+        "site/styles.css", "site/assets/diagrams/",
         "tests/checks/check-the-pictures-are-readable-in-the-column.el"
       ],
       "source": null,
@@ -4126,10 +3800,8 @@
       "id": "the-edges-of-a-picture-carry-their-kind",
       "text": "An edge of a picture of the site that crosses a boundary of responsibility carries its kind: the label of the edge names the kind in words -- the request of the person, the answer of the person, an event written into the journal, a view projected out of it, the live state of the editor reached on an approved capability -- and the dash of the line carries the kind a second time.  The palette of every theme defines the five kinds and holds their dashes apart: no two kinds of one palette share a dash, and the check reads the three structural pictures against the kinds their labels say.  Two kinds that share one dash are one line, and a picture that draws them tells the reader nothing.",
       "scope": [
-        "site/diagrams/palette-light.d2",
-        "site/diagrams/palette-dark.d2",
-        "site/diagrams/core-layers.d2",
-        "site/diagrams/emacs-layer.d2",
+        "site/diagrams/palette-light.d2", "site/diagrams/palette-dark.d2",
+        "site/diagrams/core-layers.d2", "site/diagrams/emacs-layer.d2",
         "site/diagrams/placements.d2",
         "tests/checks/check-the-edges-of-a-picture-carry-their-kind.el"
       ],
@@ -4150,14 +3822,10 @@
       "id": "every-picture-of-the-site-names-what-it-does-not-show",
       "text": "Every picture of the site names what it does not show: the picture of the turn does not show the machinery of the run -- the supervision, the retries and the compaction are the run, and the machine of the states of a run is the neighbouring picture; the picture of the fixed point does not show the cancellation of a child that ran out of its time; the machine of the states does not show that a run which never meets a busy provider never takes blocked-on-rate; the picture of the packages does not show the edges between the packages; the picture of the Emacs layer does not show the paths the bridge does not take; the picture of the layers names the modules that are out of its scope; the picture of the placements names the honest limit of the wire; and the picture of the levels of the check names what is still open at the top of the ladder.  A picture that hides its own boundary tells the reader more than the code holds.",
       "scope": [
-        "site/diagrams/one-turn.puml",
-        "site/diagrams/fixed-point.puml",
-        "site/diagrams/state-machine.puml",
-        "site/diagrams/code-packages.d2",
-        "site/diagrams/emacs-layer.d2",
-        "site/diagrams/core-layers.d2",
-        "site/diagrams/placements.d2",
-        "site/diagrams/check-levels.puml",
+        "site/diagrams/one-turn.puml", "site/diagrams/fixed-point.puml",
+        "site/diagrams/state-machine.puml", "site/diagrams/code-packages.d2",
+        "site/diagrams/emacs-layer.d2", "site/diagrams/core-layers.d2",
+        "site/diagrams/placements.d2", "site/diagrams/check-levels.puml",
         "lib/yeah-state-diagram.el",
         "tests/checks/check-every-diagram-names-what-it-does-not-show.el"
       ],
@@ -4178,10 +3846,8 @@
       "id": "the-machine-names-where-the-person-decides",
       "text": "The machine of the states names the state where the person decides: awaiting-user-permission is the subject of the picture -- the machine waits there, and the human is an asynchronous master.  The wash of the subject is a token of the theme: the stylesheet of the site names it for the light and for the dark frame, the palette of every theme defines the same value for the pictures it draws, the source of the machine carries the wash on the subject state, and the rendered picture of every theme draws it.  A subject that only the reader's imagination carries is a subject the picture does not name.",
       "scope": [
-        "site/styles.css",
-        "site/diagrams/palette-light.puml",
-        "site/diagrams/palette-dark.puml",
-        "lib/yeah-state-diagram.el",
+        "site/styles.css", "site/diagrams/palette-light.puml",
+        "site/diagrams/palette-dark.puml", "lib/yeah-state-diagram.el",
         "site/diagrams/state-machine.puml",
         "site/assets/diagrams/state-machine-light.svg",
         "site/assets/diagrams/state-machine-dark.svg",
@@ -4204,9 +3870,7 @@
       "id": "the-prompt-routes-native-tools-before-shell",
       "text": "The default system prompt routes work to the purpose-built Emacs and review tools before the shell: live buffers go to buffer-read, Elisp questions to introspect or elisp-check, diagnostics to diagnostics, repository review to git_status or git_diff, and commits to git_commit; bash is reserved for external work such as builds or tests rather than reimplementing those tools.",
       "scope": [
-        "lib/yeah-gptel.el",
-        "lib/yeah-acp.el",
-        "lib/yeah-product.el",
+        "lib/yeah-gptel.el", "lib/yeah-acp.el", "lib/yeah-product.el",
         "tests/unit/test-yeah-gptel.el"
       ],
       "source": null,
@@ -4226,9 +3890,7 @@
       "id": "a-reasoning-chunk-is-a-thought",
       "text": "A reasoning chunk from the model is visible as Thinking: the turn writes a bounded reasoning record into the journal, the ACP wire projects it as one agent_thought_chunk content block, and it does not end the run or masquerade as the answer.",
       "scope": [
-        "lib/yeah-turn.el",
-        "lib/yeah-events.el",
-        "lib/yeah-acp.el",
+        "lib/yeah-turn.el", "lib/yeah-events.el", "lib/yeah-acp.el",
         "tests/checks/check-model-turn-runs.el",
         "tests/unit/test-yeah-acp.el"
       ],
@@ -4263,6 +3925,26 @@
       "falsifier": "a pending Bash, Read, Grep, Read buffer, introspection, diagnostics or Git call reaches Paseo with only the tool name as its title, or a long command is not bounded",
       "register": "fact",
       "control": "sed -i 's|const title = titleTail(titleOf(withInput, inputRecordOf(withInput)));|const title = withInput.title;|' plugin/yeah-provider/server/yeah.ts",
+      "waiver": null
+    },
+    {
+      "id": "the-dev-gate-asks-the-method-for-changed-claims",
+      "text": "The development loop has a gate of its own: scripts/gate --changed and scripts/dev gate-fast ask the method to run only the claims whose binding stopped holding, with one attempt bounded by five minutes; a killed changed run is answered rather than restarted, and every line of the fast gate's output carries the time it arrived. The full gate stays the default and the ritual of the release.",
+      "scope": [
+        "scripts/gate", "scripts/dev",
+        "tests/checks/check-the-dev-gate-asks-the-method-for-changed-claims.sh"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev check tests/checks/check-the-dev-gate-asks-the-method-for-changed-claims.sh"
+        }
+      ],
+      "falsifier": "the changed gate runs every claim as the full gate does, or the fast gate has no partial path, or a killed changed run is restarted as many times as a killed full one, or the output of the fast gate says nothing about when it moved",
+      "register": "fact",
+      "control": "sed -i 's|--changed)|--changed-broken)|' scripts/gate",
       "waiver": null
     }
   ]
