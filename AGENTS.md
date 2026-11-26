@@ -2225,7 +2225,7 @@ work item. Never resolve it by silently making documentation more optimistic.
   читается без слова мельче двенадцати пикселей, колонка считается из стилевой страницы так, как её
   считает браузер, и проверка
   `check-the-pictures-are-readable-in-the-column.el` падает, называя картинку, её ширину и масштаб
-  («emacs-layer-light.svg is read at 5.6 px in the column of the page (3333 px wide, scaled 0.35)»).
+  («emacs-layer-light.svg is read at 5.7 px in the column of the page (3333 px wide, scaled 0.36)»).
   Три широкие картинки переразложены (elk для Emacs-слоя и размещений, размер шрифта и разделители в
   палитре PlantUML для машины состояний, заметки фиксированной точки слиты в блоки), палитра PlantUML
   называет `defaultFontSize 16` — скинпамы работают только из позиции палитры, сразу после `@startuml`,

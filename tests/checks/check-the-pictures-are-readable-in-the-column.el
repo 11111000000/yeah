@@ -81,20 +81,46 @@ is resolved at FRAME-WIDTH, the way a browser resolves a vw unit."
           (maximum (* (string-to-number (match-string 3 css)) yeah-check--rem-in-px)))
       (min maximum (max minimum preferred)))))
 
+(defun yeah-check--css-block (css selector)
+  "Return the declarations of the rule of CSS that SELECTOR opens.
+The rule is `SELECTOR { ... }', and the body is what stands between
+its braces.  The rule this check reads must be the rule it names: the
+stylesheet carries other `padding' clamps for other elements, and a
+number that belongs to another element says nothing about a picture."
+  (when (string-match (concat "^" (regexp-quote selector)
+                              "[[:space:]]*{\\([^}]*\\)}")
+                      css)
+    (match-string 1 css)))
+
+(defun yeah-check--css-border (block)
+  "Return the width in pixels of the border declaration of BLOCK.
+The declaration is `border: 1px solid ...'."
+  (when (string-match "border:[[:space:]]*\\([0-9.]+\\)px" block)
+    (string-to-number (match-string 1 block))))
+
 (defun yeah-check--column (css)
   "Return the width of the column a picture may fill, out of the CSS.
 The column is the width of the frame, less the fringe, less the two
-gutters, less the border of a figure and less the padding of a picture
-on both of its sides."
-  (let ((frame (yeah-check--css-number css "--frame-w"))
-        (fringe (yeah-check--css-number css "--fringe-w"))
-        (gutter (yeah-check--css-clamp css "--gutter" (yeah-check--css-number css "--frame-w")))
-        (border 1.0)
-        (padding (yeah-check--css-clamp css "padding" (yeah-check--css-number css "--frame-w"))))
-    (when (or (null frame) (null fringe) (null gutter) (null padding))
-      (push "the stylesheet of the site does not name the sizes this check reads: --frame-w, --fringe-w, --gutter or the padding of a picture"
+gutters, less the border of the figure, less the padding of the
+picture on both of its sides.  The frame, the fringe and the gutter
+are read out of the variables of the root; the border and the padding
+are read out of the rules that name them -- `.diagram' and
+`.diagram__img' -- and not out of the first declaration the file
+happens to carry."
+  (let* ((frame (yeah-check--css-number css "--frame-w"))
+         (fringe (yeah-check--css-number css "--fringe-w"))
+         (gutter (and frame (yeah-check--css-clamp
+                             css "--gutter" frame)))
+         (figure (yeah-check--css-block css ".diagram"))
+         (border (and figure (yeah-check--css-border figure)))
+         (picture (yeah-check--css-block css ".diagram__img"))
+         (padding (and picture frame
+                       (yeah-check--css-clamp picture "padding" frame))))
+    (unless (and frame fringe gutter border padding)
+      (push "the stylesheet of the site does not name the sizes this check reads: --frame-w and --fringe-w of the root, the clamp of --gutter, the border of the rule .diagram, or the padding clamp of the rule .diagram__img"
             yeah-check--failures))
-    (- frame fringe (* 2 gutter) (* 2 border) (* 2 padding))))
+    (when (and frame fringe gutter border padding)
+      (- frame fringe (* 2 gutter) (* 2 border) (* 2 padding)))))
 
 (defun yeah-check--picture-sizes (svg)
   "Return (WIDTH . SIZES) of the picture at SVG.
@@ -153,8 +179,12 @@ sizes of the type the picture carries, every one of them."
         (let ((smallest (cl-loop
                          for picture in pictures
                          for sizes = (yeah-check--picture-sizes picture)
-                         for scale = (min 1.0 (/ column (car sizes)))
-                         minimize (apply #'min (mapcar (lambda (size) (* size scale)) (cdr sizes))))))
+                         when (and column (cdr sizes))
+                         minimize (apply #'min
+                                         (mapcar (lambda (size)
+                                                   (* size
+                                                      (min 1.0 (/ column (car sizes)))))
+                                                 (cdr sizes))))))
           (when (and (null yeah-check--failures) smallest)
             (message "pictures: the smallest word of every picture of the site is %.1f px in the column of the page, and the floor is %.1f px"
                      smallest yeah-check--legibility-floor)))))
@@ -169,4 +199,3 @@ sizes of the type the picture carries, every one of them."
   (kill-emacs 0)))
 
 ;;; check-the-pictures-are-readable-in-the-column.el ends here
-
