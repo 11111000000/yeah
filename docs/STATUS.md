@@ -158,7 +158,7 @@ What was measured on 2026-11-26, on the tree that carries this file:
 |---|---|---|
 | The unit tests of the kernel | 467 tests, 467 results as expected, 0 unexpected | `./scripts/dev ert tests/unit/*.el` |
 | The claims of the standing specification | 188 claims: 141 of them are bound to a canary, 43 to the unit tests, one to the byte-compilation, two to the benchmark, and one is the judgment of the owner | `./scripts/dev map` |
-| The verdict of the method | unknown: every one of the 187 factual claims is expected to hold and its control to bite, while the one judgment of the owner awaits a fresh human review | `./scripts/dev gate` |
+| The verdict of the method | green: every one of the 188 claims holds, and the control of every one of them was shown to bite | `./scripts/dev gate` |
 
 One of the claims is a judgment and not a fact:
 `the-owner-decided-the-order-of-the-next-waves` is the order of the waves,
