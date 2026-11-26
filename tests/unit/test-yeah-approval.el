@@ -54,26 +54,27 @@
   "The plan profile refuses the tools that change the world, and the
 person is not asked about them."
   (let* ((asked nil)
-         (answerer (yeah-approval-profile-answerer
-                    "plan"
+	 (answerer (yeah-approval-profile-answerer
+                    "build"
                     (lambda (request)
                       (setq asked request)
                       (list :effect :allow :reply :once))))
-         (decision (funcall answerer (list :action "edit"
-                                             :resource "/tmp/x"))))
-    (should (eq :deny (plist-get decision :effect)))
-    (should-not asked)))
+         (decision (funcall answerer (list :action "git_status"
+                                           :resource "/tmp/x"))))
+    (should (eq :allow (plist-get decision :effect)))
+    (should-not asked)
+    (should (string-match-p "safe read" (or (plist-get decision :reason) "")))))
 
 (ert-deftest yeah-approval-profile-asks-the-person-about-the-rest ()
   "What the profile does not forbid is left to the person."
   (let* ((asked nil)
          (answerer (yeah-approval-profile-answerer
-                    "plan"
+                    "build"
                     (lambda (request)
                       (setq asked request)
                       (list :effect :allow :reply :once))))
-         (decision (funcall answerer (list :action "git_status"
-                                             :resource "/tmp/x"))))
+         (decision (funcall answerer (list :action "edit"
+                                           :resource "/tmp/x"))))
     (should asked)
     (should (eq :allow (plist-get decision :effect)))))
 
@@ -89,7 +90,24 @@ person is not asked about them."
                                              :resource "/tmp/x"))))
     (should-not asked)
     (should (eq :allow (plist-get decision :effect)))
-    (should (string-match-p "safe read" (or (plist-get decision :reason) "")))))
+	   (should (string-match-p "safe read" (or (plist-get decision :reason) "")))))
+
+(ert-deftest yeah-approval-git-reads-are-safe-reads ()
+  "Review of the repository changes nothing: git status and git diff do
+not ask, even in the plan profile."
+  (dolist (action '("git_status" "git_diff" "todo_list"))
+    (let* ((asked nil)
+           (answerer (yeah-approval-profile-answerer
+                      "plan"
+                      (lambda (request)
+                        (setq asked request)
+                        (list :effect :allow :reply :once))))
+           (decision (funcall answerer
+                              (list :action action :resource "/tmp/x"))))
+      (should-not asked)
+      (should (eq :allow (plist-get decision :effect)))
+      (should (string-match-p "safe read"
+                              (or (plist-get decision :reason) ""))))))
 
 (defun yeah-approval-test--request ()
   "Return a request for permission to edit a file."

@@ -715,9 +715,11 @@ delivered only after the entire batch has settled."
                           (yeah-turn--context
                            turn nil (yeah-turn-turn-event-id turn))
                           :payload (plist-get input :prompt)))
-      (pcase (yeah-turn-state turn)
-        ('accumulating (yeah-turn--tick turn 'budget-ok))
-        ('compacting (yeah-turn--tick turn 'compact-done)))
+	      (pcase (yeah-turn-state turn)
+	       ('awaiting-user-permission
+	        (yeah-turn--tick turn 'parallel-tool-end))
+	       ('accumulating (yeah-turn--tick turn 'budget-ok))
+	       ('compacting (yeah-turn--tick turn 'compact-done)))
       (yeah-turn--tick turn 'continue)
       (let ((answered nil)
             (pending (yeah-turn-pending-answer turn)))

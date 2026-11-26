@@ -18,9 +18,9 @@
     accumulating compacting blocked-on-rate)
   "The states a run can live in and not be finished.")
 
-(ert-deftest yeah-loop-transition-count-is-31 ()
-  "The transition table has exactly 31 entries."
-  (should (= 31 (yeah-loop-transition-count))))
+(ert-deftest yeah-loop-transition-count-is-32 ()
+  "The transition table has exactly 32 entries."
+  (should (= 32 (yeah-loop-transition-count))))
 
 (ert-deftest yeah-loop-tick-idle-on-user-prompt ()
   "user-prompt from idle goes to deciding."
@@ -98,8 +98,15 @@ of a run that waits for the person."
 and the run waits for it."
   (should (eq (yeah-loop-tick 'awaiting-user-permission 'answer)
               'awaiting-tool))
-  (should (eq (yeah-loop-tick 'awaiting-user-permission 'timeout)
-              'awaiting-tool)))
+	  (should (eq (yeah-loop-tick 'awaiting-user-permission 'timeout)
+	              'awaiting-tool)))
+
+(ert-deftest yeah-loop-tick-parallel-tool-end-preserves-the-wait ()
+  "A tool from the same batch can settle while another tool waits for
+the person: the run keeps waiting and does not mistake that tool-end for
+the end of the whole batch."
+  (should (eq (yeah-loop-tick 'awaiting-user-permission 'parallel-tool-end)
+              'awaiting-user-permission)))
 
 (ert-deftest yeah-loop-tick-rate-block-recovers ()
   "A provider that is busy makes the run wait for it, and the answer

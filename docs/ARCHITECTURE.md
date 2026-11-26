@@ -476,6 +476,9 @@ separate workspace-shell grant, so one answer covers later Bash commands
 there, not one command. Paths below another root ask separately. This is a
 permission boundary over named tool arguments, not an operating-system
 sandbox.
+Read-only review tools — including git status and git diff — answer as safe
+reads. While one call waits for permission, another call from the same batch
+may settle; the run remains in the permission-wait state.
 
 Auto mode is the third profile: it allows the tools that change the world
 without a question, because there is nobody to answer the question. The

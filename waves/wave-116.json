@@ -1,0 +1,30 @@
+{
+  "id": "wave-116",
+  "title": "git review reads are safe and a parallel tool-end keeps the permission wait",
+  "intent": "A live Build run asked for git_status after Bash had already been granted: the git review tools were declared read-only but were missing from the safe-read dictionary. The same run then failed because Bash settled while git_status waited for the person and the FSM had no tool-end edge from awaiting-user-permission. The wave adds git_status, git_diff and todo_list to safe reads and adds the self edge: one tool of a batch may settle while another still waits for permission. The Paseo provider also carries the Yeah icon.",
+  "touches": [
+    "lib/yeah-approval.el",
+    "lib/yeah-loop.el",
+    "plugin/yeah-provider/index.server.ts",
+    "plugin/yeah-provider/package.json",
+    "plugin/yeah-provider/yeah-icon.svg",
+    "tests/unit/test-yeah-approval.el",
+    "tests/unit/test-yeah-loop.el",
+    "waves/wave-116.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-a-run-waits-in-a-state.el",
+    "./scripts/dev check tests/checks/check-the-machine-names-where-the-person-decides.el",
+    "cd plugin/yeah-provider && npm run typecheck && npm test"
+  ],
+  "claims": [
+    "safe-reads-need-no-question",
+    "a-run-waits-in-a-state"
+  ],
+  "commitment": [],
+  "objection": "The FSM edge proves that the state table accepts a tool-end while the run waits; the edge is deliberately self-preserving and does not say whether every other call in the batch has settled. The scheduler still continues only when all runnable calls settle. The icon is a declarative provider asset; whether the installed Paseo build refreshes its cache for an already-configured local provider is a client-side question.",
+  "refuted_by": "git_status or git_diff asks although it changes nothing, or a tool-end while another permission waits leaves awaiting-user-permission, or the provider has no Yeah icon",
+  "note": null
+}
