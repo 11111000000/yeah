@@ -4199,6 +4199,28 @@
       "register": "fact",
       "control": "sed -i '/^!define SUBJECT_BG/d' site/diagrams/palette-light.puml",
       "waiver": null
+    },
+    {
+      "id": "the-prompt-routes-native-tools-before-shell",
+      "text": "The default system prompt routes work to the purpose-built Emacs and review tools before the shell: live buffers go to buffer-read, Elisp questions to introspect or elisp-check, diagnostics to diagnostics, repository review to git_status or git_diff, and commits to git_commit; bash is reserved for external work such as builds or tests rather than reimplementing those tools.",
+      "scope": [
+        "lib/yeah-gptel.el",
+        "lib/yeah-acp.el",
+        "lib/yeah-product.el",
+        "tests/unit/test-yeah-gptel.el"
+      ],
+      "source": null,
+      "owner": "p.b.kosov@yandex.ru",
+      "requirements": [
+        {
+          "kind": "verifier",
+          "spec": "./scripts/dev ert tests/unit/test-yeah-gptel.el"
+        }
+      ],
+      "falsifier": "the default prompt omits the native tool routing, tells the model to use bash for those equivalents, or the control removes the routing and the verifier still passes",
+      "register": "fact",
+      "control": "sed -i '/Prefer the purpose-built tool to a shell one-liner\\./,+7d' lib/yeah-gptel.el",
+      "waiver": null
     }
   ]
 }

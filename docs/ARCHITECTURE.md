@@ -476,6 +476,9 @@ separate workspace-shell grant, so one answer covers later Bash commands
 there, not one command. Paths below another root ask separately. This is a
 permission boundary over named tool arguments, not an operating-system
 sandbox.
+The model-facing prompt routes work to purpose-built tools first: live
+buffers, Elisp introspection, syntax checks, diagnostics and Git review have
+native tools; Bash is for external work that no native tool covers.
 Read-only review tools — including git status and git diff — answer as safe
 reads. While one call waits for permission, another call from the same batch
 may settle; the run remains in the permission-wait state.

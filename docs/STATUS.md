@@ -104,6 +104,9 @@ these words are named in §4.
   remembered grant covers work below the session directory. Bash has a
   separate workspace-shell grant, so one answer covers later Bash commands
   there; paths outside the directory ask separately.
+- The default system prompt routes live buffers, Elisp introspection,
+  diagnostics and repository review to their native tools; Bash is reserved
+  for external work that no purpose-built tool covers.
 - Git review reads (`git_status`, `git_diff`) and `todo_list` are safe reads.
   A tool from the same batch may settle while another tool waits for the
   person; the run stays in the permission-wait state. The Paseo provider
