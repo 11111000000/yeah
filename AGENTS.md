@@ -2235,6 +2235,24 @@ work item. Never resolve it by silently making documentation more optimistic.
   Каждая картинка — якорь на свой же файл: сжатую картинку можно открыть один к одному.  Порог —
   честный минимум дерева; 12, 14 или 16 — решение владельца (docs/PLAN.md §17.2).
 
+* **Рода стрелок и граница каждой картинки (2026-11-26).**  Ребро структурной картинки, которое
+  пересекает границу ответственности, несёт род: подпись называет род словами, пунктир несёт его
+  второй раз, и палитра каждой темы держит пунктиры пяти родов (`request`, `answer`, `write`,
+  `project`, `capability`) врозь — два рода с одним пунктиром одна линия.  Каждая картинка сайта
+  называет то, чего она не показывает: граница переехала из подписи страницы в саму картинку —
+  скриншот картинки самодостаточен.  Граница машины состояний эмитится генератором
+  (`lib/yeah-state-diagram.el`), поэтому она дрейфует с кодом или страж генерации краснеет.
+  Claim'ы `the-edges-of-a-picture-carry-their-kind` и
+  `every-picture-of-the-site-names-what-it-does-not-show`; проверки
+  `tests/checks/check-the-edges-of-a-picture-carry-their-kind.el` и
+  `tests/checks/check-every-diagram-names-what-it-does-not-show.el`; контроли — уравнять пунктир
+  двух родов в палитре и стереть границу из картинки хода.  Машина состояний называет субъект: заливка
+  `awaiting-user-permission` — токен темы (`--diagram-subject-bg`), названный стилевой страницей
+  и палитрами обеих тем, источник машины несёт его на состоянии, и заметка границы висит под ним
+  (claim `the-machine-names-where-the-person-decides`, проверка
+  `tests/checks/check-the-machine-names-where-the-person-decides.el`, контроль — стереть define из
+  палитры светлой темы; docs/PLAN.md §16.127).
+
 ## The commands
 
 ```sh

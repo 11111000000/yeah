@@ -50,23 +50,23 @@ bridge: "The bridge\nemacsclient\nlib/yeah-bridge.el:177" {
 }
 
 person -> editor.compose: {
-  class: flow
+  class: request
   label: "writes the prompt"
 }
 editor.compose -> harness.kernel: {
-  class: flow
+  class: request
   label: "the prompt"
 }
 person -> editor.approval: {
-  class: flow
+  class: answer
   label: "answers a request"
 }
 editor.approval -> harness.kernel: {
-  class: flow
+  class: answer
   label: "the answer decides\nwhat may run"
 }
 harness.kernel -> bridge: {
-  class: flow
+  class: capability
   label: "the only path\nto the live state"
 }
 bridge -> editor.buffers: {
@@ -82,11 +82,11 @@ harness.kernel -> harness.edit: {
   label: "previews a change"
 }
 harness.kernel -> harness.recover: {
-  class: flow
+  class: write
   label: "writes what happened"
 }
 
-note: "The human answers: :once, :session, :project, :global or :reject."
+note: "The human answers: :once, :session, :project, :global or :reject.\nThe paths the bridge does not take are\nnot in this picture: the harness never\nreaches the buffers of the editor\nwithout the approval of the person."
 
 harness -> note: {
   class: hidden

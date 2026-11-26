@@ -44,6 +44,12 @@ interface_and_product: "interface\nand product\n5 modules\nneeds 7, needed by 3"
 placements_and_plumbing: "placements\nand plumbing\n5 modules\nneeds 5, needed by 2"
 delegation_and_subagents: "delegation\nand subagents\n3 modules\nneeds 5, needed by 1"
 
+note: "The picture does not show the\nedges between the packages: nine\npackages reach each other, and\nthe degrees name how many, not\nwhich."
+
+knot -> note: {
+  class: hidden
+}
+
 knot -> journal_and_projections: {
   class: flow
 }

@@ -16,7 +16,14 @@
 start
 :one turn of the agent
 (the model is asked, the tools are dispatched)
-lib/yeah-turn.el:1471;
+lib/yeah-turn.el:1471
+(the picture does not show the machinery
+of the run: the supervision that nudges
+a model that announces and does not act,
+the retries of a dropped request and the
+compaction of the context -- the machine
+of the states of a run is the picture
+beside this one);
 :the model proposes a tool call
 (read, edit, bash, git_status, todo_list)
 lib/yeah-turn.el:1097;

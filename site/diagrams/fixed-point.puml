@@ -38,7 +38,7 @@ start
 |Agent|
 if (does the task\nneed a child?) then (yes)
   :delegate names an agent preset\n(the preset is a file:\na name, a model,\nthe tools, the depth)\nlib/yeah-agent.el:131\nlib/yeah-delegate.el:219;
-  :the child runs in a session of\nits own, with a journal of its\nown, its own tools and its own\ndepth (the tree depth, the time\nand the budget of a child are\nbounded)\nlib/yeah-subagent.el:156\nlib/yeah-subagent.el:319;
+  :the child runs in a session of\nits own, with a journal of its\nown, its own tools and its own\ndepth (the tree depth, the time\nand the budget of a child are\nbounded)\nlib/yeah-subagent.el:156\nlib/yeah-subagent.el:319\n(the picture does not show the\ncancellation: a child that runs\nout of its time is cancelled, and\nthe parent is told why);
   :the child changes\nthe environment too;
 else (no)
   :the agent keeps\nthe tools of its own;

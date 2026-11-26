@@ -53,6 +53,7 @@
   --fl-function: #0000ff;                  /* Blue1 */
   --fl-variable: #a0522d;                  /* sienna */
   --fl-type: #228b22;                      /* ForestGreen */
+  --diagram-subject-bg: #eaf4ea;           /* the wash of the subject of a diagram */
   --fl-constant: #008b8b;                  /* dark cyan */
 
   /* The window system chrome around the buffer (measured on a real frame). */
@@ -121,6 +122,7 @@
   --fl-function: #feacd0;
   --fl-variable: #00d3d0;
   --fl-type: #6ae4b9;
+  --diagram-subject-bg: #0e3a2c;           /* the wash of the subject of a diagram */
   --fl-constant: #00bcff;
 
   --menu-bg: #1e1e1e;
