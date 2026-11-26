@@ -1,0 +1,28 @@
+{
+  "id": "wave-117",
+  "title": "the system prompt routes Emacs-native tools before shell",
+  "intent": "A live Paseo run used bash for searches, project inspection and git status although Yeah has purpose-built tools for those jobs. The wave rewrites the default system prompt: live buffers, Elisp introspection, syntax, diagnostics, repository review and commits route to their native tools, while bash is reserved for external programs, builds and tests. The prompt still tells the model to finish only after verified work.",
+  "touches": [
+    "lib/yeah-gptel.el",
+    "lib/yeah-acp.el",
+    "lib/yeah-product.el",
+    "spec.json",
+    "tests/unit/test-yeah-gptel.el",
+    "docs/PLAN.md",
+    "docs/STATUS.md",
+    "waves/wave-117.json"
+  ],
+  "checks": [
+    "./scripts/dev byte-compile-all",
+    "./scripts/dev ert tests/unit/*.el",
+    "./scripts/dev check tests/checks/check-gptel-request-shape.el",
+    "./scripts/dev check tests/checks/check-tool-descriptions.el"
+  ],
+  "claims": [
+    "the-prompt-routes-native-tools-before-shell"
+  ],
+  "commitment": [],
+  "objection": "A prompt is guidance, not enforcement: a model may still choose bash. Permission rules, tool declarations and the shell guard remain the actual boundaries. The check proves that the default prompt names the routing and shell restriction; it does not prove that every provider and model follows it on every run.",
+  "refuted_by": "the default prompt omits buffer-read, introspect, elisp-check, diagnostics or the git review tools, instructs the model to prefer shell for their equivalents, or the control removes the routing and the claim verifier still passes",
+  "note": null
+}

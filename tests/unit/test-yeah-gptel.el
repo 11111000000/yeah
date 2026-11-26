@@ -115,7 +115,18 @@ transport of gptel takes that model when nobody named another one."
                 ((symbol-function 'gptel-request)
                  (lambda (&rest _args) nil)))
         (yeah-gptel-request "question" #'ignore :tools nil))
-      (should-not hook-called))))
+    (should-not hook-called))))
+
+(ert-deftest yeah-gptel-prelude-routes-native-tools-before-shell ()
+  "The default prompt names the Emacs-native and review tools, and
+reserves the shell for work that no purpose-built tool covers."
+  (let ((prompt yeah-gptel-prelude))
+    (dolist (tool '("buffer-read" "introspect" "elisp-check" "diagnostics"
+                    "git_status" "git_diff" "git_commit"))
+      (should (string-match-p (regexp-quote tool) prompt)))
+    (should (string-match-p "Prefer the purpose-built tool" prompt))
+    (should (string-match-p "do not use it merely to" prompt))
+    (should (string-match-p "repeat .git status" prompt))))
 
 (ert-deftest yeah-gptel-request-rejects-invalid-callback ()
   (should-error (yeah-gptel-request "question" nil) :type 'user-error))
